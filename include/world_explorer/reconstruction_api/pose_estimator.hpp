@@ -28,6 +28,9 @@ struct pose_estimate {
     std::chrono::nanoseconds capture_time;
     map_revision_id revision;
     tracking_state tracking{tracking_state::INITIALIZING};
+    // Row-major covariance of a left SE(3) tangent perturbation in submap axes:
+    // rx, ry, rz (radians), tx, ty, tz (submap units). Absent unless calibrated
+    // uncertainty is actually estimated; never substitute a confidence score.
     std::optional<std::array<double, 36>> covariance;
 };
 struct pose_revision {

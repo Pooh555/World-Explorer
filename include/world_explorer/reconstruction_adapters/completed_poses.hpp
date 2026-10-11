@@ -4,6 +4,7 @@
 #include "world_explorer/reconstruction_api/pose_estimator.hpp"
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -26,6 +27,7 @@ struct completed_pose_dataset {
     std::vector<calibration_record> calibrations;
     std::vector<observation_record> observations;
     std::vector<pose_estimate> poses;
+    std::optional<std::string> journal_sha256;
 };
 // Checked import of the legacy COLMAP canonical JSON v1 profile. This does not
 // execute a solver. Unknown camera/coordinate profiles fail explicitly.

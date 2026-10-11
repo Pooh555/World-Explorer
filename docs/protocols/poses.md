@@ -58,7 +58,7 @@ The adapter freezes its own snapshot so mutable aliases cannot alter emitted pos
 application command: real frame leases → capacity-one estimator replay with retry
 on backpressure → one atomic in-memory map commit. Pose timestamps must match their
 observation records. This inspection does not alter job pointers or persist maps.
-Canonical FlatBuffers pose assets, persistent map snapshots and complete worker
+Persistent map snapshots and complete worker
 command control remain follow-up work.
 
 ## Fresh selected-frame batch
@@ -115,3 +115,57 @@ the selected video's full SHA, submits real native frame leases and publishes a
 map through the same event-to-map path as completed replay. Worker script/Python
 overrides remain available. This command performs a fresh pose solve and no fit.
 Original completed jobs and fit outputs are independent of its fresh destination.
+
+## Canonical pose assets
+
+`map_store/pose_asset.hpp` owns project-native immutable interchange; generated
+FlatBuffers types remain private. `schemas/map/poses.fbs` uses file identifier
+`WEPA`, schema version 1, little-endian doubles, wxyz quaternions, right-handed
++Y-up world and optical cameras, and integer pixel centers. Each pose retains
+`submap_from_camera` and its alignment dependency and also stores explicit
+`world_from_camera`. The reader verifies their composition without applying
+another backend rotation or half-pixel adjustment.
+
+V1 supports PINHOLE and four-coefficient OPENCV, intrinsic parameters, image
+crop/resize transform, stable IDs, original signed PTS/rational time base,
+nanosecond capture time, image SHA-256, map epoch/revision, per-pose revision,
+tracking state, optional 6×6 covariance and invalidated frame IDs (including
+removed observations). V1 covariance follows the native estimator contract:
+row-major left SE(3) tangent `rx,ry,rz,tx,ty,tz` in submap axes, with radians and
+submap-unit translation. It is absent for the concrete COLMAP adapter; a backend
+confidence score cannot substitute for calibrated uncertainty. Covariance must
+be finite, symmetric and positive
+semidefinite within a relative 1e-12 numerical tolerance. Source, decoded-stage
+completion and pose-stage completion hashes are required. Native RGB journal
+identity is preserved and checked against the job/decode provenance; absent
+legacy journal identity remains absent.
+
+Scale provenance is `ARBITRARY_MONOCULAR`; gravity is explicitly `UNKNOWN`.
+Measured-scale/gravity profiles return unsupported until their independent
+measurement/alignment provenance is implemented. Alignment scale is not evidence
+of metres. The format carries no images, paths, inferred floor or collision.
+
+Readers require an expected SHA-256, hash the same bytes they parse, run the
+bounded FlatBuffers verifier, then validate schema/profile, enums, counts,
+duplicates, finite values and all pose/calibration/observation dependencies.
+Default limits: 256 MiB encoded bytes, 1M observations/poses/invalidations, 4096
+calibrations/submaps; callers may lower them. Borrowed unaligned buffers are
+copied before accessing double-aligned structs. Snapshot ownership survives the
+input buffer's lifetime. JSON inspection uses the same validated native records.
+
+`write_pose_asset` stages in a privately owned sibling directory, closes and
+flushes the file, and publishes by an atomic hard link that cannot overwrite an
+existing file, symlink or concurrent winner. Staging is removed on ordinary
+failure/cancellation. The parent must already exist and support hard links.
+POSIX flushes the published parent directory; Windows flushes file contents.
+A failure after linking can leave a complete verifiable asset; there is no
+power-loss/native Windows/macOS qualification claim. Existing files always stay
+untouched. These assets contain no operation receipts: they do **not** restore
+a durable `map_store` or certify restart-safe revision/retry behavior.
+
+`export_completed_pose_asset` and
+`we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]`
+verify the retained source/stages and publish through the shared event-to-map
+path, without a solver, decoder or optimizer. Save the returned SHA-256;
+`we_process inspect-poses OUTPUT.weposes SHA256` reloads the immutable snapshot
+and emits JSON. The original job, capture, fits and scene remain preserved.

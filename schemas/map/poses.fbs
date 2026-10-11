@@ -1,0 +1,57 @@
+namespace world_explorer.pose_wire;
+
+enum coordinate_profile : ubyte { UNKNOWN, RIGHT_Y_UP_OPTICAL_WXYZ_INTEGER }
+enum camera_model : ubyte { PINHOLE, OPENCV }
+enum scale_provenance : ubyte { UNKNOWN, ARBITRARY_MONOCULAR }
+enum gravity_provenance : ubyte { UNKNOWN }
+enum tracking_state : ubyte { INITIALIZING, TRACKING, LOST, FINISHED }
+
+struct transform {
+  qw:double; qx:double; qy:double; qz:double;
+  tx:double; ty:double; tz:double; scale:double;
+}
+struct coefficients { a:double; b:double; c:double; d:double; }
+table calibration {
+  id:ulong; width:uint; height:uint; model:camera_model;
+  intrinsics:coefficients (required);
+  distortion:coefficients (required);
+  image_transform:coefficients (required);
+}
+table observation {
+  frame:ulong; capture:ulong; calibration_id:ulong;
+  original_pts:long; time_base_numerator:int; time_base_denominator:int;
+  capture_nanoseconds:long; image_sha256:string (required);
+}
+table alignment { submap:ulong; world_from_submap:transform (required); }
+table pose {
+  frame:ulong; submap:ulong; revision:ulong; capture_nanoseconds:long;
+  tracking:tracking_state;
+  submap_from_camera:transform (required);
+  world_from_camera:transform (required);
+  // Row-major 6x6 left SE(3) tangent rx,ry,rz,tx,ty,tz in submap axes.
+  // Rotation is radians, translation is submap units. Absent if not estimated.
+  covariance:[double];
+}
+table provenance_record {
+  source_sha256:string (required);
+  decode_completion_sha256:string (required);
+  pose_completion_sha256:string (required);
+  // Absent for the legacy timestamp sampler; never invent a journal identity.
+  journal_sha256:string;
+  scale:scale_provenance = UNKNOWN;
+  gravity:gravity_provenance = UNKNOWN;
+}
+table pose_asset {
+  schema_version:uint;
+  coordinates:coordinate_profile = UNKNOWN;
+  epoch:ulong; revision:ulong;
+  provenance:provenance_record (required);
+  calibrations:[calibration] (required);
+  observations:[observation] (required);
+  alignments:[alignment] (required);
+  poses:[pose] (required);
+  invalidated_frames:[ulong] (required);
+}
+root_type pose_asset;
+file_identifier "WEPA";
+file_extension "weposes";

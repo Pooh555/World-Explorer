@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -32,6 +33,7 @@ struct decoded_frame_catalog {
     capture_id capture;
     std::string completion_sha256;
     std::vector<decoded_observation> observations;
+    std::optional<std::string> journal_sha256;
 };
 // Inspects the same bounded, checked metadata as open; no decoder is launched.
 // Used image bytes still require checksum verification before consumption.

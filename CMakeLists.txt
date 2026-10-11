@@ -106,9 +106,18 @@ target_include_directories(reconstruction_adapters SYSTEM PRIVATE "${WE_WIRE_DIR
 target_compile_definitions(reconstruction_adapters PRIVATE WE_WIRE_BINDINGS="${WE_WIRE_DIRECTORY}/python")
 target_link_libraries(reconstruction_adapters PUBLIC reconstruction_api PRIVATE nlohmann_json::nlohmann_json)
 
-add_library(map_store src/map_store/map_store.cpp)
+set(WE_POSE_DIRECTORY "${PROJECT_BINARY_DIR}/generated/map")
+add_custom_command(OUTPUT "${WE_POSE_DIRECTORY}/poses_generated.h"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${WE_POSE_DIRECTORY}"
+  COMMAND $<TARGET_FILE:${WE_FLATC}> --cpp --scoped-enums --gen-mutable -o "${WE_POSE_DIRECTORY}" "${PROJECT_SOURCE_DIR}/schemas/map/poses.fbs"
+  DEPENDS ${WE_FLATC} schemas/map/poses.fbs
+  VERBATIM)
+add_library(map_store src/map_store/map_store.cpp src/map_store/pose_asset.cpp
+  "${WE_POSE_DIRECTORY}/poses_generated.h")
 we_target(map_store)
+target_include_directories(map_store SYSTEM PRIVATE "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
 target_link_libraries(map_store PUBLIC reconstruction_api)
+target_link_libraries(map_store PRIVATE nlohmann_json::nlohmann_json)
 
 add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp)
 we_target(scene_store)
@@ -121,7 +130,7 @@ target_link_libraries(navigation PUBLIC core)
 add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/scene_import.cpp src/application/source_view.cpp
   src/application/reconstruction_job.cpp src/application/job_validation.cpp src/application/pose_replay.cpp
-  src/application/pose_pipeline.cpp src/application/pose_solve.cpp)
+  src/application/pose_pipeline.cpp src/application/pose_solve.cpp src/application/pose_export.cpp)
 we_target(application)
 target_link_libraries(application PUBLIC scene_store navigation reconstruction_adapters map_store PRIVATE nlohmann_json::nlohmann_json)
 
@@ -192,7 +201,7 @@ if(BUILD_TESTING)
   add_executable(we_core_tests ${WE_CORE_TESTS})
   we_target(we_core_tests)
   target_link_libraries(we_core_tests PRIVATE application map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
-  target_include_directories(we_core_tests SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
+  target_include_directories(we_core_tests SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
   catch_discover_tests(we_core_tests PROPERTIES LABELS "cpu")
 
   find_package(Python3 COMPONENTS Interpreter REQUIRED)

@@ -110,6 +110,15 @@ contract and publishes an in-memory map snapshot. It is labeled completed-output
 replay. The optional stage selection
 handles a stale decode pointer without changing it. See [pose replay](docs/protocols/poses.md).
 
+`build/dev/we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]`
+verifies retained poses and writes a canonical FlatBuffers asset without running
+a solver, decoder or optimizer. The destination parent must exist; existing files
+are preserved. Save the reported SHA-256 and use
+`build/dev/we_process inspect-poses OUTPUT.weposes SHA256` to reload the checked
+immutable snapshot and print JSON inspection. Images stay in the original local
+job. Scale remains arbitrary and gravity unknown; this file is pose interchange,
+not a resumable map-store log.
+
 `build/dev/we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE`
 runs a fresh isolated CPU COLMAP solve from native RGB leases. Use a fresh output
 directory; accepted frames are journaled locally, and failures retain diagnostics.
