@@ -104,9 +104,15 @@ void write_atomic(const std::filesystem::path& path, std::span<const std::byte> 
 #else
     const auto process = getpid();
 #endif
-    const auto temporary = path.string() + ".tmp." + std::to_string(process) + "." +
-                           std::to_string(sequence.fetch_add(1));
-    std::FILE* file = std::fopen(temporary.c_str(), "wb");
+    auto temporary = path;
+    temporary += ".tmp." + std::to_string(process) + "." + std::to_string(sequence.fetch_add(1));
+    std::FILE* file{};
+#ifdef _WIN32
+    if (_wfopen_s(&file, temporary.c_str(), L"wb") != 0)
+        file = nullptr;
+#else
+    file = std::fopen(temporary.c_str(), "wb");
+#endif
     if (!file)
         throw std::runtime_error("cannot create staged asset");
     const bool written =
@@ -123,7 +129,7 @@ void write_atomic(const std::filesystem::path& path, std::span<const std::byte> 
     }
     try {
 #ifdef _WIN32
-        if (!MoveFileExW(std::filesystem::path(temporary).c_str(), path.c_str(),
+        if (!MoveFileExW(temporary.c_str(), path.c_str(),
                          MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
             throw std::runtime_error("manifest atomic replace failed");
 #else

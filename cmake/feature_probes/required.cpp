@@ -4,8 +4,12 @@
 #include <stop_token>
 #include <thread>
 
-#if __cpp_lib_expected < 202202L
+#if !defined(__cpp_lib_expected) || __cpp_lib_expected < 202202L
 #error std::expected basic API is required
+#endif
+
+#if !defined(__cpp_lib_jthread) || __cpp_lib_jthread < 201911L
+#error std::jthread and std::stop_token are required
 #endif
 
 int main() {

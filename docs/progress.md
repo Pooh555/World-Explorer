@@ -53,6 +53,15 @@ PLY hash without repeating optimization or poses. The GUI startup command and
 render pause/resume were exercised on the native GPU. See the
 [job contract](protocols/jobs.md) and [coordinator evidence](validation/2026-10-11-coordinator.md).
 
+The user reported native CI: Ubuntu core passed, while Linux Clang/macOS failed
+required library probes and Windows failed OpenSSL discovery. The workflow now
+selects compatible compiler/library pairs and explicit SDK roots, retaining the
+feature and warning gates. Local GCC C++26, GCC C++23 CPU and Clang C++23 CPU
+each pass 24/24 tests; actionlint, format, boundaries and targeted tidy pass.
+The exact hosted profiles are IMPLEMENTED_UNVERIFIED until the next user push.
+See [CI repair evidence](validation/2026-10-11-ci.md). Apple Clang/viewer/release
+qualification remains separate from the macOS LLVM 20 CPU job.
+
 Next executable task: add the pinned length-prefixed FlatBuffers worker transport
 and verifier, then connect concrete native frame-source and batch pose-estimator
 adapters to the existing contracts. Use the successful pose job and fit above;

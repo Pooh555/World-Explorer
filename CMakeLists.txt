@@ -23,27 +23,33 @@ option(WE_SYSTEM_DEVELOPMENT_DEPS "Use measured local system libraries (not rele
 
 set(WE_SANITIZER "" CACHE STRING "GNU/Clang sanitizer set, thread is separate from address")
 
+find_package(Threads REQUIRED)
+message(STATUS "Required C++${WE_CXX_STANDARD} APIs: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})")
 try_compile(WE_REQUIRED_FEATURES
   SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/feature_probes/required.cpp"
   CXX_STANDARD ${WE_CXX_STANDARD}
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
+  LINK_LIBRARIES Threads::Threads
   OUTPUT_VARIABLE WE_FEATURE_LOG
 )
 
 if(NOT WE_REQUIRED_FEATURES)
-  message(FATAL_ERROR "Required language/library probes failed. Use compat-cxx23 only explicitly.\n${WE_FEATURE_LOG}")
+  message(FATAL_ERROR "The selected compiler AND standard library must provide std::expected, std::jthread, std::stop_token and std::span. Select a supported toolchain; C++23 mode alone cannot add missing library APIs.\n${WE_FEATURE_LOG}")
 endif()
 
 # -----------------------------------------------------------------------------
 # Dependencies & Helper Functions
 # -----------------------------------------------------------------------------
 include(cmake/dependencies.cmake)
-find_package(Threads REQUIRED)
 
 function(we_target target)
   target_include_directories(${target} PUBLIC "${PROJECT_SOURCE_DIR}/include")
   target_compile_features(${target} PUBLIC cxx_std_${WE_CXX_STANDARD})
+
+  if(WIN32)
+    target_compile_definitions(${target} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+  endif()
 
   if(MSVC)
     target_compile_options(${target} PRIVATE /W4 /WX /permissive- /Zc:__cplusplus)
