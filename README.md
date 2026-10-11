@@ -22,6 +22,14 @@ build/dev/we_viewer
 `release-vcpkg` is an unqualified release dependency configuration, not a certified
 package. Native Windows/macOS builds have not been run.
 
+The `native-builds` workflow checks the explicit C++23 CPU profile with GCC 13
+and Clang 19/libstdc++ 13 on Ubuntu, MSVC with the runner's OpenSSL SDK on Windows,
+and LLVM 20 with its matching libc++ and Homebrew OpenSSL on macOS. Selecting
+C++23 alone does not provide missing standard-library APIs. The macOS CPU job
+does not qualify Apple Clang or the Vulkan viewer; see the
+[toolchain decision](docs/adr/002-native-ci-toolchains.md) and
+[CI repair checks](docs/validation/2026-10-11-ci.md).
+
 GUI and CLI share a command to continue completed poses through explicit local
 fitting, checked publication and viewer loading:
 

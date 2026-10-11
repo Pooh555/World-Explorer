@@ -12,6 +12,38 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Prepare Linux GCC and dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y g++-13 libssl-dev ninja-build ffmpeg
+          echo 'CXX=g++-13' >> "$GITHUB_ENV"
+      - name: Prepare macOS compiler and matching standard library
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: |
+          brew install llvm@20 openssl@3 ffmpeg
+          llvm_root="$(brew --prefix llvm@20)"
+          echo "CXX=$llvm_root/bin/clang++" >> "$GITHUB_ENV"
+          echo "CXXFLAGS=-nostdinc++ -isystem $llvm_root/include/c++/v1" >> "$GITHUB_ENV"
+          echo "LDFLAGS=-L$llvm_root/lib/c++ -Wl,-rpath,$llvm_root/lib/c++" >> "$GITHUB_ENV"
+          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
+      - name: Prepare native Windows MSVC environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@a102174a2b586eec2ea151a69e6fd14404a8ce7c # v1.13.0
+        with:
+          arch: x64
+      - name: Locate Windows OpenSSL SDK
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $openssl_root = Join-Path $env:ProgramFiles 'OpenSSL'
+          if (!(Test-Path "$openssl_root/include/openssl/evp.h")) {
+            throw "The runner's full OpenSSL SDK is missing: $openssl_root"
+          }
+          "OPENSSL_ROOT_DIR=$openssl_root" >> $env:GITHUB_ENV
+          'CXX=cl' >> $env:GITHUB_ENV
       - name: Configure explicit C++23 compatibility core
         run: cmake --preset compat-cxx23 -DWE_BUILD_VIEWER=OFF
       - name: Build
@@ -25,6 +57,14 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - run: cmake --preset clang -DWE_CXX_STANDARD=23 -DWE_BUILD_VIEWER=OFF
+      - name: Prepare Clang 19 and GCC 13 standard library
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y clang-19 g++-13 libssl-dev ninja-build ffmpeg
+          echo 'CXXFLAGS=--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/13' >> "$GITHUB_ENV"
+      - name: Configure explicit C++23 Clang core
+        run: cmake --preset clang -DCMAKE_CXX_COMPILER=clang++-19 -DWE_CXX_STANDARD=23 -DWE_BUILD_VIEWER=OFF
       - run: cmake --build --preset clang --parallel 4
       - run: ctest --preset clang
+      - name: Include boundaries
+        run: python tools/check_boundaries.py

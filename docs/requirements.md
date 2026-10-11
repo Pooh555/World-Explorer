@@ -26,7 +26,7 @@ thresholds or platform requirements have been waived. Status on 2026-10-11:
 | N1 fly controls | Camera + gated SDL input; CPU tests pass | IN_PROGRESS | Full native input/HiDPI/latency inspection pending |
 | N2 walking | Disabled until independent scale/geometry | NOT_STARTED | No invented collision |
 | E1 correctness/coverage | Contract/worker/coordinator tests; native sync validation including render pause/resume; targeted lint | IN_PROGRESS | Current profile counts in coordinator evidence; coverage, fuzzing and full gate fixtures pending |
-| E2 build/delivery | Local GCC/Clang C++26 and explicit C++23 builds; pinned dev archives | IN_PROGRESS | Native platform/release profile and complete distribution-hash qualification pending |
+| E2 build/delivery | Local GCC/Clang C++26 and explicit C++23 builds; pinned dev archives; corrected native CPU CI toolchains/SDK discovery | IN_PROGRESS | CI repair locally checked; hosted rerun, native viewer/release profile and complete distribution-hash qualification pending |
 | L1 / M7–M8 | Only future-compatible contracts in Phase 1 | DEFERRED_BY_USER | No live reconstruction implementation |
 
 Each gate requires the measurement scope prescribed by the specification. A local
@@ -36,4 +36,5 @@ another operating system's native qualification.
 Commands and narrow local results: [foundation evidence](validation/2026-10-11-foundation.md).
 Current fit and checks: [capture evidence](validation/2026-10-11-capture.md).
 Shared job command checks: [coordinator evidence](validation/2026-10-11-coordinator.md).
+Native CPU workflow repair: [CI evidence](validation/2026-10-11-ci.md).
 No Q/P/N/E requirement is fully certified; configured CI is not a native pass.

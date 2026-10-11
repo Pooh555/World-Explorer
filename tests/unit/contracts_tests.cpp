@@ -4,6 +4,7 @@
 #include "world_explorer/scene_store/scene_store.hpp"
 #include <atomic>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <thread>
@@ -240,33 +241,36 @@ TEST_CASE("SHA-256 matches an independent standard test vector", "[contracts][ha
 TEST_CASE("bundle round trip enforces checksums paths conventions and allocation bounds",
           "[contracts][bundle]") {
     temporary_directory directory;
+    const auto bundle_path =
+        directory.path / GENERATE(std::filesystem::path("scene.wexplore"),
+                                  std::filesystem::path(u8"room \u00e9\u623f.wexplore"));
     scene_store store({42});
     REQUIRE(store.commit(create_transaction()));
-    REQUIRE(write_bundle(directory.path, store.acquire_snapshot()));
-    auto loaded = load_bundle(directory.path);
+    REQUIRE(write_bundle(bundle_path, store.acquire_snapshot()));
+    auto loaded = load_bundle(bundle_path);
     REQUIRE(loaded);
     CHECK((*loaded)->chunks.at({1})->splats[0].mean[1] == 2);
-    auto manifest = read_json(directory.path / "manifest.json");
+    auto manifest = read_json(bundle_path / "manifest.json");
     const auto original = manifest;
     manifest["index"] = "../outside.bin";
-    write_json(directory.path / "manifest.json", manifest);
-    CHECK_FALSE(load_bundle(directory.path));
+    write_json(bundle_path / "manifest.json", manifest);
+    CHECK_FALSE(load_bundle(bundle_path));
     manifest = original;
     manifest["coordinates"]["quaternion_order"] = "xyzw";
-    write_json(directory.path / "manifest.json", manifest);
-    CHECK_FALSE(load_bundle(directory.path));
-    write_json(directory.path / "manifest.json", original);
+    write_json(bundle_path / "manifest.json", manifest);
+    CHECK_FALSE(load_bundle(bundle_path));
+    write_json(bundle_path / "manifest.json", original);
     bundle_limits limits;
     limits.scene.max_splats = 0;
-    CHECK_FALSE(load_bundle(directory.path, limits));
+    CHECK_FALSE(load_bundle(bundle_path, limits));
     limits = {};
     limits.max_manifest_bytes = 8;
-    CHECK_FALSE(load_bundle(directory.path, limits));
-    const auto index = directory.path / original.at("index").get<std::string>();
+    CHECK_FALSE(load_bundle(bundle_path, limits));
+    const auto index = bundle_path / original.at("index").get<std::string>();
     std::ofstream corrupted(index, std::ios::binary | std::ios::app);
     corrupted.put('x');
     corrupted.close();
-    CHECK_FALSE(load_bundle(directory.path));
+    CHECK_FALSE(load_bundle(bundle_path));
 }
 
 TEST_CASE("failed publication preserves previous valid bundle", "[contracts][bundle]") {
