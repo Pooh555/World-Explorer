@@ -53,10 +53,7 @@ struct vulkan_renderer::implementation {
     std::vector<VkFramebuffer> framebuffers;
     std::vector<VkSemaphore> present_semaphores;
     VkRenderPass render_pass{};
-    VkDescriptorSetLayout descriptor_layout{};
-    VkDescriptorPool descriptor_pool{};
-    VkDescriptorPool overlay_pool{};
-    VkPipelineLayout pipeline_layout{};
+    descriptor_resources bindings;
     VkPipeline project_pipeline{}, histogram_pipeline{}, scan_pipeline{}, scatter_pipeline{},
         draw_pipeline{};
     VkSemaphore timeline{};
@@ -105,14 +102,14 @@ struct vulkan_renderer::implementation {
              {draw_pipeline, project_pipeline, histogram_pipeline, scan_pipeline, scatter_pipeline})
             if (pipeline)
                 vkDestroyPipeline(device, pipeline, nullptr);
-        if (pipeline_layout)
-            vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
-        if (descriptor_pool)
-            vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
-        if (overlay_pool)
-            vkDestroyDescriptorPool(device, overlay_pool, nullptr);
-        if (descriptor_layout)
-            vkDestroyDescriptorSetLayout(device, descriptor_layout, nullptr);
+        if (bindings.pipeline_layout)
+            vkDestroyPipelineLayout(device, bindings.pipeline_layout, nullptr);
+        if (bindings.scene_pool)
+            vkDestroyDescriptorPool(device, bindings.scene_pool, nullptr);
+        if (bindings.overlay_pool)
+            vkDestroyDescriptorPool(device, bindings.overlay_pool, nullptr);
+        if (bindings.layout)
+            vkDestroyDescriptorSetLayout(device, bindings.layout, nullptr);
         swapchain_backend.reset();
         device_backend.reset();
     }
@@ -142,8 +139,7 @@ struct vulkan_renderer::implementation {
         queue_family = device_backend->queue_family();
         properties = device_backend->properties();
         timeline = device_backend->timeline();
-        device_backend->create_descriptor_layout(descriptor_layout, descriptor_pool, overlay_pool,
-                                                 pipeline_layout);
+        device_backend->create_descriptor_layout(bindings);
         refresh_swapchain();
         create_pipelines();
         create_frames();
@@ -152,14 +148,14 @@ struct vulkan_renderer::implementation {
         diagnostics.scratch_bytes = scratch;
     }
     void create_pipelines() {
-        project_pipeline = device_backend->create_compute_pipeline("project.comp", pipeline_layout,
-                                                                   options.shader_directory);
+        project_pipeline = device_backend->create_compute_pipeline(
+            "project.comp", bindings.pipeline_layout, options.shader_directory);
         histogram_pipeline = device_backend->create_compute_pipeline(
-            "radix_histogram.comp", pipeline_layout, options.shader_directory);
-        scan_pipeline = device_backend->create_compute_pipeline("radix_scan.comp", pipeline_layout,
-                                                                options.shader_directory);
+            "radix_histogram.comp", bindings.pipeline_layout, options.shader_directory);
+        scan_pipeline = device_backend->create_compute_pipeline(
+            "radix_scan.comp", bindings.pipeline_layout, options.shader_directory);
         scatter_pipeline = device_backend->create_compute_pipeline(
-            "radix_scatter.comp", pipeline_layout, options.shader_directory);
+            "radix_scatter.comp", bindings.pipeline_layout, options.shader_directory);
         const auto vertex =
             device_backend->load_shader_module(options.shader_directory, "splat.vert");
         VkShaderModule fragment{};
@@ -169,15 +165,11 @@ struct vulkan_renderer::implementation {
             vkDestroyShaderModule(device, vertex, nullptr);
             throw;
         }
-        std::array<VkPipelineShaderStageCreateInfo, 2> stages{};
-        for (auto& stage : stages) {
-            stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            stage.pName = "main";
-        }
-        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-        stages[0].module = vertex;
-        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        stages[1].module = fragment;
+        const std::array<VkPipelineShaderStageCreateInfo, 2> stages{
+            {{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+              VK_SHADER_STAGE_VERTEX_BIT, vertex, "main", nullptr},
+             {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+              VK_SHADER_STAGE_FRAGMENT_BIT, fragment, "main", nullptr}}};
         auto vertices = structure<VkPipelineVertexInputStateCreateInfo>(
             VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
         auto assembly = structure<VkPipelineInputAssemblyStateCreateInfo>(
@@ -204,8 +196,9 @@ struct vulkan_renderer::implementation {
         blend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
         blend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         blend.alphaBlendOp = VK_BLEND_OP_ADD;
-        blend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        blend.colorWriteMask = VkColorComponentFlags{VK_COLOR_COMPONENT_R_BIT} |
+                               VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+                               VK_COLOR_COMPONENT_A_BIT;
         auto blending = structure<VkPipelineColorBlendStateCreateInfo>(
             VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO);
         blending.attachmentCount = 1;
@@ -227,7 +220,7 @@ struct vulkan_renderer::implementation {
         info.pMultisampleState = &multisample;
         info.pColorBlendState = &blending;
         info.pDynamicState = &dynamic;
-        info.layout = pipeline_layout;
+        info.layout = bindings.pipeline_layout;
         info.renderPass = render_pass;
         const auto status =
             vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &draw_pipeline);
@@ -262,11 +255,10 @@ struct vulkan_renderer::implementation {
                 allocate(options.max_splats * 8, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
             current.histogram = allocate(((options.max_splats + 255) / 256) * 64,
                                          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-            const std::array<VkDescriptorSetLayout, 2> layouts{descriptor_layout,
-                                                               descriptor_layout};
+            const std::array<VkDescriptorSetLayout, 2> layouts{bindings.layout, bindings.layout};
             auto descriptors = structure<VkDescriptorSetAllocateInfo>(
                 VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO);
-            descriptors.descriptorPool = descriptor_pool;
+            descriptors.descriptorPool = bindings.scene_pool;
             descriptors.descriptorSetCount = 2;
             descriptors.pSetLayouts = layouts.data();
             check(vkAllocateDescriptorSets(device, &descriptors, current.descriptors.data()),
@@ -382,9 +374,9 @@ struct vulkan_renderer::implementation {
     }
     void record_projection(frame& current, push_parameters& params) {
         auto command = current.command;
-        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout, 0, 1,
-                                &current.descriptors[0], 0, nullptr);
-        vkCmdPushConstants(command, pipeline_layout,
+        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE, bindings.pipeline_layout,
+                                0, 1, &current.descriptors[0], 0, nullptr);
+        vkCmdPushConstants(command, bindings.pipeline_layout,
                            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0,
                            sizeof(params), &params);
         vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, project_pipeline);
@@ -392,11 +384,12 @@ struct vulkan_renderer::implementation {
         compute_barrier(command);
         for (std::uint32_t pass = 0; pass < 8; ++pass) {
             params.count_shift[1] = pass * 4;
-            vkCmdPushConstants(command, pipeline_layout,
+            vkCmdPushConstants(command, bindings.pipeline_layout,
                                VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0,
                                sizeof(params), &params);
-            vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout, 0, 1,
-                                    &current.descriptors[pass % 2], 0, nullptr);
+            vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE,
+                                    bindings.pipeline_layout, 0, 1, &current.descriptors[pass % 2],
+                                    0, nullptr);
             vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, histogram_pipeline);
             vkCmdDispatch(command, params.count_shift[2], 1, 1);
             compute_barrier(command);
@@ -444,6 +437,8 @@ struct vulkan_renderer::implementation {
                        VK_PIPELINE_STAGE_2_HOST_BIT, VK_ACCESS_2_HOST_READ_BIT);
     }
     void write_screenshot(const gpu_buffer& buffer) {
+        if (!screenshot_path)
+            throw std::logic_error("Screenshot requested without a destination");
         std::ofstream output(*screenshot_path, std::ios::binary | std::ios::trunc);
         if (!output)
             throw std::runtime_error("cannot write screenshot");
@@ -560,8 +555,9 @@ struct vulkan_renderer::implementation {
         if (splat_count) {
             vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS, draw_pipeline);
             vkCmdBindDescriptorSets(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    pipeline_layout, 0, 1, &current.descriptors[0], 0, nullptr);
-            vkCmdPushConstants(current.command, pipeline_layout,
+                                    bindings.pipeline_layout, 0, 1, &current.descriptors[0], 0,
+                                    nullptr);
+            vkCmdPushConstants(current.command, bindings.pipeline_layout,
                                VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0,
                                sizeof(params), &params);
             vkCmdDraw(current.command, 6, static_cast<std::uint32_t>(splat_count), 0, 0);
@@ -660,7 +656,7 @@ vulkan_overlay_context vulkan_renderer::overlay_context() const noexcept {
             reinterpret_cast<std::uintptr_t>(impl_->physical),
             reinterpret_cast<std::uintptr_t>(impl_->device),
             reinterpret_cast<std::uintptr_t>(impl_->queue),
-            reinterpret_cast<std::uintptr_t>(impl_->overlay_pool),
+            reinterpret_cast<std::uintptr_t>(impl_->bindings.overlay_pool),
             reinterpret_cast<std::uintptr_t>(impl_->render_pass),
             impl_->queue_family,
             static_cast<std::uint32_t>(impl_->images.size()),

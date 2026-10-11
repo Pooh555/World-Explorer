@@ -40,4 +40,14 @@ The upstream appearance wrapper requires the exact gsplat 1.5.3 source commit,
 trainer hash, installed package and cached AlexNet metric weight hash. No implicit
 network/model downloads are allowed during fitting. Its checkpoints are evaluation
 artifacts, so interrupted appearance restarts; completed earlier stages can resume.
+
+An explicitly separate `we_process fit` command runs the `local_gsplat_v1`
+development recipe through the same native worker launcher. It consumes completed
+undistorted pose output, publishes a content-addressed annotated PLY and a final
+`result.json`, and supports complete local optimizer/RNG checkpoints. It is not
+automatically substituted for the upstream `appearance` stage or Q2/Q3 recipe.
+`we_process compile-fit` checks the completion schema, path containment, PLY hash
+and declared count before publishing a scene. Optional bounded source camera
+metadata enables an explicit upright spectator reset; it is not a calibrated
+reference comparison. See the [appearance worker](../../workers/gsplat/README.md).
 Scene compilation remains an explicit CLI command after a successful export.

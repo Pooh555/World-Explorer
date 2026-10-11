@@ -9,6 +9,14 @@
 
 namespace world_explorer {
 
+// Populated incrementally so the renderer owner can clean up after failed setup.
+struct descriptor_resources {
+    VkDescriptorSetLayout layout{};
+    VkDescriptorPool scene_pool{};
+    VkDescriptorPool overlay_pool{};
+    VkPipelineLayout pipeline_layout{};
+};
+
 class vulkan_device {
   public:
     vulkan_device(SDL_Window* window, const renderer_options& options,
@@ -24,9 +32,7 @@ class vulkan_device {
                                       const char* name) const;
     VkPipeline create_compute_pipeline(const char* name, VkPipelineLayout pipeline_layout,
                                        const std::filesystem::path& shader_directory) const;
-    void create_descriptor_layout(VkDescriptorSetLayout& descriptor_layout,
-                                  VkDescriptorPool& descriptor_pool, VkDescriptorPool& overlay_pool,
-                                  VkPipelineLayout& pipeline_layout);
+    void create_descriptor_layout(descriptor_resources& resources);
 
     VkInstance instance() const noexcept { return instance_; }
     VkSurfaceKHR surface() const noexcept { return surface_; }

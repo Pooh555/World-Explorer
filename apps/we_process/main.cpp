@@ -23,18 +23,31 @@ int main(int argc, char** argv) {
     using namespace world_explorer;
     try {
         if (argc < 2 || std::string(argv[1]) == "--help") {
-            std::cout << "World Explorer (development)\n"
-                         "  we_process capabilities | inspect --source VIDEO --job-dir DIR\n"
-                         "  we_process run --request JOB.json\n"
-                         "  we_process compile PLY OUTPUT.wexplore\n"
-                         "  we_process validate SCENE.wexplore\n"
-                         "  we_process fixture OUTPUT.wexplore  (synthetic diagnostic)\n"
-                         "Worker overrides: --worker-script PATH --worker-python EXECUTABLE\n";
+            std::cout
+                << "World Explorer (development)\n"
+                   "  we_process capabilities | inspect --source VIDEO --job-dir DIR\n"
+                   "  we_process run --request JOB.json\n"
+                   "  we_process fit --source GSPLAT --data COLMAP --video VIDEO --output DIR\n"
+                   "                 --steps 7000 --max-image-dimension N --worker-python EXE\n"
+                   "  we_process compile PLY OUTPUT.wexplore\n"
+                   "  we_process compile-fit RESULT.json OUTPUT.wexplore\n"
+                   "  we_process validate SCENE.wexplore\n"
+                   "  we_process fixture OUTPUT.wexplore  (synthetic diagnostic)\n"
+                   "Worker overrides: --worker-script PATH --worker-python EXECUTABLE\n";
             return argc < 2 ? 2 : 0;
         }
         const std::string command = argv[1];
+        if (command == "compile-fit" && argc == 4) {
+            const auto result = compile_fit_scene({.input = argv[2], .destination = argv[3]});
+            if (!result) {
+                std::cerr << result.error().message << '\n';
+                return 2;
+            }
+            std::cout << "Published validated captured appearance: " << argv[3] << '\n';
+            return 0;
+        }
         if (command == "compile" && argc == 4) {
-            const auto result = compile_splat_scene(argv[2], argv[3]);
+            const auto result = compile_splat_scene({.input = argv[2], .destination = argv[3]});
             if (!result) {
                 std::cerr << result.error().message << '\n';
                 return 2;
@@ -63,8 +76,12 @@ int main(int argc, char** argv) {
             return 0;
         }
         worker_configuration configuration{WE_WORKER_SCRIPT};
+        if (command == "fit")
+            configuration.script = configuration.script.parent_path() / "gsplat" / "fit.py";
         std::vector<std::string> arguments;
         for (int index = 1; index < argc; ++index) {
+            if (index == 1 && command == "fit")
+                continue;
             const std::string argument = argv[index];
             if ((argument == "--worker-script" || argument == "--worker-python") &&
                 index + 1 < argc) {

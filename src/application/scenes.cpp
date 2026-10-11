@@ -1,7 +1,5 @@
 #include "world_explorer/application/scenes.hpp"
-#include "world_explorer/core/hash.hpp"
 #include <algorithm>
-#include <charconv>
 #include <limits>
 
 namespace world_explorer {
@@ -29,26 +27,6 @@ scene_snapshot make_diagnostic_scene() {
     }
     scene->chunks.emplace(chunk->id, chunk);
     return scene;
-}
-result<void> compile_splat_scene(const std::filesystem::path& ply,
-                                 const std::filesystem::path& destination) {
-    const auto source_hash = sha256_file(ply, 8ULL * 1024 * 1024 * 1024);
-    if (!source_hash)
-        return std::unexpected(source_hash.error());
-    std::uint64_t identity{};
-    const auto converted =
-        std::from_chars(source_hash->data(), source_hash->data() + 16, identity, 16);
-    if (converted.ec != std::errc{})
-        return fail(error_code::INVALID_DATA, "Invalid source digest");
-    auto imported = load_gsplat_ply(ply, scene_id{identity ? identity : 1});
-    if (!imported)
-        return std::unexpected(imported.error());
-    auto scene = std::make_shared<scene_state>(**imported);
-    scene->provenance = {{"source_kind", "gsplat_ply_import"},
-                         {"input_sha256", *source_hash},
-                         {"exporter", "gsplat-1.5.3"},
-                         {"quality_gate", "UNVERIFIED"}};
-    return write_bundle(destination, scene);
 }
 bounds3d world_bounds(const scene_state& scene) {
     const auto infinity = std::numeric_limits<double>::infinity();

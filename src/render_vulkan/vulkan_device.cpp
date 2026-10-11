@@ -111,9 +111,10 @@ void vulkan_device::initialize() {
         VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
     debug.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                             VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debug.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    debug.messageType =
+        VkDebugUtilsMessageTypeFlagsEXT{VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT} |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     debug.pfnUserCallback = debug_callback;
     debug.pUserData = this;
 
@@ -208,9 +209,9 @@ void vulkan_device::select_physical_device() {
             detail::check(
                 vkGetPhysicalDeviceSurfaceSupportKHR(candidate, index, surface_, &present),
                 "query presentation support");
-            if (present &&
-                (families[index].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) ==
-                    (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) {
+            if (present && (families[index].queueFlags &
+                            (VkQueueFlags{VK_QUEUE_GRAPHICS_BIT} | VK_QUEUE_COMPUTE_BIT)) ==
+                               (VkQueueFlags{VK_QUEUE_GRAPHICS_BIT} | VK_QUEUE_COMPUTE_BIT)) {
                 physical_ = candidate;
                 queue_family_ = index;
                 properties_ = candidate_properties;
@@ -271,6 +272,8 @@ void vulkan_device::create_logical_device() {
                   "create retirement timeline");
 }
 
+// Vulkan's distinct integer typedefs retain their native argument order at this boundary.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes, VkBufferUsageFlags usage,
                                            bool host_visible) {
     detail::gpu_buffer output;
@@ -319,7 +322,7 @@ VkShaderModule vulkan_device::load_shader_module(const std::filesystem::path& sh
     if (!input)
         throw std::runtime_error("cannot open shader: " + path.string());
     const auto size = input.tellg();
-    if (size <= 0 || size % 4 != 0 || size > 16 * 1024 * 1024)
+    if (size <= 0 || size % 4 != 0 || size > std::streamoff{16} * 1024 * 1024)
         throw std::runtime_error("invalid SPIR-V module size");
     std::vector<std::uint32_t> words(static_cast<std::size_t>(size) / 4);
     input.seekg(0);
@@ -357,10 +360,7 @@ vulkan_device::create_compute_pipeline(const char* name, VkPipelineLayout pipeli
     return output;
 }
 
-void vulkan_device::create_descriptor_layout(VkDescriptorSetLayout& descriptor_layout,
-                                             VkDescriptorPool& descriptor_pool,
-                                             VkDescriptorPool& overlay_pool,
-                                             VkPipelineLayout& pipeline_layout) {
+void vulkan_device::create_descriptor_layout(descriptor_resources& resources) {
     std::array<VkDescriptorSetLayoutBinding, 5> bindings{};
     for (std::uint32_t index = 0; index < bindings.size(); ++index) {
         bindings[index].binding = index;
@@ -372,7 +372,7 @@ void vulkan_device::create_descriptor_layout(VkDescriptorSetLayout& descriptor_l
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
     layout.bindingCount = static_cast<std::uint32_t>(bindings.size());
     layout.pBindings = bindings.data();
-    detail::check(vkCreateDescriptorSetLayout(device_, &layout, nullptr, &descriptor_layout),
+    detail::check(vkCreateDescriptorSetLayout(device_, &layout, nullptr, &resources.layout),
                   "create scene descriptor layout");
 
     VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 20};
@@ -381,14 +381,14 @@ void vulkan_device::create_descriptor_layout(VkDescriptorSetLayout& descriptor_l
     pool.maxSets = 4;
     pool.poolSizeCount = 1;
     pool.pPoolSizes = &size;
-    detail::check(vkCreateDescriptorPool(device_, &pool, nullptr, &descriptor_pool),
+    detail::check(vkCreateDescriptorPool(device_, &pool, nullptr, &resources.scene_pool),
                   "create scene descriptor pool");
 
     VkDescriptorPoolSize overlay_size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 256};
     pool.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     pool.maxSets = 256;
     pool.pPoolSizes = &overlay_size;
-    detail::check(vkCreateDescriptorPool(device_, &pool, nullptr, &overlay_pool),
+    detail::check(vkCreateDescriptorPool(device_, &pool, nullptr, &resources.overlay_pool),
                   "create overlay descriptor pool");
 
     VkPushConstantRange push{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0,
@@ -396,10 +396,10 @@ void vulkan_device::create_descriptor_layout(VkDescriptorSetLayout& descriptor_l
     auto pipeline = detail::structure<VkPipelineLayoutCreateInfo>(
         VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
     pipeline.setLayoutCount = 1;
-    pipeline.pSetLayouts = &descriptor_layout;
+    pipeline.pSetLayouts = &resources.layout;
     pipeline.pushConstantRangeCount = 1;
     pipeline.pPushConstantRanges = &push;
-    detail::check(vkCreatePipelineLayout(device_, &pipeline, nullptr, &pipeline_layout),
+    detail::check(vkCreatePipelineLayout(device_, &pipeline, nullptr, &resources.pipeline_layout),
                   "create pipeline layout");
 }
 

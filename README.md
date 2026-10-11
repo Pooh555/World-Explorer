@@ -77,10 +77,18 @@ remain explicitly incomplete; committed output is preserved. A recovery request
 can set `pose_recipe` to `exhaustive_guided`; retain the original result and record
 the extra cost. Neither recipe guarantees reconstruction for low-parallax footage.
 
-Appearance fitting requires a separately provisioned pinned upstream gsplat
-environment and reviewed cached metric weights; see [worker setup](workers/gsplat/README.md).
-It has not been executed end to end in this repository. Standard is 7k steps;
-quality is 30k. The Q2 unlimited benchmark recipe remains unimplemented.
+The explicitly named local development fit now works with real gsplat output;
+see [worker setup](workers/gsplat/README.md) for its pinned environment and native
+`we_process fit` / `compile-fit` commands. Open a resulting scene with
+`we_viewer --scene OUTPUT.wexplore --source-view --max-splats 500000`.
+“Source view” is an explicit upright spectator reset; it does not follow capture
+poses. Renderer budgets are configurable, and a larger scene must be admitted
+under an explicit budget. The default remains 250k splats/512 MiB.
+
+The prescribed upstream benchmark adapter still needs its separate environment
+and reviewed metric weights. Standard is 7k steps; quality is 30k. The development
+fit's explicit resize and temporal holdout do not certify Q2/Q3 or reference
+hardware/platform targets. The Q2 unlimited benchmark recipe remains unimplemented.
 
 Sources and intermediates remain local until the user removes their selected job
 directory. `sample.mp4`, dependency caches, generated scenes and `artifacts/` are

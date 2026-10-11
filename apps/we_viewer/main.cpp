@@ -1,3 +1,5 @@
+#include "job_state.hpp"
+#include "preferences.hpp"
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/navigation/fly_camera.hpp"
@@ -21,148 +23,15 @@
 
 namespace {
 using namespace world_explorer;
-struct application_state {
-    std::mutex mutex;
-    std::string log;
-    std::string status{"Open a scene, or import a completed camera video."};
-    scene_snapshot loaded;
-    std::atomic<bool> busy{};
-    std::jthread job;
-    std::chrono::steady_clock::time_point started;
-    void append(std::string text) {
-        std::lock_guard lock(mutex);
-        constexpr std::size_t MAX_LOG = 128 * 1024;
-        if (text.size() > MAX_LOG)
-            text.erase(0, text.size() - MAX_LOG);
-        if (log.size() + text.size() > MAX_LOG)
-            log.erase(0, log.size() + text.size() - MAX_LOG);
-        log += text;
-    }
-    void load(std::filesystem::path path) {
-        if (busy.exchange(true))
-            return;
-        started = std::chrono::steady_clock::now();
-        {
-            std::lock_guard lock(mutex);
-            status = "Loading and validating scene...";
-        }
-        job = std::jthread([this, path = std::move(path)](std::stop_token stop) {
-            try {
-                auto scene = load_bundle(path);
-                std::lock_guard lock(mutex);
-                if (stop.stop_requested())
-                    status = "Cancelled. Current scene retained.";
-                else if (scene) {
-                    loaded = *scene;
-                    status = "Scene validated; waiting for renderer admission.";
-                } else
-                    status = "Open failed: " + scene.error().message + ". Current scene retained.";
-            } catch (const std::exception& error) {
-                std::lock_guard lock(mutex);
-                status = "Open failed: " + std::string(error.what());
-            }
-            busy = false;
-        });
-    }
-    void worker(worker_configuration configuration, std::vector<std::string> arguments) {
-        if (busy.exchange(true))
-            return;
-        started = std::chrono::steady_clock::now();
-        {
-            std::lock_guard lock(mutex);
-            status = "Processing locally. ETA unknown.";
-            log.clear();
-        }
-        job = std::jthread([this, configuration = std::move(configuration),
-                            arguments = std::move(arguments)](std::stop_token stop) {
-            try {
-                auto result = run_worker(configuration, arguments, stop,
-                                         [this](std::string text) { append(std::move(text)); });
-                std::lock_guard lock(mutex);
-                status = !result        ? result.error().message
-                         : *result == 0 ? "Worker completed. See the output location and logs."
-                                        : "Worker failed. Committed output retained; inspect the "
-                                          "log before retrying.";
-            } catch (const std::exception& error) {
-                std::lock_guard lock(mutex);
-                status = "Worker failed: " + std::string(error.what());
-            }
-            busy = false;
-        });
-    }
-};
-constexpr std::array<int, 7> default_fly_key_bindings() {
-    return {SDL_SCANCODE_W,     SDL_SCANCODE_S,      SDL_SCANCODE_A,    SDL_SCANCODE_D,
-            SDL_SCANCODE_SPACE, SDL_SCANCODE_LSHIFT, SDL_SCANCODE_LCTRL};
-}
-struct preferences {
-    bool left{true}, right{true}, diagnostics{false}, controls{true};
-    std::array<int, 7> keys{default_fly_key_bindings()};
-};
-void read_preferences(const std::filesystem::path& path, preferences& settings) {
-    std::error_code error;
-    if (!std::filesystem::is_regular_file(path, error) ||
-        std::filesystem::file_size(path, error) > 65536)
-        return;
-    try {
-        std::ifstream input(path);
-        const auto value = nlohmann::json::parse(input);
-        if (value.at("schema_version") != 1)
-            return;
-        settings.left = value.value("left_panel", true);
-        settings.right = value.value("right_panel", true);
-        settings.controls = value.value("controls", true);
-        const auto keys = value.at("keys").get<std::array<int, 7>>();
-        if (!std::ranges::all_of(keys, [](int key) { return key > 0 && key < SDL_SCANCODE_COUNT; }))
-            return;
-        const auto legacy_default = std::array<int, 7>{
-            SDL_SCANCODE_W,     SDL_SCANCODE_S,     SDL_SCANCODE_A,     SDL_SCANCODE_D,
-            SDL_SCANCODE_SPACE, SDL_SCANCODE_LCTRL, SDL_SCANCODE_LSHIFT};
-        if (keys == legacy_default) {
-            settings.keys = default_fly_key_bindings();
-            return;
-        }
-        settings.keys = keys;
-    } catch (const std::exception&) { /* Invalid/unknown settings keep safe defaults. */
-    }
-}
-void save_preferences(const std::filesystem::path& path, const preferences& settings) {
-    if (path.empty())
-        return;
-    const auto temporary = std::filesystem::path(path.string() + ".tmp");
-    if (!path.parent_path().empty())
-        std::filesystem::create_directories(path.parent_path());
-    {
-        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-        output << nlohmann::json{{"schema_version", 1},
-                                 {"left_panel", settings.left},
-                                 {"right_panel", settings.right},
-                                 {"controls", settings.controls},
-                                 {"keys", settings.keys}}
-                      .dump(2);
-        output.flush();
-        if (!output)
-            throw std::runtime_error("Cannot write preferences");
-    }
-    std::filesystem::rename(temporary, path);
-}
-void theme(float scale) {
-    ImGui::StyleColorsDark();
-    auto& style = ImGui::GetStyle();
-    style.WindowPadding = {16, 16};
-    style.FramePadding = {8, 6};
-    style.ItemSpacing = {8, 8};
-    style.WindowRounding = 5;
-    style.FrameRounding = 4;
-    style.Colors[ImGuiCol_WindowBg] = {0.075F, 0.085F, 0.10F, 0.98F};
-    style.Colors[ImGuiCol_Button] = {0.10F, 0.28F, 0.34F, 1};
-    style.Colors[ImGuiCol_ButtonHovered] = {0.13F, 0.40F, 0.48F, 1};
-    style.Colors[ImGuiCol_ButtonActive] = {0.13F, 0.47F, 0.55F, 1};
-    style.Colors[ImGuiCol_CheckMark] = {0.3F, 0.8F, 0.87F, 1};
-    style.ScaleAllSizes(scale);
-}
+using viewer::application_state;
+using viewer::preferences;
+using viewer::read_preferences;
+using viewer::save_preferences;
+
 template <class handle_type> handle_type native(std::uintptr_t value) {
     if constexpr (std::is_pointer_v<handle_type>)
+        // Opaque Vulkan handles cross the public renderer boundary as uintptr_t.
+        // NOLINTNEXTLINE(performance-no-int-to-ptr)
         return reinterpret_cast<handle_type>(value);
     else
         return static_cast<handle_type>(value);
@@ -170,7 +39,10 @@ template <class handle_type> handle_type native(std::uintptr_t value) {
 int viewer_main(int argc, char** argv) {
     std::filesystem::path scene_path, screenshot, settings_path, shader_path = WE_SHADER_DIRECTORY;
     worker_configuration worker{WE_WORKER_SCRIPT};
+    std::size_t max_splats = 250000;
+    std::size_t residency_mib = 512;
     bool diagnostic_fixture = false, validation = true;
+    bool inspect_source = false;
     unsigned frame_limit = 0;
     for (int argument = 1; argument < argc; ++argument) {
         const std::string option = argv[argument];
@@ -178,13 +50,17 @@ int viewer_main(int argc, char** argv) {
             std::cout
                 << "we_viewer [--scene BUNDLE] [--diagnostic-fixture] [--frames N]\n"
                    "          [--screenshot FILE.ppm] [--settings FILE] [--shader-dir DIR]\n"
-                   "          [--worker-python EXE] [--worker-script FILE] [--no-validation]\n";
+                   "          [--worker-python EXE] [--worker-script FILE] [--no-validation]\n"
+                   "          [--max-splats N] [--residency-mib N]\n";
+            std::cout << "          [--source-view] (explicit upright spectator reset)\n";
             return 0;
         }
         if (option == "--diagnostic-fixture")
             diagnostic_fixture = true;
         else if (option == "--no-validation")
             validation = false;
+        else if (option == "--source-view")
+            inspect_source = true;
         else if (argument + 1 < argc) {
             const std::string value = argv[++argument];
             if (option == "--scene")
@@ -201,6 +77,10 @@ int viewer_main(int argc, char** argv) {
                 worker.script = value;
             else if (option == "--frames")
                 frame_limit = static_cast<unsigned>(std::stoul(value));
+            else if (option == "--max-splats")
+                max_splats = std::stoull(value);
+            else if (option == "--residency-mib")
+                residency_mib = std::stoull(value);
             else
                 throw std::runtime_error("Unknown option: " + option);
         } else
@@ -224,6 +104,10 @@ int viewer_main(int argc, char** argv) {
         throw std::runtime_error(SDL_GetError());
     SDL_SetWindowMinimumSize(window.get(), 800, 480);
     renderer_options options;
+    if (!max_splats || max_splats > 2000000 || residency_mib < 64 || residency_mib > 4096)
+        throw std::runtime_error("Viewer budget requires 1–2,000,000 splats and 64–4,096 MiB");
+    options.max_splats = max_splats;
+    options.residency_bytes = residency_mib * 1024 * 1024;
     options.shader_directory = shader_path;
     options.validation = validation;
     auto renderer_result = vulkan_renderer::create(window.get(), options);
@@ -237,7 +121,8 @@ int viewer_main(int argc, char** argv) {
         bool sdl{}, vulkan{};
         ~gui_owner() {
             renderer->set_overlay_callback({});
-            (void)renderer->wait_for_idle();
+            if (const auto completed = renderer->wait_for_idle(); !completed)
+                std::cerr << "GPU shutdown: " << completed.error().message << '\n';
             if (vulkan)
                 ImGui_ImplVulkan_Shutdown();
             if (sdl)
@@ -246,15 +131,17 @@ int viewer_main(int argc, char** argv) {
         }
     } gui{renderer.get()};
     auto& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags = ImGuiConfigFlags_NavEnableKeyboard;
     io.IniFilename = nullptr;
     const float scale = std::clamp(SDL_GetWindowDisplayScale(window.get()), 1.F, 3.F);
-    theme(scale);
+    viewer::apply_theme(scale);
     io.FontGlobalScale = scale;
     gui.sdl = ImGui_ImplSDL3_InitForVulkan(window.get());
     if (!gui.sdl)
         throw std::runtime_error("ImGui SDL initialization failed");
     const auto context = renderer->overlay_context();
+    // The external initialization struct must start zeroed; samples is assigned below.
+    // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization)
     ImGui_ImplVulkan_InitInfo init{};
     init.ApiVersion = renderer->capabilities().instance_version;
     init.Instance = native<VkInstance>(context.instance);
@@ -274,9 +161,12 @@ int viewer_main(int argc, char** argv) {
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), native<VkCommandBuffer>(command));
     });
     application_state state;
+    state.load_limits.scene.max_splats = options.max_splats;
+    state.load_limits.scene.max_payload_bytes = options.residency_bytes;
     preferences settings;
     read_preferences(settings_path, settings);
     fly_camera camera;
+    double camera_fov = camera_view{}.vertical_fov_radians;
     std::optional<camera_bookmark> bookmark;
     std::optional<update_ticket> pending_ticket;
     scene_snapshot current;
@@ -287,6 +177,7 @@ int viewer_main(int argc, char** argv) {
     std::array<char, 1024> path{}, source{}, output{}, request_path{};
     std::snprintf(output.data(), output.size(), "%s", "artifacts/import-job");
     unsigned frames = 0;
+    bool screenshot_requested = false;
     auto previous = std::chrono::steady_clock::now();
     if (diagnostic_fixture)
         state.loaded = make_diagnostic_scene();
@@ -353,6 +244,13 @@ int viewer_main(int argc, char** argv) {
                 pending_ticket = *admitted;
                 current = loaded;
                 camera.fit(world_bounds(*current));
+                if (inspect_source) {
+                    const auto inspection = source_view(*current);
+                    if (!inspection)
+                        throw std::runtime_error(inspection.error().message);
+                    camera = inspection->camera;
+                    camera_fov = inspection->vertical_fov_radians;
+                }
                 state.status = "Uploading validated scene...";
             } else
                 state.status = "Scene admission failed: " + admitted.error().message +
@@ -364,9 +262,10 @@ int viewer_main(int argc, char** argv) {
         const auto display = io.DisplaySize;
         const float top = 56 * scale, bottom = 120 * scale;
         const bool compact = display.x < 1200 * scale;
-        constexpr auto PANEL_FLAGS = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
-                                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
-                                     ImGuiWindowFlags_NoSavedSettings;
+        constexpr auto PANEL_FLAGS = static_cast<ImGuiWindowFlags>(
+            static_cast<unsigned>(ImGuiWindowFlags_NoMove) | ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoSavedSettings);
         ImGui::SetNextWindowPos({0, 0});
         ImGui::SetNextWindowSize({display.x, top});
         ImGui::Begin("Toolbar", nullptr, PANEL_FLAGS);
@@ -382,8 +281,26 @@ int viewer_main(int argc, char** argv) {
             release_mouse();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Fit") && current)
+        if (ImGui::Button("Fit") && current) {
             camera.fit(world_bounds(*current));
+            camera_fov = camera_view{}.vertical_fov_radians;
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!current || !current->provenance.contains("source_inspection_view"));
+        if (ImGui::Button("Source view")) {
+            const auto inspection = source_view(*current);
+            if (inspection) {
+                camera = inspection->camera;
+                camera_fov = inspection->vertical_fov_radians;
+            } else {
+                std::lock_guard lock(state.mutex);
+                state.status = inspection.error().message;
+            }
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("Reset toward the first recorded source view, keeping world up. No "
+                              "camera following.");
         ImGui::SameLine();
         ImGui::TextUnformatted("Fly");
         ImGui::SameLine();
@@ -412,7 +329,9 @@ int viewer_main(int argc, char** argv) {
                 ImGui::Text("Revision %llu",
                             static_cast<unsigned long long>(current->revision.value));
                 ImGui::Text("Chunks: %zu", current->chunks.size());
-                ImGui::TextWrapped("Scale: arbitrary (not measured)");
+                ImGui::TextWrapped("Scale: %s", current->scale == scale_status::ARBITRARY
+                                                    ? "arbitrary (not measured)"
+                                                    : "measured metric");
                 ImGui::TextWrapped("Coverage outside captured surfaces is unknown.");
                 if (ImGui::Button("Save bookmark"))
                     bookmark = camera_bookmark{current->id, current->epoch, camera};
@@ -453,7 +372,9 @@ int viewer_main(int argc, char** argv) {
             ImGui::SetNextWindowPos({display.x * 0.5F, display.y * 0.45F}, ImGuiCond_Always,
                                     {0.5F, 0.5F});
             ImGui::SetNextWindowSize({420 * scale, 0});
-            ImGui::Begin("Start", nullptr, PANEL_FLAGS | ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::Begin("Start", nullptr,
+                         static_cast<ImGuiWindowFlags>(static_cast<unsigned>(PANEL_FLAGS) |
+                                                       ImGuiWindowFlags_AlwaysAutoResize));
             ImGui::TextUnformatted("Explore a captured place");
             ImGui::TextWrapped(
                 "Open a processed scene, or start a local reconstruction from your video.");
@@ -579,13 +500,15 @@ int viewer_main(int argc, char** argv) {
             ImGui::EndPopup();
         }
         ImGui::Render();
-        if (!screenshot.empty() && frames == 8) {
+        if (!screenshot.empty() && !screenshot_requested && frames >= 8 &&
+            (scene_path.empty() || (current && !pending_ticket))) {
             const auto requested = renderer->request_screenshot(screenshot);
             if (!requested)
                 throw std::runtime_error(requested.error().message);
+            screenshot_requested = true;
         }
-        const auto drawn =
-            renderer->draw({camera.position, camera.right(), camera.down(), camera.forward()});
+        const auto drawn = renderer->draw(
+            {camera.position, camera.right(), camera.down(), camera.forward(), camera_fov});
         if (!drawn)
             throw std::runtime_error(drawn.error().message);
         if (pending_ticket) {
@@ -599,8 +522,15 @@ int viewer_main(int argc, char** argv) {
             }
         }
         ++frames;
-        if (frame_limit && frames >= frame_limit)
-            running = false;
+        if (frame_limit && frames >= frame_limit && !state.busy && !pending_ticket) {
+            if (!scene_path.empty() && !current) {
+                std::lock_guard lock(state.mutex);
+                throw std::runtime_error(state.status);
+            }
+            // Allow a requested scene to become visible before capturing it.
+            if (screenshot.empty() || screenshot_requested)
+                running = false;
+        }
         if (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED)
             SDL_Delay(20);
     }
@@ -608,7 +538,10 @@ int viewer_main(int argc, char** argv) {
     state.job.request_stop();
     if (state.job.joinable())
         state.job.join();
-    save_preferences(settings_path, settings);
+    if (const auto completed = renderer->wait_for_idle(); !completed)
+        throw std::runtime_error(completed.error().message);
+    if (const auto saved = save_preferences(settings_path, settings); !saved)
+        std::cerr << "Settings not saved: " << saved.error().message << '\n';
     const auto stats = renderer->diagnostics();
     std::cout << nlohmann::json{{"device", renderer->capabilities().device_name},
                                 {"frames", stats.submitted_frames},
