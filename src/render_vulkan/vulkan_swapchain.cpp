@@ -29,6 +29,8 @@ bool vulkan_swapchain::create(SDL_Window* window) {
         cleanup();
     }
 
+    // Vulkan fills every field before any enum is inspected.
+    // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization)
     VkSurfaceCapabilitiesKHR supported{};
     detail::check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device_, surface_, &supported),
                   "query surface capabilities");
@@ -99,15 +101,15 @@ bool vulkan_swapchain::create(SDL_Window* window) {
                   "query swapchain images");
 
     if (!render_pass_) {
-        VkAttachmentDescription color{};
-        color.format = format_;
-        color.samples = VK_SAMPLE_COUNT_1_BIT;
-        color.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        color.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        color.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        color.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        VkAttachmentDescription color{0,
+                                      format_,
+                                      VK_SAMPLE_COUNT_1_BIT,
+                                      VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                      VK_ATTACHMENT_STORE_OP_STORE,
+                                      VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                      VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                      VK_IMAGE_LAYOUT_UNDEFINED,
+                                      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
 
         VkAttachmentReference reference{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         VkSubpassDescription subpass{};

@@ -82,9 +82,10 @@ add_library(navigation src/navigation/fly_camera.cpp)
 we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
-add_library(application src/application/commands.cpp src/application/scenes.cpp)
+add_library(application src/application/commands.cpp src/application/scenes.cpp
+  src/application/scene_import.cpp src/application/source_view.cpp)
 we_target(application)
-target_link_libraries(application PUBLIC scene_store navigation)
+target_link_libraries(application PUBLIC scene_store navigation PRIVATE nlohmann_json::nlohmann_json)
 
 add_executable(we_process apps/we_process/main.cpp)
 we_target(we_process)
@@ -122,7 +123,8 @@ if(WE_BUILD_VIEWER)
 
   add_custom_target(we_shaders DEPENDS ${WE_SHADER_OUTPUTS})
 
-  add_executable(we_viewer apps/we_viewer/main.cpp)
+  add_executable(we_viewer apps/we_viewer/main.cpp apps/we_viewer/job_state.cpp
+    apps/we_viewer/preferences.cpp)
   we_target(we_viewer)
   target_link_libraries(we_viewer PRIVATE application render_vulkan we_imgui nlohmann_json::nlohmann_json)
   target_compile_definitions(we_viewer PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders" WE_WORKER_SCRIPT="${PROJECT_SOURCE_DIR}/workers/worker.py")
