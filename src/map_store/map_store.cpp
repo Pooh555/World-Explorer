@@ -9,8 +9,8 @@ std::string transaction_hash(const map_transaction& transaction) {
     std::vector<std::byte> bytes;
     const auto add = [&](std::uint64_t value) {
         for (int i = 0; i < 8; ++i) {
-            bytes.push_back(static_cast<std::byte>(value & 255));
-            value >>= 8;
+            bytes.push_back(static_cast<std::byte>(value & 255ULL));
+            value >>= 8U;
         }
     };
     const auto transform = [&](const similarity_transform& value) {
@@ -29,6 +29,11 @@ std::string transaction_hash(const map_transaction& transaction) {
         add(calibration.height);
         for (double value : {calibration.camera.fx, calibration.camera.fy, calibration.camera.cx,
                              calibration.camera.cy})
+            add(std::bit_cast<std::uint64_t>(value));
+        add(static_cast<std::uint64_t>(calibration.model));
+        for (double value : calibration.distortion)
+            add(std::bit_cast<std::uint64_t>(value));
+        for (double value : calibration.image_transform)
             add(std::bit_cast<std::uint64_t>(value));
     }
     add(transaction.observations.size());
@@ -107,8 +112,7 @@ result<map_revision_id> map_store::commit(const map_transaction& transaction) {
     auto next = std::make_shared<map_state>(*current_);
     next->invalidated_frames.clear();
     for (const auto& calibration : transaction.calibrations) {
-        if (calibration.id.value == 0 || calibration.width == 0 || calibration.height == 0 ||
-            !project(calibration.camera, {0, 0, 1}))
+        if (!valid(calibration))
             return fail(error_code::INVALID_DATA, "invalid camera calibration");
         if (next->calibrations.contains(calibration.id))
             return fail(error_code::INVALID_DATA, "calibration IDs are immutable; create a new ID");
@@ -144,6 +148,8 @@ result<map_revision_id> map_store::commit(const map_transaction& transaction) {
             std::abs(pose.submap_from_camera.scale - 1) > 1e-12 ||
             pose.revision != transaction.new_revision || !changed.insert(pose.frame).second)
             return fail(error_code::INVALID_DATA, "invalid pose dependency, transform or revision");
+        if (pose.capture_time != next->observations.at(pose.frame).capture_time)
+            return fail(error_code::INVALID_DATA, "Pose capture time differs from its observation");
         if (pose.covariance)
             for (double value : *pose.covariance)
                 if (!std::isfinite(value))

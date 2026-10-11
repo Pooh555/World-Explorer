@@ -1,4 +1,5 @@
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/pose_replay.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/core/hash.hpp"
@@ -37,6 +38,7 @@ int main(int argc, char** argv) {
                    "  we_process compile-fit RESULT.json OUTPUT.wexplore\n"
                    "  we_process validate SCENE.wexplore\n"
                    "  we_process replay-frames DECODE_STAGE VIDEO (local decoded-image replay)\n"
+                   "  we_process replay-poses POSE_JOB VIDEO (completed-output replay; no solve)\n"
                    "  we_process fixture OUTPUT.wexplore  (synthetic diagnostic)\n"
                    "Worker overrides: --worker-script PATH --worker-python EXECUTABLE\n";
             return argc < 2 ? 2 : 0;
@@ -105,6 +107,27 @@ int main(int argc, char** argv) {
             if (interrupted)
                 cancellation.request_stop();
         });
+        if (command == "replay-poses") {
+            if (argc != 4 && !(argc == 6 && std::string_view(argv[4]) == "--decode-stage")) {
+                std::cerr << "Usage: we_process replay-poses POSE_JOB VIDEO [--decode-stage DIR]\n";
+                return 2;
+            }
+            const auto maps = replay_completed_pose_map(
+                {.pose_job = argv[2],
+                 .video = argv[3],
+                 .decode_stage = argc == 6 ? argv[5] : std::filesystem::path{}},
+                cancellation.get_token(),
+                [](const std::string& text) { std::cout << text << std::flush; });
+            if (!maps) {
+                std::cerr << maps.error().message << '\n';
+                return maps.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Completed-pose replay: " << (*maps)->observations.size()
+                      << " observations, " << (*maps)->poses.size() << " poses, "
+                      << (*maps)->calibrations.size() << " calibrations; epoch "
+                      << (*maps)->epoch.value << ", revision " << (*maps)->revision.value << '\n';
+            return 0;
+        }
         if (command == "replay-frames") {
             if (argc != 4) {
                 std::cerr << "Usage: we_process replay-frames DECODE_STAGE VIDEO\n";

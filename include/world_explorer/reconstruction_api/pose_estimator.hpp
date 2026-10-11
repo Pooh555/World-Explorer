@@ -6,10 +6,12 @@
 
 namespace world_explorer {
 enum class tracking_state : std::uint8_t { INITIALIZING, TRACKING, LOST, FINISHED };
+enum class estimator_mode : std::uint8_t { BATCH_SOLVE, COMPLETED_REPLAY };
 struct estimator_capabilities {
     bool streaming_tracking{};
     bool covariance{};
     std::size_t observation_capacity{};
+    estimator_mode mode{estimator_mode::BATCH_SOLVE};
 };
 struct pose_estimator_config {
     byte_budget memory;
