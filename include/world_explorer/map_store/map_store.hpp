@@ -1,6 +1,7 @@
 #ifndef WORLD_EXPLORER_MAP_STORE_MAP_STORE_HPP
 #define WORLD_EXPLORER_MAP_STORE_MAP_STORE_HPP
 
+#include "world_explorer/reconstruction_api/map_records.hpp"
 #include "world_explorer/reconstruction_api/pose_estimator.hpp"
 #include <deque>
 #include <map>
@@ -8,20 +9,10 @@
 #include <set>
 
 namespace world_explorer {
-struct calibration_record {
-    calibration_id id;
-    pinhole_camera camera;
-    std::uint32_t width{}, height{};
-};
-struct observation_record {
-    frame_id id;
-    capture_id capture;
-    calibration_id calibration;
-    source_timestamp timestamp;
-    std::chrono::nanoseconds capture_time;
-    std::string image_sha256;
-};
 struct map_state {
+    // Monocular map units are arbitrary until an explicit measured-scale
+    // transaction is implemented and verified. Alignment scale alone is no proof.
+    scale_status scale{scale_status::ARBITRARY};
     world_epoch epoch;
     map_revision_id revision;
     std::map<calibration_id, calibration_record> calibrations;

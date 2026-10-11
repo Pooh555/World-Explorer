@@ -1,5 +1,6 @@
 #include "job_validation.hpp"
 #include "world_explorer/core/hash.hpp"
+#include "world_explorer/reconstruction_adapters/worker_artifacts.hpp"
 #include <algorithm>
 #include <fstream>
 #include <set>
@@ -53,7 +54,6 @@ result<std::filesystem::path> contained_file(const std::filesystem::path& root,
 
 result<pose_input> verify_poses(const reconstruction_job& job, const std::string& source_hash,
                                 const std::stop_token& stop) {
-    constexpr std::size_t MAX_STAGE_BYTES = 32ULL * 1024 * 1024 * 1024;
     const auto root = std::filesystem::canonical(job.pose_job);
     const auto pointer = read_json(root / "poses.json", std::size_t{1024} * 1024);
     const auto completed = read_json(root / "result.json", std::size_t{1024} * 1024);
@@ -70,66 +70,16 @@ result<pose_input> verify_poses(const reconstruction_job& job, const std::string
     if (directory != root / "stages" / ("poses-" + key) ||
         std::filesystem::canonical(completed->at("output").get<std::string>()) != directory)
         return fail(error_code::INVALID_DATA, "Pose pointer escapes its committed stage");
-    const auto completion_file = directory / "completion.json";
-    const auto initial_hash = sha256_file(completion_file, std::size_t{16} * 1024 * 1024, stop);
-    if (!initial_hash)
-        return std::unexpected(initial_hash.error());
-    const auto manifest = read_json(completion_file, std::size_t{16} * 1024 * 1024);
-    if (!manifest)
-        return std::unexpected(manifest.error());
-    const auto& files = manifest->at("files");
-    if (manifest->at("schema_version") != 1 || manifest->at("status") != "complete" ||
-        manifest->at("key") != key || !files.is_array() || files.empty() || files.size() > 4096)
-        return fail(error_code::INVALID_DATA, "Invalid pose stage inventory");
-    pose_input poses{directory, directory / "training", *initial_hash, {}};
-    std::size_t total{};
-    for (const auto& entry : files) {
-        const auto relative = entry.at("path").get<std::string>();
-        const auto expected_hash = entry.at("sha256").get<std::string>();
-        if (!entry.at("bytes").is_number_unsigned() || !valid_digest(expected_hash) ||
-            !poses.file_hashes.emplace(relative, expected_hash).second ||
-            relative == "completion.json")
-            return fail(error_code::INVALID_DATA, "Invalid or duplicate pose inventory entry");
-        const auto size = entry.at("bytes").get<std::uint64_t>();
-        if (size > MAX_STAGE_BYTES - total)
-            return fail(error_code::RESOURCE_EXHAUSTED, "Pose stage exceeds 32 GiB");
-        total += static_cast<std::size_t>(size);
-        const auto path = contained_file(directory, relative);
-        if (!path)
-            return std::unexpected(path.error());
-        if (std::filesystem::file_size(*path) != size)
-            return fail(error_code::INVALID_DATA, "Pose asset byte count changed: " + relative);
-        const auto digest = sha256_file(*path, static_cast<std::size_t>(size), stop);
-        if (!digest)
-            return std::unexpected(digest.error());
-        if (*digest != expected_hash)
-            return fail(error_code::INVALID_DATA, "Pose asset checksum changed: " + relative);
-    }
-    // Reject extra files as well as missing ones. The worker's completed stage is immutable.
-    std::size_t actual_count{};
-    std::size_t entry_count{};
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(directory)) {
-        if (++entry_count > 8192)
-            return fail(error_code::RESOURCE_EXHAUSTED, "Pose directory entry budget exceeded");
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Pose verification cancelled");
-        if (entry.is_symlink())
-            return fail(error_code::INVALID_DATA, "Pose stage contains a symlink");
-        if (entry.is_regular_file() && entry.path() != completion_file) {
-            ++actual_count;
-            if (!poses.file_hashes.contains(
-                    entry.path().lexically_relative(directory).generic_string()))
-                return fail(error_code::INVALID_DATA, "Uncommitted file in pose stage");
-        }
-    }
-    const auto final_hash = sha256_file(completion_file, std::size_t{16} * 1024 * 1024, stop);
-    if (!final_hash)
-        return std::unexpected(final_hash.error());
-    if (actual_count != files.size() || *initial_hash != *final_hash ||
-        !poses.file_hashes.contains("training/sparse/cameras.bin") ||
-        !poses.file_hashes.contains("training/sparse/images.bin") ||
-        !poses.file_hashes.contains("training/sparse/points3D.bin"))
-        return fail(error_code::INVALID_DATA, "Pose stage changed or lacks the undistorted model");
+    const auto stage = verify_committed_stage(directory, key, stop);
+    if (!stage)
+        return std::unexpected(stage.error());
+    if (!stage->assets.contains("training/sparse/cameras.bin") ||
+        !stage->assets.contains("training/sparse/images.bin") ||
+        !stage->assets.contains("training/sparse/points3D.bin"))
+        return fail(error_code::INVALID_DATA, "Pose stage lacks the undistorted model");
+    pose_input poses{directory, directory / "training", stage->completion_sha256, {}};
+    for (const auto& [name, asset] : stage->assets)
+        poses.file_hashes.emplace(name, asset.sha256);
     return poses;
 }
 

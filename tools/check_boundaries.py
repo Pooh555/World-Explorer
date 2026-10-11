@@ -15,7 +15,7 @@ ALLOWED = {
     "render_core": {"core", "scene_store", "render_core"},
     "render_vulkan": {"core", "scene_store", "render_core", "render_vulkan"},
     "navigation": {"core", "navigation"},
-    "application": {"core", "capture", "reconstruction_api", "reconstruction_adapters", "scene_store", "navigation", "application"},
+    "application": {"core", "capture", "reconstruction_api", "reconstruction_adapters", "map_store", "scene_store", "navigation", "application"},
 }
 errors = []
 for prefix in (ROOT / "include/world_explorer", ROOT / "src"):

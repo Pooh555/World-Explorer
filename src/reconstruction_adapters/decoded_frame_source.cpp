@@ -1,4 +1,5 @@
 #include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
+#include "observation_identity.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/process.hpp"
 #include <algorithm>
@@ -7,6 +8,7 @@
 #include <fstream>
 #include <limits>
 #include <map>
+#include <new>
 #include <nlohmann/json.hpp>
 #include <set>
 #include <stdexcept>
@@ -62,17 +64,6 @@ std::filesystem::path contained(const std::filesystem::path& root, const std::st
         throw std::invalid_argument("Decoded image escapes its stage or uses a symlink");
     return path;
 }
-std::uint64_t identity(const std::string& source, std::string_view kind,
-                       std::string_view external) {
-    const auto input = "world_explorer.observation.v1/" + source + "/" + std::string(kind) + "/" +
-                       std::string(external);
-    const auto digest = sha256(std::as_bytes(std::span(input.data(), input.size())));
-    std::uint64_t value{};
-    const auto parsed = std::from_chars(digest.data(), digest.data() + 16, value, 16);
-    if (parsed.ec != std::errc{} || value == 0)
-        throw std::invalid_argument("Invalid observation identity");
-    return value;
-}
 source_timestamp timestamp(std::int64_t pts, const std::string& time_base) {
     source_timestamp value{pts};
     const auto slash = time_base.find('/');
@@ -122,7 +113,7 @@ struct decoded_frame {
     source_timestamp original;
     std::chrono::nanoseconds capture_time;
     std::filesystem::path path;
-    std::string asset_name, digest;
+    std::string asset_name, digest, external_frame, external_calibration;
     std::size_t encoded_bytes{}, image_bytes{};
     std::uint32_t width{}, height{};
 };
@@ -154,6 +145,15 @@ class decoded_frame_source final : public frame_source {
     source_capabilities capabilities() const noexcept override;
     result<source_event> read_next(std::stop_token stop) override;
     result<void> seek(source_timestamp target) override;
+    decoded_frame_catalog catalog() const {
+        decoded_frame_catalog result{state_->capture, state_->completion_digest, {}};
+        for (const auto& frame : state_->frames)
+            result.observations.push_back({frame.id, frame.calibration, frame.external_frame,
+                                           frame.external_calibration, frame.original,
+                                           frame.capture_time, frame.path, frame.digest,
+                                           frame.encoded_bytes, frame.width, frame.height});
+        return result;
+    }
 
   private:
     std::unique_ptr<decoded_source_state> state_;
@@ -208,7 +208,8 @@ result<std::unique_ptr<frame_source>> open_decoded_frame_source(decoded_source_c
         std::map<std::uint64_t, std::string> calibrations;
         std::map<std::uint64_t, std::pair<std::uint32_t, std::uint32_t>> dimensions;
         std::uint64_t previous_index{};
-        state->capture = capture_id{identity(state->config.source_sha256, "capture", "")};
+        state->capture =
+            capture_id{adapter_detail::identity(state->config.source_sha256, "capture", "")};
         for (const auto& entry : frames) {
             if (stop.stop_requested())
                 return fail(error_code::CANCELLED, "Opening decoded source cancelled");
@@ -222,9 +223,12 @@ result<std::unique_ptr<frame_source>> open_decoded_frame_source(decoded_source_c
                 return fail(error_code::INVALID_DATA, "Invalid source/frame/calibration identity");
             previous_index = index;
             decoded_frame frame;
-            frame.id = frame_id{identity(state->config.source_sha256, "frame", external_frame)};
-            frame.calibration = calibration_id{
-                identity(state->config.source_sha256, "calibration", external_calibration)};
+            frame.external_frame = external_frame;
+            frame.external_calibration = external_calibration;
+            frame.id = frame_id{
+                adapter_detail::identity(state->config.source_sha256, "frame", external_frame)};
+            frame.calibration = calibration_id{adapter_detail::identity(
+                state->config.source_sha256, "calibration", external_calibration)};
             if (!frame_ids.insert(frame.id.value).second)
                 return fail(error_code::INVALID_DATA, "Duplicate or colliding frame identity");
             const auto [calibration, inserted] =
@@ -280,6 +284,17 @@ result<std::unique_ptr<frame_source>> open_decoded_frame_source(decoded_source_c
     } catch (const std::exception& exception) {
         return fail(error_code::INVALID_DATA,
                     std::string("Invalid decoded source: ") + exception.what());
+    }
+}
+result<decoded_frame_catalog> inspect_decoded_frame_source(decoded_source_config config,
+                                                           const std::stop_token& stop) {
+    try {
+        auto source = open_decoded_frame_source(std::move(config), stop);
+        if (!source)
+            return std::unexpected(source.error());
+        return static_cast<const decoded_frame_source&>(**source).catalog();
+    } catch (const std::bad_alloc&) {
+        return fail(error_code::RESOURCE_EXHAUSTED, "Frame catalog allocation failed");
     }
 }
 source_capabilities decoded_frame_source::capabilities() const noexcept {

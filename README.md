@@ -104,6 +104,12 @@ See the [capture contract](docs/protocols/capture.md). Shared worker commands no
 receive verified [FlatBuffers events](docs/protocols/worker.md); direct Python
 invocation retains JSONL diagnostics.
 
+`build/dev/we_process replay-poses POSE_JOB VIDEO [--decode-stage DIR]` checks
+completed poses/calibration, replays real frame leases through the native estimator
+contract and publishes an in-memory map snapshot. It is labeled completed-output
+replay; a fresh native batch solver remains pending. The optional stage selection
+handles a stale decode pointer without changing it. See [pose replay](docs/protocols/poses.md).
+
 The explicitly named local development fit now works with real gsplat output;
 see [worker setup](workers/gsplat/README.md) for its pinned environment and native
 `we_process fit` / `compile-fit` commands. Open a resulting scene with

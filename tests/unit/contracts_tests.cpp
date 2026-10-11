@@ -203,6 +203,7 @@ TEST_CASE("map corrections invalidate dependencies and reject stale submissions"
     pose.frame = {1};
     pose.submap = {1};
     pose.revision = {1};
+    pose.capture_time = std::chrono::nanoseconds{100};
     pose.tracking = tracking_state::TRACKING;
     first.poses.push_back(pose);
     REQUIRE(store.commit(first));

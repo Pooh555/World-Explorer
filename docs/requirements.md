@@ -1,12 +1,12 @@
 # Requirement and evidence matrix
 
 The original targets in `technical_plan.md` §3 and §8 remain controlling; no
-thresholds or platform requirements have been waived. Status on 2026-10-11:
+thresholds or platform requirements have been waived. Status on 2026-10-12:
 
 | Requirement | Implementation / checks | Status | Evidence |
 |---|---|---|---|
 | M1 vertical slice | Real COLMAP 63/63 → 7k gsplat → checked scene → native viewer; shared GUI/CLI continuation command | IN_PROGRESS | Explicit recipe/resume/reuse and checked publication; automatic pose chaining, prescribed fixture, contracts and native reference/platform qualification pending |
-| M1 four contracts | Native decoded frame source, pose interface, map/scene revisions, update sink; verified FlatBuffers worker events | IN_PROGRESS | 31 CPU/worker checks pass; native batch pose adapter, canonical pose assets, durable maps and complete control protocol pending |
+| M1 four contracts | Native frame source, checked pose/calibration import, labeled estimator replay, map/scene revisions, update sink; verified worker events | IN_PROGRESS | 37 CPU/worker checks pass; fresh native batch pose solving, canonical pose assets, durable maps and complete control protocol pending |
 | M2 renderer / updates | Initial GPU projection/radix/quad code | IN_PROGRESS | Parity, lifetime stress and performance pending |
 | M3 offline geometry / walk | Worker cancellation/stages started; no supported geometry | NOT_STARTED | Full milestone unverified |
 | M4 platforms / Brush | Native source portability intended; hosted Windows CPU build succeeds | BLOCKED | Complete native viewer/device/release qualification on Windows, Apple Silicon and AMD unavailable; CPU CI is narrower |
@@ -40,4 +40,5 @@ Native CPU workflow repair: [CI evidence](validation/2026-10-11-ci.md).
 JSON/path portability follow-up: [current checks](validation/2026-10-11-ci-followup.md).
 Worker event protocol: [wire evidence](validation/2026-10-11-worker-wire.md).
 Native frame source: [replay evidence](validation/2026-10-11-frame-replay.md).
+Native pose import/replay: [current evidence](validation/2026-10-12-pose-replay.md).
 No Q/P/N/E requirement is fully certified; configured CI is not a native pass.

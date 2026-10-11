@@ -1,6 +1,6 @@
 # Current progress
 
-Updated 2026-10-11 (Asia/Hong_Kong). Active milestone: **M1, IN_PROGRESS**.
+Updated 2026-10-12 (Asia/Hong_Kong). Active milestone: **M1, IN_PROGRESS**.
 
 The native foundation builds and runs on Arch Linux. GCC 16.2.1 and Clang 23.1.1
 C++26 builds, contract/worker tests, address/undefined/leak sanitizers, formatting,
@@ -80,13 +80,28 @@ All 63 real frames replay; independent first/last RGB hashes match. Five local
 profiles pass 31/31 CPU/worker checks. See [frame evidence](validation/2026-10-11-frame-replay.md)
 and [source contract](protocols/capture.md).
 
-Next executable task: implement the concrete native batch `pose_estimator`
-adapter and its admission/event flow. Begin with checked import of the existing
-`artifacts/sample2-job` canonical poses and camera models, preserving OPENCV
-distortion coefficients and the source's stable ID mapping. Label completed-output
-replay explicitly; it cannot certify a new solve. Then connect isolated worker
-batch solving to submit/finish/drain with bounded ownership, cancellation and
-idempotent operation IDs. Use the successful job and fit; do not restart them.
+Checked native pose import and a labeled `COMPLETED_REPLAY` estimator now preserve
+OPENCV coefficients, source IDs/timestamps and optical transforms. Shared stage
+verification also protects existing fit continuation. Capacity-one replay of the
+63 real frames publishes an immutable in-memory map snapshot; five local profiles
+pass 37/37 CPU/worker tests. See [pose evidence](validation/2026-10-12-pose-replay.md)
+and [contract](protocols/poses.md). It does not certify a fresh pose solve.
+
+The current `artifacts/sample2-job/decode.json` points to the older capture's stage,
+while its completed poses/result still belong to the replacement. Do not rewrite
+that pointer or restart work. Use the explicit retained stage:
+
+```sh
+build/dev/we_process replay-poses artifacts/sample2-job data/local/sample.mp4 --decode-stage artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7dcab6451304305b9987c5e1da3e8ab1f5eaa9c6b
+```
+
+Next executable task: connect an isolated COLMAP batch-solving path to the native
+`pose_estimator` admission/finish/drain contract, using an immutable selected-frame
+journal and explicit worker configuration. Validate leases, write accepted assets
+before consuming input, preserve failed admission and bound disk/memory/event queues;
+prove fresh solve/failure/cancellation separately from completed replay. Reuse the
+existing successful job/fit for inspection; do not restart them. Then finish
+canonical FlatBuffers pose/calibration assets and durable map snapshot publication.
 Manual pose preparation and direct Python JSONL diagnostics
 remain transitional, not a waiver. Full video preflight
 and automatic pose-to-fit chaining are still pending.

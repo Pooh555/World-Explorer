@@ -96,6 +96,9 @@ add_custom_command(OUTPUT "${WE_WIRE_DIRECTORY}/events_generated.h"
   VERBATIM)
 add_library(reconstruction_adapters src/reconstruction_adapters/process.cpp
   src/reconstruction_adapters/worker_protocol.cpp src/reconstruction_adapters/decoded_frame_source.cpp
+  src/reconstruction_adapters/worker_artifacts.cpp
+  src/reconstruction_adapters/completed_poses.cpp
+  src/reconstruction_adapters/completed_pose_replay.cpp
   "${WE_WIRE_DIRECTORY}/events_generated.h")
 we_target(reconstruction_adapters)
 target_include_directories(reconstruction_adapters SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
@@ -116,9 +119,9 @@ target_link_libraries(navigation PUBLIC core)
 
 add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/scene_import.cpp src/application/source_view.cpp
-  src/application/reconstruction_job.cpp src/application/job_validation.cpp)
+  src/application/reconstruction_job.cpp src/application/job_validation.cpp src/application/pose_replay.cpp)
 we_target(application)
-target_link_libraries(application PUBLIC scene_store navigation reconstruction_adapters PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(application PUBLIC scene_store navigation reconstruction_adapters map_store PRIVATE nlohmann_json::nlohmann_json)
 
 add_executable(we_process apps/we_process/main.cpp)
 we_target(we_process)
