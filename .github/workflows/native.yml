@@ -1,0 +1,30 @@
+name: native-builds
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Configure explicit C++23 compatibility core
+        run: cmake --preset compat-cxx23 -DWE_BUILD_VIEWER=OFF
+      - name: Build
+        run: cmake --build --preset compat-cxx23 --parallel 4
+      - name: CPU contracts
+        run: ctest --preset compat-cxx23
+      - name: Include boundaries
+        run: python tools/check_boundaries.py
+  linux-clang:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: cmake --preset clang -DWE_CXX_STANDARD=23 -DWE_BUILD_VIEWER=OFF
+      - run: cmake --build --preset clang --parallel 4
+      - run: ctest --preset clang

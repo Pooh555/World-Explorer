@@ -1,0 +1,13 @@
+/build/
+/.deps/
+/vcpkg_installed/
+/.venv*/
+__pycache__/
+*.pyc
+/artifacts/
+/sample.mp4
+/data/local/
+*.wexplore/
+imgui.ini
+.DS_Store
+CMakeUserPresets.json

@@ -1,0 +1,8 @@
+{
+  "name": "world-explorer",
+  "version-string": "0.1.0-dev",
+  "dependencies": [
+    "nlohmann-json", "openssl", "catch2", "sdl3", "vulkan", "shaderc",
+    {"name":"imgui", "features":["sdl3-binding", "vulkan-binding"]}
+  ]
+}

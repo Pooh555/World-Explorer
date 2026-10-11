@@ -1,0 +1,92 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "dev",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/dev",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "WE_CXX_STANDARD": "26",
+        "WE_SYSTEM_DEVELOPMENT_DEPS": "ON"
+      }
+    },
+    {
+      "name": "cpu",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build/cpu",
+      "cacheVariables": {
+        "WE_BUILD_VIEWER": "OFF"
+      }
+    },
+    {
+      "name": "compat-cxx23",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build/compat-cxx23",
+      "cacheVariables": {
+        "WE_CXX_STANDARD": "23"
+      }
+    },
+    {
+      "name": "gcc",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build/gcc",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "clang",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build/clang",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "asan",
+      "inherits": "cpu",
+      "binaryDir": "${sourceDir}/build/asan",
+      "cacheVariables": {
+        "WE_SANITIZER": "address,undefined"
+      }
+    },
+    {
+      "name": "tsan",
+      "inherits": "cpu",
+      "binaryDir": "${sourceDir}/build/tsan",
+      "cacheVariables": {
+        "WE_SANITIZER": "thread"
+      }
+    },
+    {
+      "name": "release-vcpkg",
+      "inherits": "compat-cxx23",
+      "binaryDir": "${sourceDir}/build/release",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "WE_SYSTEM_DEVELOPMENT_DEPS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev", "configurePreset": "dev" },
+    { "name": "cpu", "configurePreset": "cpu" },
+    { "name": "compat-cxx23", "configurePreset": "compat-cxx23" },
+    { "name": "gcc", "configurePreset": "gcc" },
+    { "name": "clang", "configurePreset": "clang" },
+    { "name": "asan", "configurePreset": "asan" },
+    { "name": "tsan", "configurePreset": "tsan" },
+    { "name": "release-vcpkg", "configurePreset": "release-vcpkg" }
+  ],
+  "testPresets": [
+    { "name": "dev", "configurePreset": "dev", "output": { "outputOnFailure": true } },
+    { "name": "cpu", "configurePreset": "cpu", "output": { "outputOnFailure": true } },
+    { "name": "compat-cxx23", "configurePreset": "compat-cxx23", "output": { "outputOnFailure": true } },
+    { "name": "gcc", "configurePreset": "gcc", "output": { "outputOnFailure": true } },
+    { "name": "clang", "configurePreset": "clang", "output": { "outputOnFailure": true } },
+    { "name": "asan", "configurePreset": "asan", "output": { "outputOnFailure": true } },
+    { "name": "tsan", "configurePreset": "tsan", "output": { "outputOnFailure": true } }
+  ]
+}

@@ -1,0 +1,19 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=16) in;
+shared uint totals[16];
+void main() {
+    uint bucket=gl_LocalInvocationID.x;
+    uint count=0;
+    for(uint group=0;group<params.count_shift.z;++group) count+=histogram[group*16+bucket];
+    totals[bucket]=count;
+    barrier();
+    uint offset=0;
+    for(uint preceding=0;preceding<bucket;++preceding) offset+=totals[preceding];
+    for(uint group=0;group<params.count_shift.z;++group) {
+        uint current=histogram[group*16+bucket];
+        histogram[group*16+bucket]=offset;
+        offset+=current;
+    }
+}
