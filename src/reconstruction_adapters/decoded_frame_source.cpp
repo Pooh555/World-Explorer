@@ -195,10 +195,15 @@ result<std::unique_ptr<frame_source>> open_decoded_frame_source(decoded_source_c
                 sha256(std::as_bytes(std::span(result_bytes.data(), result_bytes.size()))))
             return fail(error_code::INVALID_DATA, "Decode metadata checksum/size mismatch");
         const auto metadata = parse(result_bytes);
-        if (metadata.at("selection") != "timestamp_sampling_v1" || metadata.at("crop") != "none" ||
-            metadata.at("resize") != "none")
+        if ((metadata.at("selection") != "timestamp_sampling_v1" &&
+             metadata.at("selection") != "native_rgb_journal_v1") ||
+            metadata.at("crop") != "none" || metadata.at("resize") != "none")
             return fail(error_code::UNSUPPORTED_OPERATION, "Unsupported decode replay profile");
         const auto source_count = unsigned_value(metadata.at("source_frame_count"));
+        if (metadata.at("selection") == "native_rgb_journal_v1" &&
+            (metadata.at("source_sha256") != state->config.source_sha256 ||
+             !digest_valid(metadata.at("journal_sha256").get<std::string>())))
+            return fail(error_code::INVALID_DATA, "Native RGB journal source/provenance mismatch");
         const auto& frames = metadata.at("frames");
         if (source_count == 0 || source_count > 36000 || !frames.is_array() || frames.empty() ||
             frames.size() > 120)

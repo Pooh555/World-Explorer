@@ -182,8 +182,8 @@ result<void> worker_stream_decoder::finish(int exit_code) const {
 }
 result<int> execute_worker_protocol(const std::string& python, const std::filesystem::path& script,
                                     const std::vector<std::string>& arguments,
-                                    const std::stop_token& stop,
-                                    const process_output_callback& log) {
+                                    const std::stop_token& stop, const process_output_callback& log,
+                                    const worker_event_callback& observed) {
     std::stop_source cancellation;
     std::stop_callback forward(stop, [&] { cancellation.request_stop(); });
     std::vector<std::string> command{python, "-u", script.string(), "--wire-bindings",
@@ -208,6 +208,10 @@ result<int> execute_worker_protocol(const std::string& python, const std::filesy
             const auto digest = sha256_file(asset.path, static_cast<std::size_t>(asset.bytes),
                                             cancellation.get_token());
             const auto bytes = std::filesystem::file_size(asset.path, filesystem_error);
+            if (!digest && digest.error().code == error_code::CANCELLED) {
+                failure = digest.error();
+                return;
+            }
             if (!digest || filesystem_error || bytes != asset.bytes || *digest != asset.sha256) {
                 failure = error{error_code::INVALID_DATA,
                                 "Worker completion manifest checksum/size mismatch"};
@@ -218,6 +222,8 @@ result<int> execute_worker_protocol(const std::string& python, const std::filesy
         if (const auto* error = std::get_if<worker_failure>(&value); error && log)
             log(error->stage + ": " + error->code + ": " + error->message + "\n" + error->recovery +
                 "\n");
+        if (observed && !failure)
+            observed(value);
     };
     const auto result = execute_process(
         command, cancellation.get_token(),

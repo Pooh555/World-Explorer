@@ -58,5 +58,60 @@ The adapter freezes its own snapshot so mutable aliases cannot alter emitted pos
 application command: real frame leases → capacity-one estimator replay with retry
 on backpressure → one atomic in-memory map commit. Pose timestamps must match their
 observation records. This inspection does not alter job pointers or persist maps.
-Fresh isolated COLMAP batch solving, canonical FlatBuffers pose assets, persistent
-map snapshots and complete worker command control remain follow-up work.
+Canonical FlatBuffers pose assets, persistent map snapshots and complete worker
+command control remain follow-up work.
+
+## Fresh selected-frame batch
+
+`make_batch_pose_estimator` implements `BATCH_SOLVE`, streaming false, covariance
+false, for the same inspected single-camera, uncropped RGB selection (3–120 frames).
+It takes explicit local worker and pose-Python executables, a fresh job directory
+and a sequential or exhaustive-guided recipe. There is no solver library in the
+native process and no model download. Frame/calibration IDs and original times
+remain tied to the declared video digest. This profile does not accept rigs,
+changing lenses, depth or IMU; unsupported data fails explicitly.
+
+Start requires admission capacity for the entire inspected selection. Batch
+poses cannot free unfinished observations through streaming pose events, so an
+insufficient capacity is rejected before creating output rather than allowing
+an admission deadlock. Memory reserves 2 MiB for bounded metadata plus the current
+RGB lease; the default input journal budget is 2 GiB, including a 2 MiB reserve.
+These admission bounds do not certify aggregate native/worker peak memory or disk
+use. Worker output/time/thread limits remain separate and explicit.
+
+Submit validates the next selected frame, packed layout and timestamps. It
+prepares receipt/metadata state, writes a canonical P6 RGB file through bounded
+cancellable writes, closes/checks/hashes it and renames it before consuming the
+lease. Failed admission leaves caller data and admission state unchanged.
+Retries of an accepted operation return its original ticket, including consumed
+headers; changed pixels/headers are rejected. No pixel buffer is retained by the
+estimator. Individual accepted files survive estimator destruction for diagnosis;
+the complete journal is published only after all selected frames are admitted.
+This is atomic publication after closed file writes, not a power-loss durability
+qualification.
+
+Finish closes admission, publishes a hashed journal/request and synchronously
+runs `solve-journal` through verified FlatBuffers worker events. The application
+invokes this on its job thread. The worker checks every PPM/header/RGB hash and
+ordered identity/time/dimension record, converts exactly those pixels to a checked
+PNG stage, then uses the existing pinned CPU COLMAP solve/export/undistort path.
+The converter explicitly selects image2/PPM and a literal filename: automatic
+probing can mistake valid RGB bytes for an audio module. The PNG stage records
+`native_rgb_journal_v1`, source SHA and journal SHA; it is readable by the same
+native frame source/importer. Partial output is retained but never published as a
+successful pose job. Error codes remain explicit; a failed finish returns the same
+failure on retry without launching another process. Request-stop interrupts and
+reaps the process tree from another thread.
+
+Before completion, drain emits INITIALIZING once. After successful checked import,
+it emits submap creation, identity alignment, final registered poses in capture
+order, FINISHED and one terminal event. Drain bounds allocations by the finite
+selection even for an excessive caller budget. Successful finish is idempotent;
+the completed immutable dataset can be acquired independently of the estimator.
+
+`we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE
+[--recipe sequential|exhaustive_guided]` uses a shared application command, computes
+the selected video's full SHA, submits real native frame leases and publishes a
+map through the same event-to-map path as completed replay. Worker script/Python
+overrides remain available. This command performs a fresh pose solve and no fit.
+Original completed jobs and fit outputs are independent of its fresh destination.

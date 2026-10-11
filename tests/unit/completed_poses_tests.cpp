@@ -1,5 +1,6 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/map_store/map_store.hpp"
+#include "world_explorer/reconstruction_adapters/batch_poses.hpp"
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -151,6 +152,182 @@ frame_observation observation(const completed_pose_dataset& dataset, std::size_t
     return {{index + 1}, std::move(frame)};
 }
 } // namespace
+namespace {
+batch_pose_config batch_config(const pose_fixture& fixture, const std::string& mode = "failure") {
+    const auto script = fixture.root / "diagnostic batch worker.py";
+    std::ofstream output(script);
+    output
+        << "import sys,time,json\nfrom pathlib import Path\n"
+        << "sys.path.insert(0," << nlohmann::json(WE_TEST_PROTOCOL_MODULE).dump() << ")\n"
+        << "import we_protocol\n"
+        << "we_protocol.configure(sys.argv,backend='synthetic_failure_fixture',backend_version='1',"
+           "sensors=['video'],devices=['cpu_poses'],checkpoint_semantics='diagnostic',"
+           "checkpoint_rights='synthetic',limits={'max_frames':120,'max_source_bytes':17179869184,'"
+           "max_output_bytes':34359738368})\n"
+        << "request=json.loads(Path(sys.argv[sys.argv.index('--request')+1]).read_text())\n"
+        << "root=Path(request['job_dir'])\n"
+        << "with (root/'launches').open('a') as f: f.write('launch\\n')\n";
+    if (mode == "wait")
+        output << "time.sleep(30)\n";
+    output << "we_protocol.failure('DIAGNOSTIC_FAILURE','poses','synthetic failure; no solver')\n"
+              "sys.exit(2)\n";
+    return {.decode_stage = fixture.decoded,
+            .job_directory = fixture.root / "fresh job",
+            .worker_script = script,
+            .source_sha256 = fixture.source_digest,
+            .worker_python = WE_TEST_PYTHON,
+            .pose_python = WE_TEST_PYTHON};
+}
+} // namespace
+TEST_CASE("batch admission writes RGB before consuming leases and bounds memory disk and order") {
+    pose_fixture fixture;
+    const auto dataset = fixture.load();
+    REQUIRE(dataset);
+    const auto config = batch_config(fixture);
+    auto batch = make_batch_pose_estimator(config);
+    REQUIRE(batch);
+    CHECK((*batch)->capabilities().mode == estimator_mode::BATCH_SOLVE);
+    CHECK_FALSE((*batch)->capabilities().streaming_tracking);
+    CHECK_FALSE((*batch)->start({{std::size_t{4} * 1024 * 1024}, 2}));
+    CHECK_FALSE(std::filesystem::exists(config.job_directory));
+    REQUIRE((*batch)->start({{std::size_t{4} * 1024 * 1024}, 3}));
+    CHECK_FALSE((*batch)->acquire_dataset());
+    CHECK_FALSE((*batch)->finish());
+    auto wrong_order = observation(**dataset, 1);
+    CHECK_FALSE((*batch)->submit(wrong_order));
+    CHECK(wrong_order.frame.pixels.bytes);
+    auto first = observation(**dataset, 0);
+    auto retry = first;
+    auto retained = first.frame.pixels.bytes;
+    std::filesystem::create_directory(config.job_directory / "input/1.ppm.tmp");
+    CHECK_FALSE((*batch)->submit(first));
+    CHECK(first.frame.pixels.bytes);
+    CHECK(std::filesystem::is_directory(config.job_directory / "input/1.ppm.tmp"));
+    std::filesystem::remove(config.job_directory / "input/1.ppm.tmp");
+    const auto ticket = (*batch)->submit(first);
+    REQUIRE(ticket);
+    CHECK_FALSE(first.frame.pixels.bytes);
+    CHECK(retained->size() == 6);
+    std::ifstream input(config.job_directory / "input/1.ppm", std::ios::binary);
+    std::string bytes(std::istreambuf_iterator<char>{input}, {});
+    CHECK(bytes == std::string("P6\n2 1\n255\n") + std::string(6, char{17}));
+    REQUIRE((*batch)->submit(first));
+    CHECK((*batch)->submit(retry)->value == ticket->value);
+    auto conflict = observation(**dataset, 0);
+    conflict.frame.pixels.bytes = std::make_shared<const std::vector<std::byte>>(6, std::byte{18});
+    const auto rejected = (*batch)->submit(conflict);
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == error_code::DUPLICATE_OPERATION);
+    CHECK(conflict.frame.pixels.bytes);
+    auto second = observation(**dataset, 1);
+    auto wrong_metadata = second;
+    wrong_metadata.frame.capture_time += std::chrono::nanoseconds{1};
+    CHECK_FALSE((*batch)->submit(wrong_metadata));
+    CHECK(wrong_metadata.frame.pixels.bytes);
+    REQUIRE((*batch)->submit(second));
+    const auto initial = (*batch)->drain_events({1000000});
+    REQUIRE(initial);
+    REQUIRE(initial->size() == 1);
+    CHECK(std::get<tracking_change>(initial->front()).state == tracking_state::INITIALIZING);
+    CHECK((*batch)->drain_events({1})->empty());
+
+    auto disk_config = config;
+    disk_config.job_directory = fixture.root / "disk limited";
+    disk_config.journal_bytes = {std::size_t{2} * 1024 * 1024 + bytes.size()};
+    auto disk = make_batch_pose_estimator(disk_config);
+    REQUIRE(disk);
+    REQUIRE((*disk)->start({{std::size_t{4} * 1024 * 1024}, 3}));
+    auto disk_first = observation(**dataset, 0);
+    REQUIRE((*disk)->submit(disk_first));
+    auto disk_second = observation(**dataset, 1);
+    const auto full = (*disk)->submit(disk_second);
+    REQUIRE_FALSE(full);
+    CHECK(full.error().code == error_code::RESOURCE_EXHAUSTED);
+    CHECK(disk_second.frame.pixels.bytes);
+    CHECK_FALSE(std::filesystem::exists(disk_config.job_directory / "input/2.ppm"));
+
+    auto memory_config = config;
+    memory_config.job_directory = fixture.root / "memory limited";
+    auto memory = make_batch_pose_estimator(memory_config);
+    REQUIRE(memory);
+    REQUIRE((*memory)->start({{std::size_t{2} * 1024 * 1024 + 5}, 3}));
+    auto memory_first = observation(**dataset, 0);
+    const auto exhausted = (*memory)->submit(memory_first);
+    REQUIRE_FALSE(exhausted);
+    CHECK(exhausted.error().code == error_code::RESOURCE_EXHAUSTED);
+    CHECK(memory_first.frame.pixels.bytes);
+}
+TEST_CASE("batch worker failure retains a checked journal and finish does not relaunch") {
+    pose_fixture fixture;
+    const auto dataset = fixture.load();
+    REQUIRE(dataset);
+    const auto config = batch_config(fixture);
+    auto batch = make_batch_pose_estimator(config);
+    REQUIRE(batch);
+    REQUIRE((*batch)->start({{std::size_t{4} * 1024 * 1024}, 3}));
+    for (std::size_t index = 0; index < 3; ++index) {
+        auto frame = observation(**dataset, index);
+        REQUIRE((*batch)->submit(frame));
+    }
+    const auto failed = (*batch)->finish();
+    REQUIRE_FALSE(failed);
+    CHECK(failed.error().code == error_code::BACKEND_FAILURE);
+    CHECK(failed.error().message.find("DIAGNOSTIC_FAILURE") != std::string::npos);
+    CHECK_FALSE((*batch)->finish());
+    CHECK_FALSE((*batch)->drain_events({1}));
+    CHECK_FALSE((*batch)->acquire_dataset());
+    std::ifstream launches(config.job_directory / "launches");
+    std::string line;
+    REQUIRE(std::getline(launches, line));
+    CHECK_FALSE(std::getline(launches, line));
+    std::ifstream manifest(config.job_directory / "input/journal.json");
+    const auto journal = nlohmann::json::parse(manifest);
+    REQUIRE(journal.at("frames").size() == 3);
+    CHECK(journal.at("source_sha256") == fixture.source_digest);
+    for (const auto& frame : journal.at("frames")) {
+        CHECK(frame.at("pixel_sha256") == sha256(std::vector<std::byte>(6, std::byte{17})));
+        CHECK(frame.at("sha256") ==
+              *sha256_file(config.job_directory / "input" / frame.at("file").get<std::string>(),
+                           4096));
+    }
+    CHECK_FALSE(std::filesystem::exists(config.job_directory / "result.json"));
+    auto duplicate = make_batch_pose_estimator(config);
+    REQUIRE(duplicate);
+    const auto occupied = (*duplicate)->start({{std::size_t{4} * 1024 * 1024}, 3});
+    REQUIRE_FALSE(occupied);
+    CHECK(occupied.error().code == error_code::WOULD_BLOCK);
+    CHECK(std::filesystem::exists(config.job_directory / "input/journal.json"));
+}
+TEST_CASE("batch cancellation interrupts isolated finish without publishing success") {
+    pose_fixture fixture;
+    const auto dataset = fixture.load();
+    REQUIRE(dataset);
+    const auto config = batch_config(fixture, "wait");
+    auto batch = make_batch_pose_estimator(config);
+    REQUIRE(batch);
+    REQUIRE((*batch)->start({{std::size_t{4} * 1024 * 1024}, 3}));
+    for (std::size_t index = 0; index < 3; ++index) {
+        auto frame = observation(**dataset, index);
+        REQUIRE((*batch)->submit(frame));
+    }
+    result<void> finished;
+    std::jthread running([&] { finished = (*batch)->finish(); });
+    for (int iteration = 0;
+         iteration < 200 && !std::filesystem::exists(config.job_directory / "launches");
+         ++iteration)
+        std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    const auto start = std::chrono::steady_clock::now();
+    (*batch)->request_stop();
+    running.join();
+    REQUIRE_FALSE(finished);
+    CHECK(finished.error().code == error_code::CANCELLED);
+    CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds{3});
+    CHECK_FALSE(std::filesystem::exists(config.job_directory / "result.json"));
+    CHECK(std::filesystem::exists(config.job_directory / "input/journal.json"));
+    auto retry = observation(**dataset, 0);
+    CHECK_FALSE((*batch)->submit(retry));
+    CHECK(retry.frame.pixels.bytes);
+}
 TEST_CASE("completed pose import preserves calibration model coefficients optical poses and IDs") {
     pose_fixture fixture;
     const auto dataset = fixture.load();

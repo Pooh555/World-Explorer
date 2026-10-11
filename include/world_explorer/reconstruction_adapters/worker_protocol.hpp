@@ -54,7 +54,7 @@ class worker_stream_decoder {
 // events; argv selects the command/explicit JSON request. No remote fallback.
 result<int> execute_worker_protocol(const std::string& python, const std::filesystem::path& script,
                                     const std::vector<std::string>& arguments,
-                                    const std::stop_token& stop,
-                                    const process_output_callback& log);
+                                    const std::stop_token& stop, const process_output_callback& log,
+                                    const worker_event_callback& observed = {});
 } // namespace world_explorer
 #endif

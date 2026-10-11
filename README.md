@@ -107,8 +107,16 @@ invocation retains JSONL diagnostics.
 `build/dev/we_process replay-poses POSE_JOB VIDEO [--decode-stage DIR]` checks
 completed poses/calibration, replays real frame leases through the native estimator
 contract and publishes an in-memory map snapshot. It is labeled completed-output
-replay; a fresh native batch solver remains pending. The optional stage selection
+replay. The optional stage selection
 handles a stale decode pointer without changing it. See [pose replay](docs/protocols/poses.md).
+
+`build/dev/we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE`
+runs a fresh isolated CPU COLMAP solve from native RGB leases. Use a fresh output
+directory; accepted frames are journaled locally, and failures retain diagnostics.
+The command publishes a checked in-memory map and does not fit appearance or modify
+the original completed job. An explicit `--recipe exhaustive_guided` selects the
+existing recovery recipe. Persistent map storage and automatic video-to-fit chaining
+remain pending.
 
 The explicitly named local development fit now works with real gsplat output;
 see [worker setup](workers/gsplat/README.md) for its pinned environment and native

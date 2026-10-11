@@ -127,12 +127,19 @@ TEST_CASE("native framed worker separates diagnostics and verifies completion ma
             "p.WRITER.stream=mutating_stream()\np.completed('test',path)\n";
     file.close();
     std::string log;
+    bool verified_completion{};
     const auto started = std::chrono::steady_clock::now();
-    const auto result = run_worker({script, WE_TEST_PYTHON}, {mode, artifact.string()}, {},
-                                   [&](const std::string& text) { log += text; });
+    const auto result = execute_worker_protocol(
+        WE_TEST_PYTHON, script, {mode, artifact.string()}, {},
+        [&](const std::string& text) { log += text; },
+        [&](const worker_event& event) {
+            if (std::holds_alternative<worker_completed>(event))
+                verified_completion = true;
+        });
     INFO(log);
     CHECK(std::chrono::steady_clock::now() - started < std::chrono::seconds(4));
     REQUIRE(log.find("stderr diagnostic survives") != std::string::npos);
+    CHECK(verified_completion == (std::string_view(mode) == "valid"));
     if (std::string_view(mode) == "valid") {
         REQUIRE(result);
         CHECK(*result == 0);

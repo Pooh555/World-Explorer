@@ -1,5 +1,6 @@
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/pose_replay.hpp"
+#include "world_explorer/application/pose_solve.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/core/hash.hpp"
@@ -39,6 +40,7 @@ int main(int argc, char** argv) {
                    "  we_process validate SCENE.wexplore\n"
                    "  we_process replay-frames DECODE_STAGE VIDEO (local decoded-image replay)\n"
                    "  we_process replay-poses POSE_JOB VIDEO (completed-output replay; no solve)\n"
+                   "  we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE\n"
                    "  we_process fixture OUTPUT.wexplore  (synthetic diagnostic)\n"
                    "Worker overrides: --worker-script PATH --worker-python EXECUTABLE\n";
             return argc < 2 ? 2 : 0;
@@ -107,6 +109,46 @@ int main(int argc, char** argv) {
             if (interrupted)
                 cancellation.request_stop();
         });
+        if (command == "solve-poses") {
+            if (arguments.size() < 6 || arguments.size() % 2 != 0) {
+                std::cerr << "Usage: we_process solve-poses DECODE_STAGE VIDEO NEW_JOB "
+                             "--pose-python EXECUTABLE [--recipe sequential|exhaustive_guided]\n";
+                return 2;
+            }
+            pose_solve_request request{arguments[2],
+                                       {.decode_stage = arguments[1],
+                                        .job_directory = arguments[3],
+                                        .worker_script = configuration.script,
+                                        .worker_python = configuration.python}};
+            bool pose_python{};
+            for (std::size_t index = 4; index < arguments.size(); index += 2) {
+                if (arguments[index] == "--pose-python" && !pose_python) {
+                    request.batch.pose_python = arguments[index + 1];
+                    pose_python = true;
+                } else if (arguments[index] == "--recipe" &&
+                           arguments[index + 1] == "exhaustive_guided")
+                    request.batch.recipe = pose_recipe::EXHAUSTIVE_GUIDED;
+                else if (arguments[index] != "--recipe" || arguments[index + 1] != "sequential") {
+                    std::cerr << "Invalid batch pose option\n";
+                    return 2;
+                }
+            }
+            if (!pose_python) {
+                std::cerr << "An explicit --pose-python executable is required\n";
+                return 2;
+            }
+            const auto maps = solve_selected_pose_map(
+                std::move(request), cancellation.get_token(),
+                [](const std::string& text) { std::cout << text << std::flush; });
+            if (!maps) {
+                std::cerr << maps.error().message << '\n';
+                return maps.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Fresh batch map: " << (*maps)->observations.size() << " observations, "
+                      << (*maps)->poses.size() << " poses, " << (*maps)->calibrations.size()
+                      << " calibrations\n";
+            return 0;
+        }
         if (command == "replay-poses") {
             if (argc != 4 && !(argc == 6 && std::string_view(argv[4]) == "--decode-stage")) {
                 std::cerr << "Usage: we_process replay-poses POSE_JOB VIDEO [--decode-stage DIR]\n";
