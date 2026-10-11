@@ -12,9 +12,9 @@
 using namespace world_explorer;
 
 namespace {
-std::shared_ptr<scene_chunk> fixture_chunk(std::uint64_t id = 1, std::uint64_t generation = 1) {
+std::shared_ptr<scene_chunk> fixture_chunk(chunk_id id = {1}, std::uint64_t generation = 1) {
     auto chunk = std::make_shared<scene_chunk>();
-    chunk->id = {id};
+    chunk->id = id;
     chunk->generation = generation;
     chunk->bounds = {{-5, -5, -5}, {5, 5, 5}};
     chunk->pose_revision = {1};
@@ -87,7 +87,7 @@ TEST_CASE("scene transactions replay replace delete correction and epoch resync 
     caller_alias->splats[0].mean[0] = 4;
     CHECK(old->chunks.at({1})->splats[0].mean[0] == 1);
     CHECK_FALSE(store.commit(create)); // reused ID with modified payload
-    auto replacement = fixture_chunk(1, 2);
+    auto replacement = fixture_chunk({1}, 2);
     replacement->splats[0].opacity = 0.4F;
     scene_transaction replace{
         {42}, {0}, {1}, {2}, {101}, {{scene_operation_kind::REPLACE, {1}, replacement, {}, {}}}};
@@ -141,7 +141,7 @@ TEST_CASE("invalid transactions leave all state untouched and replay window is b
     limits.remembered_operations = 2;
     scene_store store({42}, limits);
     REQUIRE(store.commit(create_transaction()));
-    auto invalid = fixture_chunk(2);
+    auto invalid = fixture_chunk({2});
     invalid->splats[0].scale[0] = -1;
     scene_transaction transaction{{42},
                                   {0},
@@ -182,7 +182,7 @@ TEST_CASE("concurrent readers retain immutable scene revisions", "[contracts][th
     for (std::uint64_t i = 2; i < 30; ++i) {
         scene_transaction change{
             {42}, {0},       {i - 1},
-            {i},  {100 + i}, {{scene_operation_kind::REPLACE, {1}, fixture_chunk(1, i), {}, {}}}};
+            {i},  {100 + i}, {{scene_operation_kind::REPLACE, {1}, fixture_chunk({1}, i), {}, {}}}};
         REQUIRE(store.commit(change));
     }
     reader.join();
@@ -246,10 +246,14 @@ TEST_CASE("bundle round trip enforces checksums paths conventions and allocation
                                   std::filesystem::path(u8"room \u00e9\u623f.wexplore"));
     scene_store store({42});
     REQUIRE(store.commit(create_transaction()));
-    REQUIRE(write_bundle(bundle_path, store.acquire_snapshot()));
+    auto snapshot = std::make_shared<scene_state>(*store.acquire_snapshot());
+    const std::string utf8_label = "room \xc3\xa9\xe6\x88\xbf";
+    snapshot->provenance["label"] = utf8_label;
+    REQUIRE(write_bundle(bundle_path, snapshot));
     auto loaded = load_bundle(bundle_path);
     REQUIRE(loaded);
     CHECK((*loaded)->chunks.at({1})->splats[0].mean[1] == 2);
+    CHECK((*loaded)->provenance.at("label") == utf8_label);
     auto manifest = read_json(bundle_path / "manifest.json");
     const auto original = manifest;
     manifest["index"] = "../outside.bin";
@@ -259,6 +263,14 @@ TEST_CASE("bundle round trip enforces checksums paths conventions and allocation
     manifest["coordinates"]["quaternion_order"] = "xyzw";
     write_json(bundle_path / "manifest.json", manifest);
     CHECK_FALSE(load_bundle(bundle_path));
+    for (const auto& malformed :
+         {std::string{}, std::string("{"), std::string("{\"label\":\"\xff\"}"),
+          std::string("{}\0trailing", 11)}) {
+        std::ofstream input(bundle_path / "manifest.json", std::ios::binary);
+        input.write(malformed.data(), static_cast<std::streamsize>(malformed.size()));
+        input.close();
+        CHECK_FALSE(load_bundle(bundle_path));
+    }
     write_json(bundle_path / "manifest.json", original);
     bundle_limits limits;
     limits.scene.max_splats = 0;

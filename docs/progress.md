@@ -58,8 +58,13 @@ required library probes and Windows failed OpenSSL discovery. The workflow now
 selects compatible compiler/library pairs and explicit SDK roots, retaining the
 feature and warning gates. Local GCC C++26, GCC C++23 CPU and Clang C++23 CPU
 each pass 24/24 tests; actionlint, format, boundaries and targeted tidy pass.
-The exact hosted profiles are IMPLEMENTED_UNVERIFIED until the next user push.
-See [CI repair evidence](validation/2026-10-11-ci.md). Apple Clang/viewer/release
+Follow-up hosted logs confirm macOS configuration succeeds and Windows builds,
+with 22/24 Windows checks passing. The remaining macOS byte-to-JSON compilation
+error and Windows test assumptions about short/long path spellings are repaired.
+Local checks now also pass 24/24 with libc++ 23.1.1 and with an aliased temporary
+directory. The latest fixes remain IMPLEMENTED_UNVERIFIED on the hosted native
+profiles until the next user push. See [initial CI evidence](validation/2026-10-11-ci.md)
+and [follow-up evidence](validation/2026-10-11-ci-followup.md). Apple Clang/viewer/release
 qualification remains separate from the macOS LLVM 20 CPU job.
 
 Next executable task: add the pinned length-prefixed FlatBuffers worker transport

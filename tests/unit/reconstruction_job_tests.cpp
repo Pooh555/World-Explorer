@@ -102,7 +102,8 @@ TEST_CASE(
     "coordinator reuses an explicitly selected fit and preserves publication on changed inputs") {
     job_fixture fixture;
     std::string log;
-    const auto initial = reconstruct(fixture.job, {}, [&](std::string text) { log += text; });
+    const auto initial =
+        reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; });
     INFO((initial ? "published" : initial.error().message));
     REQUIRE(initial);
     REQUIRE(log.find("optimization skipped") != std::string::npos);
@@ -164,8 +165,9 @@ TEST_CASE(
                           {"max_splats", 2000000},
                           {"completed_fit_identity", fixture.identity}};
     save_json(request, config);
-    REQUIRE(read_reconstruction_job(request));
-    CHECK(read_reconstruction_job(request)->video == fixture.job.video);
+    const auto parsed = read_reconstruction_job(request);
+    REQUIRE(parsed);
+    CHECK(std::filesystem::equivalent(parsed->video, fixture.job.video));
     SECTION("unknown field") { config["remote_fallback"] = true; }
     SECTION("different recipe") { config["recipe"] = "standard_nvidia"; }
     SECTION("missing recipe") { config.erase("recipe"); }
@@ -235,7 +237,7 @@ TEST_CASE("coordinator forwards bounded start and resume arguments and rechecks 
            "('source','data','video','output','steps','max-image-dimension','max-splats'):\n"
            " p.add_argument('--'+k,required=True)\np.add_argument('--resume')\na=p.parse_args()\n"
         << "assert a.source == " << literal(fixture.job.gsplat_source) << "\n"
-        << "assert a.data == " << literal(fixture.stage / "training") << "\n"
+        << "assert Path(a.data).samefile(" << literal(fixture.stage / "training") << ")\n"
         << "assert a.video == " << literal(fixture.job.video) << "\n"
         << "assert a.steps == '7000' and a.max_image_dimension == '1280' and a.max_splats == "
            "'2000000'\n"
@@ -247,10 +249,15 @@ TEST_CASE("coordinator forwards bounded start and resume arguments and rechecks 
         script << "Path(a.video).write_text('changed capture')\n";
     script << "print('synthetic subprocess contract fixture')\n";
     script.close();
-    const auto result = reconstruct(fixture.job, {}, {});
+    std::string worker_log;
+    const auto result =
+        reconstruct(fixture.job, {}, [&](const std::string& text) { worker_log += text; });
+    INFO(worker_log);
     INFO((result ? "published" : result.error().message));
+    REQUIRE(worker_log.find("synthetic subprocess contract fixture") != std::string::npos);
     if (change_source) {
-        CHECK_FALSE(result);
+        REQUIRE_FALSE(result);
+        CHECK(result.error().code == error_code::INVALID_DATA);
         CHECK(sha256_file(manifest, 65536).value() == committed);
     } else {
         REQUIRE(result);
