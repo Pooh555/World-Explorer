@@ -50,4 +50,7 @@ automatically substituted for the upstream `appearance` stage or Q2/Q3 recipe.
 and declared count before publishing a scene. Optional bounded source camera
 metadata enables an explicit upright spectator reset; it is not a calibrated
 reference comparison. See the [appearance worker](../../workers/gsplat/README.md).
-Scene compilation remains an explicit CLI command after a successful export.
+The shared native [reconstruction coordinator](jobs.md) can now continue completed
+poses with an explicitly selected local recipe, resume fitting or reuse a selected
+completed fit, compile it and load it in the GUI. Separate `fit`/`compile-fit`
+commands remain available for diagnostics. The upstream worker is unchanged.

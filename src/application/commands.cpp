@@ -114,7 +114,7 @@ result<int> run_process(const std::vector<std::string>& arguments, const std::st
             DWORD read = 0;
             if (ReadFile(read_pipe.value, buffer.data(), static_cast<DWORD>(buffer.size()), &read,
                          nullptr) &&
-                read)
+                read && log)
                 log(std::string(buffer.data(), read));
         } else if (ended)
             break;
@@ -212,7 +212,8 @@ result<int> run_process(const std::vector<std::string>& arguments, const std::st
             const auto count = read(handles.read, buffer.data(), buffer.size());
             if (count <= 0)
                 break;
-            log(std::string(buffer.data(), static_cast<std::size_t>(count)));
+            if (log)
+                log(std::string(buffer.data(), static_cast<std::size_t>(count)));
         }
         const auto waited = waitpid(child, &status, WNOHANG);
         if (waited == child) {
@@ -223,7 +224,8 @@ result<int> run_process(const std::vector<std::string>& arguments, const std::st
                 const auto count = read(handles.read, buffer.data(), buffer.size());
                 if (count <= 0)
                     break;
-                log(std::string(buffer.data(), static_cast<std::size_t>(count)));
+                if (log)
+                    log(std::string(buffer.data(), static_cast<std::size_t>(count)));
             }
             break;
         }

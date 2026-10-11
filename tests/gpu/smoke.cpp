@@ -59,12 +59,16 @@ int main(int argc, char** argv) {
         require(renderer->updates().enqueue(batch).has_value(), "initial scene admission failed");
         camera_view camera;
         camera.position = {0, 0, 4};
-        for (int frame = 0; frame < 6; ++frame) {
+        for (int frame = 0; frame < 11; ++frame) {
             SDL_PumpEvents();
-            if (frame == 3)
+            if (frame == 9)
                 require(renderer->request_screenshot(output).has_value(), "capture unsupported");
-            const auto drawn = renderer->draw(camera);
+            const bool paused = frame >= 4 && frame <= 6;
+            const auto drawn = renderer->draw(camera, !paused);
             require(drawn.has_value(), drawn ? "" : drawn.error().message);
+            if (paused)
+                require(renderer->diagnostics().resident_splat_count == 2,
+                        "Paused appearance lost resident scene assets");
         }
         std::ifstream image(output, std::ios::binary);
         std::string magic;

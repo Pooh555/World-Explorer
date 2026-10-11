@@ -19,6 +19,7 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <thread>
+#include <utility>
 #include <vulkan/vulkan.h>
 
 namespace {
@@ -37,7 +38,8 @@ template <class handle_type> handle_type native(std::uintptr_t value) {
         return static_cast<handle_type>(value);
 }
 int viewer_main(int argc, char** argv) {
-    std::filesystem::path scene_path, screenshot, settings_path, shader_path = WE_SHADER_DIRECTORY;
+    std::filesystem::path scene_path, reconstruction_request, screenshot, settings_path,
+        shader_path = WE_SHADER_DIRECTORY;
     worker_configuration worker{WE_WORKER_SCRIPT};
     std::size_t max_splats = 250000;
     std::size_t residency_mib = 512;
@@ -53,6 +55,7 @@ int viewer_main(int argc, char** argv) {
                    "          [--worker-python EXE] [--worker-script FILE] [--no-validation]\n"
                    "          [--max-splats N] [--residency-mib N]\n";
             std::cout << "          [--source-view] (explicit upright spectator reset)\n";
+            std::cout << "          [--reconstruction-request JOB.json]\n";
             return 0;
         }
         if (option == "--diagnostic-fixture")
@@ -65,6 +68,8 @@ int viewer_main(int argc, char** argv) {
             const std::string value = argv[++argument];
             if (option == "--scene")
                 scene_path = value;
+            else if (option == "--reconstruction-request")
+                reconstruction_request = value;
             else if (option == "--screenshot")
                 screenshot = value;
             else if (option == "--settings")
@@ -88,6 +93,7 @@ int viewer_main(int argc, char** argv) {
     }
     if (!SDL_Init(SDL_INIT_VIDEO))
         throw std::runtime_error(SDL_GetError());
+    const bool require_reconstruction_success = !reconstruction_request.empty();
     struct sdl_owner {
         ~sdl_owner() { SDL_Quit(); }
     } sdl;
@@ -174,7 +180,7 @@ int viewer_main(int argc, char** argv) {
     bool running = true, captured = false, show_open = false, show_import = false,
          show_settings = false;
     int remapping = -1;
-    std::array<char, 1024> path{}, source{}, output{}, request_path{};
+    std::array<char, 1024> path{}, source{}, output{}, request_path{}, pose_request_path{};
     std::snprintf(output.data(), output.size(), "%s", "artifacts/import-job");
     unsigned frames = 0;
     bool screenshot_requested = false;
@@ -218,6 +224,9 @@ int viewer_main(int argc, char** argv) {
         const auto now = std::chrono::steady_clock::now();
         const auto elapsed = std::chrono::duration<double>(now - previous).count();
         previous = now;
+        if (!reconstruction_request.empty() && !state.busy && !pending_ticket) {
+            state.reconstruction(std::exchange(reconstruction_request, {}));
+        }
         movement.captured = captured;
         movement.focused = (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
         movement.text_input = io.WantTextInput || show_open || show_import || show_settings;
@@ -441,16 +450,17 @@ int viewer_main(int argc, char** argv) {
             ImGui::InputText("Video", source.data(), source.size());
             ImGui::SetNextItemWidth(560 * scale);
             ImGui::InputText("Job directory", output.data(), output.size());
-            ImGui::TextWrapped("Standard preset: 7,000 appearance steps. Missing worker packages "
-                               "are reported explicitly.");
+            ImGui::TextWrapped(
+                "Choose an explicit reconstruction recipe in a job request. "
+                "The local gsplat recipe is for development; quality is unqualified.");
             ImGui::BeginDisabled(state.busy);
             if (ImGui::Button("Inspect video"))
                 state.worker(worker,
                              {"inspect", "--source", source.data(), "--job-dir", output.data()});
             ImGui::SameLine();
-            if (ImGui::Button("Run configured job")) {
-                if (request_path[0])
-                    state.worker(worker, {"run", "--request", request_path.data()});
+            if (ImGui::Button("Run configured pose job")) {
+                if (pose_request_path[0])
+                    state.worker(worker, {"run", "--request", pose_request_path.data()});
                 else {
                     std::lock_guard lock(state.mutex);
                     state.status = "Select a job request JSON with backend paths and resource "
@@ -458,9 +468,22 @@ int viewer_main(int argc, char** argv) {
                 }
             }
             ImGui::EndDisabled();
+            ImGui::SetNextItemWidth(560 * scale);
+            ImGui::InputText("Reconstruction request JSON", request_path.data(),
+                             request_path.size());
+            ImGui::BeginDisabled(state.busy || !request_path[0]);
+            if (ImGui::Button("Continue poses, fit and open scene"))
+                state.reconstruction(request_path.data());
+            ImGui::EndDisabled();
+            ImGui::TextWrapped("Continues completed poses. Start, checkpoint resume and completed "
+                               "fit reuse are explicit actions in the request. Scene rendering "
+                               "pauses during processing; the previous scene is retained.");
             if (ImGui::CollapsingHeader("Advanced")) {
                 ImGui::SetNextItemWidth(560 * scale);
-                ImGui::InputText("Job request JSON", request_path.data(), request_path.size());
+                ImGui::InputText("Pose-worker request JSON", pose_request_path.data(),
+                                 pose_request_path.size());
+                ImGui::TextWrapped("The pose-worker request prepares poses. Continue uses the "
+                                   "reconstruction job schema; see docs/protocols/jobs.md.");
                 ImGui::TextWrapped("This development build runs the same versioned job request as "
                                    "we_process. Full preflight controls remain in progress.");
                 if (ImGui::Button("Check worker capabilities"))
@@ -500,15 +523,23 @@ int viewer_main(int argc, char** argv) {
             ImGui::EndPopup();
         }
         ImGui::Render();
-        if (!screenshot.empty() && !screenshot_requested && frames >= 8 &&
-            (scene_path.empty() || (current && !pending_ticket))) {
+        if (!screenshot.empty() && !screenshot_requested && frames >= 8 && !state.busy &&
+            reconstruction_request.empty() &&
+            (!(require_reconstruction_success || !scene_path.empty()) ||
+             (current && !pending_ticket))) {
+            if (require_reconstruction_success) {
+                std::lock_guard lock(state.mutex);
+                if (!state.reconstruction_error.empty())
+                    throw std::runtime_error(state.reconstruction_error);
+            }
             const auto requested = renderer->request_screenshot(screenshot);
             if (!requested)
                 throw std::runtime_error(requested.error().message);
             screenshot_requested = true;
         }
         const auto drawn = renderer->draw(
-            {camera.position, camera.right(), camera.down(), camera.forward(), camera_fov});
+            {camera.position, camera.right(), camera.down(), camera.forward(), camera_fov},
+            !state.processing.load());
         if (!drawn)
             throw std::runtime_error(drawn.error().message);
         if (pending_ticket) {
@@ -523,6 +554,11 @@ int viewer_main(int argc, char** argv) {
         }
         ++frames;
         if (frame_limit && frames >= frame_limit && !state.busy && !pending_ticket) {
+            if (require_reconstruction_success) {
+                std::lock_guard lock(state.mutex);
+                if (!state.reconstruction_error.empty())
+                    throw std::runtime_error(state.reconstruction_error);
+            }
             if (!scene_path.empty() && !current) {
                 std::lock_guard lock(state.mutex);
                 throw std::runtime_error(state.status);

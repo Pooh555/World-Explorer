@@ -1,0 +1,37 @@
+#ifndef WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_JOB_HPP
+#define WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_JOB_HPP
+
+#include "world_explorer/application/commands.hpp"
+#include <cstdint>
+
+namespace world_explorer {
+enum class fit_action : std::uint8_t { START, RESUME, REUSE_COMPLETED };
+
+// This development command continues a committed pose job. It never silently
+// changes recipes, restarts poses, downloads dependencies or adopts another fit.
+struct reconstruction_job {
+    std::filesystem::path video;
+    std::filesystem::path pose_job;
+    std::filesystem::path gsplat_source;
+    std::filesystem::path fit_directory;
+    std::filesystem::path scene_output;
+    worker_configuration fitting_worker;
+    std::uint32_t steps{7000};
+    std::uint32_t max_image_dimension{1280};
+    std::uint32_t max_splats{2000000};
+    fit_action action{fit_action::START};
+    std::filesystem::path checkpoint;
+    std::string completed_fit_identity;
+};
+
+// Strict, bounded schema; relative paths resolve against the request's directory.
+result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& request);
+// One synchronous command, called off the UI thread. Logs run on the calling
+// thread. Cancellation before manifest publication retains the previous scene;
+// the final atomic publication is a commit boundary. Concurrent worker execution
+// is excluded by the fit worker's lock. Completed reuse requires an explicit SHA.
+result<std::filesystem::path> reconstruct(const reconstruction_job& job,
+                                          const std::stop_token& stop, const log_callback& log);
+} // namespace world_explorer
+
+#endif // WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_JOB_HPP

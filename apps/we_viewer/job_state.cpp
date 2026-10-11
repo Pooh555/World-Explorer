@@ -1,4 +1,5 @@
 #include "job_state.hpp"
+#include "world_explorer/application/reconstruction_job.hpp"
 
 namespace world_explorer::viewer {
 
@@ -43,6 +44,7 @@ void application_state::worker(worker_configuration configuration,
                                std::vector<std::string> arguments) {
     if (busy.exchange(true))
         return;
+    processing = true;
     started = std::chrono::steady_clock::now();
     {
         std::lock_guard lock(mutex);
@@ -64,6 +66,52 @@ void application_state::worker(worker_configuration configuration,
             std::lock_guard lock(mutex);
             status = "Worker failed: " + std::string(error.what());
         }
+        processing = false;
+        busy = false;
+    });
+}
+
+void application_state::reconstruction(std::filesystem::path request) {
+    if (busy.exchange(true))
+        return;
+    started = std::chrono::steady_clock::now();
+    processing = true;
+    {
+        std::lock_guard lock(mutex);
+        status = "Continuing reconstruction locally. Scene rendering paused; ETA unknown.";
+        reconstruction_error.clear();
+        log.clear();
+    }
+    job = std::jthread([this, request = std::move(request)](const std::stop_token& stop) {
+        try {
+            const auto selected = read_reconstruction_job(request);
+            const auto published =
+                selected ? reconstruct(*selected, stop,
+                                       [this](std::string text) { append(std::move(text)); })
+                         : result<std::filesystem::path>{std::unexpected(selected.error())};
+            // Publication is a commit boundary. A subsequent stop still leaves
+            // the bundle available; the UI may open it in a separate command.
+            const auto scene = published
+                                   ? load_bundle(*published, load_limits)
+                                   : result<scene_snapshot>{std::unexpected(published.error())};
+            std::lock_guard lock(mutex);
+            if (scene) {
+                loaded = *scene;
+                status = "Scene published and validated; waiting for renderer admission.";
+            } else if (published) {
+                status = "Scene published at " + published->string() +
+                         "; viewer load failed: " + scene.error().message;
+                reconstruction_error = status;
+            } else {
+                status = published.error().message + ". Previous scene retained.";
+                reconstruction_error = status;
+            }
+        } catch (const std::exception& exception) {
+            std::lock_guard lock(mutex);
+            status = "Reconstruction failed: " + std::string(exception.what());
+            reconstruction_error = status;
+        }
+        processing = false;
         busy = false;
     });
 }

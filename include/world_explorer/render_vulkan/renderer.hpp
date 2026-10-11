@@ -41,7 +41,9 @@ class vulkan_renderer {
     // Called on the render owner inside its color render pass. Command handle borrowed for callback
     // only.
     void set_overlay_callback(std::function<void(std::uintptr_t)> callback);
-    result<void> draw(const camera_view& camera);
+    // Overlay/presentation remain active when appearance is paused for a local
+    // reconstruction job. Resident assets and update ownership are retained.
+    result<void> draw(const camera_view& camera, bool draw_appearance = true);
     result<void> wait_for_idle();
     // Save the next successfully presented frame as an RGB PPM; explicit transfer capability is
     // required.

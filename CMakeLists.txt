@@ -83,7 +83,8 @@ we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
 add_library(application src/application/commands.cpp src/application/scenes.cpp
-  src/application/scene_import.cpp src/application/source_view.cpp)
+  src/application/scene_import.cpp src/application/source_view.cpp
+  src/application/reconstruction_job.cpp src/application/job_validation.cpp)
 we_target(application)
 target_link_libraries(application PUBLIC scene_store navigation PRIVATE nlohmann_json::nlohmann_json)
 

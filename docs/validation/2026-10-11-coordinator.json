@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "parent_commit": "6f97412f9b6eb1213564f6b6f3100cbaa7ce93e3",
+  "source_tree_sha256": "40fc8e23fb8b184be0eefc25290452b6d23f86ff61ae447976a55517d6a7bc77",
+  "source_files": {
+    ".clang-format": "a875ab97c1ee026b9a848eda0f0d62dd0ce0969e0c10cc21c3bddd45de4e0dc3",
+    ".clang-tidy": "eeead5cfa87449181961411e49a5320075fa07cdc96493793b245663c33e86d0",
+    "CMakeLists.txt": "facc6fd637b54e8414319cba1acdd600c5bb39087e00152dc6ca23d39d335bd8",
+    "CMakePresets.json": "d46d415fb63fe06a3cc37d50bf8fbc157c7ed7ee9ebe640289e976b64e0a8168",
+    "apps/we_process/main.cpp": "da866fa08ffa142c58f7c26a9737452ce134a3e3bd985ce431e730d65dc3ce11",
+    "apps/we_viewer/job_state.cpp": "ea21293eb1657feaee5daa12106efb838b4f1834f1007d9bcf7d76dd504ee25f",
+    "apps/we_viewer/job_state.hpp": "cd0c483c480bef25167f007f507ea209102b15f43275353fefe0c23425abc820",
+    "apps/we_viewer/main.cpp": "6c04eff0812296b90674afdccef2464eda85d544e42a220935a4f4672f568d88",
+    "apps/we_viewer/preferences.cpp": "ee72b5e9f22cb45aa5aaba4239c203e0e173418e6b4f48b0e039e0110fcba942",
+    "apps/we_viewer/preferences.hpp": "88d0f2efa0d9f3dca7277fd9bc5f496f4bc821fa679398764667757b0addcd23",
+    "cmake/dependencies.cmake": "13db6f17a6fc7870451d40e0327a83aa72b98a356d7ff9dafd1ace1bad631666",
+    "cmake/feature_probes/required.cpp": "5aeeee82d9d9e6f81fcdc95865e56d336a2b8130f6f11eade7f14d1f5c1623b1",
+    "include/world_explorer/application/commands.hpp": "e82c2231f1f8ed27333eaa13408fdfccae79995ec204c2ff15375a40dc920667",
+    "include/world_explorer/application/reconstruction_job.hpp": "c1f954fc3b66dfe9743de45c8a063c20df6002acb73e6d798c4f3dc420809116",
+    "include/world_explorer/application/scenes.hpp": "4db69d86b9711a8041ad486738496e92aa3491d497f2fede7947d26b7f587f78",
+    "include/world_explorer/capture/frame_source.hpp": "0b69d4b7e955ea426abf0bfc2fef11fcd2b0e6dde8dbed0394bc6b3e930956e2",
+    "include/world_explorer/core/hash.hpp": "4af7de9bc8871104660222b54615ad0f23ac6ed43ba3ed9d723860ae4df23951",
+    "include/world_explorer/core/math.hpp": "67fb9c36ca557382fab7d62bea2dbbb2b4ac788095508bae498546d3abaa556a",
+    "include/world_explorer/core/result.hpp": "2cd062eb61ca3bd1ab7577c12cf4efbdf7a9bc88d8ac4c6300c14d195a17d7e1",
+    "include/world_explorer/core/types.hpp": "0daafe2e045e6e8622fe52665aaa9a9cef00730a72b7dddaf765f49fd6c03a54",
+    "include/world_explorer/map_store/map_store.hpp": "fb68d31542b6bf3e8af53b1fa1470f6e7a776db0e938703a1f7d83754435ce71",
+    "include/world_explorer/navigation/fly_camera.hpp": "a6d659d7bf0050723d1cd97297c08e222ca9c24458ad094263c8edacf41d383c",
+    "include/world_explorer/reconstruction_api/pose_estimator.hpp": "c10c72d1468f2a13fd610714f04d9d4c71fcf49d63153272adbb91927293aafa",
+    "include/world_explorer/render_core/camera.hpp": "68caa14e80c94a9b7fb5cf4f473cb08ae7d4c1cb98f8dcbcc6374f11e518aa03",
+    "include/world_explorer/render_core/update_sink.hpp": "9672225241a72c196bc584015425c0425b640700fc711c8ea737c183b051fd25",
+    "include/world_explorer/render_vulkan/renderer.hpp": "3346e5983dc5389de3ea6622b3c32c4d3e59c77d0812cf6d70273b88d05d6cf0",
+    "include/world_explorer/scene_store/bundle.hpp": "fd013558892845aab7dc28f8ff2c32c3998a61821a42346863d65db6e0faf651",
+    "include/world_explorer/scene_store/scene.hpp": "0d3b4b192c68b1be4733649ed20d0ece3d4411b975509fa465a6f055fe455c78",
+    "include/world_explorer/scene_store/scene_store.hpp": "fd3a93b41c64e242b4cba105cb4699c5ccf7bfb15132be78dbe578c689eceb37",
+    "shaders/common.glsl": "26b502fdbb78594b80ca93ff33e35867a2ce019be4d3ddabaaa06e08b948e744",
+    "shaders/project.comp": "0408221143d565838c61d1023388fead6e7b1c87d90d36f009ca130ce22c1507",
+    "shaders/radix_histogram.comp": "d3d3e51f178d1326fdd6f0fcdc28eac91f2cf9cd6acd82cb02c6e6d5ce885bec",
+    "shaders/radix_scan.comp": "bc68766deee7a9d1e359017dfa48ed9b87aff3eae9cbd2808cb24007439514b5",
+    "shaders/radix_scatter.comp": "8c65bf9b21ad6f0583cefaeb6579253a24965b88969aa4e0437105e5dbd13a8d",
+    "shaders/splat.frag": "82b0b71d2fa3380e724088fe02dbf02166cee731d8e670e64f0898ae396eef7e",
+    "shaders/splat.vert": "8bcb5cdc9de44c7aaec45b1a783887889aaaf095d58feb54fb487ffe3acb62ac",
+    "src/application/commands.cpp": "71b270efd75e7a1aabcad84a3e2efa480e1d2ecba191473ecb978758d0d714d1",
+    "src/application/job_validation.cpp": "a33ea47c944352b8bbf677059fa7eaf09711bcf806d321514bd22424267bbf94",
+    "src/application/job_validation.hpp": "193921173b0394e77f6098e02bf7ab6f4bf05229f3214ce9308a0f1cef8bdb44",
+    "src/application/reconstruction_job.cpp": "800a3994891880909a2e7ad36226ba3509fa5f53fa9cd5a2766317d83f2ae4f6",
+    "src/application/scene_import.cpp": "f2bc6003123f09a3aa9d95cba3bc2b94a2608c58defbba65c7384b649da67565",
+    "src/application/scenes.cpp": "621ef7df80328eb4f1f36907c5497b3f54df704539269f0cf69d6b91d5df99e2",
+    "src/application/source_view.cpp": "b160e855a837ee0382ac7ecf24e090cb6cfa5cd336ff8d99666e905084af1368",
+    "src/core/hash.cpp": "f98717710bebc3a131b7d7bcccf4d8979f21cf0cfc0389a8ab0348c517d5d53b",
+    "src/map_store/map_store.cpp": "95bd725d81cc67a5f91ebb2e66921a443adab1ad0a3544e30881dbdddd0e09ea",
+    "src/navigation/fly_camera.cpp": "b811785820385b15474727b9025be65d75d703ee189c53e26e07bd01341b78ce",
+    "src/render_core/update_sink.cpp": "32e3ad5e6e4bced410e07934242af94c83c932bd9fad25c085c2104397b52ff4",
+    "src/render_vulkan/renderer.cpp": "953d581461be124caeaf523523203788db45121a2bbb8a701fb669a0e71dfe02",
+    "src/render_vulkan/vulkan_common.hpp": "66855d450f6cc7705ead32e48ec366e1fc611204c05930dedba27acc6aa11e7f",
+    "src/render_vulkan/vulkan_device.cpp": "6ee7e13359cca004ad599cf983a2e14597f3849d201b7a72296cc83edf695182",
+    "src/render_vulkan/vulkan_device.hpp": "affcdf0e353c8a02a1b7e9bedfb2f330b95e68f5fe8ba16c0b652e57b0e20099",
+    "src/render_vulkan/vulkan_swapchain.cpp": "19260d0705f52f59d78324fdda32335d76a6eb1a22baab22cc00f0093b2141b2",
+    "src/render_vulkan/vulkan_swapchain.hpp": "09d84688c1473a8d59adf81155f92f608b7d8042aecc74e71ada2e49b3107327",
+    "src/scene_store/bundle.cpp": "b576ef8685e52185108876b17040fef5dcd2b08e139433299814c1a1ad0047d7",
+    "src/scene_store/scene.cpp": "dd0e2d1f3c285368c0bf09167f40362d9cc161d9670886a52a670f3860db7cda",
+    "src/scene_store/scene_store.cpp": "02400baaa25e93246f050882b70bf303ceaa0b16e4895b0265a3cc02f779134e",
+    "tests/gpu/smoke.cpp": "d541a94a44c94846efcc23a9fe91bf1ce8c9c3b6633643afd28220db580ffb60",
+    "tests/gpu/ssim_check.py": "86f06a42458fe279bcb82b8cae98b8e731999a119764350a81d13e56ed840560",
+    "tests/integration/worker_pipeline_test.py": "2cafab37fdc426bee197f9fe8247cf1a9cee5d571725128a41d2d434b8ea1432",
+    "tests/unit/application_tests.cpp": "2e390c48ea6c7f99eb83d50c12eed8a8c23d9cb65489388b0c63188f71ee12f6",
+    "tests/unit/contracts_tests.cpp": "9a9580b438bb656e6dde4a08cd4086c38c049854a4f6a35023846290da29cba9",
+    "tests/unit/navigation_tests.cpp": "4cb88065919a713c90a51426302818f0806846102f28aed22361ae517ba5ae1c",
+    "tests/unit/reconstruction_job_tests.cpp": "d65b6268b7717311035d8f2ab41e85834dbaa7a5f708380a9361f30b448add6d",
+    "tests/unit/render_tests.cpp": "301cf0b22681292966a3164929e37841d38f7b9225e03d306a0672c3714fd116",
+    "tests/unit/scene_import_tests.cpp": "6abe08ba192d88e755cb9f7939256791e168fd2a91eb7a1b49f54a88a8ddd9e4",
+    "tools/check_boundaries.py": "c7388e5ff23ea8714789259d2d1382dce2fa26f387805c31a12b34aee4dee089",
+    "vcpkg.json": "a5f66679ea64f8f5b65ce3dae785f3d68eb2286c3b7cceccf8067dd56b5f902d",
+    "workers/colmap/export_poses.py": "8e41f4a2baa234c7170c49239f45dd2a63083d290edb559753e2c558e2de085a",
+    "workers/colmap/solve.py": "6fc6dfc819284dcca5a2774882b1004f284715dddc636856db08c54e14c186bd",
+    "workers/gsplat/README.md": "93e54ff0d40d899139a7e17b77c19f58f43fb0cfef5e5c01b0d44ff729a6f839",
+    "workers/gsplat/dataset.py": "f6a44c697c1db7ec9001ee5951577142ec117192f2093a5420557054e5da50bf",
+    "workers/gsplat/fit.py": "fdb8d767628a50175c823faa36a9913d56c4e0690a6e5858245d9606ba2505fc",
+    "workers/gsplat/local-environment.txt": "72710b2ac119a08a24f170e20b1695cafc9070587eae094ce6c9845882346aa3",
+    "workers/gsplat/losses.py": "b6df8b0e28fcd8ef0d3b9fd677251c51fabc09dad8ba5e8d78aa7182ffc1b086",
+    "workers/gsplat/train.py": "d516735e4cc3b830642b4e369a81bafce62a42f13b834abb2e964767d2bd1f99",
+    "workers/pose-requirements.txt": "a721af6f6990ea76663fc13a43cc5f598f2d8db358a1d48d77971e3c3074bd0f",
+    "workers/worker.py": "29ea2676a69d0470e9abe8e25531685184c6afbed54b06e8ea507bfc1ad810ed"
+  },
+  "specification_sha256": "12a456bb57eb2e27d1573f9e7a2260df868854cd1b9e36cf25e9af3fe7e656b8",
+  "scope": "Arch development; no full milestone or Q/P/N/E certification",
+  "fixture": {
+    "identity": "0975ef8365bc402e3533a97c97087a425eb71b8cc0644691c8137f413dc235cb",
+    "source_sha256": "51263d9991dcbc2136d0809ecba1a8ba1b261896f3b222b7afba19784a153ef6",
+    "ply_sha256": "8067bacb83ae590974a3425f2625e9f6d8ddfc3a5e5621bf28ef2787d45ea81c",
+    "steps": 7000,
+    "splats": 304867
+  },
+  "pose_completion_sha256": "cc144b5d655391172e02401cbc1c4da855e4bf77d3ed06113ad6c5d005714058",
+  "native_checkpoint_resume": {
+    "optimization_steps_this_check": 0,
+    "same_export_sha256": true
+  },
+  "profiles": {
+    "dev": {
+      "passed": true,
+      "tests": 24,
+      "log_sha256": "3ad6e88456cf0279d779e9511b69fbdef121cc270433b3b85a517bae665efe66"
+    },
+    "clang": {
+      "passed": true,
+      "tests": 24,
+      "log_sha256": "10f0415dbbbf71739aaeca7b5d7ba4b883bbfd4deb50ef9756a58f2f03dcdfdd"
+    },
+    "cxx23": {
+      "passed": true,
+      "tests": 24,
+      "log_sha256": "3a48d22c7fedbffa0eacc6bf60ded271819c40a4dff981549f0791bb701f19c0"
+    },
+    "asan": {
+      "passed": true,
+      "tests": 24,
+      "log_sha256": "e565c8085753297138869844d7bdb904a90ba111aabc929c1eb57954ce3a669d"
+    },
+    "tsan": {
+      "passed": true,
+      "tests": 24,
+      "log_sha256": "70d74cbb527dd6c6d940eb1f7cf564f3ff206d1502cb7776164358b1c45eb0f7"
+    }
+  },
+  "native_gui": {
+    "allocated_bytes": 220342032,
+    "device": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "fixture": "user-selected",
+    "frames": 4195,
+    "resident_splats": 304867,
+    "validation_errors": 0
+  },
+  "gpu_smoke": {
+    "frames": 51,
+    "overlap_pixel": [
+      130,
+      4,
+      68
+    ],
+    "pause_resume": true,
+    "replace_delete_resize": true,
+    "validation_errors": 0
+  },
+  "limits": {
+    "fixture_above_250k": true,
+    "native_platforms": [
+      "Arch NVIDIA laptop"
+    ],
+    "transport": "JSONL diagnostic; FlatBuffers pending",
+    "automatic_pose_chaining": false,
+    "python_identity_recomputed_by_cpp": false
+  },
+  "negative_gui_budget_check": {
+    "expected_exit": 2,
+    "bundle_retained_and_validated": true
+  }
+}

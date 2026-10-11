@@ -22,6 +22,17 @@ build/dev/we_viewer
 `release-vcpkg` is an unqualified release dependency configuration, not a certified
 package. Native Windows/macOS builds have not been run.
 
+GUI and CLI share a command to continue completed poses through explicit local
+fitting, checked publication and viewer loading:
+
+```sh
+build/dev/we_process reconstruct --request artifacts/reconstruction.json
+build/dev/we_viewer --reconstruction-request artifacts/reconstruction.json --max-splats 500000
+```
+
+See the [job schema](docs/protocols/jobs.md) for fresh fitting, checkpoint resume
+and explicit completed-fit reuse. The development recipe does not certify quality.
+
 ## View a scene
 
 ```sh

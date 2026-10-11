@@ -1,0 +1,223 @@
+#include "world_explorer/application/reconstruction_job.hpp"
+#include "job_validation.hpp"
+#include "world_explorer/application/scenes.hpp"
+#include "world_explorer/core/hash.hpp"
+#include <array>
+#include <set>
+
+namespace world_explorer {
+namespace {
+result<void> validate_job(const reconstruction_job& job) {
+    if (job.video.empty() || job.pose_job.empty() || job.fit_directory.empty() ||
+        job.scene_output.empty() || (job.steps != 7000 && job.steps != 30000) ||
+        job.max_image_dimension < 64 || job.max_image_dimension > 4096 || job.max_splats < 4 ||
+        job.max_splats > 2000000)
+        return fail(error_code::INVALID_ARGUMENT,
+                    "Invalid reconstruction paths or resource limits");
+    const auto output = std::filesystem::weakly_canonical(job.scene_output);
+    const auto fit = std::filesystem::weakly_canonical(job.fit_directory);
+    // Publication must not overwrite its own inputs, including via an ancestor path.
+    const std::array inputs{std::filesystem::weakly_canonical(job.video),
+                            std::filesystem::weakly_canonical(job.pose_job), fit};
+    for (const auto& input : inputs) {
+        const auto relative = input.lexically_relative(output);
+        const auto reverse = output.lexically_relative(input);
+        if (input == output || (!relative.empty() && *relative.begin() != "..") ||
+            (!reverse.empty() && *reverse.begin() != ".."))
+            return fail(error_code::INVALID_ARGUMENT,
+                        "Scene output overlaps reconstruction inputs");
+    }
+    for (const auto& input : {inputs[0], inputs[1]}) {
+        const auto relative = input.lexically_relative(fit);
+        const auto reverse = fit.lexically_relative(input);
+        if (input == fit || (!relative.empty() && *relative.begin() != "..") ||
+            (!reverse.empty() && *reverse.begin() != ".."))
+            return fail(error_code::INVALID_ARGUMENT, "Fit output overlaps pose or video input");
+    }
+    if (job.action == fit_action::REUSE_COMPLETED) {
+        if (!job_detail::valid_digest(job.completed_fit_identity) || !job.checkpoint.empty())
+            return fail(error_code::INVALID_ARGUMENT,
+                        "Completed reuse requires a fit identity and no checkpoint");
+    } else if (job.action == fit_action::START || job.action == fit_action::RESUME) {
+        if (job.gsplat_source.empty() || job.fitting_worker.script.empty() ||
+            job.fitting_worker.python.empty())
+            return fail(error_code::INVALID_ARGUMENT,
+                        "Fitting requires explicit local backend paths");
+        if (std::filesystem::exists(fit / "result.json"))
+            return fail(error_code::INVALID_ARGUMENT,
+                        "Completed fit exists; select explicit reuse or a fresh directory");
+        if (job.action == fit_action::RESUME && !std::filesystem::is_regular_file(job.checkpoint))
+            return fail(error_code::NOT_FOUND, "Resume requires a trusted local checkpoint");
+        if (job.action == fit_action::START &&
+            (!job.checkpoint.empty() || std::filesystem::exists(fit / "checkpoint.pt")))
+            return fail(error_code::INVALID_ARGUMENT,
+                        "Checkpoint exists; select explicit resume or a fresh directory");
+        if (!job.completed_fit_identity.empty())
+            return fail(error_code::INVALID_ARGUMENT,
+                        "Fit identity is only valid for completed reuse");
+    } else
+        return fail(error_code::INVALID_ARGUMENT, "Unknown fit action");
+    return {};
+}
+} // namespace
+
+result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& request) {
+    try {
+        const auto parsed = job_detail::read_json(request, std::size_t{64} * 1024);
+        if (!parsed)
+            return std::unexpected(parsed.error());
+        const auto& value = *parsed;
+        const std::set<std::string> fields{"schema_version",
+                                           "recipe",
+                                           "action",
+                                           "video",
+                                           "pose_job",
+                                           "gsplat_source",
+                                           "fit_directory",
+                                           "scene_output",
+                                           "fit_python",
+                                           "fit_worker_script",
+                                           "steps",
+                                           "max_image_dimension",
+                                           "max_splats",
+                                           "checkpoint",
+                                           "completed_fit_identity"};
+        if (!value.is_object() || value.at("schema_version") != 1 ||
+            value.at("recipe") != "local_gsplat_v1")
+            return fail(error_code::INVALID_DATA,
+                        "Only explicit local_gsplat_v1 development jobs are supported");
+        for (const auto& item : value.items())
+            if (!fields.contains(item.key()))
+                return fail(error_code::INVALID_DATA,
+                            "Unknown reconstruction field: " + item.key());
+        const auto base = std::filesystem::canonical(request).parent_path();
+        const auto path = [&](const char* name, bool required = true) -> std::filesystem::path {
+            if (!required && !value.contains(name))
+                return {};
+            const auto text = value.at(name).get<std::string>();
+            if (text.empty() || text.size() > 4096 || text.find('\0') != std::string::npos)
+                throw std::invalid_argument("Invalid local path");
+            const std::filesystem::path selected(text);
+            return selected.is_absolute() ? selected : base / selected;
+        };
+        reconstruction_job job;
+        job.video = path("video");
+        job.pose_job = path("pose_job");
+        job.fit_directory = path("fit_directory");
+        job.scene_output = path("scene_output");
+        job.gsplat_source = path("gsplat_source", false);
+        job.fitting_worker.script = path("fit_worker_script", false);
+        if (value.contains("fit_python")) {
+            job.fitting_worker.python = value.at("fit_python").get<std::string>();
+            if (job.fitting_worker.python.empty() || job.fitting_worker.python.size() > 4096 ||
+                job.fitting_worker.python.find('\0') != std::string::npos)
+                return fail(error_code::INVALID_DATA, "Invalid fitting executable");
+            if (std::filesystem::path(job.fitting_worker.python).has_parent_path())
+                job.fitting_worker.python = path("fit_python").string();
+        }
+        for (const auto* name : {"steps", "max_image_dimension", "max_splats"})
+            if (!value.at(name).is_number_unsigned() ||
+                value.at(name).get<std::uint64_t>() > UINT32_MAX)
+                return fail(error_code::INVALID_DATA, "Invalid integer resource limit");
+        job.steps = value.at("steps").get<std::uint32_t>();
+        job.max_image_dimension = value.at("max_image_dimension").get<std::uint32_t>();
+        job.max_splats = value.at("max_splats").get<std::uint32_t>();
+        const auto action = value.at("action").get<std::string>();
+        if (action == "start")
+            job.action = fit_action::START;
+        else if (action == "resume")
+            job.action = fit_action::RESUME;
+        else if (action == "reuse_completed")
+            job.action = fit_action::REUSE_COMPLETED;
+        else
+            return fail(error_code::INVALID_DATA, "Unknown fit action");
+        if (job.action != fit_action::REUSE_COMPLETED && !value.contains("fit_python"))
+            return fail(error_code::INVALID_DATA,
+                        "Fitting requires an explicit local Python executable");
+        job.checkpoint = path("checkpoint", false);
+        job.completed_fit_identity = value.value("completed_fit_identity", std::string{});
+        const auto valid = validate_job(job);
+        if (!valid)
+            return std::unexpected(valid.error());
+        return job;
+    } catch (const std::exception& exception) {
+        return fail(error_code::INVALID_DATA,
+                    "Reconstruction request invalid: " + std::string(exception.what()));
+    }
+}
+
+result<std::filesystem::path> reconstruct(const reconstruction_job& job,
+                                          const std::stop_token& stop, const log_callback& log) {
+    try {
+        const auto valid = validate_job(job);
+        if (!valid)
+            return std::unexpected(valid.error());
+        if (stop.stop_requested())
+            return fail(error_code::CANCELLED, "Reconstruction cancelled");
+        if (log)
+            log("Recipe: local_gsplat_v1 (development; quality unqualified).\nVerifying completed "
+                "poses...\n");
+        const auto source_hash = sha256_file(job.video, 16ULL * 1024 * 1024 * 1024, stop);
+        if (!source_hash)
+            return std::unexpected(source_hash.error());
+        const auto poses = job_detail::verify_poses(job, *source_hash, stop);
+        if (!poses)
+            return std::unexpected(poses.error());
+        if (job.action != fit_action::REUSE_COMPLETED) {
+            if (log)
+                log("Fitting locally; ETA unknown.\n");
+            std::vector<std::string> arguments{"--source",
+                                               job.gsplat_source.string(),
+                                               "--data",
+                                               poses->training.string(),
+                                               "--video",
+                                               job.video.string(),
+                                               "--output",
+                                               job.fit_directory.string(),
+                                               "--steps",
+                                               std::to_string(job.steps),
+                                               "--max-image-dimension",
+                                               std::to_string(job.max_image_dimension),
+                                               "--max-splats",
+                                               std::to_string(job.max_splats)};
+            if (job.action == fit_action::RESUME) {
+                arguments.emplace_back("--resume");
+                arguments.push_back(job.checkpoint.string());
+            }
+            const auto fitting = run_worker(job.fitting_worker, arguments, stop, log);
+            if (!fitting)
+                return std::unexpected(fitting.error());
+            if (*fitting != 0)
+                return fail(error_code::BACKEND_FAILURE,
+                            "Fit worker failed with exit code " + std::to_string(*fitting));
+        } else if (log)
+            log("Reusing the explicitly selected completed fit; optimization skipped.\n");
+        const auto checked_fit = job_detail::verify_fit(job, *poses, *source_hash);
+        if (!checked_fit)
+            return std::unexpected(checked_fit.error());
+        const auto final_source = sha256_file(job.video, 16ULL * 1024 * 1024 * 1024, stop);
+        if (!final_source)
+            return std::unexpected(final_source.error());
+        const auto final_poses = job_detail::verify_poses(job, *source_hash, stop);
+        if (!final_poses)
+            return std::unexpected(final_poses.error());
+        if (*source_hash != *final_source || poses->completion_hash != final_poses->completion_hash)
+            return fail(error_code::INVALID_DATA,
+                        "Reconstruction input changed; previous scene retained");
+        if (log)
+            log("Compiling checked fit and publishing scene...\n");
+        const auto published = compile_fit_scene({.input = job.fit_directory / "result.json",
+                                                  .destination = job.scene_output,
+                                                  .stop = stop},
+                                                 {*source_hash, *checked_fit});
+        if (!published)
+            return std::unexpected(published.error());
+        if (log)
+            log("Scene published. Scale arbitrary; geometry and walking unavailable.\n");
+        return job.scene_output;
+    } catch (const std::exception& exception) {
+        return fail(error_code::INVALID_DATA,
+                    "Reconstruction failed: " + std::string(exception.what()));
+    }
+}
+} // namespace world_explorer
