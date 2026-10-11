@@ -1,6 +1,8 @@
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/application/scenes.hpp"
+#include "world_explorer/core/hash.hpp"
+#include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
 #include <chrono>
 #include <csignal>
 #include <iostream>
@@ -34,6 +36,7 @@ int main(int argc, char** argv) {
                    "  we_process compile PLY OUTPUT.wexplore\n"
                    "  we_process compile-fit RESULT.json OUTPUT.wexplore\n"
                    "  we_process validate SCENE.wexplore\n"
+                   "  we_process replay-frames DECODE_STAGE VIDEO (local decoded-image replay)\n"
                    "  we_process fixture OUTPUT.wexplore  (synthetic diagnostic)\n"
                    "Worker overrides: --worker-script PATH --worker-python EXECUTABLE\n";
             return argc < 2 ? 2 : 0;
@@ -102,6 +105,50 @@ int main(int argc, char** argv) {
             if (interrupted)
                 cancellation.request_stop();
         });
+        if (command == "replay-frames") {
+            if (argc != 4) {
+                std::cerr << "Usage: we_process replay-frames DECODE_STAGE VIDEO\n";
+                return 2;
+            }
+            const auto digest =
+                sha256_file(argv[3], 16ULL * 1024 * 1024 * 1024, cancellation.get_token());
+            if (!digest) {
+                std::cerr << digest.error().message << '\n';
+                return digest.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            const auto source = open_decoded_frame_source(
+                {.stage_directory = argv[2], .source_sha256 = *digest}, cancellation.get_token());
+            if (!source) {
+                std::cerr << source.error().message << '\n';
+                return source.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            std::size_t count{};
+            const auto start = std::chrono::steady_clock::now();
+            while (true) {
+                const auto event = (*source)->read_next(cancellation.get_token());
+                if (!event) {
+                    std::cerr << event.error().message << '\n';
+                    return event.error().code == error_code::CANCELLED ? 130 : 2;
+                }
+                if (const auto* frame = std::get_if<frame_packet>(&*event)) {
+                    ++count;
+                    std::cout << "Frame " << frame->id.value << ", capture_ns "
+                              << frame->capture_time.count() << ", PTS "
+                              << frame->original_timestamp.pts << " @ "
+                              << frame->original_timestamp.time_base_numerator << '/'
+                              << frame->original_timestamp.time_base_denominator << ", "
+                              << frame->pixels.width << 'x' << frame->pixels.height
+                              << " RGB8 sha256 " << sha256(*frame->pixels.bytes) << '\n';
+                }
+                if (std::holds_alternative<source_end>(*event))
+                    break;
+            }
+            std::cout
+                << "Replayed " << count << " committed frames in "
+                << std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count()
+                << " s; no reconstruction rerun.\n";
+            return 0;
+        }
         if (command == "reconstruct") {
             if (argc != 4 || std::string(argv[2]) != "--request") {
                 std::cerr << "Usage: we_process reconstruct --request JOB.json\n";

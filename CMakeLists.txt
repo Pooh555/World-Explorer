@@ -95,11 +95,12 @@ add_custom_command(OUTPUT "${WE_WIRE_DIRECTORY}/events_generated.h"
   DEPENDS ${WE_FLATC} schemas/worker/events.fbs
   VERBATIM)
 add_library(reconstruction_adapters src/reconstruction_adapters/process.cpp
-  src/reconstruction_adapters/worker_protocol.cpp "${WE_WIRE_DIRECTORY}/events_generated.h")
+  src/reconstruction_adapters/worker_protocol.cpp src/reconstruction_adapters/decoded_frame_source.cpp
+  "${WE_WIRE_DIRECTORY}/events_generated.h")
 we_target(reconstruction_adapters)
 target_include_directories(reconstruction_adapters SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
 target_compile_definitions(reconstruction_adapters PRIVATE WE_WIRE_BINDINGS="${WE_WIRE_DIRECTORY}/python")
-target_link_libraries(reconstruction_adapters PUBLIC reconstruction_api)
+target_link_libraries(reconstruction_adapters PUBLIC reconstruction_api PRIVATE nlohmann_json::nlohmann_json)
 
 add_library(map_store src/map_store/map_store.cpp)
 we_target(map_store)

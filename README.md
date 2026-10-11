@@ -97,6 +97,13 @@ remain explicitly incomplete; committed output is preserved. A recovery request
 can set `pose_recipe` to `exhaustive_guided`; retain the original result and record
 the extra cost. Neither recipe guarantees reconstruction for low-parallax footage.
 
+The native frame-source inspection path can replay a committed decode stage:
+`build/dev/we_process replay-frames DECODE_STAGE VIDEO`. It checks image references
+and prints original timestamps and RGB digests without rerunning reconstruction.
+See the [capture contract](docs/protocols/capture.md). Shared worker commands now
+receive verified [FlatBuffers events](docs/protocols/worker.md); direct Python
+invocation retains JSONL diagnostics.
+
 The explicitly named local development fit now works with real gsplat output;
 see [worker setup](workers/gsplat/README.md) for its pinned environment and native
 `we_process fit` / `compile-fit` commands. Open a resulting scene with
