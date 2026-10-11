@@ -74,9 +74,20 @@ were exercised. Four local profiles pass 27/27 tests, including ASan/UBSan/LSan.
 See [worker wire evidence](validation/2026-10-11-worker-wire.md). Commands still
 select explicit JSON requests through argv; persistent bidirectional control is pending.
 
-Next executable task: connect concrete native frame-source and batch pose-estimator
-adapters to the existing contracts. Use the successful pose job and fit above;
-do not restart them. Manual pose preparation and direct Python JSONL diagnostics
+The native `frame_source` now replays that committed decode stage with immutable
+RGB leases, stable IDs, original PTS, seek/reset/EOF, bounded decoding and cancellation.
+All 63 real frames replay; independent first/last RGB hashes match. Five local
+profiles pass 31/31 CPU/worker checks. See [frame evidence](validation/2026-10-11-frame-replay.md)
+and [source contract](protocols/capture.md).
+
+Next executable task: implement the concrete native batch `pose_estimator`
+adapter and its admission/event flow. Begin with checked import of the existing
+`artifacts/sample2-job` canonical poses and camera models, preserving OPENCV
+distortion coefficients and the source's stable ID mapping. Label completed-output
+replay explicitly; it cannot certify a new solve. Then connect isolated worker
+batch solving to submit/finish/drain with bounded ownership, cancellation and
+idempotent operation IDs. Use the successful job and fit; do not restart them.
+Manual pose preparation and direct Python JSONL diagnostics
 remain transitional, not a waiver. Full video preflight
 and automatic pose-to-fit chaining are still pending.
 
@@ -88,7 +99,7 @@ M7–M8 remain deferred. User edits to `docs/execution_prompt.md` and
 See [local evidence](validation/2026-10-11-foundation.md) for check scope and commands.
 See [capture and current checks](validation/2026-10-11-capture.md) for the real fit,
 failure/resume evidence and exact capture/fixture identities. The coordinator
-report records the current **24/24** CPU checks in GCC/Clang C++26, explicit C++23,
+report records its historical **24/24** CPU checks in GCC/Clang C++26, explicit C++23,
 ASan/UBSan/LSan and separate TSan, plus native GUI and GPU checks.
 The development resize (1280 px), 304,867-splat scene and this laptop do not
 certify original benchmark/platform gates. No milestone was promoted to VERIFIED.
