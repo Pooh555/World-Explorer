@@ -25,6 +25,7 @@ MAX_MESSAGE_BYTES = 1024 * 1024
 MAX_LOG_BYTES = 8 * 1024 * 1024
 ROOT = Path(__file__).resolve().parent
 CANCELLED = threading.Event()
+WIRE = None
 LIMITS = {
     "max_source_bytes": 16 * 1024**3,
     "max_output_bytes": 32 * 1024**3,
@@ -49,6 +50,15 @@ def emit(event: str, **values: object) -> None:
     encoded = json.dumps(message, allow_nan=False, separators=(",", ":"))
     if len(encoded.encode()) > MAX_MESSAGE_BYTES:
         raise WorkerError("RESOURCE_LIMIT", "Worker event exceeds message limit")
+    if WIRE and WIRE.WRITER:
+        if event == "job_completed":
+            result = values["result"]
+            WIRE.completed(result["stage"], Path(result["output"]) / "result.json")
+        elif event == "job_failed":
+            WIRE.failure(values["code"], values["stage"], values["message"], values["recovery"])
+        else:
+            WIRE.progress(values.get("stage", event), encoded, values.get("elapsed_seconds", 0))
+        return
     print(encoded, flush=True)
 
 
@@ -215,7 +225,7 @@ def capabilities() -> dict:
             packages[name] = None
     tools = {name: tool_identity(name) for name in ("ffmpeg", "ffprobe", "colmap")}
     return {"api_version": 1, "backend": "world_explorer_local", "backend_version": "0.1.0",
-            "wire_format": "jsonl-diagnostic-v1", "sensor_types": ["video"],
+            "wire_format": "flatbuffers-events-v1; jsonl diagnostic CLI available", "sensor_types": ["video"],
             "batch": True, "streaming_tracker": False, "remote": False,
             "checkpoint_semantics": "completed_stages; appearance restarts (upstream checkpoints are eval-only)",
             "checkpoint_rights": "local user data; backend package licenses apply",
@@ -527,6 +537,13 @@ class Job:
 
 
 def main() -> int:
+    global WIRE
+    import we_protocol
+    WIRE = we_protocol
+    WIRE.configure(sys.argv, backend="world_explorer_local", backend_version="0.1.0",
+                   sensors=["video"], devices=["cpu_poses", "cuda_appearance_requires_probe"],
+                   checkpoint_semantics="completed stages; upstream appearance restarts",
+                   checkpoint_rights="local user data; backend package licenses apply", limits=LIMITS)
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("capabilities")
@@ -542,12 +559,14 @@ def main() -> int:
     try:
         if args.command == "capabilities":
             emit("capabilities", **capabilities())
+            WIRE.completed("capabilities")
             return 0
         request = (read_json(Path(args.request)) if args.command == "run" else
                    {"schema_version": 1, "source": args.source, "job_dir": args.job_dir, "stop_after": "inspect"})
         job = Job(request)
         emit("job_started", source_sha256=job.source_hash, job_dir=str(job.directory))
-        result = job.run()
+        with WIRE.diagnostic_context():
+            result = job.run()
         emit("job_completed", result=result)
         return 0
     except (WorkerError, OSError, ValueError, KeyError, TypeError) as error:

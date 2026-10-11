@@ -193,7 +193,7 @@ TEST_CASE("coordinator worker failure and missing completion cannot replace an e
     fixture.job.completed_fit_identity.clear();
     fixture.job.fit_directory = fixture.root / "fresh-fit";
     fixture.job.gsplat_source = fixture.root / "backend source with spaces";
-    fixture.job.fitting_worker = {fixture.root / "worker.py", WE_TEST_PYTHON};
+    fixture.job.fitting_worker = {fixture.root / "worker.py", WE_TEST_PYTHON, false};
     int exit_code = 7;
     SECTION("backend nonzero exit") {}
     SECTION("zero exit without a fit result") { exit_code = 0; }
@@ -215,7 +215,7 @@ TEST_CASE("coordinator forwards bounded start and resume arguments and rechecks 
     const auto previous_fit = fixture.job.fit_directory;
     fixture.job.fit_directory = fixture.root / "new fit";
     fixture.job.gsplat_source = fixture.root / "source $literal ; with spaces";
-    fixture.job.fitting_worker = {fixture.root / "worker.py", WE_TEST_PYTHON};
+    fixture.job.fitting_worker = {fixture.root / "worker.py", WE_TEST_PYTHON, false};
     fixture.job.action = fit_action::START;
     fixture.job.completed_fit_identity.clear();
     bool change_source = false;

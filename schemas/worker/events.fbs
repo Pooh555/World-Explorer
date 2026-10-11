@@ -1,0 +1,51 @@
+namespace world_explorer.wire;
+
+table handshake {
+  backend:string (required);
+  backend_version:string (required);
+  sensors:[string] (required);
+  batch:bool;
+  streaming_tracking:bool;
+  device_options:[string] (required);
+  checkpoint_semantics:string (required);
+  checkpoint_rights:string (required);
+  max_message_bytes:uint;
+  max_frames:uint;
+  max_source_bytes:ulong;
+  max_output_bytes:ulong;
+}
+
+table progress {
+  stage:string (required);
+  message:string (required);
+  elapsed_seconds:double;
+}
+
+table artifact_reference {
+  path:string (required);
+  sha256:string (required);
+  bytes:ulong;
+}
+
+table completed {
+  stage:string (required);
+  artifact:artifact_reference;
+}
+
+table failure {
+  code:string (required);
+  stage:string (required);
+  message:string (required);
+  recovery:string (required);
+}
+
+union payload { handshake, progress, completed, failure }
+table envelope {
+  api_major:ushort = 1;
+  api_minor:ushort;
+  sequence:ulong;
+  body:payload;
+}
+root_type envelope;
+file_identifier "WEW1";
+file_extension "wewire";
