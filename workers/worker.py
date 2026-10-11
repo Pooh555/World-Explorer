@@ -40,9 +40,10 @@ LIMITS = {
 
 
 class WorkerError(Exception):
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, stage: str | None = None):
         super().__init__(message)
         self.code = code
+        self.stage = stage
 
 
 def emit(event: str, **values: object) -> None:
@@ -225,7 +226,7 @@ def capabilities() -> dict:
             packages[name] = None
     tools = {name: tool_identity(name) for name in ("ffmpeg", "ffprobe", "colmap")}
     return {"api_version": 1, "backend": "world_explorer_local", "backend_version": "0.1.0",
-            "wire_format": "flatbuffers-events-v1; jsonl diagnostic CLI available", "sensor_types": ["video"],
+            "wire_format": "flatbuffers-events-v1; jsonl diagnostic CLI available", "sensor_types": ["video", "image_sequence"],
             "batch": True, "streaming_tracker": False, "remote": False,
             "checkpoint_semantics": "completed_stages; appearance restarts (upstream checkpoints are eval-only)",
             "checkpoint_rights": "local user data; backend package licenses apply",
@@ -295,18 +296,21 @@ def verify_stage(directory: Path, key: str, budget: int) -> bool:
 
 
 class Job:
-    def __init__(self, request: dict):
-        self.request = validate_request(request)
+    def __init__(self, request: dict, *, journal_identity: dict | None = None):
+        # The journal boundary validates its image inventory before constructing
+        # this stage coordinator; ordinary video requests use the video validator.
+        self.request = validate_request(request) if journal_identity is None else request
         self.directory = Path(self.request["job_dir"])
-        self.source = Path(self.request["source"])
+        self.source = Path(self.request["source"] if journal_identity is None else self.request["journal"])
         self.limits = self.request["limits"]
         self.directory.mkdir(parents=True, exist_ok=True)
-        self.source_hash = sha256(self.source)
+        self.source_hash = sha256(self.source) if journal_identity is None else journal_identity["sha256"]
         self.backend = capabilities()
         self.stage = "initialization"
-        self.source_identity = {"sha256": self.source_hash, "bytes": self.source.stat().st_size}
+        self.source_identity = ({"sha256": self.source_hash, "bytes": self.source.stat().st_size}
+                                if journal_identity is None else journal_identity)
         self.recipe_identity = canonical_hash({
-            "request": {k: v for k, v in self.request.items() if k not in ("job_dir", "stop_after", "source")},
+            "request": {k: v for k, v in self.request.items() if k not in ("job_dir", "stop_after", "source", "journal")},
             "source": self.source_identity, "backend": self.backend,
             "worker_hash": sha256(Path(__file__)),
             "adapter_hashes": {str(path.relative_to(ROOT)): sha256(path)
@@ -541,7 +545,7 @@ def main() -> int:
     import we_protocol
     WIRE = we_protocol
     WIRE.configure(sys.argv, backend="world_explorer_local", backend_version="0.1.0",
-                   sensors=["video"], devices=["cpu_poses", "cuda_appearance_requires_probe"],
+                   sensors=["video", "image_sequence"], devices=["cpu_poses", "cuda_appearance_requires_probe"],
                    checkpoint_semantics="completed stages; upstream appearance restarts",
                    checkpoint_rights="local user data; backend package licenses apply", limits=LIMITS)
     parser = argparse.ArgumentParser(description=__doc__)
@@ -552,6 +556,8 @@ def main() -> int:
     inspect.add_argument("--job-dir", required=True)
     run = commands.add_parser("run")
     run.add_argument("--request", required=True)
+    journal = commands.add_parser("solve-journal")
+    journal.add_argument("--request", required=True)
     args = parser.parse_args()
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, lambda *_: CANCELLED.set())
@@ -560,6 +566,12 @@ def main() -> int:
         if args.command == "capabilities":
             emit("capabilities", **capabilities())
             WIRE.completed("capabilities")
+            return 0
+        if args.command == "solve-journal":
+            from colmap.journal import run as run_journal
+            with WIRE.diagnostic_context():
+                result = run_journal(sys.modules[__name__], read_json(Path(args.request)))
+            emit("job_completed", result=result)
             return 0
         request = (read_json(Path(args.request)) if args.command == "run" else
                    {"schema_version": 1, "source": args.source, "job_dir": args.job_dir, "stop_after": "inspect"})
@@ -571,7 +583,7 @@ def main() -> int:
         return 0
     except (WorkerError, OSError, ValueError, KeyError, TypeError) as error:
         code = error.code if isinstance(error, WorkerError) else "BAD_INPUT"
-        emit("job_failed", code=code, stage=job.stage if job else "request", message=str(error),
+        emit("job_failed", code=code, stage=getattr(error, "stage", None) or (job.stage if job else "request"), message=str(error),
              recovery="Committed stages are retained. Correct the cause and resubmit the same request.")
         return 130 if code == "CANCELLED" else 2
 

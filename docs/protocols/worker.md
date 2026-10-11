@@ -38,8 +38,16 @@ Direct Python CLI invocation without `--wire-bindings DIR` retains JSONL diagnos
 output. This is explicit diagnostic compatibility, never a native fallback.
 `worker_configuration.framed_protocol=false` is used by labeled synthetic
 subprocess fixtures; production callers default to verified events.
-Native frame-source/pose-estimator adapters and canonical FlatBuffers pose assets
-remain M1 work; their public interfaces need concrete execution integration.
+Native decoded-frame replay, completed-pose import/replay and fresh selected-frame
+COLMAP batch solving are integrated; see [capture](capture.md) and [poses](poses.md).
+Canonical FlatBuffers pose assets and persistent map snapshots remain M1 work.
+
+`solve-journal --request PATH` consumes a hash-bound native RGB journal, commits a
+checked PNG stage and runs the same CPU COLMAP path. It does not inspect/decode the
+video or fit appearance. The native estimator always uses verified event transport;
+the request is still an explicit JSON file selected through argv. Original PTS,
+capture times and source identities are preserved. The optional native event
+observer exposes typed worker capability/failure/completion messages to adapters.
 
 Stages: inspect → decode → poses → appearance. Every stage uses a source/config/
 backend/adapter content identity, an immutable temporary directory and a checksummed

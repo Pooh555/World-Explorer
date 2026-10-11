@@ -1,4 +1,5 @@
 #include "artifact_io.hpp"
+#include "observation_identity.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
 #include <algorithm>
@@ -11,30 +12,6 @@
 namespace world_explorer {
 namespace {
 constexpr std::size_t METADATA_BUDGET = std::size_t{256} * 1024;
-std::string header_digest(const frame_packet& frame) {
-    const std::array values{
-        frame.id.value,
-        frame.capture.value,
-        frame.calibration.value,
-        static_cast<std::uint64_t>(frame.capture_time.count()),
-        static_cast<std::uint64_t>(frame.original_timestamp.pts),
-        static_cast<std::uint64_t>(frame.original_timestamp.time_base_numerator),
-        static_cast<std::uint64_t>(frame.original_timestamp.time_base_denominator),
-        static_cast<std::uint64_t>(frame.pixels.width),
-        static_cast<std::uint64_t>(frame.pixels.height),
-        static_cast<std::uint64_t>(frame.pixels.row_stride),
-        static_cast<std::uint64_t>(frame.pixels.format),
-        static_cast<std::uint64_t>(frame.measured_depth.has_value()),
-        static_cast<std::uint64_t>(frame.imu_samples.size())};
-    std::array<std::byte, values.size() * 8> bytes{};
-    std::size_t offset{};
-    for (auto value : values)
-        for (int index = 0; index < 8; ++index) {
-            bytes[offset++] = static_cast<std::byte>(value & 255ULL);
-            value >>= 8U;
-        }
-    return sha256(bytes);
-}
 class completed_pose_replay final : public pose_estimator {
   public:
     explicit completed_pose_replay(std::shared_ptr<const completed_pose_dataset> dataset)
@@ -69,7 +46,7 @@ class completed_pose_replay final : public pose_estimator {
             if (!started_ || !observation.operation.value)
                 return fail(error_code::INVALID_ARGUMENT,
                             "Pose replay requires start and operation ID");
-            const auto header = header_digest(observation.frame);
+            const auto header = adapter_detail::header_digest(observation.frame);
             if (const auto prior = receipts_.find(observation.operation);
                 prior != receipts_.end()) {
                 if (prior->second.header != header ||

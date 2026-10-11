@@ -37,9 +37,9 @@ struct decoded_frame_catalog {
 // Used image bytes still require checksum verification before consumption.
 result<decoded_frame_catalog> inspect_decoded_frame_source(decoded_source_config config,
                                                            const std::stop_token& stop = {});
-// Replay a committed timestamp_sampling_v1 decode stage. This does not decode
-// or reconstruct the source video again. One cancellable decoder runs per image;
-// callers own immutable RGB8 leases. Seeking emits a reset before the next frame.
+// Replay a committed timestamp_sampling_v1 or native_rgb_journal_v1 decode stage. This does not
+// decode or reconstruct the source video again. One cancellable decoder runs per image; callers own
+// immutable RGB8 leases. Seeking emits a reset before the next frame.
 result<std::unique_ptr<frame_source>> open_decoded_frame_source(decoded_source_config config,
                                                                 const std::stop_token& stop = {});
 } // namespace world_explorer

@@ -95,13 +95,33 @@ that pointer or restart work. Use the explicit retained stage:
 build/dev/we_process replay-poses artifacts/sample2-job data/local/sample.mp4 --decode-stage artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7dcab6451304305b9987c5e1da3e8ab1f5eaa9c6b
 ```
 
-Next executable task: connect an isolated COLMAP batch-solving path to the native
-`pose_estimator` admission/finish/drain contract, using an immutable selected-frame
-journal and explicit worker configuration. Validate leases, write accepted assets
-before consuming input, preserve failed admission and bound disk/memory/event queues;
-prove fresh solve/failure/cancellation separately from completed replay. Reuse the
-existing successful job/fit for inspection; do not restart them. Then finish
-canonical FlatBuffers pose/calibration assets and durable map snapshot publication.
+The native `BATCH_SOLVE` estimator now admits ordered RGB leases into a bounded
+immutable journal before consuming them and runs isolated CPU COLMAP at finish.
+Its shared application/CLI path preserves failed admission, retries and cancellation;
+five local profiles pass **40/40** tests. Real PPM conversion exposed an automatic
+FFmpeg probing error, fixed with explicit image2/PPM decoding. The subsequent
+sequential attempt produced 2- and 63-frame models and was rejected without changing
+the single-model gate. One explicit exhaustive-guided recovery succeeds in
+`artifacts/sample2-native-poses-20261012-recovery`: one model, **63/63 poses**,
+30294 points, one OPENCV calibration, an immutable in-memory map at epoch 0/revision 1.
+The 62.842 s PNG stage and 1162.089 s pose stage are development timings, not P1.
+Pillow independently confirms RGB equivalence for all 63 original/admitted/converted
+frames. No optimizer was run; original poses/fit and both failures remain preserved.
+See [batch evidence](validation/2026-10-12-batch-poses.md) and [contract](protocols/poses.md).
+
+Working inspection of the fresh result (no solve or fit):
+
+```sh
+build/dev/we_process replay-poses artifacts/sample2-native-poses-20261012-recovery data/local/sample.mp4
+```
+
+Next executable task: define the canonical FlatBuffers pose/calibration schema and
+native checked writer/reader, including camera coefficients, preprocessing,
+source/journal/pose provenance and scale/gravity. Use the retained successful poses
+to verify serialization without rerunning COLMAP. Then integrate durable map
+snapshot/revision publication and reload with checksum/atomicity/corruption tests.
+Keep both successful pose jobs and the original completed fit; do not mix their
+pose provenance or restart them.
 Manual pose preparation and direct Python JSONL diagnostics
 remain transitional, not a waiver. Full video preflight
 and automatic pose-to-fit chaining are still pending.
