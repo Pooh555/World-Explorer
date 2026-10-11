@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 #include <set>
 #include <sstream>
+#include <string_view>
 #include <system_error>
 #ifdef _WIN32
 #include <io.h>
@@ -96,6 +97,13 @@ std::vector<std::byte> read_file(const std::filesystem::path& path, std::size_t 
         input.peek() != std::char_traits<char>::eof())
         throw std::runtime_error("asset read changed or failed");
     return bytes;
+}
+json parse_json(std::span<const std::byte> bytes) {
+    // JSON consumes characters; std::char_traits<std::byte> is not portable.
+    const auto text =
+        bytes.empty() ? std::string_view{}
+                      : std::string_view(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+    return json::parse(text);
 }
 void write_atomic(const std::filesystem::path& path, std::span<const std::byte> bytes) {
     static std::atomic<std::uint64_t> sequence{};
@@ -335,7 +343,7 @@ result<scene_snapshot> load_bundle(const std::filesystem::path& directory, bundl
     try {
         const auto bytes =
             read_file(asset_path(directory, "manifest.json"), limits.max_manifest_bytes);
-        const auto manifest = json::parse(bytes.begin(), bytes.end());
+        const auto manifest = parse_json(bytes);
         if (unsigned_field(manifest, "schema_version") != 1)
             return fail(error_code::UNSUPPORTED_OPERATION,
                         "unsupported scene schema major version");
@@ -377,7 +385,7 @@ result<scene_snapshot> load_bundle(const std::filesystem::path& directory, bundl
                       limits.max_manifest_bytes);
         if (!hash_valid(provenance_hash) || sha256(provenance) != provenance_hash)
             throw std::runtime_error("provenance checksum mismatch");
-        const auto provenance_value = json::parse(provenance.begin(), provenance.end());
+        const auto provenance_value = parse_json(provenance);
         if (provenance_value.at("schema_version") != 1)
             throw std::runtime_error("unsupported provenance schema");
         if (provenance_value.contains("metadata"))
