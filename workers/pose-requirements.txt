@@ -1,0 +1,4 @@
+# Python 3.12.15; isolated official COLMAP API, no pretrained model.
+pycolmap==4.2.1
+numpy==2.2.6
+Pillow==11.3.0

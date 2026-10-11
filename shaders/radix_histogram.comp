@@ -1,0 +1,14 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=256) in;
+shared uint counts[16];
+void main() {
+    uint lane=gl_LocalInvocationID.x;
+    if(lane<16) counts[lane]=0;
+    barrier();
+    uint id=gl_GlobalInvocationID.x;
+    if(id<params.count_shift.x) atomicAdd(counts[(keys_in[id].x>>params.count_shift.y)&15],1);
+    barrier();
+    if(lane<16) histogram[gl_WorkGroupID.x*16+lane]=counts[lane];
+}

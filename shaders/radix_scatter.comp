@@ -1,0 +1,22 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=256) in;
+shared uint masks[128];
+void main() {
+    uint lane=gl_LocalInvocationID.x;
+    if(lane<128) masks[lane]=0;
+    barrier();
+    uint id=gl_GlobalInvocationID.x;
+    uint bucket=0;
+    if(id<params.count_shift.x) {
+        bucket=(keys_in[id].x>>params.count_shift.y)&15;
+        atomicOr(masks[bucket*8+lane/32],1u<<(lane%32));
+    }
+    barrier();
+    if(id>=params.count_shift.x) return;
+    uint preceding=0;
+    for(uint word=0;word<lane/32;++word) preceding+=bitCount(masks[bucket*8+word]);
+    preceding+=bitCount(masks[bucket*8+lane/32]&((1u<<(lane%32))-1u));
+    keys_out[histogram[gl_WorkGroupID.x*16+bucket]+preceding]=keys_in[id];
+}

@@ -1,0 +1,54 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=256) in;
+vec3 coefficient(uint id,uint index) {
+    return vec3(splats[id].sh[index*3],splats[id].sh[index*3+1],splats[id].sh[index*3+2]);
+}
+vec3 evaluate_sh(uint id,vec3 direction) {
+    float x=direction.x,y=direction.y,z=direction.z;
+    vec3 color=vec3(0.5)+0.28209479177387814*coefficient(id,0);
+    uint degree=uint(splats[id].scale_degree.w);
+    if(degree>0) color+=0.4886025119029199*(-y*coefficient(id,1)+z*coefficient(id,2)-x*coefficient(id,3));
+    if(degree>1) color+=1.0925484305920792*x*y*coefficient(id,4)-1.0925484305920792*y*z*coefficient(id,5)+0.31539156525252005*(3*z*z-1)*coefficient(id,6)-1.0925484305920792*x*z*coefficient(id,7)+0.5462742152960396*(x*x-y*y)*coefficient(id,8);
+    if(degree>2) color+=-0.5900435899266435*y*(3*x*x-y*y)*coefficient(id,9)+2.890611442640554*x*y*z*coefficient(id,10)-0.4570457994644658*y*(5*z*z-1)*coefficient(id,11)+0.3731763325901154*z*(5*z*z-3)*coefficient(id,12)-0.4570457994644658*x*(5*z*z-1)*coefficient(id,13)+1.445305721320277*z*(x*x-y*y)*coefficient(id,14)-0.5900435899266435*x*(x*x-3*y*y)*coefficient(id,15);
+    return max(color,vec3(0));
+}
+void main() {
+    uint id=gl_GlobalInvocationID.x;
+    if(id>=params.count_shift.x) return;
+    projected[id].conic_opacity=vec4(0);
+    projected[id].center_radius=vec4(-100000, -100000, 0, 0);
+    keys_in[id]=uvec2(0xffffffff,id);
+    vec3 delta=splats[id].mean_opacity.xyz-params.camera_position.xyz;
+    vec3 p=vec3(dot(params.right.xyz,delta),dot(params.down.xyz,delta),dot(params.forward.xyz,delta));
+    if(any(isnan(p))||any(isinf(p))||p.z<params.viewport_clip.z||p.z>params.viewport_clip.w) return;
+    mat3 view=transpose(mat3(params.right.xyz,params.down.xyz,params.forward.xyz));
+    vec4 q=splats[id].rotation;
+    mat3 rotation=mat3(quaternion_rotate(q,vec3(1,0,0)),quaternion_rotate(q,vec3(0,1,0)),quaternion_rotate(q,vec3(0,0,1)));
+    mat3 axes=view*rotation;
+    axes[0]*=splats[id].scale_degree.x; axes[1]*=splats[id].scale_degree.y; axes[2]*=splats[id].scale_degree.z;
+    mat3 covariance=axes*transpose(axes);
+    float fx=params.intrinsics.x,fy=params.intrinsics.y;
+    vec2 center=vec2(fx*p.x/p.z,fy*p.y/p.z)+params.intrinsics.zw;
+    // Pinned gsplat perspective Jacobian clips only derivative coordinates at the image margin.
+    vec2 limits=0.3*params.viewport_clip.xy/vec2(fx,fy);
+    float tx=p.z*clamp(p.x/p.z,-params.intrinsics.z/fx-limits.x,(params.viewport_clip.x-params.intrinsics.z)/fx+limits.x);
+    float ty=p.z*clamp(p.y/p.z,-params.intrinsics.w/fy-limits.y,(params.viewport_clip.y-params.intrinsics.w)/fy+limits.y);
+    vec3 jx=vec3(fx/p.z,0,-fx*tx/(p.z*p.z));
+    vec3 jy=vec3(0,fy/p.z,-fy*ty/(p.z*p.z));
+    float a=dot(jx,covariance*jx)+0.3;
+    float b=dot(jx,covariance*jy);
+    float c=dot(jy,covariance*jy)+0.3;
+    float determinant=a*c-b*b;
+    float opacity=splats[id].mean_opacity.w;
+    if(!(determinant>0)||isinf(determinant)||opacity<1.0/255.0) return;
+    float extend=min(3.33,sqrt(2*log(opacity*255)));
+    vec2 radius=ceil(extend*sqrt(vec2(a,c)));
+    if(center.x+radius.x<=0||center.y+radius.y<=0||center.x-radius.x>=params.viewport_clip.x||center.y-radius.y>=params.viewport_clip.y) return;
+    projected[id].center_radius=vec4(center,radius);
+    projected[id].conic_opacity=vec4(c,-b,a,opacity)/vec4(determinant,determinant,determinant,1);
+    vec3 sh_direction=normalize(quaternion_rotate(splats[id].world_to_sh,delta));
+    projected[id].color_depth=vec4(evaluate_sh(id,sh_direction),p.z);
+    keys_in[id]=uvec2(~floatBitsToUint(p.z),id);
+}
