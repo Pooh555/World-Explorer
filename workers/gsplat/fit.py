@@ -13,7 +13,11 @@ import os
 from pathlib import Path
 import signal
 import subprocess
+import sys
 import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import we_protocol
 
 import numpy as np
 from PIL import Image
@@ -203,7 +207,7 @@ def fit(args):
                         "cuda_peak_reserved_bytes": torch.cuda.max_memory_reserved()}
                 progress.write(json.dumps(item, allow_nan=False) + "\n")
                 progress.flush()
-                print(json.dumps(item), flush=True)
+                we_protocol.progress("appearance", json.dumps(item), item["elapsed_seconds"])
             if (step + 1) % 500 == 0:
                 checkpoint(checkpoint_path, identity, params, optimizers, scheduler, state, step + 1)
         checkpoint(checkpoint_path, identity, params, optimizers, scheduler, state, args.steps)
@@ -246,6 +250,12 @@ def fit(args):
 
 
 def main():
+    we_protocol.configure(sys.argv, backend="local_gsplat_v1", backend_version="gsplat-1.5.3",
+                          sensors=["video", "undistorted_colmap"], devices=["cuda"],
+                          checkpoint_semantics="complete local optimizer and RNG checkpoint",
+                          checkpoint_rights="local user data; gsplat Apache-2.0",
+                          limits={"max_frames": 120, "max_source_bytes": 16 * 1024**3,
+                                  "max_output_bytes": 32 * 1024**3})
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--data", type=Path, required=True)
@@ -270,7 +280,12 @@ def main():
             raise RuntimeError("Interrupted job has a checkpoint; explicitly resume or select a fresh directory")
         for sig in (signal.SIGINT, signal.SIGTERM):
             signal.signal(sig, request_stop)
-        print(json.dumps(fit(args), allow_nan=False), flush=True)
+        with we_protocol.diagnostic_context():
+            result = fit(args)
+        if we_protocol.WRITER:
+            we_protocol.completed("appearance", args.output / "result.json")
+        else:
+            print(json.dumps(result, allow_nan=False), flush=True)
     finally:
         lock.unlink(missing_ok=True)
 
@@ -279,8 +294,8 @@ if __name__ == "__main__":
     try:
         main()
     except InterruptedError as error:
-        print(str(error), flush=True)
+        we_protocol.failure("CANCELLED", "appearance", str(error))
         raise SystemExit(130)
     except Exception as error:
-        print(f"Development appearance failed: {error}", flush=True)
+        we_protocol.failure("BACKEND_FAILED", "appearance", f"Development appearance failed: {error}")
         raise SystemExit(2)

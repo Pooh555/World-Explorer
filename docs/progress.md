@@ -67,15 +67,21 @@ profiles until the next user push. See [initial CI evidence](validation/2026-10-
 and [follow-up evidence](validation/2026-10-11-ci-followup.md). Apple Clang/viewer/release
 qualification remains separate from the macOS LLVM 20 CPU job.
 
-Next executable task: add the pinned length-prefixed FlatBuffers worker transport
-and verifier, then connect concrete native frame-source and batch pose-estimator
+The first worker transport slice now generates pinned FlatBuffers C++/Python
+bindings and verifies bounded, ordered typed events on the shared native path.
+Real capture inspection, typed gsplat failure and checked completed-fit reuse
+were exercised. Four local profiles pass 27/27 tests, including ASan/UBSan/LSan.
+See [worker wire evidence](validation/2026-10-11-worker-wire.md). Commands still
+select explicit JSON requests through argv; persistent bidirectional control is pending.
+
+Next executable task: connect concrete native frame-source and batch pose-estimator
 adapters to the existing contracts. Use the successful pose job and fit above;
-do not restart them. The current subprocess JSONL diagnostic transport and the
-manual pose-request step remain transitional, not a waiver. Full video preflight
+do not restart them. Manual pose preparation and direct Python JSONL diagnostics
+remain transitional, not a waiver. Full video preflight
 and automatic pose-to-fit chaining are still pending.
 
 Outstanding gates include the prescribed ≤250k fixture, reference renderer parity,
-FlatBuffers wire protocol, durable map storage, native Windows/Mac runs, prescribed
+complete worker control protocol, durable map storage, native Windows/Mac runs, prescribed
 corpus/performance and geometry/collision work. No Phase 1 milestone is complete.
 M7–M8 remain deferred. User edits to `docs/execution_prompt.md` and
 `docs/technical_plan.md` remain untouched and excluded from implementation commits.

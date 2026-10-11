@@ -16,6 +16,7 @@ result<int> run_process(const std::vector<std::string>& arguments, const std::st
 struct worker_configuration {
     std::filesystem::path script;
     std::string python{"python3"};
+    bool framed_protocol{true};
 };
 result<int> run_worker(const worker_configuration& configuration,
                        const std::vector<std::string>& arguments, const std::stop_token& stop,

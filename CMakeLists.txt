@@ -76,6 +76,31 @@ target_link_libraries(capture INTERFACE core)
 add_library(reconstruction_api INTERFACE)
 target_link_libraries(reconstruction_api INTERFACE core)
 
+set(WE_WIRE_DIRECTORY "${PROJECT_BINARY_DIR}/generated/worker")
+file(MAKE_DIRECTORY "${WE_WIRE_DIRECTORY}/python")
+file(COPY "${WE_FLATBUFFERS_PYTHON}" DESTINATION "${WE_WIRE_DIRECTORY}/python")
+add_custom_command(OUTPUT "${WE_WIRE_DIRECTORY}/events_generated.h"
+  BYPRODUCTS "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/envelope.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/handshake.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/progress.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/completed.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/failure.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/artifact_reference.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/payload.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/__init__.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/__init__.py"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${WE_WIRE_DIRECTORY}"
+  COMMAND $<TARGET_FILE:${WE_FLATC}> --cpp --scoped-enums -o "${WE_WIRE_DIRECTORY}" "${PROJECT_SOURCE_DIR}/schemas/worker/events.fbs"
+  COMMAND $<TARGET_FILE:${WE_FLATC}> --python -o "${WE_WIRE_DIRECTORY}/python" "${PROJECT_SOURCE_DIR}/schemas/worker/events.fbs"
+  DEPENDS ${WE_FLATC} schemas/worker/events.fbs
+  VERBATIM)
+add_library(reconstruction_adapters src/reconstruction_adapters/process.cpp
+  src/reconstruction_adapters/worker_protocol.cpp "${WE_WIRE_DIRECTORY}/events_generated.h")
+we_target(reconstruction_adapters)
+target_include_directories(reconstruction_adapters SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
+target_compile_definitions(reconstruction_adapters PRIVATE WE_WIRE_BINDINGS="${WE_WIRE_DIRECTORY}/python")
+target_link_libraries(reconstruction_adapters PUBLIC reconstruction_api)
+
 add_library(map_store src/map_store/map_store.cpp)
 we_target(map_store)
 target_link_libraries(map_store PUBLIC reconstruction_api)
@@ -92,7 +117,7 @@ add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/scene_import.cpp src/application/source_view.cpp
   src/application/reconstruction_job.cpp src/application/job_validation.cpp)
 we_target(application)
-target_link_libraries(application PUBLIC scene_store navigation PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(application PUBLIC scene_store navigation reconstruction_adapters PRIVATE nlohmann_json::nlohmann_json)
 
 add_executable(we_process apps/we_process/main.cpp)
 we_target(we_process)
@@ -152,6 +177,7 @@ endif()
 # -----------------------------------------------------------------------------
 install(TARGETS we_process RUNTIME DESTINATION bin)
 install(DIRECTORY workers/ DESTINATION share/world-explorer/workers PATTERN "__pycache__" EXCLUDE)
+install(DIRECTORY "${WE_WIRE_DIRECTORY}/python/" DESTINATION share/world-explorer/workers/wire_bindings PATTERN "__pycache__" EXCLUDE)
 
 if(BUILD_TESTING)
   include(Catch)
@@ -160,10 +186,11 @@ if(BUILD_TESTING)
   add_executable(we_core_tests ${WE_CORE_TESTS})
   we_target(we_core_tests)
   target_link_libraries(we_core_tests PRIVATE application map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
+  target_include_directories(we_core_tests SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
   catch_discover_tests(we_core_tests PROPERTIES LABELS "cpu")
 
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
-  target_compile_definitions(we_core_tests PRIVATE WE_TEST_PYTHON="${Python3_EXECUTABLE}")
+  target_compile_definitions(we_core_tests PRIVATE WE_TEST_PYTHON="${Python3_EXECUTABLE}" WE_TEST_PROTOCOL_MODULE="${PROJECT_SOURCE_DIR}/workers")
 
   add_test(NAME worker_integration COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tests/integration -p "worker*_test.py" -v)
   set_tests_properties(worker_integration PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;worker")
