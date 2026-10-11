@@ -1,3 +1,4 @@
+#include "world_explorer/application/pose_export.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/map_store/map_store.hpp"
 #include "world_explorer/reconstruction_adapters/batch_poses.hpp"
@@ -539,4 +540,48 @@ TEST_CASE("map transactions retain distortion and reject calibration operation c
     bad_pose.poses.push_back(pose);
     CHECK_FALSE(maps.commit(bad_pose));
     CHECK(maps.acquire_snapshot() == before);
+}
+
+TEST_CASE("canonical export verifies the retained synthetic job without launching a worker",
+          "[poses][application]") {
+    pose_fixture fixture;
+    const auto destination = fixture.root / "canonical.weposes";
+    const auto exported = export_completed_pose_asset(
+        {{fixture.root, fixture.root / "source.mp4", {}}, destination}, {});
+    REQUIRE(exported);
+    const auto loaded = read_pose_asset(destination, *exported);
+    REQUIRE(loaded);
+    CHECK(loaded->snapshot->observations.size() == 3);
+    CHECK(loaded->snapshot->poses.size() == 3);
+    CHECK(loaded->snapshot->calibrations.begin()->second.distortion[0] == .1);
+    CHECK(loaded->provenance.source_sha256 == fixture.source_digest);
+    CHECK_FALSE(loaded->provenance.journal_sha256);
+    CHECK_FALSE(export_completed_pose_asset(
+        {{fixture.root, fixture.root / "source.mp4", {}}, destination}, {}));
+    CHECK(read_pose_asset(destination, *exported));
+    std::ofstream(fixture.root / "source.mp4") << "changed synthetic input";
+    CHECK_FALSE(export_completed_pose_asset(
+        {{fixture.root, fixture.root / "source.mp4", {}}, fixture.root / "changed.weposes"}, {}));
+    CHECK_FALSE(std::filesystem::exists(fixture.root / "changed.weposes"));
+}
+TEST_CASE("completed poses preserve and cross-check native journal provenance",
+          "[poses][provenance]") {
+    pose_fixture fixture;
+    auto metadata = nlohmann::json::parse(std::ifstream(fixture.decoded / "result.json"));
+    const std::string journal(64, 'e');
+    metadata["selection"] = "native_rgb_journal_v1";
+    metadata["source_sha256"] = fixture.source_digest;
+    metadata["journal_sha256"] = journal;
+    std::ofstream(fixture.decoded / "result.json") << metadata.dump();
+    fixture.inventory(fixture.decoded);
+    CHECK_FALSE(fixture.load());
+    auto completion = nlohmann::json::parse(std::ifstream(fixture.root / "result.json"));
+    completion["journal_sha256"] = journal;
+    std::ofstream(fixture.root / "result.json") << completion.dump();
+    const auto loaded = fixture.load();
+    REQUIRE(loaded);
+    CHECK((*loaded)->journal_sha256 == journal);
+    completion["journal_sha256"] = std::string(64, 'f');
+    std::ofstream(fixture.root / "result.json") << completion.dump();
+    CHECK_FALSE(fixture.load());
 }

@@ -40,7 +40,9 @@ output. This is explicit diagnostic compatibility, never a native fallback.
 subprocess fixtures; production callers default to verified events.
 Native decoded-frame replay, completed-pose import/replay and fresh selected-frame
 COLMAP batch solving are integrated; see [capture](capture.md) and [poses](poses.md).
-Canonical FlatBuffers pose assets and persistent map snapshots remain M1 work.
+Canonical FlatBuffers pose/calibration interchange is implemented in
+[`poses.fbs`](../../schemas/map/poses.fbs); see [pose assets](poses.md).
+Persistent map-store recovery and revision receipts remain M1 work.
 
 `solve-journal --request PATH` consumes a hash-bound native RGB journal, commits a
 checked PNG stage and runs the same CPU COLMAP path. It does not inspect/decode the

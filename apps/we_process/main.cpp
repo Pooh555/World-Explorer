@@ -1,4 +1,5 @@
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/pose_export.hpp"
 #include "world_explorer/application/pose_replay.hpp"
 #include "world_explorer/application/pose_solve.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
@@ -40,6 +41,8 @@ int main(int argc, char** argv) {
                    "  we_process validate SCENE.wexplore\n"
                    "  we_process replay-frames DECODE_STAGE VIDEO (local decoded-image replay)\n"
                    "  we_process replay-poses POSE_JOB VIDEO (completed-output replay; no solve)\n"
+                   "  we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]\n"
+                   "  we_process inspect-poses INPUT.weposes SHA256 (checked JSON inspection)\n"
                    "  we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE\n"
                    "  we_process fixture OUTPUT.wexplore  (synthetic diagnostic)\n"
                    "Worker overrides: --worker-script PATH --worker-python EXECUTABLE\n";
@@ -109,6 +112,41 @@ int main(int argc, char** argv) {
             if (interrupted)
                 cancellation.request_stop();
         });
+        if (command == "export-poses") {
+            if (argc != 5 && !(argc == 7 && std::string_view(argv[5]) == "--decode-stage")) {
+                std::cerr << "Usage: we_process export-poses POSE_JOB VIDEO OUTPUT.weposes "
+                             "[--decode-stage DIR]\n";
+                return 2;
+            }
+            const auto hash = export_completed_pose_asset(
+                {{argv[2], argv[3], argc == 7 ? argv[6] : std::filesystem::path{}}, argv[4]},
+                cancellation.get_token());
+            if (!hash) {
+                std::cerr << hash.error().message << '\n';
+                return hash.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Canonical poses (arbitrary scale, unknown gravity): " << argv[4]
+                      << "\nSHA-256 " << *hash << '\n';
+            return 0;
+        }
+        if (command == "inspect-poses") {
+            if (argc != 4) {
+                std::cerr << "Usage: we_process inspect-poses INPUT.weposes SHA256\n";
+                return 2;
+            }
+            const auto asset = read_pose_asset(argv[2], argv[3], {}, cancellation.get_token());
+            if (!asset) {
+                std::cerr << asset.error().message << '\n';
+                return asset.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            const auto json = inspect_pose_asset(*asset);
+            if (!json) {
+                std::cerr << json.error().message << '\n';
+                return 2;
+            }
+            std::cout << *json << '\n';
+            return 0;
+        }
         if (command == "solve-poses") {
             if (arguments.size() < 6 || arguments.size() % 2 != 0) {
                 std::cerr << "Usage: we_process solve-poses DECODE_STAGE VIDEO NEW_JOB "

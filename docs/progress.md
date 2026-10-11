@@ -115,13 +115,29 @@ Working inspection of the fresh result (no solve or fit):
 build/dev/we_process replay-poses artifacts/sample2-native-poses-20261012-recovery data/local/sample.mp4
 ```
 
-Next executable task: define the canonical FlatBuffers pose/calibration schema and
-native checked writer/reader, including camera coefficients, preprocessing,
-source/journal/pose provenance and scale/gravity. Use the retained successful poses
-to verify serialization without rerunning COLMAP. Then integrate durable map
-snapshot/revision publication and reload with checksum/atomicity/corruption tests.
-Keep both successful pose jobs and the original completed fit; do not mix their
-pose provenance or restart them.
+Canonical FlatBuffers pose/calibration v1 interchange now has a checked native
+writer/reader and shared `export-poses`/`inspect-poses` commands. It preserves
+double transforms, world/submap dependencies, OPENCV distortion, crop/resize,
+original timestamps, epoch/revisions, invalidation IDs and source/decode/pose/
+optional-journal provenance. Scale remains arbitrary, gravity unknown. Bounded
+structural/semantic checks reject corrupt assets; atomic no-overwrite publication
+preserves existing files and concurrent winners. Six local profiles pass **46/46**
+CPU/worker checks, including separate TSan and ASan/UBSan/LSan. The retained fresh
+63-pose recovery exported/reloaded in 19,960 bytes; all 63 transforms/timestamps/
+image hashes and camera coefficients match independently, and original job/scene
+manifests remain unchanged. No solver, pixel decoder or optimizer ran. See
+[canonical asset evidence](validation/2026-10-12-pose-assets.md).
+This is immutable interchange, not durable map-store recovery; operation receipts
+and restart-safe commits are still pending. Native Windows/macOS publication and
+power-loss behavior remain unqualified.
+
+Next executable task: implement durable `map_store` snapshot/revision publication
+and reload, preserving operation receipts, epoch/base checks, correction/deletion
+invalidation and old snapshot lifetimes. Reuse canonical record validation; ensure
+assets are closed/checksummed before atomic manifest publication. Test restart,
+retries, checksum corruption, interrupted/failed publication and prior-manifest
+preservation. Use retained successful poses for integration without rerunning
+COLMAP. Keep both successful pose jobs and original fit; never mix their provenance.
 Manual pose preparation and direct Python JSONL diagnostics
 remain transitional, not a waiver. Full video preflight
 and automatic pose-to-fit chaining are still pending.

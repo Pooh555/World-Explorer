@@ -121,6 +121,7 @@ struct decoded_source_state {
     decoded_source_config config;
     std::filesystem::path root;
     std::string completion_digest;
+    std::optional<std::string> journal_sha256;
     capture_id capture;
     std::vector<decoded_frame> frames;
     std::size_t position{};
@@ -146,7 +147,8 @@ class decoded_frame_source final : public frame_source {
     result<source_event> read_next(std::stop_token stop) override;
     result<void> seek(source_timestamp target) override;
     decoded_frame_catalog catalog() const {
-        decoded_frame_catalog result{state_->capture, state_->completion_digest, {}};
+        decoded_frame_catalog result{
+            state_->capture, state_->completion_digest, {}, state_->journal_sha256};
         for (const auto& frame : state_->frames)
             result.observations.push_back({frame.id, frame.calibration, frame.external_frame,
                                            frame.external_calibration, frame.original,
@@ -204,6 +206,8 @@ result<std::unique_ptr<frame_source>> open_decoded_frame_source(decoded_source_c
             (metadata.at("source_sha256") != state->config.source_sha256 ||
              !digest_valid(metadata.at("journal_sha256").get<std::string>())))
             return fail(error_code::INVALID_DATA, "Native RGB journal source/provenance mismatch");
+        if (metadata.at("selection") == "native_rgb_journal_v1")
+            state->journal_sha256 = metadata.at("journal_sha256").get<std::string>();
         const auto& frames = metadata.at("frames");
         if (source_count == 0 || source_count > 36000 || !frames.is_array() || frames.empty() ||
             frames.size() > 120)

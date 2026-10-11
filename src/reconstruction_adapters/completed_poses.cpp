@@ -94,6 +94,12 @@ load_completed_poses(const completed_pose_config& config, const std::stop_token&
             {.stage_directory = decoded, .source_sha256 = config.source_sha256}, stop);
         if (!catalog)
             return std::unexpected(catalog.error());
+        if (catalog->journal_sha256) {
+            if (!completion.contains("journal_sha256") ||
+                completion.at("journal_sha256") != *catalog->journal_sha256)
+                return fail(error_code::INVALID_DATA, "Pose/decode journal provenance mismatch");
+        } else if (completion.contains("journal_sha256"))
+            return fail(error_code::INVALID_DATA, "Pose journal absent from selected decode stage");
         const auto value =
             adapter_detail::read_json(directory / "canonical_poses.json", MAX_JSON,
                                       stage->assets.at("canonical_poses.json").sha256);
@@ -121,6 +127,7 @@ load_completed_poses(const completed_pose_config& config, const std::stop_token&
         dataset->source_sha256 = config.source_sha256;
         dataset->pose_completion_sha256 = stage->completion_sha256;
         dataset->decode_completion_sha256 = catalog->completion_sha256;
+        dataset->journal_sha256 = catalog->journal_sha256;
         dataset->decode_directory = decoded;
         const auto& camera = cameras[0];
         const auto camera_id = adapter_detail::unsigned_value(camera.at("camera_id"));
