@@ -481,7 +481,7 @@ struct vulkan_renderer::implementation {
         present_semaphores = swapchain_backend->present_semaphores();
         return true;
     }
-    void draw(const camera_view& camera) {
+    void draw(const camera_view& camera, bool draw_appearance) {
         const auto begin = std::chrono::steady_clock::now();
         if (!finite(camera.position) || !finite(camera.right) || !finite(camera.down) ||
             !finite(camera.forward) || !std::isfinite(camera.vertical_fov_radians) ||
@@ -536,7 +536,7 @@ struct vulkan_renderer::implementation {
             upload(current.command, visible_scene, camera.position, completion);
         descriptors(current);
         auto params = parameters(camera);
-        if (splat_count)
+        if (splat_count && draw_appearance)
             record_projection(current, params);
         VkClearValue clear{};
         clear.color = {{0.045F, 0.051F, 0.063F, 1}};
@@ -552,7 +552,7 @@ struct vulkan_renderer::implementation {
         const VkRect2D scissor{{0, 0}, extent};
         vkCmdSetViewport(current.command, 0, 1, &viewport);
         vkCmdSetScissor(current.command, 0, 1, &scissor);
-        if (splat_count) {
+        if (splat_count && draw_appearance) {
             vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS, draw_pipeline);
             vkCmdBindDescriptorSets(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     bindings.pipeline_layout, 0, 1, &current.descriptors[0], 0,
@@ -665,9 +665,9 @@ vulkan_overlay_context vulkan_renderer::overlay_context() const noexcept {
 void vulkan_renderer::set_overlay_callback(std::function<void(std::uintptr_t)> callback) {
     impl_->overlay = std::move(callback);
 }
-result<void> vulkan_renderer::draw(const camera_view& camera) {
+result<void> vulkan_renderer::draw(const camera_view& camera, bool draw_appearance) {
     try {
-        impl_->draw(camera);
+        impl_->draw(camera, draw_appearance);
         return {};
     } catch (const std::exception& exception) {
         return fail(error_code::BACKEND_FAILURE, exception.what());

@@ -2,17 +2,24 @@
 #define WORLD_EXPLORER_APPLICATION_SCENES_HPP
 #include "world_explorer/navigation/fly_camera.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
+#include <stop_token>
 namespace world_explorer {
 // Synthetic diagnostic geometry is never presented as a reconstructed capture.
 scene_snapshot make_diagnostic_scene();
 struct scene_import_request {
     std::filesystem::path input;
     std::filesystem::path destination;
+    std::stop_token stop{};
 };
 result<void> compile_splat_scene(const scene_import_request& request);
 // Validates a local fit completion manifest and binds the immutable PLY checksum
 // and reconstruction provenance to the resulting scene. It grants no quality certification.
-result<void> compile_fit_scene(const scene_import_request& request);
+struct fit_import_expectation {
+    std::string capture_sha256;
+    std::string fit_identity;
+};
+result<void> compile_fit_scene(const scene_import_request& request,
+                               const fit_import_expectation& expectation = {});
 struct source_inspection_view {
     fly_camera camera;
     double vertical_fov_radians{};

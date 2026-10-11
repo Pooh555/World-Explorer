@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <memory>
 #include <span>
+#include <stop_token>
 #include <string>
 namespace world_explorer {
 class sha256_builder {
@@ -20,7 +21,8 @@ class sha256_builder {
     std::unique_ptr<implementation> impl_;
 };
 std::string sha256(std::span<const std::byte> bytes);
-result<std::string> sha256_file(const std::filesystem::path& path, std::size_t max_bytes);
+result<std::string> sha256_file(const std::filesystem::path& path, std::size_t max_bytes,
+                                const std::stop_token& stop = {});
 } // namespace world_explorer
 
 #endif // WORLD_EXPLORER_CORE_HASH_HPP

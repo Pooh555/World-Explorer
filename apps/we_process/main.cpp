@@ -1,4 +1,5 @@
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include <chrono>
 #include <csignal>
@@ -27,6 +28,7 @@ int main(int argc, char** argv) {
                 << "World Explorer (development)\n"
                    "  we_process capabilities | inspect --source VIDEO --job-dir DIR\n"
                    "  we_process run --request JOB.json\n"
+                   "  we_process reconstruct --request JOB.json (explicit development recipe)\n"
                    "  we_process fit --source GSPLAT --data COLMAP --video VIDEO --output DIR\n"
                    "                 --steps 7000 --max-image-dimension N --worker-python EXE\n"
                    "  we_process compile PLY OUTPUT.wexplore\n"
@@ -94,15 +96,35 @@ int main(int argc, char** argv) {
         }
         signal_guard signals;
         std::stop_source cancellation;
-        std::jthread monitor([&](std::stop_token stop) {
+        std::jthread monitor([&](const std::stop_token& stop) {
             while (!stop.stop_requested() && !interrupted)
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             if (interrupted)
                 cancellation.request_stop();
         });
+        if (command == "reconstruct") {
+            if (argc != 4 || std::string(argv[2]) != "--request") {
+                std::cerr << "Usage: we_process reconstruct --request JOB.json\n";
+                return 2;
+            }
+            const auto job = read_reconstruction_job(argv[3]);
+            if (!job) {
+                std::cerr << job.error().message << '\n';
+                return 2;
+            }
+            const auto completed =
+                reconstruct(*job, cancellation.get_token(),
+                            [](const std::string& output) { std::cout << output << std::flush; });
+            if (!completed) {
+                std::cerr << completed.error().message << '\n';
+                return completed.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Published validated captured appearance: " << completed->string() << '\n';
+            return 0;
+        }
         const auto result =
             run_worker(configuration, arguments, cancellation.get_token(),
-                       [](std::string output) { std::cout << output << std::flush; });
+                       [](const std::string& output) { std::cout << output << std::flush; });
         if (!result) {
             std::cerr << result.error().message << '\n';
             return result.error().code == error_code::CANCELLED ? 130 : 2;

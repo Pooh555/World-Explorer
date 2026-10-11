@@ -17,14 +17,17 @@ struct application_state {
     std::mutex mutex;
     std::string log;
     std::string status{"Open a scene, or import a completed camera video."};
+    std::string reconstruction_error;
     scene_snapshot loaded;
     std::atomic<bool> busy{};
+    std::atomic<bool> processing{};
     std::chrono::steady_clock::time_point started;
     std::jthread job;
 
     void append(std::string text);
     void load(std::filesystem::path path);
     void worker(worker_configuration configuration, std::vector<std::string> arguments);
+    void reconstruction(std::filesystem::path request);
 };
 
 } // namespace world_explorer::viewer

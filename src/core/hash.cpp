@@ -21,8 +21,8 @@ std::string finish_digest(EVP_MD_CTX* digest) {
     constexpr char HEX[] = "0123456789abcdef";
     std::string result;
     for (unsigned i = 0; i < length; ++i) {
-        result.push_back(HEX[bytes[i] >> 4]);
-        result.push_back(HEX[bytes[i] & 15]);
+        result.push_back(HEX[static_cast<unsigned>(bytes[i]) >> 4U]);
+        result.push_back(HEX[static_cast<unsigned>(bytes[i]) & 15U]);
     }
     return result;
 }
@@ -49,7 +49,8 @@ std::string sha256(std::span<const std::byte> bytes) {
         throw std::runtime_error("cannot update SHA-256");
     return finish_digest(digest.get());
 }
-result<std::string> sha256_file(const std::filesystem::path& path, std::size_t max_bytes) {
+result<std::string> sha256_file(const std::filesystem::path& path, std::size_t max_bytes,
+                                const std::stop_token& stop) {
     try {
         std::ifstream input(path, std::ios::binary);
         if (!input)
@@ -58,6 +59,8 @@ result<std::string> sha256_file(const std::filesystem::path& path, std::size_t m
         std::array<char, 65536> buffer{};
         std::size_t total{};
         while (input) {
+            if (stop.stop_requested())
+                return fail(error_code::CANCELLED, "Hash verification cancelled");
             input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
             const auto count = static_cast<std::size_t>(input.gcount());
             if (count > max_bytes - total)

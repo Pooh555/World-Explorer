@@ -44,12 +44,21 @@ upright spectator reset, not physical-camera following or calibrated reference
 parity. Settings replace atomically on Windows as well as POSIX. Snapshot/device
 ownership cleanup was fixed and rechecked through shutdown.
 
-Next executable task: integrate explicit `local_gsplat_v1` recipe selection and
-`compile-fit` publication into the shared GUI/CLI job coordinator, using the
-existing pose output referenced by `artifacts/sample2-job/poses.json`; do not
-restart this successful reconstruction. Then finish the required FlatBuffers
-wire/native frame/pose adapter integration. The current staged worker JSONL and
-separate `we_process fit`/`compile-fit` commands are transitional, not a waiver.
+The shared native coordinator now continues those completed poses with explicit
+`local_gsplat_v1` start/resume/completed-reuse actions, verifies the full pose
+inventory and fit provenance, publishes a checked bundle and loads it in the GUI.
+Appearance drawing pauses during processing while the UI/cancellation remains
+available. A native completed-checkpoint restore reproduced the identical final
+PLY hash without repeating optimization or poses. The GUI startup command and
+render pause/resume were exercised on the native GPU. See the
+[job contract](protocols/jobs.md) and [coordinator evidence](validation/2026-10-11-coordinator.md).
+
+Next executable task: add the pinned length-prefixed FlatBuffers worker transport
+and verifier, then connect concrete native frame-source and batch pose-estimator
+adapters to the existing contracts. Use the successful pose job and fit above;
+do not restart them. The current subprocess JSONL diagnostic transport and the
+manual pose-request step remain transitional, not a waiver. Full video preflight
+and automatic pose-to-fit chaining are still pending.
 
 Outstanding gates include the prescribed ≤250k fixture, reference renderer parity,
 FlatBuffers wire protocol, durable map storage, native Windows/Mac runs, prescribed
@@ -58,9 +67,11 @@ M7–M8 remain deferred. User edits to `docs/execution_prompt.md` and
 `docs/technical_plan.md` remain untouched and excluded from implementation commits.
 See [local evidence](validation/2026-10-11-foundation.md) for check scope and commands.
 See [capture and current checks](validation/2026-10-11-capture.md) for the real fit,
-failure/resume evidence and exact current source/fixture identities. All 20 CPU
-checks pass in GCC/Clang C++26, explicit C++23, ASan/UBSan/LSan and separate TSan.
+failure/resume evidence and exact capture/fixture identities. The coordinator
+report records the current **24/24** CPU checks in GCC/Clang C++26, explicit C++23,
+ASan/UBSan/LSan and separate TSan, plus native GUI and GPU checks.
 The development resize (1280 px), 304,867-splat scene and this laptop do not
 certify original benchmark/platform gates. No milestone was promoted to VERIFIED.
 Local commits: foundation `ea289fc`; subsequent capture slice is the commit
-containing the newer validation report. No remote push.
+containing the newer validation report. The coordinator slice contains its own
+validation report. No remote push.

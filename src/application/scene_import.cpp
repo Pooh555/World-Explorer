@@ -16,7 +16,7 @@ struct splat_import_context {
 result<void> publish_scene(const scene_import_request& request, splat_import_context context) {
     const auto& ply = request.input;
     const auto& destination = request.destination;
-    const auto source_hash = sha256_file(ply, 8ULL * 1024 * 1024 * 1024);
+    const auto source_hash = sha256_file(ply, 8ULL * 1024 * 1024 * 1024, request.stop);
     if (!source_hash)
         return std::unexpected(source_hash.error());
     if (!context.expected_hash.empty() && *source_hash != context.expected_hash)
@@ -40,7 +40,9 @@ result<void> publish_scene(const scene_import_request& request, splat_import_con
             return fail(error_code::INVALID_DATA,
                         "Fit asset count differs from its completion manifest");
     }
-    const auto rechecked_hash = sha256_file(ply, 8ULL * 1024 * 1024 * 1024);
+    const auto rechecked_hash = sha256_file(ply, 8ULL * 1024 * 1024 * 1024, request.stop);
+    if (!rechecked_hash && rechecked_hash.error().code == error_code::CANCELLED)
+        return std::unexpected(rechecked_hash.error());
     if (!rechecked_hash || *rechecked_hash != *source_hash)
         return fail(error_code::INVALID_DATA,
                     "Input asset changed during compilation; previous scene retained");
@@ -49,6 +51,8 @@ result<void> publish_scene(const scene_import_request& request, splat_import_con
     scene->provenance["input_sha256"] = *source_hash;
     scene->provenance["exporter"] = "gsplat-1.5.3";
     scene->provenance["quality_gate"] = "UNVERIFIED";
+    if (request.stop.stop_requested())
+        return fail(error_code::CANCELLED, "Scene publication cancelled; previous scene retained");
     return write_bundle(destination, scene);
 }
 
@@ -124,7 +128,8 @@ result<void> compile_splat_scene(const scene_import_request& request) {
     return publish_scene(request, {{{"source_kind", "gsplat_ply_import"}}, {}, {}});
 }
 
-result<void> compile_fit_scene(const scene_import_request& request) {
+result<void> compile_fit_scene(const scene_import_request& request,
+                               const fit_import_expectation& expectation) {
     const auto& result_manifest = request.input;
     const auto& destination = request.destination;
     try {
@@ -141,6 +146,10 @@ result<void> compile_fit_scene(const scene_import_request& request) {
         const auto ply_hash = manifest.at("ply_sha256").get<std::string>();
         if (!valid_digest(identity) || !valid_digest(source_hash) || !valid_digest(ply_hash))
             return fail(error_code::INVALID_DATA, "Invalid fit provenance digest");
+        if ((!expectation.capture_sha256.empty() && source_hash != expectation.capture_sha256) ||
+            (!expectation.fit_identity.empty() && identity != expectation.fit_identity))
+            return fail(error_code::INVALID_DATA,
+                        "Fit changed after job verification; previous scene retained");
         if (!manifest.at("steps").is_number_unsigned() ||
             !manifest.at("splats").is_number_unsigned())
             return fail(error_code::INVALID_DATA, "Invalid fit counts");
@@ -184,7 +193,8 @@ result<void> compile_fit_scene(const scene_import_request& request) {
                 return std::unexpected(checked.error());
             context.provenance["source_inspection_view"] = *inspection;
         }
-        return publish_scene({.input = ply, .destination = destination}, std::move(context));
+        return publish_scene({.input = ply, .destination = destination, .stop = request.stop},
+                             std::move(context));
     } catch (const std::exception& error) {
         return fail(error_code::INVALID_DATA,
                     std::string("Fit compilation failed: ") + error.what());
