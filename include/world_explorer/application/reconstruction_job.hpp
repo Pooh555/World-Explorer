@@ -2,7 +2,9 @@
 #define WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_JOB_HPP
 
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/video_preflight.hpp"
 #include <cstdint>
+#include <optional>
 
 namespace world_explorer {
 enum class fit_action : std::uint8_t { START, RESUME, REUSE_COMPLETED };
@@ -26,6 +28,9 @@ struct reconstruction_job {
     // decode_stage selects a retained stage without rewriting a stale pointer.
     std::filesystem::path map_directory;
     std::filesystem::path decode_stage;
+    // Schema 2 explicitly adopts checked metadata before retained pose preparation.
+    // Absent in legacy schema 1; those requests do not claim video preflight.
+    std::optional<retained_video_inspection> inspection;
 };
 
 // Strict, bounded schema; relative paths resolve against the request's directory.

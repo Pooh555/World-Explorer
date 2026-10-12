@@ -5,8 +5,8 @@ thresholds or platform requirements have been waived. Status on 2026-10-12:
 
 | Requirement | Implementation / checks | Status | Evidence |
 |---|---|---|---|
-| M1 vertical slice | Real COLMAP 63/63 → 7k gsplat → checked scene → native viewer; shared GUI/CLI continuation with durable map/scene dependencies | IN_PROGRESS | Explicit recipe/resume/reuse, durable preparation and checked publication; automatic pose chaining, prescribed fixture, contracts and native reference/platform qualification pending |
-| M1 four contracts | Native frame source, checked pose/calibration import, completed replay and fresh batch estimator, map/scene revisions, update sink; verified FlatBuffers 2.0 worker START/CANCEL/events, canonical FlatBuffers pose assets and durable map checkpoints | IN_PROGRESS | 64 CPU/worker checks pass in six local profiles; real metadata START/CANCEL/restart and preserved outputs, 63/63 durable maps; automatic video/solve chaining and native platform control qualification pending |
+| M1 vertical slice | Real COLMAP 63/63 → 7k gsplat → checked scene → native viewer; shared GUI/CLI continuation with retained metadata preflight and durable map/scene dependencies | IN_PROGRESS | Explicit recipe/resume/reuse, bounded inspection adoption, durable preparation and checked publication; automatic inspection/pose chaining, prescribed fixture, contracts and native reference/platform qualification pending |
+| M1 four contracts | Native frame source, checked pose/calibration import, completed replay and fresh batch estimator, map/scene revisions, update sink; verified FlatBuffers 2.0 worker START/CANCEL/events, canonical FlatBuffers pose assets and durable map checkpoints | IN_PROGRESS | 67 CPU/worker checks pass in six local profiles; real retained inspection/source/storage admission and unchanged restart/rejection, 63/63 durable maps; automatic video/solve chaining and native platform control qualification pending |
 | M2 renderer / updates | Initial GPU projection/radix/quad code | IN_PROGRESS | Parity, lifetime stress and performance pending |
 | M3 offline geometry / walk | Worker cancellation/stages started; no supported geometry | NOT_STARTED | Full milestone unverified |
 | M4 platforms / Brush | Native source portability intended; hosted Windows CPU build succeeds | BLOCKED | Complete native viewer/device/release qualification on Windows, Apple Silicon and AMD unavailable; CPU CI is narrower |
@@ -49,3 +49,5 @@ No Q/P/N/E requirement is fully certified; configured CI is not a native pass.
 Durable pose preparation and coordinator dependencies: [local integration evidence](validation/2026-10-12-pose-preparation.md).
 
 Worker command/control: [local protocol and cancellation evidence](validation/2026-10-12-worker-control.md).
+
+Retained metadata preflight: [local admission, restart and real-scene parity evidence](validation/2026-10-12-video-preflight.md).

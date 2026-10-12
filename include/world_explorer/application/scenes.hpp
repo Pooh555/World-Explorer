@@ -27,6 +27,7 @@ struct fit_import_expectation {
     std::string capture_sha256;
     std::string fit_identity;
     std::optional<fit_pose_dependency> poses{};
+    std::string inspection_completion_sha256{};
 };
 result<void> compile_fit_scene(const scene_import_request& request,
                                const fit_import_expectation& expectation = {});

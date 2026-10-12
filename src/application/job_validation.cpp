@@ -6,7 +6,8 @@
 #include <set>
 
 namespace world_explorer::job_detail {
-result<nlohmann::json> read_json(const std::filesystem::path& path, std::size_t maximum) {
+result<nlohmann::json> read_json(const std::filesystem::path& path, std::size_t maximum,
+                                 const std::string& expected_sha256) {
     try {
         if (!std::filesystem::is_regular_file(path) || std::filesystem::file_size(path) > maximum)
             return fail(error_code::RESOURCE_EXHAUSTED,
@@ -18,6 +19,8 @@ result<nlohmann::json> read_json(const std::filesystem::path& path, std::size_t 
         if (count > maximum || !input.eof())
             return fail(error_code::RESOURCE_EXHAUSTED, "JSON input changed or exceeds budget");
         bytes.resize(count);
+        if (!expected_sha256.empty() && sha256(std::as_bytes(std::span(bytes))) != expected_sha256)
+            return fail(error_code::INVALID_DATA, "Job JSON checksum differs from selection");
         return nlohmann::json::parse(
             bytes, [](int depth, nlohmann::json::parse_event_t, const nlohmann::json&) {
                 if (depth > 64)

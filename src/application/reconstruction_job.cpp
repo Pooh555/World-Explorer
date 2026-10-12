@@ -51,6 +51,11 @@ result<void> validate_job(const reconstruction_job& job) {
             return fail(error_code::INVALID_ARGUMENT,
                         "Pose map overlaps reconstruction inputs or outputs");
     }
+    if (job.inspection && (job.inspection->stage.empty() ||
+                           !job_detail::valid_digest(job.inspection->completion_sha256) ||
+                           !job.inspection->minimum_free_bytes ||
+                           job.inspection->minimum_free_bytes > 32ULL * 1024 * 1024 * 1024))
+        return fail(error_code::INVALID_ARGUMENT, "Invalid retained video inspection selection");
     if (job.action == fit_action::REUSE_COMPLETED) {
         if (!job_detail::valid_digest(job.completed_fit_identity) || !job.checkpoint.empty())
             return fail(error_code::INVALID_ARGUMENT,
@@ -100,8 +105,11 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
                                            "checkpoint",
                                            "completed_fit_identity",
                                            "map_directory",
-                                           "decode_stage"};
-        if (!value.is_object() || value.at("schema_version") != 1 ||
+                                           "decode_stage",
+                                           "pose_action",
+                                           "inspection"};
+        if (!value.is_object() || !value.at("schema_version").is_number_unsigned() ||
+            (value.at("schema_version") != 1 && value.at("schema_version") != 2) ||
             value.at("recipe") != "local_gsplat_v1")
             return fail(error_code::INVALID_DATA,
                         "Only explicit local_gsplat_v1 development jobs are supported");
@@ -120,6 +128,26 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
             return selected.is_absolute() ? selected : base / selected;
         };
         reconstruction_job job;
+        if (value.at("schema_version") == 2) {
+            if (value.at("pose_action") != "adopt_completed")
+                return fail(error_code::INVALID_DATA,
+                            "Only explicit retained pose adoption is supported");
+            const auto& inspection = value.at("inspection");
+            if (!inspection.is_object() || inspection.size() != 4 ||
+                inspection.at("action") != "adopt_completed" ||
+                !inspection.at("minimum_free_bytes").is_number_unsigned())
+                return fail(error_code::INVALID_DATA, "Invalid retained inspection request");
+            const auto selected = inspection.at("stage").get<std::string>();
+            if (selected.empty() || selected.size() > 4096 ||
+                selected.find('\0') != std::string::npos)
+                return fail(error_code::INVALID_DATA, "Invalid inspection stage path");
+            const std::filesystem::path stage(selected);
+            job.inspection =
+                retained_video_inspection{stage.is_absolute() ? stage : base / stage,
+                                          inspection.at("completion_sha256").get<std::string>(),
+                                          inspection.at("minimum_free_bytes").get<std::uint64_t>()};
+        } else if (value.contains("pose_action") || value.contains("inspection"))
+            return fail(error_code::INVALID_DATA, "Inspection adoption requires schema 2");
         job.video = path("video");
         job.pose_job = path("pose_job");
         job.fit_directory = path("fit_directory");
@@ -178,7 +206,20 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
         if (log)
             log("Recipe: local_gsplat_v1 (development; quality unqualified).\nVerifying completed "
                 "poses...\n");
-        const auto source_hash = sha256_file(job.video, 16ULL * 1024 * 1024 * 1024, stop);
+        std::optional<video_preflight_report> preflight;
+        if (job.inspection) {
+            const auto inspected =
+                preflight_video({job.video,
+                                 *job.inspection,
+                                 {pose_map_directory(job), job.fit_directory, job.scene_output}},
+                                stop, log);
+            if (!inspected)
+                return std::unexpected(inspected.error());
+            preflight = *inspected;
+        }
+        const auto source_hash = preflight
+                                     ? result<std::string>(preflight->source_sha256)
+                                     : sha256_file(job.video, 16ULL * 1024 * 1024 * 1024, stop);
         if (!source_hash)
             return std::unexpected(source_hash.error());
         const auto poses = job_detail::verify_poses(job, *source_hash, stop);
@@ -257,13 +298,26 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
             (void)pose;
             dependency.source_frames.push_back(frame);
         }
+        if (job.inspection) {
+            const auto rechecked =
+                preflight_video({job.video,
+                                 *job.inspection,
+                                 {pose_map_directory(job), job.fit_directory, job.scene_output}},
+                                stop);
+            if (!rechecked)
+                return std::unexpected(rechecked.error());
+            if (rechecked->source_sha256 != *source_hash)
+                return fail(error_code::INVALID_DATA,
+                            "Video changed after preflight; previous scene retained");
+        }
         if (log)
             log("Compiling checked fit and publishing scene...\n");
-        const auto published =
-            compile_fit_scene({.input = job.fit_directory / "result.json",
-                               .destination = job.scene_output,
-                               .stop = stop},
-                              {*source_hash, *checked_fit, std::move(dependency)});
+        const auto published = compile_fit_scene(
+            {.input = job.fit_directory / "result.json",
+             .destination = job.scene_output,
+             .stop = stop},
+            {*source_hash, *checked_fit, std::move(dependency),
+             preflight ? preflight->inspection_completion_sha256 : std::string{}});
         if (!published)
             return std::unexpected(published.error());
         if (log)
