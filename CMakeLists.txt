@@ -106,6 +106,7 @@ add_custom_command(OUTPUT "${WE_WIRE_DIRECTORY}/events_generated.h" "${WE_WIRE_D
 add_library(reconstruction_adapters src/reconstruction_adapters/process.cpp
   src/reconstruction_adapters/worker_protocol.cpp src/reconstruction_adapters/decoded_frame_source.cpp
   src/reconstruction_adapters/worker_artifacts.cpp
+  src/reconstruction_adapters/training_camera.cpp
   src/reconstruction_adapters/completed_poses.cpp
   src/reconstruction_adapters/completed_pose_replay.cpp
   src/reconstruction_adapters/batch_poses.cpp

@@ -24,6 +24,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 | Retained preflight | [Video](2026-10-12-video-preflight.md): metadata adoption, output storage/overlap, libc++ sentinel, preserved manifests |
 | Owned inspection | [Automatic](2026-10-12-automatic-inspection.md): fresh/cache/cancel, ownership guards, original scene parity |
 | Documentation | [Consolidation](2026-10-12-documentation.md): evidence-preservation audit, local links, workflow lint; no new software qualification |
+| Fit calibration | [Admission](2026-10-12-fit-calibration.md): bounded undistorted camera, intrinsic/resize checks, real original/recovery/journal rejects, preserved payload/native viewer; 84 tests/four profiles |
 | Fresh stage chain | [Chaining](2026-10-12-stage-chain.md): 79 checks/six profiles, synthetic full chain; real 63-frame decode/cache/pre-solver cancellation |
 
 For current status and next work read [progress](../progress.md) and

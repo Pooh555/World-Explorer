@@ -238,7 +238,18 @@ available, alongside the previous scene.
 Fit admission checks the complete registered image inventory and its native
 COLMAP camera views against canonical poses, applying Rx(pi) and a relative
 `5e-6` tolerance for the trainer's float32 matrices. Thus identical image bytes
-cannot attach a fit from a different camera solve. Source, decode and pose
+cannot attach a fit from a different camera solve. It also reads the hash-selected
+undistorted `training/sparse/cameras.bin` through a bounded native interchange
+adapter: one SIMPLE_PINHOLE/PINHOLE record, at most 64 bytes, positive finite
+focals/finite principal point, original dimensions 11–8192 with ≤4096² pixels.
+Capture OPENCV calibration is not substituted for undistorted training calibration.
+Fit original/output dimensions must match that camera and the explicit resize
+recipe (no upsampling; nearest-even integer dimensions). Half-pixel backend
+centers scale independently in x/y; the adapter exposes integer centers. All nine
+intrinsic entries must match within `8 * float_epsilon * max(1, abs(expected))`
+to account for float32 storage/multiplication. Malformed models, changed hashes,
+different dimensions/intrinsics and unsupported multi-camera profiles fail before
+scene publication. Source, decode and pose
 dependencies are checked again before compilation. The scene records the
 canonical asset/pose-completion hashes and map epoch/revision; appearance chunks
 conservatively depend on every registered source frame. This initial-fit path

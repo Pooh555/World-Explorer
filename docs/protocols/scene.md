@@ -18,7 +18,8 @@ Transforms invalidate derived geometry and record the source pose revision.
 Wrong base/epoch fails without changing visible state. A bounded replay window
 returns a current snapshot with base/new revisions; older requests need full resync.
 `map_store` applies the same immutable transaction pattern to observations, poses
-and calibrations; it is currently in-memory and has no durable map serialization.
+and calibrations; [persistent checkpoints](maps.md) also preserve revisions and
+retry receipts across restart.
 
 An unpacked `.wexplore` bundle uses JSON manifest schema 1, SHA-256-addressed
 little-endian binary indexes/chunks, and an explicit provenance file. The loader

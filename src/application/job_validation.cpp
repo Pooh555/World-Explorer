@@ -1,8 +1,10 @@
 #include "job_validation.hpp"
 #include "world_explorer/core/hash.hpp"
+#include "world_explorer/reconstruction_adapters/training_camera.hpp"
 #include "world_explorer/reconstruction_adapters/worker_artifacts.hpp"
 #include <algorithm>
 #include <fstream>
+#include <limits>
 #include <set>
 
 namespace world_explorer::job_detail {
@@ -80,6 +82,12 @@ result<pose_input> verify_poses(const reconstruction_job& job, const std::string
         !stage->assets.contains("training/sparse/images.bin") ||
         !stage->assets.contains("training/sparse/points3D.bin"))
         return fail(error_code::INVALID_DATA, "Pose stage lacks the undistorted model");
+    // Reject unsupported/malformed calibration before map admission or optimizer launch.
+    const auto camera =
+        read_colmap_training_camera(directory / "training/sparse/cameras.bin",
+                                    stage->assets.at("training/sparse/cameras.bin").sha256, stop);
+    if (!camera)
+        return std::unexpected(camera.error());
     pose_input poses{directory, directory / "training", stage->completion_sha256, {}};
     for (const auto& [name, asset] : stage->assets)
         poses.file_hashes.emplace(name, asset.sha256);
@@ -89,6 +97,27 @@ result<pose_input> verify_poses(const reconstruction_job& job, const std::string
 result<std::string> verify_fit(const reconstruction_job& job, const pose_input& poses,
                                const std::string& source_hash,
                                const completed_pose_dataset& dataset) {
+    const auto camera = read_colmap_training_camera(
+        poses.training / "sparse/cameras.bin", poses.file_hashes.at("training/sparse/cameras.bin"));
+    if (!camera)
+        return std::unexpected(camera.error());
+    const auto ratio = std::min(1., static_cast<double>(job.max_image_dimension) /
+                                        std::max(camera->width, camera->height));
+    // Match Python's nearest-even integer resize instead of ties-away std::round.
+    const auto rounded = [](double value) {
+        auto whole = static_cast<std::uint32_t>(std::floor(value));
+        if (value - whole > .5 || (value - whole == .5 && whole % 2 != 0))
+            ++whole;
+        return whole;
+    };
+    const auto width = rounded(camera->width * ratio);
+    const auto height = rounded(camera->height * ratio);
+    const auto scale_x = static_cast<double>(width) / camera->width;
+    const auto scale_y = static_cast<double>(height) / camera->height;
+    const std::array<std::array<double, 3>, 3> intrinsic{
+        {{camera->camera.fx * scale_x, 0, (camera->camera.cx + .5) * scale_x},
+         {0, camera->camera.fy * scale_y, (camera->camera.cy + .5) * scale_y},
+         {0, 0, 1}}};
     const auto result_file = read_json(job.fit_directory / "result.json", std::size_t{1024} * 1024);
     const auto inputs =
         read_json(job.fit_directory / "input_manifest.json", std::size_t{1024} * 1024);
@@ -118,6 +147,23 @@ result<std::string> verify_fit(const reconstruction_job& job, const pose_input& 
         registered.emplace(pose.frame, &pose);
     std::set<std::string> names;
     for (const auto& frame : frames) {
+        if (frame.at("original_width") != camera->width ||
+            frame.at("original_height") != camera->height || frame.at("width") != width ||
+            frame.at("height") != height)
+            return fail(error_code::INVALID_DATA,
+                        "Fit dimensions differ from undistorted camera/resize");
+        const auto recorded = frame.at("intrinsic").get<std::array<std::array<double, 3>, 3>>();
+        for (std::size_t row = 0; row < 3; ++row)
+            for (std::size_t column = 0; column < 3; ++column) {
+                const auto expected = intrinsic[row][column];
+                // The fitting dataset stores float32 intrinsics and per-axis resizes.
+                const auto tolerance =
+                    8 * std::numeric_limits<float>::epsilon() * std::max(1., std::abs(expected));
+                if (!std::isfinite(recorded[row][column]) || !std::isfinite(expected) ||
+                    std::abs(recorded[row][column] - expected) > tolerance)
+                    return fail(error_code::INVALID_DATA,
+                                "Fit intrinsics differ from undistorted camera/resize");
+            }
         const auto name = frame.at("name").get<std::string>();
         const auto found = poses.file_hashes.find("training/images/" + name);
         if (!names.insert(name).second || found == poses.file_hashes.end() ||
