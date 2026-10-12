@@ -5,6 +5,11 @@ specification §4.8: W/S forward/back, A/D left/right, Space/Left Ctrl up/down,
 Left Shift accelerates. Wheel scales speed; Escape releases capture. The controls
 overlay names the active SDL scancodes, including remaps.
 
+Synthetic labels follow the active snapshot's [scene provenance](scene.md), not
+the launch option. Toolbar and ready status identify synthetic scenes even with
+side panels hidden; imported/replaced scenes and terminal diagnostics use the same
+classification. `--diagnostic-fixture` only chooses the initial generated scene.
+
 Preferences schema 1 stores `left_panel`, `right_panel`, `controls` and seven
 `keys` ordered forward/back/left/right/up/down/accelerate. Explicit saved mappings
 are restored exactly, including previous defaults; they are never guessed to be

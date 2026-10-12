@@ -25,6 +25,7 @@
 namespace {
 using namespace world_explorer;
 using viewer::application_state;
+using viewer::is_synthetic_scene;
 using viewer::preferences;
 using viewer::read_preferences;
 using viewer::save_preferences;
@@ -278,7 +279,7 @@ int viewer_main(int argc, char** argv) {
         ImGui::SetNextWindowPos({0, 0});
         ImGui::SetNextWindowSize({display.x, top});
         ImGui::Begin("Toolbar", nullptr, PANEL_FLAGS);
-        ImGui::TextUnformatted("WORLD EXPLORER");
+        ImGui::TextUnformatted(is_synthetic_scene(current) ? "SYNTHETIC SCENE" : "WORLD EXPLORER");
         ImGui::SameLine(210 * scale);
         if (ImGui::Button("Open scene")) {
             show_open = true;
@@ -332,7 +333,7 @@ int viewer_main(int argc, char** argv) {
             ImGui::TextUnformatted("PROJECT");
             ImGui::Separator();
             ImGui::TextWrapped("%s", current ? "Gaussian appearance" : "No scene open");
-            if (diagnostic_fixture)
+            if (is_synthetic_scene(current))
                 ImGui::TextWrapped("Synthetic renderer diagnostic. Not a reconstructed capture.");
             if (current) {
                 ImGui::Text("Revision %llu",
@@ -552,7 +553,7 @@ int viewer_main(int argc, char** argv) {
             const auto progress = renderer->updates().query_progress(*pending_ticket);
             if (progress && progress->state == update_state::RENDER_VISIBLE) {
                 std::lock_guard lock(state.mutex);
-                state.status = diagnostic_fixture
+                state.status = is_synthetic_scene(current)
                                    ? "Ready: synthetic diagnostic fixture."
                                    : "Appearance ready. Geometry and walking unavailable.";
                 pending_ticket.reset();
@@ -590,7 +591,8 @@ int viewer_main(int argc, char** argv) {
                                 {"resident_splats", stats.resident_splat_count},
                                 {"allocated_bytes", stats.allocated_bytes},
                                 {"validation_errors", stats.validation_errors},
-                                {"fixture", diagnostic_fixture ? "synthetic" : "user-selected"}}
+                                {"fixture",
+                                 is_synthetic_scene(current) ? "synthetic" : "user-selected"}}
                      .dump()
               << '\n';
     return stats.validation_errors ? 2 : 0;

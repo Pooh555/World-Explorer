@@ -11,6 +11,12 @@ rotation, opacity in [0,1], SH degree 0–3 and 48 coefficient-major RGB scalars
 SH and alpha compositing use the captured display-encoded domain. This initial
 renderer has no linear HDR intermediate or hybrid mesh pass yet.
 
+Synthetic bundles declare provenance `source_kind=synthetic_diagnostic` and a named
+`fixture`. The viewer classifies the active snapshot using this explicit marker;
+without `source_kind`, earlier reference bundles' `diagnostic` text beginning
+`synthetic ` remains supported. Paths and arbitrary fixture names never imply
+classification. A present `source_kind` is authoritative.
+
 `scene_store` copies mutable producer chunks into immutable revisions. Transactions
 have scene ID, world epoch, base/new revision and idempotent operation ID. Creates,
 replacements, deletes, transforms and geometry invalidation publish atomically.

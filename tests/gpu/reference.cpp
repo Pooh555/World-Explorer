@@ -25,7 +25,8 @@ scene_snapshot fixture() {
     auto scene = std::make_shared<scene_state>();
     scene->id = {71};
     scene->revision = {1};
-    scene->provenance["diagnostic"] = "synthetic asymmetric render reference v2; not a capture";
+    scene->provenance = {{"source_kind", "synthetic_diagnostic"},
+                         {"fixture", "asymmetric_render_reference_v3"}};
     auto chunk = std::make_shared<scene_chunk>();
     chunk->id = {1};
     chunk->bounds = {{-10, -10, -60}, {10, 10, 6}};
@@ -185,7 +186,7 @@ int main(int argc, char** argv) {
         require(stats.validation_errors == 0, "Vulkan validation errors");
         write_json(output / "fixture.json",
                    {{"schema", 1},
-                    {"label", "synthetic asymmetric reference v2; not a capture"},
+                    {"label", "synthetic asymmetric reference v3; not a capture"},
                     {"width", WIDTH},
                     {"height", HEIGHT},
                     {"background", {0.045F, 0.051F, 0.063F}},

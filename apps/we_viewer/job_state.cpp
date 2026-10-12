@@ -2,6 +2,16 @@
 #include "world_explorer/application/reconstruction_job.hpp"
 
 namespace world_explorer::viewer {
+bool is_synthetic_scene(const scene_snapshot& scene) {
+    if (!scene)
+        return false;
+    if (const auto kind = scene->provenance.find("source_kind"); kind != scene->provenance.end())
+        return kind->second == "synthetic_diagnostic";
+    // Compatibility with the first fixed-camera reference bundle's explicit label.
+    const auto diagnostic = scene->provenance.find("diagnostic");
+    return diagnostic != scene->provenance.end() && diagnostic->second.starts_with("synthetic ");
+}
+
 bool application_state::has_pending_work() {
     std::lock_guard lock(mutex);
     return busy || static_cast<bool>(loaded);

@@ -25,12 +25,16 @@ Earlier [viewer controls/handoff checks](validation/2026-10-12-viewer-controls.m
 cover specified defaults, saved remaps, malformed keys, active overlays and
 one-frame-minimum startup. Automatic exit waits for queued snapshot admission.
 
-Latest [fixed-camera comparison](validation/2026-10-12-render-reference.md): explicit
+[Fixed-camera comparison](validation/2026-10-12-render-reference.md): explicit
 calibration/roll and framebuffer admission checks; corrected gsplat covariance
 margin. The identical **18-splat synthetic fixture**, four 1280×720 views, reaches
 **53.90–54.81 dB PSNR**, maximum 1–4 color levels, zero Vulkan errors. **90/90 dev,
 87/87 explicit C++23 and libc++ tests** pass; format/tidy/boundaries pass. These are
 local correctness diagnostics, not performance, Q6 or real reconstruction gates.
+
+Latest [synthetic provenance checks](validation/2026-10-12-synthetic-labels.md):
+**91/91 dev tests** pass. Imported synthetic scenes keep visible labels with panels
+hidden; canonical/legacy fixtures and the retained real scene classify correctly.
 
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
