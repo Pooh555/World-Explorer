@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-12 (Asia/Hong_Kong). **M1: IN_PROGRESS. No M1–M6 milestone or
+Updated 2026-10-13 (Asia/Hong_Kong). **M1: IN_PROGRESS. No M1–M6 milestone or
 Q/P/N/E requirement is fully certified. M7–M8: DEFERRED_BY_USER.**
 
 ## Implemented and checked
@@ -90,10 +90,14 @@ metadata inspection still applies the decoded-storage estimate.
 
 Native Windows/macOS control/viewer/release, Apple Silicon/AMD, corpus/reference
 performance, geometry/collision, coverage/fuzzing and complete Q/P/N/E gates remain
-pending; [requirements](requirements.md) tracks each scope. The user reports macOS
-CPU CI passed; supplied Windows evidence is 77/78, with only worker integration
-failing. [Stage flush repair](validation/2026-10-12-windows-flush.md) passes local
-C++23 79/79 and Python 3.12/3.14 9/9. Windows confirmation awaits the next hosted
-run. Native viewer/release scope is separate. Sandbox ICD failure is not GPU
+pending; [requirements](requirements.md) tracks each scope. Latest supplied Windows
+CI stops before CMake/CTest: Chocolatey's FFmpeg lookup returns HTTP 504.
+[Dependency setup repair](validation/2026-10-13-windows-ffmpeg.md) pins/caches the
+7.1.1 publisher archive, retries downloads and verifies checksum/tool versions.
+Local workflow/archive/PowerShell checks pass; the hosted Windows rerun is pending.
+Earlier user reports macOS CPU CI passed; Windows evidence was 77/78, only worker
+integration failing. [Stage flush repair](validation/2026-10-12-windows-flush.md)
+passes local C++23 79/79 and Python 3.12/3.14 9/9; hosted confirmation remains pending.
+Native viewer/release scope is separate. Sandbox ICD failure is not GPU
 absence. Local commits are authorized; remote pushes/uploads are not. Follow the
 [documentation protocol](protocols/documentation.md) for subsequent handoffs.
