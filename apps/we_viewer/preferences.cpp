@@ -13,8 +13,8 @@
 
 namespace world_explorer::viewer {
 std::array<int, 7> default_fly_key_bindings() {
-    return {SDL_SCANCODE_W,     SDL_SCANCODE_S,      SDL_SCANCODE_A,    SDL_SCANCODE_D,
-            SDL_SCANCODE_SPACE, SDL_SCANCODE_LSHIFT, SDL_SCANCODE_LCTRL};
+    return {SDL_SCANCODE_W,     SDL_SCANCODE_S,     SDL_SCANCODE_A,     SDL_SCANCODE_D,
+            SDL_SCANCODE_SPACE, SDL_SCANCODE_LCTRL, SDL_SCANCODE_LSHIFT};
 }
 void read_preferences(const std::filesystem::path& path, preferences& settings) {
     std::error_code error;
@@ -30,16 +30,14 @@ void read_preferences(const std::filesystem::path& path, preferences& settings) 
         candidate.left = value.value("left_panel", true);
         candidate.right = value.value("right_panel", true);
         candidate.controls = value.value("controls", true);
-        const auto keys = value.at("keys").get<std::array<int, 7>>();
-        if (!std::ranges::all_of(keys, [](int key) { return key > 0 && key < SDL_SCANCODE_COUNT; }))
+        const auto& keys = value.at("keys");
+        if (!keys.is_array() || keys.size() != candidate.keys.size() ||
+            !std::ranges::all_of(keys, [](const nlohmann::json& key) {
+                return key.is_number_integer() && key > 0 && key < SDL_SCANCODE_COUNT;
+            }))
             return;
-        const auto legacy_default = std::array<int, 7>{
-            SDL_SCANCODE_W,     SDL_SCANCODE_S,     SDL_SCANCODE_A,     SDL_SCANCODE_D,
-            SDL_SCANCODE_SPACE, SDL_SCANCODE_LCTRL, SDL_SCANCODE_LSHIFT};
-        if (keys == legacy_default) {
-            candidate.keys = default_fly_key_bindings();
-        } else
-            candidate.keys = keys;
+        // Saved bindings are explicit user preferences, even when they match an old default.
+        candidate.keys = keys.get<std::array<int, 7>>();
         settings = candidate;
     } catch (const std::exception&) {
         // Invalid/unknown settings retain the caller's current defaults atomically.

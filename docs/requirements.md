@@ -23,7 +23,7 @@ thresholds or platform requirements have been waived. Status on 2026-10-12:
 | P4 bounded memory | Input/admission/retirement budget tests pass | IN_PROGRESS | Peak process/device/training measurements pending |
 | P5 coarse-first load | Initial asynchronous load | NOT_STARTED | LOD not implemented |
 | P6 asynchronous updates | Replay, retry, retirement tests and native replace/delete pass | IN_PROGRESS | Staged upload/latency/stress pending |
-| N1 fly controls | Camera + gated SDL input; CPU tests pass | IN_PROGRESS | Full native input/HiDPI/latency inspection pending |
+| N1 fly controls | Camera + gated SDL input; specified defaults, explicit remaps and active-key overlay | IN_PROGRESS | [Preference/handoff and native overlay checks](validation/2026-10-12-viewer-controls.md) pass; full native input/HiDPI/latency inspection pending |
 | N2 walking | Disabled until independent scale/geometry | NOT_STARTED | No invented collision |
 | E1 correctness/coverage | Contract/worker/coordinator tests; native sync validation including render pause/resume; targeted lint | IN_PROGRESS | Current profile counts in fit-calibration evidence; coverage, fuzzing and full gate fixtures pending |
 | E2 build/delivery | Local GCC/Clang C++26 and explicit C++23 builds; libc++ CPU checks; pinned dev archives; corrected native CPU CI | IN_PROGRESS | User reports macOS passed; supplied Windows 77/78; [stage flush repair](validation/2026-10-12-windows-flush.md) passes local C++23 79/79 and Python 3.12/3.14 9/9; Windows rerun, native viewer/release and distribution-hash qualification pending |

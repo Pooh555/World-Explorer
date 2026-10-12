@@ -67,8 +67,10 @@ accepts the explicitly annotated gsplat-1.5.3 ASCII PLY profile emitted by our w
 build/dev/we_process compile /path/to/appearance.ply artifacts/capture.wexplore
 ```
 
-Click the viewport to capture the mouse. WASD moves, Space/Shift moves vertically,
-Ctrl accelerates, the wheel changes speed and Escape releases the mouse. Focus
+Click the viewport to capture the mouse. New/reset profiles use WASD movement,
+Space/Ctrl for vertical movement and Shift for acceleration. Existing saved
+bindings are preserved; the controls overlay shows the active keys. The wheel
+changes speed and Escape releases the mouse. Focus
 loss releases capture. Settings remap keys and reset panels. Walking is disabled
 because independent scale and supported collision geometry are not implemented.
 Bookmarks are session-local. Settings persist but input capture never does.

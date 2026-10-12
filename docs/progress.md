@@ -25,6 +25,12 @@ Earlier [stage-chain evidence](validation/2026-10-12-stage-chain.md) covers synt
 complete chaining and real 63/628-frame decode/cache/pre-solver cancellation;
 **full real fresh solve/fit chaining remains unverified**.
 
+Latest [viewer controls/handoff checks](validation/2026-10-12-viewer-controls.md)
+pass **87/87 dev tests** (84 contracts plus three viewer cases). New/reset bindings
+match the specification; saved remaps are preserved and malformed keys rejected.
+Native default/custom overlays and one-frame-minimum startup succeed with zero
+validation errors. Automatic exit now waits for queued snapshot admission.
+
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
 and compatible optimizer/RNG resume. Native GPU smoke covers overlap,
