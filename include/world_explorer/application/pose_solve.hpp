@@ -10,7 +10,8 @@ struct pose_solve_request {
     batch_pose_config batch;
 };
 // Selected-frame native admission -> isolated CPU batch solve -> checked map.
-// Source digest is computed here; output must be fresh. No appearance fitting.
+// Source digest is computed here; output must be fresh. Publishes canonical
+// poses and an initial durable map at sibling NEW_JOB.map. No appearance fitting.
 result<map_snapshot> solve_selected_pose_map(pose_solve_request request,
                                              const std::stop_token& stop,
                                              const log_callback& log = {});

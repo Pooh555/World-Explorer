@@ -1,5 +1,6 @@
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "job_validation.hpp"
+#include "pose_pipeline.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/core/hash.hpp"
 #include <array>
@@ -7,6 +8,13 @@
 
 namespace world_explorer {
 namespace {
+std::filesystem::path pose_map_directory(const reconstruction_job& job) {
+    if (!job.map_directory.empty())
+        return job.map_directory;
+    auto path = job.fit_directory;
+    path += ".map";
+    return path;
+}
 result<void> validate_job(const reconstruction_job& job) {
     if (job.video.empty() || job.pose_job.empty() || job.fit_directory.empty() ||
         job.scene_output.empty() || (job.steps != 7000 && job.steps != 30000) ||
@@ -16,6 +24,7 @@ result<void> validate_job(const reconstruction_job& job) {
                     "Invalid reconstruction paths or resource limits");
     const auto output = std::filesystem::weakly_canonical(job.scene_output);
     const auto fit = std::filesystem::weakly_canonical(job.fit_directory);
+    const auto map = std::filesystem::weakly_canonical(pose_map_directory(job));
     // Publication must not overwrite its own inputs, including via an ancestor path.
     const std::array inputs{std::filesystem::weakly_canonical(job.video),
                             std::filesystem::weakly_canonical(job.pose_job), fit};
@@ -33,6 +42,14 @@ result<void> validate_job(const reconstruction_job& job) {
         if (input == fit || (!relative.empty() && *relative.begin() != "..") ||
             (!reverse.empty() && *reverse.begin() != ".."))
             return fail(error_code::INVALID_ARGUMENT, "Fit output overlaps pose or video input");
+    }
+    for (const auto& input : {inputs[0], inputs[1], fit, output}) {
+        const auto relative = input.lexically_relative(map);
+        const auto reverse = map.lexically_relative(input);
+        if (input == map || (!relative.empty() && *relative.begin() != "..") ||
+            (!reverse.empty() && *reverse.begin() != ".."))
+            return fail(error_code::INVALID_ARGUMENT,
+                        "Pose map overlaps reconstruction inputs or outputs");
     }
     if (job.action == fit_action::REUSE_COMPLETED) {
         if (!job_detail::valid_digest(job.completed_fit_identity) || !job.checkpoint.empty())
@@ -81,7 +98,9 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
                                            "max_image_dimension",
                                            "max_splats",
                                            "checkpoint",
-                                           "completed_fit_identity"};
+                                           "completed_fit_identity",
+                                           "map_directory",
+                                           "decode_stage"};
         if (!value.is_object() || value.at("schema_version") != 1 ||
             value.at("recipe") != "local_gsplat_v1")
             return fail(error_code::INVALID_DATA,
@@ -105,6 +124,8 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
         job.pose_job = path("pose_job");
         job.fit_directory = path("fit_directory");
         job.scene_output = path("scene_output");
+        job.map_directory = path("map_directory", false);
+        job.decode_stage = path("decode_stage", false);
         job.gsplat_source = path("gsplat_source", false);
         job.fitting_worker.script = path("fit_worker_script", false);
         if (value.contains("fit_python")) {
@@ -163,6 +184,15 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
         const auto poses = job_detail::verify_poses(job, *source_hash, stop);
         if (!poses)
             return std::unexpected(poses.error());
+        auto prepared = prepare_completed_pose_map(
+            {{job.pose_job, job.video, job.decode_stage}, pose_map_directory(job)}, stop, log);
+        if (!prepared)
+            return std::unexpected(prepared.error());
+        if (prepared->provenance.source_sha256 != *source_hash ||
+            prepared->provenance.pose_completion_sha256 != poses->completion_hash)
+            return fail(error_code::INVALID_DATA, "Pose inputs changed during map preparation");
+        if (log)
+            log("Durable pose map ready at epoch 0/revision 1.\n");
         if (job.action != fit_action::REUSE_COMPLETED) {
             if (log)
                 log("Fitting locally; ETA unknown.\n");
@@ -192,9 +222,6 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
                             "Fit worker failed with exit code " + std::to_string(*fitting));
         } else if (log)
             log("Reusing the explicitly selected completed fit; optimization skipped.\n");
-        const auto checked_fit = job_detail::verify_fit(job, *poses, *source_hash);
-        if (!checked_fit)
-            return std::unexpected(checked_fit.error());
         const auto final_source = sha256_file(job.video, 16ULL * 1024 * 1024 * 1024, stop);
         if (!final_source)
             return std::unexpected(final_source.error());
@@ -204,12 +231,39 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
         if (*source_hash != *final_source || poses->completion_hash != final_poses->completion_hash)
             return fail(error_code::INVALID_DATA,
                         "Reconstruction input changed; previous scene retained");
+        const auto dataset =
+            load_completed_poses({job.pose_job, *source_hash, job.decode_stage}, stop);
+        if (!dataset)
+            return std::unexpected(dataset.error());
+        const auto checked_fit = job_detail::verify_fit(job, *poses, *source_hash, **dataset);
+        if (!checked_fit)
+            return std::unexpected(checked_fit.error());
+        const auto canonical = pose_pipeline::canonical(**dataset, stop);
+        if (!canonical)
+            return std::unexpected(canonical.error());
+        const auto bytes = encode_pose_asset(*canonical, {}, stop);
+        if (!bytes)
+            return std::unexpected(bytes.error());
+        if (sha256(*bytes) != prepared->asset_sha256)
+            return fail(error_code::INVALID_DATA,
+                        "Canonical pose dependency changed; previous scene retained");
+        const auto snapshot = prepared->store->acquire_snapshot();
+        fit_pose_dependency dependency{prepared->asset_sha256,
+                                       prepared->provenance.pose_completion_sha256,
+                                       snapshot->epoch,
+                                       snapshot->revision,
+                                       {}};
+        for (const auto& [frame, pose] : snapshot->poses) {
+            (void)pose;
+            dependency.source_frames.push_back(frame);
+        }
         if (log)
             log("Compiling checked fit and publishing scene...\n");
-        const auto published = compile_fit_scene({.input = job.fit_directory / "result.json",
-                                                  .destination = job.scene_output,
-                                                  .stop = stop},
-                                                 {*source_hash, *checked_fit});
+        const auto published =
+            compile_fit_scene({.input = job.fit_directory / "result.json",
+                               .destination = job.scene_output,
+                               .stop = stop},
+                              {*source_hash, *checked_fit, std::move(dependency)});
         if (!published)
             return std::unexpected(published.error());
         if (log)

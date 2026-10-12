@@ -2,6 +2,7 @@
 #define WORLD_EXPLORER_APPLICATION_JOB_VALIDATION_HPP
 
 #include "world_explorer/application/reconstruction_job.hpp"
+#include "world_explorer/reconstruction_adapters/completed_poses.hpp"
 #include <map>
 #include <nlohmann/json.hpp>
 
@@ -19,7 +20,8 @@ result<std::filesystem::path> contained_file(const std::filesystem::path& root,
 result<pose_input> verify_poses(const reconstruction_job& job, const std::string& source_hash,
                                 const std::stop_token& stop);
 result<std::string> verify_fit(const reconstruction_job& job, const pose_input& poses,
-                               const std::string& source_hash);
+                               const std::string& source_hash,
+                               const completed_pose_dataset& dataset);
 } // namespace world_explorer::job_detail
 
 #endif // WORLD_EXPLORER_APPLICATION_JOB_VALIDATION_HPP

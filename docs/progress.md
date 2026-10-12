@@ -151,19 +151,48 @@ Working inspection (no reconstruction):
 build/dev/we_process inspect-map artifacts/sample2-persistent-map-20261012
 ```
 
-Next executable task: integrate canonical pose publication and durable map
-creation/reuse into the shared pose preparation/coordinator flow, then add the
-remaining typed worker command/control path. Preserve operation IDs and source/
-pose completion dependencies across cancellation/restart. Use retained successful
-outputs; do not rerun COLMAP/gsplat or combine the recovery's poses with the
-original fit's different pose provenance. Keep the stale original decode pointer
-untouched and select its explicit retained stage when importing the original fit.
-Manual pose preparation and direct Python JSONL diagnostics
-remain transitional, not a waiver. Full video preflight
-and automatic pose-to-fit chaining are still pending.
+The shared pose preparation/coordinator path now publishes canonical poses into
+an initial durable map before fitting and reuses identical dependencies/operation
+1 after restart. The writer remains owned through fit/publication; changed or
+advanced maps require resync rather than silent reseeding. Both GUI and CLI use
+this path. Fit camera views and the complete registered inventory are checked
+against canonical poses; scenes retain the map epoch/revision, canonical/pose
+hashes and conservative source-frame dependencies. Fresh selected-frame solves
+now route successful events to the same publisher at `NEW_JOB.map`; no additional
+fresh solve was run in this slice. `prepare-poses` provides retained-output
+preparation without a solver, pixel decoder or optimizer.
+
+Six local profiles pass **57/57** tests, including separate TSan and
+ASan/UBSan/LSan, format, boundaries and targeted tidy. Original completed-fit
+reuse publishes `artifacts/sample2-pipeline-20261012/original.wexplore` with its
+own durable map and original pose completion dependency. Separate recovery map
+preparation preserves that recovery's distinct canonical hash. Cross-process
+restart preserves the map manifests; an attempt to combine the original fit with
+the recovery map is rejected. Independent committed-index inspection confirms
+all **304,867 splats are byte-identical** to the original appearance, with 63
+registered frame dependencies added. Eight original input/job/scene manifests
+remain unchanged, including the stale decode pointer. No new GPU/platform or
+benchmark qualification is claimed. See
+[pipeline evidence](validation/2026-10-12-pose-preparation.md).
+
+Working retained-fit continuation (no pose solve or optimizer):
+
+```sh
+build/dev/we_process reconstruct --request artifacts/sample2-pipeline-20261012/reuse-original.json
+```
+
+Next executable task: add checked length-prefixed FlatBuffers worker commands and
+bidirectional cancellation/control to `schemas/worker/`, the native process/
+protocol path and Python workers. Preserve bounded framing, operation/session
+identity and existing stage/checkpoint dependencies; test malformed/duplicate
+commands and cancellation/restart before connecting automatic video preflight
+and pose-to-fit chaining. Continue to reuse retained successful outputs rather
+than rerun COLMAP/gsplat. Keep the original decode pointer untouched; select its
+explicit retained stage. Direct Python JSONL diagnostics remain transitional,
+not a waiver. Full video preflight and automatic fresh solve chaining are pending.
 
 Outstanding gates include the prescribed ≤250k fixture, reference renderer parity,
-complete worker control protocol, automatic durable-map/pipeline integration,
+complete worker control protocol, automatic video/solve chaining,
 native Windows/Mac runs, prescribed corpus/performance and geometry/collision work. No Phase 1 milestone is complete.
 M7–M8 remain deferred. User edits to `docs/execution_prompt.md` and
 `docs/technical_plan.md` remain untouched and excluded from implementation commits.

@@ -1,4 +1,5 @@
 #include "pose_pipeline.hpp"
+#include "world_explorer/core/hash.hpp"
 
 namespace world_explorer::pose_pipeline {
 result<std::vector<pose_event>> consume(frame_source& source, pose_estimator& estimator,
@@ -68,7 +69,7 @@ result<std::vector<pose_event>> consume(frame_source& source, pose_estimator& es
     return collected;
 }
 result<map_snapshot> publish(const completed_pose_dataset& dataset,
-                             const std::vector<pose_event>& events) {
+                             const std::vector<pose_event>& events, const std::stop_token& stop) {
     map_transaction transaction;
     transaction.epoch = dataset.epoch;
     transaction.new_revision = dataset.revision;
@@ -84,9 +85,54 @@ result<map_snapshot> publish(const completed_pose_dataset& dataset,
     if (transaction.poses.size() != dataset.poses.size())
         return fail(error_code::INVALID_DATA, "Pose event inventory differs from dataset");
     map_store maps;
-    const auto committed = maps.commit(transaction);
+    const auto committed = maps.commit(transaction, stop);
     if (!committed)
         return std::unexpected(committed.error());
     return maps.acquire_snapshot();
+}
+result<canonical_pose_asset> canonical(const completed_pose_dataset& dataset,
+                                       const std::stop_token& stop) {
+    std::vector<pose_event> events;
+    events.emplace_back(map_alignment{dataset.submap, dataset.revision, {}});
+    for (const auto& pose : dataset.poses)
+        events.emplace_back(pose);
+    const auto snapshot = publish(dataset, events, stop);
+    if (!snapshot)
+        return std::unexpected(snapshot.error());
+    return canonical_pose_asset{*snapshot,
+                                {dataset.source_sha256, dataset.decode_completion_sha256,
+                                 dataset.pose_completion_sha256, dataset.journal_sha256}};
+}
+result<prepared_pose_map> persist(const canonical_pose_asset& asset,
+                                  const std::filesystem::path& directory,
+                                  const std::stop_token& stop) {
+    if (directory.empty())
+        return fail(error_code::INVALID_ARGUMENT, "Pose preparation requires a map directory");
+    const auto bytes = encode_pose_asset(asset, {}, stop);
+    if (!bytes)
+        return std::unexpected(bytes.error());
+    const auto hash = sha256(*bytes);
+    auto store =
+        map_store::open_persistent({.directory = directory, .create_if_missing = true}, stop);
+    if (!store)
+        return std::unexpected(store.error());
+    const auto prior = (*store)->acquire_snapshot();
+    if (prior->epoch.value || prior->revision.value > 1 ||
+        (prior->revision.value == 1 && prior->initial_pose_asset_sha256 != hash))
+        return fail(
+            error_code::RESYNC_REQUIRED,
+            "Pose map has a different dependency or revision; select a fresh map directory");
+    if (prior->revision.value == 1) {
+        const auto retained = encode_pose_asset({prior, asset.provenance}, {}, stop);
+        if (!retained)
+            return std::unexpected(retained.error());
+        if (*retained != *bytes)
+            return fail(error_code::RESYNC_REQUIRED,
+                        "Retained pose map differs from its initial solve");
+    }
+    const auto imported = (*store)->import_pose_asset(asset, {1}, stop);
+    if (!imported)
+        return std::unexpected(imported.error());
+    return prepared_pose_map{std::move(*store), asset.provenance, hash};
 }
 } // namespace world_explorer::pose_pipeline

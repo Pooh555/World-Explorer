@@ -112,7 +112,10 @@ the completed immutable dataset can be acquired independently of the estimator.
 `we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE
 [--recipe sequential|exhaustive_guided]` uses a shared application command, computes
 the selected video's full SHA, submits real native frame leases and publishes a
-map through the same event-to-map path as completed replay. Worker script/Python
+map through the same event-to-map path as completed replay, then retains its
+canonical source and checkpoint in the fresh sibling `NEW_JOB.map`. An existing
+map output is rejected before solving; use `prepare-poses` with retained successful
+outputs to resume publication instead of repeating the solve. Worker script/Python
 overrides remain available. This command performs a fresh pose solve and no fit.
 Original completed jobs and fit outputs are independent of its fresh destination.
 

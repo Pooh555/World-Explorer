@@ -1,5 +1,6 @@
 #include "world_explorer/map_store/map_store.hpp"
 #include "map_codec.hpp"
+#include "map_files.hpp"
 #include "map_persistence.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
@@ -263,6 +264,29 @@ result<map_revision_id> map_store::import_pose_asset(const std::filesystem::path
                                                      const std::string& hash,
                                                      operation_id operation,
                                                      const std::stop_token& stop) {
+    const auto bytes = map_files::read_bytes(path, std::size_t{256} * 1024 * 1024, stop);
+    if (!bytes)
+        return std::unexpected(bytes.error());
+    return import_encoded_pose_asset(*bytes, hash, operation, stop);
+}
+result<map_revision_id> map_store::import_pose_asset(const canonical_pose_asset& asset,
+                                                     operation_id operation,
+                                                     const std::stop_token& stop) {
+    try {
+        const auto bytes = encode_pose_asset(asset, {}, stop);
+        if (!bytes)
+            return std::unexpected(bytes.error());
+        return import_encoded_pose_asset(*bytes, sha256(*bytes), operation, stop);
+    } catch (const std::bad_alloc&) {
+        return fail(error_code::RESOURCE_EXHAUSTED, "Map import allocation failed");
+    } catch (const std::exception& e) {
+        return fail(error_code::IO_ERROR, std::string("Map import failed: ") + e.what());
+    }
+}
+result<map_revision_id> map_store::import_encoded_pose_asset(std::span<const std::byte> bytes,
+                                                             const std::string& hash,
+                                                             operation_id operation,
+                                                             const std::stop_token& stop) {
     std::lock_guard lock(mutex_);
     try {
         if (!persistence_)
@@ -270,7 +294,7 @@ result<map_revision_id> map_store::import_pose_asset(const std::filesystem::path
                         "Canonical dependency import requires a persistent map");
         if (persistence_->requires_reopen())
             return fail(error_code::RESYNC_REQUIRED, "Persistent map requires close/reopen");
-        const auto loaded = read_pose_asset(path, hash, {}, stop);
+        const auto loaded = decode_pose_asset(bytes, hash, {}, stop);
         if (!loaded)
             return std::unexpected(loaded.error());
         const auto& map = *loaded->snapshot;
@@ -294,7 +318,7 @@ result<map_revision_id> map_store::import_pose_asset(const std::filesystem::path
         }
         for (const auto& [id, transform] : map.world_from_submap)
             transaction.alignments.push_back({id, {1}, transform});
-        const auto installed = persistence_->install_pose_asset(path, hash, stop);
+        const auto installed = persistence_->install_pose_asset(bytes, hash, stop);
         if (!installed)
             return std::unexpected(installed.error());
         return commit_locked(transaction, stop, hash);

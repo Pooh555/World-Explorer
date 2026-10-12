@@ -221,6 +221,9 @@ load_completed_poses(const completed_pose_config& config, const std::stop_token&
                                       dataset->revision,
                                       tracking_state::TRACKING,
                                       {}});
+            if (!dataset->training_frames.emplace(frame.image_path.filename().string(), frame.id)
+                     .second)
+                return fail(error_code::INVALID_DATA, "Duplicate training image name");
         }
         std::ranges::sort(dataset->poses, {}, &pose_estimate::capture_time);
         const auto pose_hash =

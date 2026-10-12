@@ -133,10 +133,19 @@ is idempotent, and corrupt/missing manifests never silently reset the map. See t
 [map contract](docs/protocols/maps.md) for writer ownership, cancellation, retention
 budgets and recovery limits. Scale remains arbitrary; walking is unavailable.
 
+`build/dev/we_process prepare-poses POSE_JOB VIDEO MAP_DIRECTORY [--decode-stage DIR]`
+combines checked retained-pose import and durable map preparation. Repeating it
+reuses the identical committed dependency; corrected/different maps require a new
+output or explicit resync. The shared GUI/CLI reconstruction coordinator now
+performs this step before fitting, using optional `map_directory` or the default
+sibling `FIT_DIRECTORY.map`. It checks fit camera poses and attaches map/source
+dependencies to the scene. See the [job contract](docs/protocols/jobs.md).
+
 `build/dev/we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE`
 runs a fresh isolated CPU COLMAP solve from native RGB leases. Use a fresh output
 directory; accepted frames are journaled locally, and failures retain diagnostics.
-The command publishes a checked in-memory map and does not fit appearance or modify
+The command publishes canonical poses and a durable map at the fresh sibling
+`NEW_JOB.map` and does not fit appearance or modify
 the original completed job. An explicit `--recipe exhaustive_guided` selects the
 existing recovery recipe. Automatic video-to-fit chaining remains pending.
 

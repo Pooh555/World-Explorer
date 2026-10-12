@@ -1,6 +1,7 @@
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/pose_export.hpp"
+#include "world_explorer/application/pose_preparation.hpp"
 #include "world_explorer/application/pose_replay.hpp"
 #include "world_explorer/application/pose_solve.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
@@ -43,6 +44,7 @@ int main(int argc, char** argv) {
                    "  we_process replay-frames DECODE_STAGE VIDEO (local decoded-image replay)\n"
                    "  we_process replay-poses POSE_JOB VIDEO (completed-output replay; no solve)\n"
                    "  we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]\n"
+                   "  we_process prepare-poses POSE_JOB VIDEO MAP_DIRECTORY [--decode-stage DIR]\n"
                    "  we_process inspect-poses INPUT.weposes SHA256 (checked JSON inspection)\n"
                    "  we_process init-map MAP_DIRECTORY\n"
                    "  we_process import-map INPUT.weposes SHA256 MAP_DIRECTORY\n"
@@ -138,6 +140,27 @@ int main(int argc, char** argv) {
             if ((*snapshot)->initial_pose_asset_sha256)
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*snapshot)->initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
+        if (command == "prepare-poses") {
+            if (argc != 5 && !(argc == 7 && std::string_view(argv[5]) == "--decode-stage")) {
+                std::cerr << "Usage: we_process prepare-poses POSE_JOB VIDEO MAP_DIRECTORY "
+                             "[--decode-stage DIR]\n";
+                return 2;
+            }
+            const auto prepared = prepare_completed_pose_map(
+                {{argv[2], argv[3], argc == 7 ? argv[6] : std::filesystem::path{}}, argv[4]},
+                cancellation.get_token(),
+                [](const std::string& text) { std::cout << text << std::flush; });
+            if (!prepared) {
+                std::cerr << prepared.error().message << '\n';
+                return prepared.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            const auto snapshot = prepared->store->acquire_snapshot();
+            std::cout << "Durable pose map: " << snapshot->observations.size() << " observations, "
+                      << snapshot->poses.size() << " poses; epoch " << snapshot->epoch.value
+                      << ", revision " << snapshot->revision.value << "; canonical SHA256 "
+                      << prepared->asset_sha256 << '\n';
             return 0;
         }
         if (command == "export-poses") {

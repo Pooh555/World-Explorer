@@ -3,6 +3,7 @@
 #include "world_explorer/reconstruction_api/map_records.hpp"
 #include "world_explorer/reconstruction_api/pose_estimator.hpp"
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <optional>
 #include <stop_token>
@@ -27,6 +28,9 @@ struct completed_pose_dataset {
     std::vector<calibration_record> calibrations;
     std::vector<observation_record> observations;
     std::vector<pose_estimate> poses;
+    // Adapter bridge to the undistorted training inventory; names never enter
+    // canonical map records or runtime consumers.
+    std::map<std::string, frame_id> training_frames;
     std::optional<std::string> journal_sha256;
 };
 // Checked import of the legacy COLMAP canonical JSON v1 profile. This does not
