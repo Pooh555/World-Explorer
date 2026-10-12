@@ -13,23 +13,24 @@ Current contracts: [capture](protocols/capture.md), [poses](protocols/poses.md),
 [jobs](protocols/jobs.md). [Historical evidence](validation/README.md) retains
 implementation sequence, failures, identities, timings and profile differences.
 
-Latest [fit-calibration admission](validation/2026-10-12-fit-calibration.md) checks
-undistorted camera bytes, original/resized dimensions and intrinsic matrices on
-the shared path before map/fitter admission and scene publication. **84/84 tests
-pass in four local profiles** (dev, explicit C++23, libc++, ASan/UBSan/LSan);
-format, boundaries and targeted tidy pass. Real original-fit publication/restart,
-six malformed fit rejects, separate recovery-map rejection and native journal
-mismatch/restart checks preserve **84 protected files**. The new native scene has
-identical original splat bytes; viewer inspection reports zero Vulkan/sync errors.
+Earlier [fit-calibration admission](validation/2026-10-12-fit-calibration.md) checks
+undistorted cameras, resize/intrinsics and independent map/journal dependencies
+before publication. Four-profile evidence (including sanitizers) preserves **84
+protected files** and identical original splat bytes.
 Earlier [stage-chain evidence](validation/2026-10-12-stage-chain.md) covers synthetic
 complete chaining and real 63/628-frame decode/cache/pre-solver cancellation;
 **full real fresh solve/fit chaining remains unverified**.
 
-Latest [viewer controls/handoff checks](validation/2026-10-12-viewer-controls.md)
-pass **87/87 dev tests** (84 contracts plus three viewer cases). New/reset bindings
-match the specification; saved remaps are preserved and malformed keys rejected.
-Native default/custom overlays and one-frame-minimum startup succeed with zero
-validation errors. Automatic exit now waits for queued snapshot admission.
+Earlier [viewer controls/handoff checks](validation/2026-10-12-viewer-controls.md)
+cover specified defaults, saved remaps, malformed keys, active overlays and
+one-frame-minimum startup. Automatic exit waits for queued snapshot admission.
+
+Latest [fixed-camera comparison](validation/2026-10-12-render-reference.md): explicit
+calibration/roll and framebuffer admission checks; corrected gsplat covariance
+margin. The identical **18-splat synthetic fixture**, four 1280×720 views, reaches
+**53.90–54.81 dB PSNR**, maximum 1–4 color levels, zero Vulkan errors. **90/90 dev,
+87/87 explicit C++23 and libc++ tests** pass; format/tidy/boundaries pass. These are
+local correctness diagnostics, not performance, Q6 or real reconstruction gates.
 
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
@@ -62,11 +63,11 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 
 ## Next executable work and blockers
 
-Next executable task: build a fixed-camera Gaussian render comparison using an
-asymmetric, labeled **≤250k-splat fixture**, the pinned gsplat reference and native
-Vulkan. Include off-center intrinsics, camera roll, anisotropy/overlap and pixel/
-color/SH conventions. Current `--source-view` is an upright spectator reset and
-cannot substitute for calibrated parity. Keep spectator navigation independent.
+Next executable task: extend the fixed-camera suite to saturation, high-opacity
+overlap/early termination and rotating/close-up views; preserve existing fixtures
+and tolerances. Then add calibrated comparison of the retained real scene without
+trimming its 304,867 splats. `--source-view` remains an upright spectator reset;
+it cannot substitute for calibrated parity or drive spectator navigation.
 
 Reference-hardware/native-platform qualification and the real owned fresh RGB/
 solver/fit chain remain pending. Do not weaken gates, silently trim the retained

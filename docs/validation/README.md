@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Fixed-camera rendering | [Reference comparison](2026-10-12-render-reference.md): calibrated admission, pixel centers, covariance margin, 18-splat synthetic fixture/four gsplat comparisons; 90 dev / 87 C++23 / 87 libc++ checks |
 | Foundation | [2026-10-11](2026-10-11-foundation.md): build, GPU overlap/replace/delete/resize; failed original capture and successful replacement poses |
 | Real appearance | [Capture](2026-10-11-capture.md): fit failures, cancellation/resume, scene/viewer; [manifest](2026-10-11-capture.json) |
 | Shared continuation | [Coordinator](2026-10-11-coordinator.md): fit start/resume/reuse, GUI/GPU pause, shutdown; [manifest](2026-10-11-coordinator.json) |

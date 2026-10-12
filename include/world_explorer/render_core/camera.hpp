@@ -2,8 +2,13 @@
 #define WORLD_EXPLORER_RENDER_CORE_CAMERA_HPP
 #include "world_explorer/core/math.hpp"
 #include <cstdint>
+#include <optional>
 
 namespace world_explorer {
+struct calibrated_projection {
+    pinhole_camera intrinsics; // Canonical integer pixel centers.
+    std::uint32_t width{}, height{};
+};
 // Camera basis is optical (+X right, +Y down, +Z forward), independent of capture poses.
 struct camera_view {
     vec3d position{};
@@ -13,7 +18,14 @@ struct camera_view {
     double vertical_fov_radians{1.0471975511965976};
     float near_plane{0.01F};
     float far_plane{100000.F};
+    // Explicit fixed-camera rendering. Dimensions must match the framebuffer;
+    // resizing never silently changes calibration. Spectator views omit this.
+    std::optional<calibrated_projection> calibration{};
 };
+// Validate the optical basis/clip planes and return float raster intrinsics.
+// Principal points are converted once to Vulkan/gsplat half-integer centers.
+result<std::array<float, 4>> raster_intrinsics(const camera_view& camera, std::uint32_t width,
+                                               std::uint32_t height);
 struct renderer_diagnostics {
     std::uint64_t submitted_frames{};
     std::uint64_t completed_timeline{};
