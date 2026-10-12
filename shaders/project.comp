@@ -51,5 +51,5 @@ void main() {
     projected[id].conic_opacity=vec4(c,-b,a,opacity)/vec4(determinant,determinant,determinant,1);
     vec3 sh_direction=normalize(quaternion_rotate(splats[id].world_to_sh,delta));
     projected[id].color_depth=vec4(evaluate_sh(id,sh_direction),p.z);
-    keys_in[id]=uvec2(~floatBitsToUint(p.z),id);
+    keys_in[id]=uvec2(floatBitsToUint(p.z),id);
 }

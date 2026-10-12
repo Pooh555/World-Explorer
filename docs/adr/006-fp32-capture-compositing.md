@@ -28,3 +28,7 @@ neither waives Apple Silicon/AMD/Windows requirements nor certifies their format
 Revisit with native portable devices, P2/P4 traces, qualified precision comparisons
 and the tiled renderer. The retained exclusive-termination failure must be fixed;
 do not relax its tolerance or patch the trainer to obtain a pass.
+
+The back-to-front compositor is superseded by [ADR 007](007-tiled-batch-compositing.md).
+The FP32/SDR presentation boundary remains; blending support is no longer required.
+The original failure and this decision's historical qualification scope remain intact.

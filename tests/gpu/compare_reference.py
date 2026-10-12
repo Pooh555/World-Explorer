@@ -91,7 +91,7 @@ def main():
         raise RuntimeError("native CUDA unavailable; this is not a passing comparison")
     root = args.directory.resolve()
     fixture = root / "fixture.json"
-    if fixture.stat().st_size > 1024 * 1024:
+    if fixture.stat().st_size > 4 * 1024 * 1024:
         raise RuntimeError("reference fixture exceeds bounded diagnostic input")
     data = json.loads(fixture.read_text())
     assert data["schema"] == 1 and data["label"].startswith("synthetic")

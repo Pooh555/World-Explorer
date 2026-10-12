@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Tiled exclusive composition | [Front-to-back batches](2026-10-12-tiled-composition.md): cutoff regression fixed; unchanged fixtures, batch reuse, scratch budgets, observed resize and full retained native scene |
 | Captured-domain composition | [FP32/SDR](2026-10-12-compositing.md): seven stress and four original views pass, exclusive-termination failure retained; budgeted images/buffers, observed resize, GCC26/Clang23 viewer/core checks |
 | Synthetic provenance | [Active scene labels](2026-10-12-synthetic-labels.md): imported canonical/legacy fixtures, hidden-panel banner, snapshot replacement classification, retained real scene; 91 dev checks |
 | Fixed-camera rendering | [Reference comparison](2026-10-12-render-reference.md): calibrated admission, pixel centers, covariance margin, 18-splat synthetic fixture/four gsplat comparisons; 90 dev / 87 C++23 / 87 libc++ checks |

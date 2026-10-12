@@ -5,7 +5,7 @@ Q/P/N/E requirement is fully certified. M7–M8: DEFERRED_BY_USER.**
 
 ## Implemented and checked
 
-Native SDL3/ImGui viewer/CLI, Vulkan anisotropic projection/radix/quad rendering,
+Native SDL3/ImGui viewer/CLI, Vulkan anisotropic projection/radix/tile rendering,
 fly navigation, bounded asynchronous updates, transactional scene/map snapshots,
 checked bundles, isolated FFmpeg/COLMAP/gsplat workers. GUI/CLI share commands.
 Current contracts: [capture](protocols/capture.md), [poses](protocols/poses.md),
@@ -29,15 +29,16 @@ Earlier [fixed-camera](validation/2026-10-12-render-reference.md) and
 [provenance](validation/2026-10-12-synthetic-labels.md) checks establish calibration,
 roll, covariance margins and imported synthetic labels, including hidden panels.
 
-Latest [FP32 composition](validation/2026-10-12-compositing.md) preserves bright SH
-energy until SDR presentation. Seven saturation/overlap/orbit/close-up views pass
-at **63.88–69.09 dB**, max 1–6 color levels; the unchanged original four views pass
-at **63.01–65.14 dB**, max 1. **91/91 GCC C++26 and Clang C++23 viewer/core checks**
-pass. Native observed resize, replacement/deletion, pause/resume and constrained
-allocation rejection pass with zero validation errors. Actual buffer/framebuffer
-allocations are budgeted; portable FP32 blending remains unqualified. A separate
-two-splat exclusive-termination fixture still fails five views (max 12–15);
-thresholds/failures are preserved. No performance/Q6/reconstruction gate is certified.
+Latest [tiled composition](validation/2026-10-12-tiled-composition.md) fixes the
+pinned exclusive-termination mismatch. All **25 views** pass (maximum one color
+level): unchanged seven termination, seven saturation/orbit/close-up and four
+original views, plus seven views of the 1,027-splat batch-reuse fixture.
+**91/91 GCC C++26 and Clang C++23 viewer/core checks** pass. Native budget rejection,
+observed resize, replacement/deletion and pause/resume pass with zero validation
+errors; the full retained scene opens. Actual FP32 pixel scratch and image/buffer
+allocations are budgeted. Fixed shared batches scan globally sorted splats per
+tile; the specified overlap count/scan/reference index and performance remain
+pending. No performance/Q6/reconstruction gate is certified.
 
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
@@ -70,14 +71,15 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 
 ## Next executable work and blockers
 
-Next executable task: implement budgeted front-to-back composition matching pinned
-gsplat's exclusive `next_T <= 1e-4` cutoff, following specification §4.6's tiled
-path. Reproduce the retained failure with
-`.venv-train/bin/python tests/gpu/compare_reference.py artifacts/validation/compositing-20261012/termination`.
-Preserve fixtures/tolerances; no unbounded per-splat pass loop or trainer patch.
-Then add calibrated comparison of the retained real scene without trimming its
-304,867 splats. `--source-view` remains an upright spectator reset, not calibrated
-parity or capture-driven navigation.
+Next executable task: add a calibrated native/gsplat comparison of the full
+retained scene using its checked original fit camera (1280×688) and pose, without
+trimming its 304,867 splats. Extend the bounded diagnostic input explicitly for
+real assets; retain separate synthetic labels, fixture hashes and fixed tolerances.
+`--source-view` remains an upright spectator reset, not calibrated parity or
+capture-driven navigation. Then replace per-tile global scans with §4.6's budgeted
+overlap count/exclusive scan/reference index. Preserve the cutoff regression with
+`build/dev/we_gpu_reference artifacts/validation/<new-output> --termination`
+and `.venv-train/bin/python tests/gpu/compare_reference.py artifacts/validation/<new-output>`.
 
 Reference-hardware/native-platform qualification and the real owned fresh RGB/
 solver/fit chain remain pending. Do not weaken gates, silently trim the retained

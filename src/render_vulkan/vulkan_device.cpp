@@ -158,6 +158,7 @@ void vulkan_device::initialize() {
 }
 
 void vulkan_device::select_physical_device() {
+    constexpr auto COMPOSITION_SHARED_BYTES = std::size_t{256} * 48 + 10 * sizeof(std::uint32_t);
     std::uint32_t count = 0;
     detail::check(vkEnumeratePhysicalDevices(instance_, &count, nullptr), "enumerate GPUs");
     std::vector<VkPhysicalDevice> devices(count);
@@ -171,6 +172,10 @@ void vulkan_device::select_physical_device() {
             candidate_properties.limits.maxComputeWorkGroupSize[0] < 256 ||
             candidate_properties.limits.maxStorageBufferRange <
                 options_.max_splats * sizeof(detail::gpu_splat) ||
+            candidate_properties.limits.maxComputeWorkGroupSize[1] < 16 ||
+            candidate_properties.limits.maxComputeSharedMemorySize < COMPOSITION_SHARED_BYTES ||
+            candidate_properties.limits.maxPerStageDescriptorStorageBuffers < 6 ||
+            candidate_properties.limits.maxDescriptorSetStorageBuffers < 6 ||
             candidate_properties.limits.maxComputeWorkGroupCount[0] <
                 (options_.max_splats + 255) / 256)
             continue;
@@ -415,12 +420,14 @@ vulkan_device::create_compute_pipeline(const char* name, VkPipelineLayout pipeli
 }
 
 void vulkan_device::create_descriptor_layout(descriptor_resources& resources) {
-    std::array<VkDescriptorSetLayoutBinding, 5> bindings{};
+    std::array<VkDescriptorSetLayoutBinding, 6> bindings{};
     for (std::uint32_t index = 0; index < bindings.size(); ++index) {
         bindings[index].binding = index;
         bindings[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[index].descriptorCount = 1;
-        bindings[index].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+        bindings[index].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        if (index == 5)
+            bindings[index].stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
     }
     auto layout = detail::structure<VkDescriptorSetLayoutCreateInfo>(
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
@@ -429,7 +436,7 @@ void vulkan_device::create_descriptor_layout(descriptor_resources& resources) {
     detail::check(vkCreateDescriptorSetLayout(device_, &layout, nullptr, &resources.layout),
                   "create scene descriptor layout");
 
-    VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 20};
+    VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 24};
     auto pool = detail::structure<VkDescriptorPoolCreateInfo>(
         VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO);
     pool.maxSets = 4;
@@ -445,7 +452,7 @@ void vulkan_device::create_descriptor_layout(descriptor_resources& resources) {
     detail::check(vkCreateDescriptorPool(device_, &pool, nullptr, &resources.overlay_pool),
                   "create overlay descriptor pool");
 
-    VkPushConstantRange push{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT, 0,
+    VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                              sizeof(detail::push_parameters)};
     auto pipeline = detail::structure<VkPipelineLayoutCreateInfo>(
         VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
