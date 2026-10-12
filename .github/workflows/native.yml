@@ -34,6 +34,10 @@ jobs:
         uses: ilammy/msvc-dev-cmd@a102174a2b586eec2ea151a69e6fd14404a8ce7c # v1.13.0
         with:
           arch: x64
+      - name: Prepare Windows FFmpeg
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install ffmpeg --version=7.1.1 --yes --no-progress
       - name: Locate Windows OpenSSL SDK
         if: runner.os == 'Windows'
         shell: pwsh
@@ -44,6 +48,8 @@ jobs:
           }
           "OPENSSL_ROOT_DIR=$openssl_root" >> $env:GITHUB_ENV
           'CXX=cl' >> $env:GITHUB_ENV
+      - name: Verify worker runtime tools
+        run: python -c "import subprocess; subprocess.run(['ffmpeg', '-version'], check=True); subprocess.run(['ffprobe', '-version'], check=True)"
       - name: Configure explicit C++23 compatibility core
         run: cmake --preset compat-cxx23 -DWE_BUILD_VIEWER=OFF
       - name: Build
@@ -64,6 +70,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y clang-19 g++-13 libssl-dev ninja-build ffmpeg
           echo 'CXXFLAGS=--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/13' >> "$GITHUB_ENV"
+      - name: Verify worker runtime tools
+        run: python -c "import subprocess; subprocess.run(['ffmpeg', '-version'], check=True); subprocess.run(['ffprobe', '-version'], check=True)"
       - name: Configure explicit C++23 Clang core
         run: cmake --preset clang -DCMAKE_CXX_COMPILER=clang++-19 -DWE_CXX_STANDARD=23 -DWE_BUILD_VIEWER=OFF
       - run: cmake --build --preset clang --parallel 4

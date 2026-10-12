@@ -9,6 +9,8 @@ and the [requirement matrix](docs/requirements.md) for verified behavior and gap
 Requires CMake ≥3.30, Ninja, a compiler/library supporting C++26 and `std::expected`,
 OpenSSL, SDL3, Vulkan headers/loader and `glslc`. The development preset downloads
 SHA-256-pinned ImGui, JSON and Catch2 sources unless present in `.deps/`.
+CPU/worker tests require Python 3 and FFmpeg (`ffmpeg` and `ffprobe` on PATH),
+including the native PNG-to-RGB admission used by fresh reconstruction tests.
 
 ```sh
 cmake --preset dev
@@ -30,6 +32,8 @@ does not qualify Apple Clang or the Vulkan viewer; see the
 [toolchain decision](docs/adr/002-native-ci-toolchains.md) and
 [CI repair checks](docs/validation/2026-10-11-ci.md) and
 [follow-up portability checks](docs/validation/2026-10-11-ci-followup.md).
+All CI jobs verify FFmpeg/ffprobe before configuration; Windows installs the
+versioned Chocolatey FFmpeg 7.1.1 package.
 
 GUI and CLI share a command to continue completed poses through explicit local
 fitting, checked publication and viewer loading:

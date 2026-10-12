@@ -646,7 +646,7 @@ TEST_CASE("automatic inspection request resolves local worker paths and rejects 
         CHECK(std::filesystem::equivalent(parsed->automatic_inspection->worker.script,
                                           inspector.request.configuration.worker.script));
         CHECK(parsed->automatic_inspection->job_directory ==
-              inspector.request.configuration.job_directory);
+              std::filesystem::weakly_canonical(inspector.request.configuration.job_directory));
     }
     SECTION("missing local worker") { config["inspection"].erase("worker_script"); }
     SECTION("missing executable choice") { config["inspection"].erase("python"); }

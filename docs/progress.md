@@ -68,8 +68,11 @@ metadata inspection; unknown/inadequate space fails explicitly.
 
 Native Windows/macOS control/viewer/release, Apple Silicon/AMD, corpus/reference
 performance, geometry/collision, coverage/fuzzing and complete Q/P/N/E gates remain
-pending; [requirements](requirements.md) tracks each scope. Hosted Windows CPU
-build/22-of-24 historical checks are narrower; subsequent fixes passed locally,
-not on hosted runners. Sandbox ICD failure is not GPU absence. Local commits are
+pending; [requirements](requirements.md) tracks each scope. Latest supplied hosted
+CPU results are macOS 78/79 and Windows 74/78.
+[Path/runtime repairs](validation/2026-10-12-native-runtime.md) reproduce both causes
+locally; GCC C++23 and Clang/libc++ C++23 pass 79/79. Native rerun after the user’s
+next push remains pending; native viewer/release scope is separate. Sandbox ICD
+failure is not GPU absence. Local commits are
 authorized; remote pushes/uploads are not. Follow the
 [documentation protocol](protocols/documentation.md) for subsequent handoffs.
