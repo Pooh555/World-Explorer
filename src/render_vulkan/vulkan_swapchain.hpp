@@ -7,16 +7,17 @@
 #include <vulkan/vulkan.h>
 
 namespace world_explorer {
+class vulkan_device;
 
 class vulkan_swapchain {
   public:
-    vulkan_swapchain(VkDevice device, VkPhysicalDevice physical_device, VkSurfaceKHR surface,
+    vulkan_swapchain(vulkan_device& device, VkSurfaceKHR surface,
                      VkFormat preferred_format = VK_FORMAT_UNDEFINED);
     ~vulkan_swapchain();
     vulkan_swapchain(const vulkan_swapchain&) = delete;
     vulkan_swapchain& operator=(const vulkan_swapchain&) = delete;
 
-    bool create(SDL_Window* window);
+    bool create(SDL_Window* window, std::size_t framebuffer_budget);
     void cleanup();
 
     VkSwapchainKHR swapchain() const noexcept { return swapchain_; }
@@ -25,6 +26,8 @@ class vulkan_swapchain {
     VkExtent2D extent() const noexcept { return extent_; }
     std::uint32_t minimum_images() const noexcept { return minimum_images_; }
     bool screenshot_supported() const noexcept { return screenshot_supported_; }
+    std::size_t allocated_bytes() const noexcept { return allocated_bytes_; }
+    const std::vector<detail::gpu_image>& color_targets() const noexcept { return color_targets_; }
     const std::vector<VkImage>& images() const noexcept { return images_; }
     const std::vector<VkImageView>& image_views() const noexcept { return views_; }
     const std::vector<VkFramebuffer>& framebuffers() const noexcept { return framebuffers_; }
@@ -33,6 +36,7 @@ class vulkan_swapchain {
     }
 
   private:
+    vulkan_device& allocator_;
     VkDevice device_{};
     VkPhysicalDevice physical_device_{};
     VkSurfaceKHR surface_{};
@@ -43,6 +47,8 @@ class vulkan_swapchain {
     VkExtent2D extent_{};
     std::uint32_t minimum_images_{};
     bool screenshot_supported_{};
+    std::size_t allocated_bytes_{};
+    std::vector<detail::gpu_image> color_targets_;
     std::vector<VkImage> images_;
     std::vector<VkImageView> views_;
     std::vector<VkFramebuffer> framebuffers_;

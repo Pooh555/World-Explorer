@@ -10,7 +10,8 @@
 
 namespace world_explorer {
 // Canonical SH: real basis, coefficients ordered as gsplat/3DGS, coefficient-major
-// RGB triplets. Degree 0 color = clamp(0.5 + 0.2820947918 * sh[0..2], 0, 1).
+// RGB triplets. Degree 0 color = max(0.5 + 0.2820947918 * sh[0..2], 0).
+// Values above one retain energy until composition; clamp only for SDR presentation.
 struct gaussian {
     std::array<float, 3> mean{};
     std::array<float, 3> scale{1, 1, 1};
