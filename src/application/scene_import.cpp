@@ -190,6 +190,12 @@ result<void> compile_fit_scene(const scene_import_request& request,
                                       {"walk", "UNAVAILABLE"}},
                                      ply_hash,
                                      splats};
+        if (!expectation.inspection_completion_sha256.empty()) {
+            if (!valid_digest(expectation.inspection_completion_sha256))
+                return fail(error_code::INVALID_ARGUMENT, "Invalid video inspection dependency");
+            context.provenance["inspection_completion_sha256"] =
+                expectation.inspection_completion_sha256;
+        }
         if (expectation.poses) {
             const auto& dependency = *expectation.poses;
             std::set<frame_id> frames;

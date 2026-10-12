@@ -9,7 +9,8 @@ The completed scene enters the usual renderer update path after bounded loading.
 
 This command continues a completed pose job. It does not restart successful
 poses. Use the existing pose-worker request (`stop_after: "poses"`) to produce
-that job first. Full video preflight and automatic stage chaining remain M1 work.
+that job first. Schema 2 adds checked retained metadata preflight below; automatic
+inspection/solve chaining remains M1 work.
 The `local_gsplat_v1` recipe is explicitly selected, development only, and does
 not substitute for the upstream Q2/Q3 recipe. There are no downloads or remote
 fallbacks. An existing bundle and completed fit can be published/viewed without
@@ -26,6 +27,49 @@ retained decode stage belonging to this pose job. It never rewrites a stale
 `decode.json` pointer. Map, scene and fit outputs must not overlap each other or
 the pose/video inputs. Existing requests retain schema 1, but now require the
 checked canonical pose and decode inventories in the completed job.
+
+Schema 2 retains the same recipe/fit fields and requires `pose_action` to be
+`adopt_completed`, plus this explicit inspection selection:
+
+```json
+{
+  "pose_action": "adopt_completed",
+  "inspection": {
+    "action": "adopt_completed",
+    "stage": "metadata-job/stages/inspect-<64-hex-stage-key>",
+    "completion_sha256": "<64-hex-SHA256-of-completion.json>",
+    "minimum_free_bytes": 67108864
+  }
+}
+```
+
+The fragment is added to a full schema-2 reconstruction request. The selected
+inspection can belong to a separate metadata job or the retained pose job. No
+mutable inspection pointer is followed, no stage search is performed, and no
+worker is launched for adoption. This path can reuse a completed scene without
+Python, FFmpeg, COLMAP, CUDA or gsplat installed. Schema 1 rejects these new fields
+and remains the legacy retained-pose path without a metadata-preflight claim.
+
+Preflight verifies the exact selected completion digest and complete inventory
+(≤16 files, ≤16 MiB, completion/result JSON ≤64 KiB). It binds the parsed metadata
+bytes to their inventory hash, then checks original-video size/hash, primary video
+dimensions (≤4096² pixels), positive duration ≤1200 seconds, orthogonal display
+rotation, positive original rational time base, SDR policy, ignored audio and
+arbitrary scale. HDR is rejected pending an explicit calibrated conversion.
+Output directories cannot overlap the inspection job or video; existing ancestors
+must be directories. No output is created by preflight.
+
+`minimum_free_bytes` is an explicit current-space requirement at **each** map,
+fit and scene output volume, in [1, 32 GiB]. It is not a reservation or an estimate
+of complete processing storage. Repeated checks on one filesystem do not reserve
+three budgets. Selection/fit/output budgeting remains separate. Preflight runs
+before map preparation or fitter launch and again before compilation. Failures
+preserve the previous scene and any valid map/fit. The scene records
+`inspection_completion_sha256`; identical restarts retain that dependency.
+Retained metadata verification does not probe current backend capabilities,
+certify codec decoding/color conversion or improve timestamp-sampled selection.
+New worker stages still require their own capability handshake. Blur/cuts/lens
+diagnostics, automatic inspection and fresh pose chaining remain pending.
 
 Example continuing poses with a fresh appearance job:
 

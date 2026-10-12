@@ -203,15 +203,50 @@ not real optimizer checkpoint proof. Original completed fits remain reusable;
 changed worker source does not silently upgrade older optimizer checkpoints.
 See [worker control evidence](validation/2026-10-12-worker-control.md).
 
-Next executable task: add shared full-video preflight and automatic stage
-orchestration into the application request/coordinator path: inspect the selected
-video, select a fresh owned pose job or explicitly adopt checked retained poses,
-then prepare the durable map, fit/reuse and compile the scene. GUI and CLI must
-share the command, preserve cancellation/restart dependencies and avoid repeating
-successful stages. Exercise retained-output adoption first; do not rerun the
-original COLMAP/gsplat work. Keep the stale original decode pointer untouched and
-select its explicit retained stage. Direct Python JSONL diagnostics remain
-transitional; full video preflight and automatic fresh solve chaining are pending.
+Schema-2 reconstruction requests now explicitly adopt a committed video metadata
+inspection by stage/completion SHA and retained poses. Shared native preflight
+checks the complete bounded inspection inventory, parsed-byte checksum, selected
+video identity, dimensions/duration, orthogonal rotation, original rational time
+base, SDR policy and current storage at all three outputs. It creates no outputs
+and launches no worker. Outputs cannot overlap the inspection job/video or use a
+file as their existing ancestor. Preflight runs before durable map preparation
+and again before compilation; scenes retain the inspection dependency. Legacy
+schema-1 requests remain supported without claiming metadata preflight.
+
+This is retained-metadata admission, not complete video preflight: codec/color
+conversion qualification, capability probing for new stages, automatic inspection,
+storage forecasting/reservation and blur/cut/lens diagnostics remain pending.
+The explicit free-space threshold is a current check on each output filesystem;
+it does not promise that the complete job will fit. See
+[preflight evidence](validation/2026-10-12-video-preflight.md) and
+[request contract](protocols/jobs.md).
+
+Six local profiles pass **67/67** CPU/worker tests, including libc++ C++23,
+ASan/UBSan/LSan and separate TSan, plus format/boundaries/targeted tidy. libc++
+exposed unknown free-space reporting; admission now rejects that sentinel.
+Real schema-2 adoption/restart and wrong-inspection rejection preserve both new
+output manifests, the selected inspection and eight original input/job/scene
+manifests. All 304,867 splat payloads remain byte-identical to the original scene;
+the scene binds its own 63-pose map and selected inspection SHA. No solver,
+optimizer, GPU or native GUI/platform qualification was run in this slice.
+
+Working retained-output adoption (no decoder, solver or optimizer):
+
+```sh
+build/dev/we_process reconstruct --request artifacts/sample2-preflight-20261012/adopt-original.json
+```
+
+Next executable task: extend schema 2 with automatic inspection in a fresh owned
+metadata job, using the existing FlatBuffers START/CANCEL capability handshake
+and checked stage publication. Feed its immutable completion into `preflight_video`
+before adding explicit fresh pose/decode chaining, then use the existing durable
+map/fit/compile coordinator. Reject output/request overlap and incompatible job
+ownership before launching a worker; preserve cancellation and compatible stage
+restart. Verify inspection plus retained original pose/fit adoption first, without
+rerunning successful COLMAP/gsplat or rewriting the stale decode pointer. Fresh
+video selection still needs its own bounded decode/preprocessing policy. GUI and
+CLI must continue to share the same application command. Direct Python JSONL
+diagnostics remain transitional.
 
 Outstanding gates include the prescribed ≤250k fixture, reference renderer parity,
 automatic video/solve chaining and native worker-control qualification,

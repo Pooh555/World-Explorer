@@ -6,26 +6,32 @@
 namespace world_explorer {
 result<verified_worker_stage> verify_committed_stage(const std::filesystem::path& directory,
                                                      const std::string& key,
-                                                     const std::stop_token& stop) {
+                                                     const std::stop_token& stop,
+                                                     worker_stage_limits limits) {
     try {
         constexpr std::size_t MAX_MANIFEST = std::size_t{16} * 1024 * 1024;
         constexpr std::uint64_t MAX_BYTES = 32ULL * 1024 * 1024 * 1024;
         if (stop.stop_requested())
             return fail(error_code::CANCELLED, "Stage verification cancelled");
+        if (!limits.maximum_bytes || limits.maximum_bytes > MAX_BYTES || !limits.maximum_files ||
+            limits.maximum_files > 4096 || !limits.maximum_manifest_bytes ||
+            limits.maximum_manifest_bytes > MAX_MANIFEST)
+            return fail(error_code::INVALID_ARGUMENT, "Invalid committed stage limits");
         if (!adapter_detail::valid_digest(key))
             return fail(error_code::INVALID_ARGUMENT, "Invalid committed stage key");
         verified_worker_stage stage;
         stage.directory = std::filesystem::canonical(directory);
         const auto completion_file = stage.directory / "completion.json";
-        const auto initial_hash = sha256_file(completion_file, MAX_MANIFEST, stop);
+        const auto initial_hash = sha256_file(completion_file, limits.maximum_manifest_bytes, stop);
         if (!initial_hash)
             return std::unexpected(initial_hash.error());
         stage.completion_sha256 = *initial_hash;
-        const auto manifest =
-            adapter_detail::read_json(completion_file, MAX_MANIFEST, *initial_hash);
+        const auto manifest = adapter_detail::read_json(
+            completion_file, limits.maximum_manifest_bytes, *initial_hash);
         const auto& files = manifest.at("files");
         if (manifest.at("schema_version") != 1 || manifest.at("status") != "complete" ||
-            manifest.at("key") != key || !files.is_array() || files.empty() || files.size() > 4096)
+            manifest.at("key") != key || !files.is_array() || files.empty() ||
+            files.size() > limits.maximum_files)
             return fail(error_code::INVALID_DATA, "Invalid committed stage inventory");
         std::uint64_t total{};
         for (const auto& entry : files) {
@@ -35,8 +41,8 @@ result<verified_worker_stage> verify_committed_stage(const std::filesystem::path
             if (name == "completion.json" || !adapter_detail::valid_digest(digest) ||
                 !stage.assets.emplace(name, verified_worker_asset{bytes, digest}).second)
                 return fail(error_code::INVALID_DATA, "Invalid or duplicate stage asset");
-            if (bytes > MAX_BYTES - total)
-                return fail(error_code::RESOURCE_EXHAUSTED, "Stage exceeds 32 GiB");
+            if (bytes > limits.maximum_bytes - total)
+                return fail(error_code::RESOURCE_EXHAUSTED, "Stage exceeds byte budget");
             total += bytes;
             const auto path = adapter_detail::contained_file(stage.directory, name);
             if (std::filesystem::file_size(path) != bytes)
@@ -63,7 +69,7 @@ result<verified_worker_stage> verify_committed_stage(const std::filesystem::path
                 ++actual_files;
             }
         }
-        const auto final_hash = sha256_file(completion_file, MAX_MANIFEST, stop);
+        const auto final_hash = sha256_file(completion_file, limits.maximum_manifest_bytes, stop);
         if (!final_hash)
             return std::unexpected(final_hash.error());
         if (actual_files != files.size() || *final_hash != *initial_hash)

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 
 using namespace world_explorer;
 namespace {
@@ -96,6 +97,34 @@ struct job_fixture {
     ~job_fixture() {
         std::error_code error;
         std::filesystem::remove_all(root, error);
+    }
+    void adopt_inspection() {
+        const auto directory = poses.root / "stages" / ("inspect-" + poses.pose_key);
+        std::filesystem::create_directory(directory);
+        save_json(directory / "result.json",
+                  {{"schema_version", 1},
+                   {"source",
+                    {{"sha256", source_hash}, {"bytes", std::filesystem::file_size(job.video)}}},
+                   {"stream",
+                    {{"codec_type", "video"},
+                     {"codec_name", "synthetic_diagnostic"},
+                     {"width", 2},
+                     {"height", 1},
+                     {"time_base", "1/30"},
+                     {"color_transfer", "bt709"}}},
+                   {"duration_seconds", 1.},
+                   {"rotation_degrees", -90},
+                   {"audio", "ignored"},
+                   {"scale_status", "ARBITRARY"},
+                   {"color_domain", "srgb"}});
+        poses.inventory(directory);
+        job.inspection = retained_video_inspection{
+            directory, sha256_file(directory / "completion.json", 65536).value(), 1};
+    }
+    retained_video_inspection& inspection() {
+        if (!job.inspection)
+            throw std::logic_error("Fixture inspection has not been prepared");
+        return *job.inspection;
     }
 };
 } // namespace
@@ -380,6 +409,184 @@ TEST_CASE("coordinator cancellation retains durable preparation and restart reus
         }
     }));
     CHECK(load_bundle(fixture.job.scene_output).value()->provenance == scene->provenance);
+    CHECK(sha256_file(manifest, 65536).value() == committed);
+}
+
+TEST_CASE("schema 2 requires explicit checked inspection and retained pose adoption",
+          "[preflight]") {
+    job_fixture fixture;
+    fixture.adopt_inspection();
+    const auto request = fixture.root / "request.json";
+    auto config = nlohmann::json{
+        {"schema_version", 2},
+        {"recipe", "local_gsplat_v1"},
+        {"action", "reuse_completed"},
+        {"pose_action", "adopt_completed"},
+        {"video", "capture.mp4"},
+        {"pose_job", "poses"},
+        {"fit_directory", "fit"},
+        {"scene_output", "scene.wexplore"},
+        {"steps", 7000},
+        {"max_image_dimension", 1280},
+        {"max_splats", 2000000},
+        {"completed_fit_identity", fixture.identity},
+        {"inspection",
+         {{"action", "adopt_completed"},
+          {"stage", test::path_utf8(fixture.inspection().stage.lexically_relative(fixture.root))},
+          {"completion_sha256", fixture.inspection().completion_sha256},
+          {"minimum_free_bytes", 1}}}};
+    save_json(request, config);
+    auto parsed = read_reconstruction_job(request);
+    REQUIRE(parsed);
+    REQUIRE(parsed->inspection);
+    if (parsed->inspection)
+        CHECK(std::filesystem::equivalent(parsed->inspection->stage, fixture.inspection().stage));
+    REQUIRE(reconstruct(*parsed, {}, {}));
+    SECTION("implicit pose choice") { config.erase("pose_action"); }
+    SECTION("unsupported fresh solve") { config["pose_action"] = "solve"; }
+    SECTION("implicit inspection choice") { config["inspection"].erase("action"); }
+    SECTION("implicit checksum") { config["inspection"].erase("completion_sha256"); }
+    SECTION("unknown nested option") { config["inspection"]["remote"] = true; }
+    SECTION("invalid digest") { config["inspection"]["completion_sha256"] = "not a digest"; }
+    SECTION("zero storage requirement") { config["inspection"]["minimum_free_bytes"] = 0; }
+    SECTION("negative storage requirement") { config["inspection"]["minimum_free_bytes"] = -1; }
+    SECTION("fractional storage requirement") { config["inspection"]["minimum_free_bytes"] = 1.5; }
+    SECTION("oversized storage requirement") {
+        config["inspection"]["minimum_free_bytes"] = UINT64_MAX;
+    }
+    SECTION("float schema version") { config["schema_version"] = 2.; }
+    SECTION("legacy schema cannot claim preflight") { config["schema_version"] = 1; }
+    save_json(request, config);
+    CHECK_FALSE(read_reconstruction_job(request));
+}
+
+TEST_CASE("retained video preflight checks metadata identity bounds and read-only admission",
+          "[preflight]") {
+    job_fixture fixture;
+    fixture.adopt_inspection();
+    video_preflight_request request{
+        fixture.job.video, fixture.inspection(), {fixture.root / "new-volume/future-map"}};
+    const auto initial = preflight_video(request, {});
+    REQUIRE(initial);
+    CHECK(initial->source_sha256 == fixture.source_hash);
+    CHECK(initial->source_bytes == std::filesystem::file_size(fixture.job.video));
+    CHECK(initial->rotation_degrees == -90);
+    CHECK(initial->time_base_numerator == 1);
+    CHECK(initial->time_base_denominator == 30);
+    CHECK_FALSE(std::filesystem::exists(request.outputs[0].parent_path()));
+    const auto metadata_path = request.inspection.stage / "result.json";
+    auto metadata = nlohmann::json::parse(std::ifstream(metadata_path));
+    const auto original_metadata = metadata.dump();
+    SECTION("video differs") { std::ofstream(fixture.job.video) << "another capture"; }
+    SECTION("checksum differs") { request.inspection.completion_sha256 = std::string(64, 'b'); }
+    SECTION("missing inventory file") { std::filesystem::remove(metadata_path); }
+    SECTION("uncommitted file") {
+        std::ofstream(request.inspection.stage / "extra") << "uncommitted";
+    }
+    SECTION("inspection byte budget is checked before hashing oversized entries") {
+        const auto path = request.inspection.stage / "completion.json";
+        auto completion = nlohmann::json::parse(std::ifstream(path));
+        completion["files"][0]["bytes"] = 17ULL * 1024 * 1024;
+        save_json(path, completion);
+        request.inspection.completion_sha256 = sha256_file(path, 65536).value();
+    }
+    SECTION("inspection file count is bounded independently of pose stages") {
+        for (int index = 0; index < 16; ++index)
+            std::ofstream(request.inspection.stage / ("extra-" + std::to_string(index)))
+                << "diagnostic";
+        fixture.poses.inventory(request.inspection.stage);
+        request.inspection.completion_sha256 =
+            sha256_file(request.inspection.stage / "completion.json", 65536).value();
+    }
+    SECTION("symlink output escape") { request.outputs[0] = request.inspection.stage / "output"; }
+    SECTION("source output overlap") { request.outputs[0] = fixture.root; }
+    SECTION("output parent must be a directory") {
+        std::ofstream(fixture.root / "occupied-file") << "preserve";
+        request.outputs[0] = fixture.root / "occupied-file/future-map";
+    }
+    SECTION("zero storage budget") { request.inspection.minimum_free_bytes = 0; }
+#if defined(__linux__)
+    SECTION("insufficient or unknown storage blocks retained work") {
+        const auto available = std::filesystem::space("/proc").available;
+        REQUIRE((available == 0 || available == UINTMAX_MAX));
+        request.outputs[0] = "/proc/we-preflight-not-created";
+    }
+#endif
+    SECTION("unsigned rotation cannot wrap") { metadata["rotation_degrees"] = UINT64_MAX - 89; }
+    SECTION("fractional rotation") { metadata["rotation_degrees"] = 90.5; }
+    SECTION("nonorthogonal rotation") { metadata["rotation_degrees"] = 45; }
+    SECTION("unbounded pixel count") { metadata["stream"]["width"] = UINT64_MAX; }
+    SECTION("empty dimensions") { metadata["stream"]["height"] = 0; }
+    SECTION("excessive duration") { metadata["duration_seconds"] = 1201.; }
+    SECTION("nonpositive duration") { metadata["duration_seconds"] = 0.; }
+    SECTION("zero time denominator") { metadata["stream"]["time_base"] = "1/0"; }
+    SECTION("extra time delimiter") { metadata["stream"]["time_base"] = "1/30/2"; }
+    SECTION("time integer overflow") { metadata["stream"]["time_base"] = "1/9223372036854775808"; }
+    SECTION("HDR requires explicit conversion") {
+        metadata["stream"]["color_transfer"] = "smpte2084";
+    }
+    SECTION("wrong source hash") { metadata["source"]["sha256"] = std::string(64, 'a'); }
+    SECTION("wrong source size") { metadata["source"]["bytes"] = 1; }
+    SECTION("invalid stream type") { metadata["stream"]["codec_type"] = "audio"; }
+    SECTION("fractional metadata version") { metadata["schema_version"] = 1.; }
+    SECTION("signed dimensions") { metadata["stream"]["width"] = -2; }
+    SECTION("cancelled admission") {
+        std::stop_source cancellation;
+        cancellation.request_stop();
+        auto result = preflight_video(request, cancellation.get_token());
+        REQUIRE_FALSE(result);
+        CHECK(result.error().code == error_code::CANCELLED);
+        return;
+    }
+    // Changed metadata is explicitly selected anew so semantic checks, rather
+    // than only the inventory checksum, reject it. Byte fixtures are synthetic.
+    if (std::filesystem::exists(metadata_path) && metadata.dump() != original_metadata) {
+        save_json(metadata_path, metadata);
+        fixture.poses.inventory(request.inspection.stage);
+        request.inspection.completion_sha256 =
+            sha256_file(request.inspection.stage / "completion.json", 65536).value();
+    }
+    INFO(metadata.dump());
+    CHECK_FALSE(preflight_video(request, {}));
+    CHECK_FALSE(std::filesystem::exists(fixture.root / "new-volume"));
+}
+
+TEST_CASE("coordinator preflight failure preserves output and inspection dependencies on restart",
+          "[preflight]") {
+    job_fixture fixture;
+    fixture.adopt_inspection();
+    fixture.job.map_directory = fixture.root / "prepared-map";
+    const auto inspection_hash = fixture.inspection().completion_sha256;
+    REQUIRE(reconstruct(fixture.job, {}, {}));
+    CHECK(load_bundle(fixture.job.scene_output)
+              .value()
+              ->provenance.at("inspection_completion_sha256") == inspection_hash);
+    const auto manifest = fixture.job.scene_output / "manifest.json";
+    const auto committed = sha256_file(manifest, 65536).value();
+    const auto map_hash = sha256_file(fixture.job.map_directory / "manifest.json", 65536).value();
+    REQUIRE(reconstruct(fixture.job, {}, {}));
+    CHECK(sha256_file(manifest, 65536).value() == committed);
+    CHECK(sha256_file(fixture.job.map_directory / "manifest.json", 65536).value() == map_hash);
+    SECTION("bad initial inspection creates no new map or fit") {
+        fixture.inspection().completion_sha256 = std::string(64, 'b');
+        fixture.job.map_directory = fixture.root / "must-not-create-map";
+        fixture.job.fit_directory = fixture.root / "must-not-create-fit";
+        fixture.job.action = fit_action::START;
+        fixture.job.completed_fit_identity.clear();
+        fixture.job.gsplat_source = fixture.root / "absent-source";
+        fixture.job.fitting_worker = {fixture.root / "must-not-launch.py", WE_TEST_PYTHON, false};
+        REQUIRE_FALSE(reconstruct(fixture.job, {}, {}));
+        CHECK_FALSE(std::filesystem::exists(fixture.job.map_directory));
+        CHECK_FALSE(std::filesystem::exists(fixture.job.fit_directory));
+    }
+    SECTION("inspection changes during fitting boundary") {
+        const auto result = reconstruct(fixture.job, {}, [&](const std::string& text) {
+            if (text.find("Durable pose map ready") != std::string::npos) {
+                std::ofstream(fixture.inspection().stage / "result.json") << "changed metadata";
+            }
+        });
+        REQUIRE_FALSE(result);
+    }
     CHECK(sha256_file(manifest, 65536).value() == committed);
 }
 

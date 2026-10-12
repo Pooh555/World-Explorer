@@ -13,7 +13,8 @@ struct pose_input {
     std::string completion_hash;
     std::map<std::string, std::string> file_hashes;
 };
-result<nlohmann::json> read_json(const std::filesystem::path& path, std::size_t maximum);
+result<nlohmann::json> read_json(const std::filesystem::path& path, std::size_t maximum,
+                                 const std::string& expected_sha256 = {});
 bool valid_digest(const std::string& digest);
 result<std::filesystem::path> contained_file(const std::filesystem::path& root,
                                              const std::string& relative);
