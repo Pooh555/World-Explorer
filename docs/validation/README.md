@@ -10,6 +10,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 | Foundation | [2026-10-11](2026-10-11-foundation.md): build, GPU overlap/replace/delete/resize; failed original capture and successful replacement poses |
 | Real appearance | [Capture](2026-10-11-capture.md): fit failures, cancellation/resume, scene/viewer; [manifest](2026-10-11-capture.json) |
 | Shared continuation | [Coordinator](2026-10-11-coordinator.md): fit start/resume/reuse, GUI/GPU pause, shutdown; [manifest](2026-10-11-coordinator.json) |
+| Windows stage flush | [Flush repair](2026-10-12-windows-flush.md): supplied Windows 77/78; writable fsync, nine Python checks, preservation regression; hosted rerun pending |
 | Current native CPU repair | [Runtime/paths](2026-10-12-native-runtime.md): supplied macOS 78/79, Windows 74/78; alias assertion and missing FFmpeg repaired locally; hosted rerun pending |
 | CPU CI repair | [Initial](2026-10-11-ci.md), [follow-up](2026-10-11-ci-followup.md): compiler/library/OpenSSL, byte JSON and Windows path assumptions; hosted vs local scope |
 | Worker events | [Wire](2026-10-11-worker-wire.md): pinned FlatBuffers bindings, typed events; historical argv request transport |

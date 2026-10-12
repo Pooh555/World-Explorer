@@ -26,7 +26,7 @@ thresholds or platform requirements have been waived. Status on 2026-10-12:
 | N1 fly controls | Camera + gated SDL input; CPU tests pass | IN_PROGRESS | Full native input/HiDPI/latency inspection pending |
 | N2 walking | Disabled until independent scale/geometry | NOT_STARTED | No invented collision |
 | E1 correctness/coverage | Contract/worker/coordinator tests; native sync validation including render pause/resume; targeted lint | IN_PROGRESS | Current profile counts in stage-chain evidence; coverage, fuzzing and full gate fixtures pending |
-| E2 build/delivery | Local GCC/Clang C++26 and explicit C++23 builds; libc++ CPU checks; pinned dev archives; corrected native CPU CI | IN_PROGRESS | Latest hosted macOS 78/79 and Windows 74/78; [path/runtime fixes](validation/2026-10-12-native-runtime.md) pass local GCC/libc++ C++23 79/79; hosted rerun, native viewer/release and distribution-hash qualification pending |
+| E2 build/delivery | Local GCC/Clang C++26 and explicit C++23 builds; libc++ CPU checks; pinned dev archives; corrected native CPU CI | IN_PROGRESS | User reports macOS passed; supplied Windows 77/78; [stage flush repair](validation/2026-10-12-windows-flush.md) passes local C++23 79/79 and Python 3.12/3.14 9/9; Windows rerun, native viewer/release and distribution-hash qualification pending |
 | L1 / M7–M8 | Only future-compatible contracts in Phase 1 | DEFERRED_BY_USER | No live reconstruction implementation |
 
 Each gate requires the measurement scope prescribed by the specification. A local

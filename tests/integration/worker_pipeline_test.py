@@ -1,5 +1,7 @@
 """CPU integration tests execute real FFmpeg; no substitute pose/training outputs."""
 import importlib.util
+import contextlib
+import errno
 import hashlib
 import json
 from pathlib import Path
@@ -10,6 +12,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("we_worker", ROOT / "workers/worker.py")
@@ -26,6 +29,85 @@ journal_spec.loader.exec_module(journal)
 class WorkerBoundaryTests(unittest.TestCase):
     def tearDown(self):
         worker.CANCELLED.clear()
+
+    @contextlib.contextmanager
+    def checked_stage_fsync(self, fail_asset=None):
+        """Model Windows write-access requirements while performing real flushes."""
+        original_open, original_fsync = Path.open, worker.os.fsync
+        handles = {}
+
+        def tracked_open(path, *args, **kwargs):
+            handle = original_open(path, *args, **kwargs)
+            handles[handle.fileno()] = handle
+            return handle
+
+        def checked_fsync(descriptor):
+            handle = handles.get(descriptor)
+            if handle is not None and not handle.closed:
+                if not handle.writable():
+                    raise OSError(errno.EBADF, "Windows flush requires write access")
+                if Path(handle.name).name == fail_asset:
+                    raise OSError(errno.EIO, "Injected asset flush failure")
+            return original_fsync(descriptor)
+
+        with mock.patch.object(Path, "open", tracked_open), \
+                mock.patch.object(worker.os, "fsync", checked_fsync):
+            yield
+
+    def test_stage_flushes_writable_assets_without_changing_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / "source.mp4"
+            source.write_bytes(b"synthetic stage boundary fixture; not a video")
+            job = worker.Job({"schema_version": 1, "source": str(source),
+                              "job_dir": str(root / "job"), "stop_after": "inspect"})
+            payload = b"\x00\xff\r\n\x1a diagnostic asset"
+
+            def publish(directory):
+                (directory / "payload.bin").write_bytes(payload)
+                return {"synthetic_diagnostic": True}
+
+            with self.checked_stage_fsync():
+                directory, result = job.stage_run("diagnostic", {}, publish)
+            self.assertEqual((directory / "payload.bin").read_bytes(), payload)
+            self.assertTrue(worker.verify_stage(directory, directory.name.split("-", 1)[1],
+                                                job.limits["max_output_bytes"]))
+            completion = (directory / "completion.json").read_bytes()
+            with mock.patch.object(worker.os, "fsync", side_effect=AssertionError("Cached stage rewrote files")):
+                reused, cached = job.stage_run("diagnostic", {}, publish)
+            self.assertEqual(reused, directory)
+            self.assertEqual(cached, result)
+            self.assertEqual((directory / "completion.json").read_bytes(), completion)
+
+    def test_asset_flush_failure_preserves_previous_commit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / "source.mp4"
+            source.write_bytes(b"synthetic stage boundary fixture; not a video")
+            job = worker.Job({"schema_version": 1, "source": str(source),
+                              "job_dir": str(root / "job"), "stop_after": "inspect"})
+            committed, _ = job.stage_run("diagnostic", {}, lambda _: {"valid": True})
+            pointer = (job.directory / "diagnostic.json").read_bytes()
+            completion = (committed / "completion.json").read_bytes()
+            (job.directory / "result.json").write_bytes(b"previous committed result")
+
+            def publish(directory):
+                (directory / "failed.bin").write_bytes(b"retain partial diagnostics")
+                return {"valid": False}
+
+            with self.checked_stage_fsync(fail_asset="failed.bin"):
+                with self.assertRaises(OSError) as caught:
+                    job.stage_run("retry", {}, publish)
+            self.assertEqual(caught.exception.errno, errno.EIO)
+            self.assertEqual((job.directory / "diagnostic.json").read_bytes(), pointer)
+            self.assertEqual((committed / "completion.json").read_bytes(), completion)
+            self.assertEqual((job.directory / "result.json").read_bytes(), b"previous committed result")
+            self.assertFalse((job.directory / "retry.json").exists())
+            self.assertFalse(list((job.directory / "stages").glob("retry-*")))
+            incomplete = list((job.directory / "stages").glob(".retry-*"))
+            self.assertEqual(len(incomplete), 1)
+            self.assertEqual((incomplete[0] / "failed.bin").read_bytes(), b"retain partial diagnostics")
+            self.assertFalse((incomplete[0] / "completion.json").exists())
 
     def test_output_overflow_terminates_child(self):
         with self.assertRaises(worker.WorkerError) as caught:
