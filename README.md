@@ -101,8 +101,10 @@ The native frame-source inspection path can replay a committed decode stage:
 `build/dev/we_process replay-frames DECODE_STAGE VIDEO`. It checks image references
 and prints original timestamps and RGB digests without rerunning reconstruction.
 See the [capture contract](docs/protocols/capture.md). Shared worker commands now
-receive verified [FlatBuffers events](docs/protocols/worker.md); direct Python
-invocation retains JSONL diagnostics.
+use verified [FlatBuffers 2.0 START/CANCEL commands and events](docs/protocols/worker.md).
+Cancellation requests the existing checkpoint hook before enforcing process-tree
+termination; direct Python invocation retains JSONL diagnostics. Native protocol
+1 workers must be upgraded explicitly. Existing completed assets remain readable.
 
 `build/dev/we_process replay-poses POSE_JOB VIDEO [--decode-stage DIR]` checks
 completed poses/calibration, replays real frame leases through the native estimator

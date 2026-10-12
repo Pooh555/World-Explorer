@@ -79,7 +79,7 @@ target_link_libraries(reconstruction_api INTERFACE core)
 set(WE_WIRE_DIRECTORY "${PROJECT_BINARY_DIR}/generated/worker")
 file(MAKE_DIRECTORY "${WE_WIRE_DIRECTORY}/python")
 file(COPY "${WE_FLATBUFFERS_PYTHON}" DESTINATION "${WE_WIRE_DIRECTORY}/python")
-add_custom_command(OUTPUT "${WE_WIRE_DIRECTORY}/events_generated.h"
+add_custom_command(OUTPUT "${WE_WIRE_DIRECTORY}/events_generated.h" "${WE_WIRE_DIRECTORY}/commands_generated.h"
   BYPRODUCTS "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/envelope.py"
     "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/handshake.py"
     "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/progress.py"
@@ -87,12 +87,21 @@ add_custom_command(OUTPUT "${WE_WIRE_DIRECTORY}/events_generated.h"
     "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/failure.py"
     "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/artifact_reference.py"
     "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/payload.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/command_acknowledged.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/command_kind.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/control/command_envelope.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/control/start_command.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/control/cancel_command.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/control/command_payload.py"
+    "${WE_WIRE_DIRECTORY}/python/world_explorer/control/__init__.py"
     "${WE_WIRE_DIRECTORY}/python/world_explorer/__init__.py"
     "${WE_WIRE_DIRECTORY}/python/world_explorer/wire/__init__.py"
   COMMAND ${CMAKE_COMMAND} -E make_directory "${WE_WIRE_DIRECTORY}"
   COMMAND $<TARGET_FILE:${WE_FLATC}> --cpp --scoped-enums -o "${WE_WIRE_DIRECTORY}" "${PROJECT_SOURCE_DIR}/schemas/worker/events.fbs"
   COMMAND $<TARGET_FILE:${WE_FLATC}> --python -o "${WE_WIRE_DIRECTORY}/python" "${PROJECT_SOURCE_DIR}/schemas/worker/events.fbs"
-  DEPENDS ${WE_FLATC} schemas/worker/events.fbs
+  COMMAND $<TARGET_FILE:${WE_FLATC}> --cpp --scoped-enums -o "${WE_WIRE_DIRECTORY}" "${PROJECT_SOURCE_DIR}/schemas/worker/commands.fbs"
+  COMMAND $<TARGET_FILE:${WE_FLATC}> --python -o "${WE_WIRE_DIRECTORY}/python" "${PROJECT_SOURCE_DIR}/schemas/worker/commands.fbs"
+  DEPENDS ${WE_FLATC} schemas/worker/events.fbs schemas/worker/commands.fbs
   VERBATIM)
 add_library(reconstruction_adapters src/reconstruction_adapters/process.cpp
   src/reconstruction_adapters/worker_protocol.cpp src/reconstruction_adapters/decoded_frame_source.cpp
@@ -100,7 +109,7 @@ add_library(reconstruction_adapters src/reconstruction_adapters/process.cpp
   src/reconstruction_adapters/completed_poses.cpp
   src/reconstruction_adapters/completed_pose_replay.cpp
   src/reconstruction_adapters/batch_poses.cpp
-  "${WE_WIRE_DIRECTORY}/events_generated.h")
+  "${WE_WIRE_DIRECTORY}/events_generated.h" "${WE_WIRE_DIRECTORY}/commands_generated.h")
 we_target(reconstruction_adapters)
 target_include_directories(reconstruction_adapters SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
 target_compile_definitions(reconstruction_adapters PRIVATE WE_WIRE_BINDINGS="${WE_WIRE_DIRECTORY}/python")
@@ -209,6 +218,7 @@ if(BUILD_TESTING)
   we_target(we_core_tests)
   target_link_libraries(we_core_tests PRIVATE application map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
   target_include_directories(we_core_tests SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
+  target_compile_definitions(we_core_tests PRIVATE WE_TEST_WIRE_BINDINGS="${WE_WIRE_DIRECTORY}/python")
   catch_discover_tests(we_core_tests PROPERTIES LABELS "cpu")
 
   find_package(Python3 COMPONENTS Interpreter REQUIRED)

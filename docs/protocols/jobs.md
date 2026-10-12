@@ -95,7 +95,9 @@ published scene, the error includes its output path and keeps the previous scene
 The startup request mode returns failure instead of treating an empty viewer as
 success. No scene is silently trimmed to fit a smaller renderer budget.
 
-Shared native subprocess calls consume verified length-prefixed FlatBuffers
-events described in [worker.md](worker.md). Direct Python invocation retains
-JSONL diagnostics. Typed bidirectional worker commands/control and full automatic
-video-to-pose-to-fit chaining remain required M1 work.
+Shared native subprocess calls use verified FlatBuffers 2.0 START/CANCEL commands
+and events described in [worker.md](worker.md). Direct Python invocation retains
+JSONL diagnostics. Full automatic video-to-pose-to-fit chaining and native
+platform qualification remain required M1 work. Worker source changes retain
+the original recipe/checkpoint identity checks; completed fits can still be
+explicitly reused, but older optimizer checkpoints are not silently upgraded.

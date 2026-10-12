@@ -1,0 +1,21 @@
+namespace world_explorer.control;
+
+// One batch invocation per process. Arguments are adapter-owned values, never
+// shell text. Operation 1 starts; operation 2 cancels target operation 1.
+table start_command {
+  arguments:[string] (required);
+}
+table cancel_command {
+  target_operation:ulong;
+}
+union command_payload { start_command, cancel_command }
+table command_envelope {
+  api_major:ushort = 2;
+  api_minor:ushort;
+  session:string (required);
+  sequence:ulong;
+  operation:ulong;
+  body:command_payload;
+}
+root_type command_envelope;
+file_identifier "WEC2";

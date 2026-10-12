@@ -250,7 +250,7 @@ def fit(args):
 
 
 def main():
-    we_protocol.configure(sys.argv, backend="local_gsplat_v1", backend_version="gsplat-1.5.3",
+    we_protocol.configure(sys.argv, cancel_callback=request_stop, backend="local_gsplat_v1", backend_version="gsplat-1.5.3",
                           sensors=["video", "undistorted_colmap"], devices=["cuda"],
                           checkpoint_semantics="complete local optimizer and RNG checkpoint",
                           checkpoint_rights="local user data; gsplat Apache-2.0",
