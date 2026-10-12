@@ -4,6 +4,9 @@ permissions:
   contents: read
 jobs:
   core:
+    env:
+      WINDOWS_FFMPEG_VERSION: '7.1.1'
+      WINDOWS_FFMPEG_SHA256: '04861d3339c5ebe38b56c19a15cf2c0cc97f5de4fa8910e4d47e5e6404e4a2d4'
     strategy:
       fail-fast: false
       matrix:
@@ -34,10 +37,56 @@ jobs:
         uses: ilammy/msvc-dev-cmd@a102174a2b586eec2ea151a69e6fd14404a8ce7c # v1.13.0
         with:
           arch: x64
-      - name: Prepare Windows FFmpeg
+      - name: Cache pinned Windows FFmpeg archive
+        if: runner.os == 'Windows'
+        continue-on-error: true # Cache availability is optional; setup validation stays fatal.
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ runner.temp }}/world-explorer-ffmpeg-cache/ffmpeg-${{ env.WINDOWS_FFMPEG_VERSION }}-essentials_build.zip
+          key: windows-x64-ffmpeg-${{ env.WINDOWS_FFMPEG_VERSION }}-${{ env.WINDOWS_FFMPEG_SHA256 }}
+      - name: Prepare pinned Windows FFmpeg
         if: runner.os == 'Windows'
         shell: pwsh
-        run: choco install ffmpeg --version=7.1.1 --yes --no-progress
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:WINDOWS_FFMPEG_VERSION
+          $expected_hash = $env:WINDOWS_FFMPEG_SHA256
+          $archive_name = "ffmpeg-${version}-essentials_build.zip"
+          $cache_dir = Join-Path $env:RUNNER_TEMP 'world-explorer-ffmpeg-cache'
+          $archive = Join-Path $cache_dir $archive_name
+          if (!(Test-Path -LiteralPath $archive -PathType Leaf)) {
+            New-Item -ItemType Directory -Force -Path $cache_dir | Out-Null
+            $partial = "$archive.part"
+            $url = "https://github.com/GyanD/codexffmpeg/releases/download/${version}/${archive_name}"
+            curl.exe --fail --location --retry 4 --retry-all-errors --retry-delay 2 --connect-timeout 20 --max-time 180 --max-filesize 100000000 --output $partial $url
+            if ($LASTEXITCODE -ne 0) {
+              throw "FFmpeg archive download failed after bounded retries (curl exit $LASTEXITCODE)"
+            }
+            if ((Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash -ne $expected_hash) {
+              throw 'Downloaded FFmpeg archive SHA-256 mismatch'
+            }
+            Move-Item -LiteralPath $partial -Destination $archive -Force
+          }
+          # Cache hits are untrusted until checked against the repository pin.
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $expected_hash) {
+            throw 'Cached FFmpeg archive SHA-256 mismatch'
+          }
+          $install_dir = Join-Path $env:RUNNER_TEMP 'world-explorer-ffmpeg'
+          Expand-Archive -LiteralPath $archive -DestinationPath $install_dir -Force
+          $bin = Join-Path $install_dir "ffmpeg-${version}-essentials_build/bin"
+          foreach ($tool in @('ffmpeg', 'ffprobe')) {
+            $executable = Join-Path $bin "$tool.exe"
+            if (!(Test-Path -LiteralPath $executable -PathType Leaf)) {
+              throw "Pinned FFmpeg archive is missing $tool.exe"
+            }
+            $version_output = @(& $executable -version)
+            $pattern = '^' + $tool + ' version ' + [regex]::Escape($version) + '(?:-|\s)'
+            if ($LASTEXITCODE -ne 0 -or $version_output[0] -notmatch $pattern) {
+              throw "Pinned $tool failed its version preflight"
+            }
+            Write-Output $version_output[0]
+          }
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Locate Windows OpenSSL SDK
         if: runner.os == 'Windows'
         shell: pwsh

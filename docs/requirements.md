@@ -1,7 +1,7 @@
 # Requirement and evidence matrix
 
 The original targets in `technical_plan.md` §3 and §8 remain controlling; no
-thresholds or platform requirements have been waived. Status on 2026-10-12:
+thresholds or platform requirements have been waived. Status on 2026-10-13:
 
 | Requirement | Implementation / checks | Status | Evidence |
 |---|---|---|---|
@@ -26,7 +26,7 @@ thresholds or platform requirements have been waived. Status on 2026-10-12:
 | N1 fly controls | Camera + gated SDL input; specified defaults, explicit remaps and active-key overlay | IN_PROGRESS | [Preference/handoff and native overlay checks](validation/2026-10-12-viewer-controls.md) pass; full native input/HiDPI/latency inspection pending |
 | N2 walking | Disabled until independent scale/geometry | NOT_STARTED | No invented collision |
 | E1 correctness/coverage | Contract/worker/coordinator tests; native sync validation, projection/color comparisons and provenance labels; targeted lint | IN_PROGRESS | [91 GCC C++26 / 91 Clang C++23 viewer/core checks and native tiled smoke](validation/2026-10-12-tiled-composition.md); retained cutoff failure fixed; historical libc++/sanitizer scopes remain separate; coverage, fuzzing and full gate fixtures pending |
-| E2 build/delivery | Local GCC/Clang C++26 and explicit C++23 builds; libc++ CPU checks; pinned dev archives; corrected native CPU CI | IN_PROGRESS | User reports macOS passed; supplied Windows 77/78; [stage flush repair](validation/2026-10-12-windows-flush.md) passes local C++23 79/79 and Python 3.12/3.14 9/9; Windows rerun, native viewer/release and distribution-hash qualification pending |
+| E2 build/delivery | Local GCC/Clang C++26 and explicit C++23 builds; libc++ CPU checks; pinned dev archives; corrected native CPU CI | IN_PROGRESS | User reports macOS passed; supplied Windows 77/78; [stage flush repair](validation/2026-10-12-windows-flush.md) passes local C++23 79/79 and Python 3.12/3.14 9/9; latest Windows run stops before configuration on Chocolatey HTTP 504; [pinned archive/retry/cache repair](validation/2026-10-13-windows-ffmpeg.md) checked locally; hosted rerun, native viewer/release and distribution-hash qualification pending |
 | L1 / M7–M8 | Only future-compatible contracts in Phase 1 | DEFERRED_BY_USER | No live reconstruction implementation |
 
 Each gate requires the measurement scope prescribed by the specification. A local
