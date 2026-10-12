@@ -6,7 +6,7 @@ thresholds or platform requirements have been waived. Status on 2026-10-12:
 | Requirement | Implementation / checks | Status | Evidence |
 |---|---|---|---|
 | M1 vertical slice | Real COLMAP 63/63 → 7k gsplat → checked scene → native viewer; shared GUI/CLI continuation command | IN_PROGRESS | Explicit recipe/resume/reuse and checked publication; automatic pose chaining, prescribed fixture, contracts and native reference/platform qualification pending |
-| M1 four contracts | Native frame source, checked pose/calibration import, completed replay and fresh batch estimator, map/scene revisions, update sink; verified worker events and canonical FlatBuffers pose assets | IN_PROGRESS | 46 CPU/worker checks pass in six local profiles; fresh 63/63 recovery and canonical pose export/reload; durable maps and complete control protocol pending |
+| M1 four contracts | Native frame source, checked pose/calibration import, completed replay and fresh batch estimator, map/scene revisions, update sink; verified worker events, canonical FlatBuffers pose assets and durable map checkpoints | IN_PROGRESS | 54 CPU/worker checks pass in six local profiles; real 63/63 map restart/retry/parity and partial-write recovery; automatic pipeline integration and complete control protocol pending |
 | M2 renderer / updates | Initial GPU projection/radix/quad code | IN_PROGRESS | Parity, lifetime stress and performance pending |
 | M3 offline geometry / walk | Worker cancellation/stages started; no supported geometry | NOT_STARTED | Full milestone unverified |
 | M4 platforms / Brush | Native source portability intended; hosted Windows CPU build succeeds | BLOCKED | Complete native viewer/device/release qualification on Windows, Apple Silicon and AMD unavailable; CPU CI is narrower |
@@ -43,4 +43,5 @@ Native frame source: [replay evidence](validation/2026-10-11-frame-replay.md).
 Native pose import/replay: [current evidence](validation/2026-10-12-pose-replay.md).
 Native fresh batch admission/solve: [current evidence](validation/2026-10-12-batch-poses.md).
 Canonical pose/calibration v1: [local serialization/publication evidence](validation/2026-10-12-pose-assets.md).
+Persistent maps: [local restart/publication evidence](validation/2026-10-12-persistent-maps.md).
 No Q/P/N/E requirement is fully certified; configured CI is not a native pass.

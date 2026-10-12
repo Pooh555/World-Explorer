@@ -127,24 +127,44 @@ CPU/worker checks, including separate TSan and ASan/UBSan/LSan. The retained fre
 image hashes and camera coefficients match independently, and original job/scene
 manifests remain unchanged. No solver, pixel decoder or optimizer ran. See
 [canonical asset evidence](validation/2026-10-12-pose-assets.md).
-This is immutable interchange, not durable map-store recovery; operation receipts
-and restart-safe commits are still pending. Native Windows/macOS publication and
+Canonical interchange contains no operation receipts; the separate checkpoint
+format below supplies restart recovery. Native Windows/macOS publication and
 power-loss behavior remain unqualified.
 
-Next executable task: implement durable `map_store` snapshot/revision publication
-and reload, preserving operation receipts, epoch/base checks, correction/deletion
-invalidation and old snapshot lifetimes. Reuse canonical record validation; ensure
-assets are closed/checksummed before atomic manifest publication. Test restart,
-retries, checksum corruption, interrupted/failed publication and prior-manifest
-preservation. Use retained successful poses for integration without rerunning
-COLMAP. Keep both successful pose jobs and original fit; never mix their provenance.
+Native `map_store` now opens checked persistent checkpoints with a lifetime writer
+lock, atomic asset-first manifest publication and bounded retry receipts. Restart
+preserves epoch/base checks, correction/deletion invalidation and old snapshot
+lifetimes. Canonical import retains a checked initial source dependency inside the
+store. Shared native/CLI `init-map`, `import-map` and `inspect-map` commands work;
+six local profiles pass **54/54** tests, including separate TSan and
+ASan/UBSan/LSan. The real 63-pose map reopens/retries in separate processes and
+re-encodes to the identical canonical asset hash. A native 4 KiB file-size limit
+forces a partial-write failure without changing the previous manifest; subsequent
+recovery succeeds. Original job/scene manifests remain unchanged. See
+[durable map evidence](validation/2026-10-12-persistent-maps.md) and
+[map contract](protocols/maps.md). Native Windows/macOS, power-loss and true ENOSPC
+qualification remain pending; no full M1 gate was promoted.
+
+Working inspection (no reconstruction):
+
+```sh
+build/dev/we_process inspect-map artifacts/sample2-persistent-map-20261012
+```
+
+Next executable task: integrate canonical pose publication and durable map
+creation/reuse into the shared pose preparation/coordinator flow, then add the
+remaining typed worker command/control path. Preserve operation IDs and source/
+pose completion dependencies across cancellation/restart. Use retained successful
+outputs; do not rerun COLMAP/gsplat or combine the recovery's poses with the
+original fit's different pose provenance. Keep the stale original decode pointer
+untouched and select its explicit retained stage when importing the original fit.
 Manual pose preparation and direct Python JSONL diagnostics
 remain transitional, not a waiver. Full video preflight
 and automatic pose-to-fit chaining are still pending.
 
 Outstanding gates include the prescribed ≤250k fixture, reference renderer parity,
-complete worker control protocol, durable map storage, native Windows/Mac runs, prescribed
-corpus/performance and geometry/collision work. No Phase 1 milestone is complete.
+complete worker control protocol, automatic durable-map/pipeline integration,
+native Windows/Mac runs, prescribed corpus/performance and geometry/collision work. No Phase 1 milestone is complete.
 M7–M8 remain deferred. User edits to `docs/execution_prompt.md` and
 `docs/technical_plan.md` remain untouched and excluded from implementation commits.
 See [local evidence](validation/2026-10-11-foundation.md) for check scope and commands.

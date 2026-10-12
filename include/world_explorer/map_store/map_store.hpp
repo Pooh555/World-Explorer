@@ -3,10 +3,17 @@
 
 #include "world_explorer/reconstruction_api/map_records.hpp"
 #include "world_explorer/reconstruction_api/pose_estimator.hpp"
+#include <cstddef>
 #include <deque>
+#include <filesystem>
 #include <map>
+#include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 namespace world_explorer {
 struct map_state {
@@ -22,6 +29,8 @@ struct map_state {
     // Consumers use this set to invalidate appearance/geometry derived from
     // corrected or deleted observations before publishing a new scene revision.
     std::set<frame_id> invalidated_frames;
+    // Initial canonical solve dependency, not the provenance of later corrections.
+    std::optional<std::string> initial_pose_asset_sha256;
 };
 using map_snapshot = std::shared_ptr<const map_state>;
 struct map_transaction {
@@ -40,13 +49,34 @@ struct map_store_limits {
     std::size_t max_submaps{4096};
     std::size_t remembered_operations{1024};
 };
-// Thread-safe atomic immutable snapshots. Producers retain their input on failure.
+struct persistent_map_config {
+    std::filesystem::path directory;
+    map_store_limits records{};
+    byte_budget checkpoint_bytes{std::size_t{256} * 1024 * 1024};
+    // Explicit initialization only. Missing/corrupt manifests never reset a store.
+    bool create_if_missing{};
+    byte_budget retained_asset_bytes{std::size_t{8} * 1024 * 1024 * 1024};
+};
+class map_persistence;
+// Thread-safe serialized commits and immutable snapshots. Producers retain their
+// input on failure. Retry acknowledgements persist within remembered_operations;
+// older retries require snapshot resynchronization. Persistence performs blocking
+// file IO: call commit off the rendering thread.
 class map_store {
   public:
     explicit map_store(map_store_limits limits = {});
-    result<map_revision_id> commit(const map_transaction& transaction);
+    ~map_store();
+    static result<std::unique_ptr<map_store>> open_persistent(persistent_map_config config,
+                                                              const std::stop_token& stop = {});
+    result<map_revision_id> commit(const map_transaction& transaction,
+                                   const std::stop_token& stop = {});
     map_snapshot acquire_snapshot() const;
-    result<void> reset(world_epoch epoch);
+    result<void> reset(world_epoch epoch, const std::stop_token& stop = {});
+    // Persistent revision-1 seeding from checked canonical poses. Copies the
+    // immutable source dependency before publishing, and preserves retry IDs.
+    result<map_revision_id> import_pose_asset(const std::filesystem::path& path,
+                                              const std::string& sha256, operation_id operation,
+                                              const std::stop_token& stop = {});
 
   private:
     mutable std::mutex mutex_;
@@ -58,6 +88,11 @@ class map_store {
         map_revision_id revision;
     };
     std::deque<remembered> operations_;
+    std::unique_ptr<map_persistence> persistence_;
+    friend class map_persistence;
+    result<map_revision_id> commit_locked(const map_transaction& transaction,
+                                          const std::stop_token& stop,
+                                          std::optional<std::string> initial_asset = {});
 };
 } // namespace world_explorer
 
