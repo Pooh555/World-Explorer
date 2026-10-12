@@ -14,7 +14,8 @@ Current contracts: [capture](protocols/capture.md), [poses](protocols/poses.md),
 implementation sequence, failures, identities, timings and profile differences.
 
 Documentation [consolidation](validation/2026-10-12-documentation.md) changes no
-software qualification. Latest code slice: `f115d90`. **79/79 CPU/worker tests in six local profiles**;
+software qualification. Latest reconstruction integration slice: `f115d90`.
+**79/79 CPU/worker tests in six local profiles**;
 format, boundaries and targeted tidy pass. Synthetic complete fresh-chain
 publication/restart passes. Real automatic decode selects **63/628 frames**, checks
 inventory, reuses its cache across processes and cancels before pose invocation
@@ -36,14 +37,14 @@ Run from repository root; all media/jobs/screenshots stay local and ignored.
 
 ```sh
 build/dev/we_viewer --scene artifacts/sample2.wexplore --source-view --max-splats 500000
-build/dev/we_process reconstruct --request artifacts/sample2-inspection-pipeline-20261012/inspect-and-adopt.json
-python3 artifacts/validation/stage-chain-real/verify.py
+build/dev/we_process reconstruct --request artifacts/sample2-preflight-20261012/adopt-original.json
 ```
 
-The reconstruction command adopts original completed poses/fit after automatic
-metadata inspection; it does not repeat optimization. The probe intentionally
-cancels before solving. Additional replay/export/map/preparation/adoption commands
-are indexed in [validation](validation/README.md).
+The reconstruction command adopts checked retained metadata and original completed
+poses/fit without optimization. Worker source changed in the flush repair: older
+owned automatic requests/probes require compatible worker identities or separate
+fresh jobs; do not rewrite owners/cache/checkpoints. Additional replay/export/map/
+preparation/adoption commands are indexed in [validation](validation/README.md).
 
 Private source: `data/local/sample.mp4`, 20.948333 s, 3840×2160 H.264/30 FPS;
 SHA-256 `51263d9991dcbc2136d0809ecba1a8ba1b261896f3b222b7afba19784a153ef6`.
@@ -68,11 +69,10 @@ metadata inspection; unknown/inadequate space fails explicitly.
 
 Native Windows/macOS control/viewer/release, Apple Silicon/AMD, corpus/reference
 performance, geometry/collision, coverage/fuzzing and complete Q/P/N/E gates remain
-pending; [requirements](requirements.md) tracks each scope. Latest supplied hosted
-CPU results are macOS 78/79 and Windows 74/78.
-[Path/runtime repairs](validation/2026-10-12-native-runtime.md) reproduce both causes
-locally; GCC C++23 and Clang/libc++ C++23 pass 79/79. Native rerun after the user’s
-next push remains pending; native viewer/release scope is separate. Sandbox ICD
-failure is not GPU absence. Local commits are
-authorized; remote pushes/uploads are not. Follow the
+pending; [requirements](requirements.md) tracks each scope. The user reports macOS
+CPU CI passed; supplied Windows evidence is 77/78, with only worker integration
+failing. [Stage flush repair](validation/2026-10-12-windows-flush.md) passes local
+C++23 79/79 and Python 3.12/3.14 9/9. Windows confirmation awaits the next hosted
+run. Native viewer/release scope is separate. Sandbox ICD failure is not GPU
+absence. Local commits are authorized; remote pushes/uploads are not. Follow the
 [documentation protocol](protocols/documentation.md) for subsequent handoffs.

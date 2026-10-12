@@ -95,6 +95,10 @@ Stages: inspect → decode → poses → appearance. Every stage uses a source/c
 backend/adapter content identity, an immutable temporary directory and a checksummed
 completion inventory. Only a fully successful stage is renamed to its committed
 location. Failure keeps incomplete outputs and the previous `result.json`.
+Before completion publication, owned inventory files are reopened read/write
+without truncation and fsynced; Windows flushing requires write access. Flush
+errors abort publication and retain incomplete diagnostics. This does not add
+power-loss qualification beyond the recorded filesystem checks.
 Reusing a committed stage verifies every inventory entry. A stale `job.lock` after
 a hard crash requires checking that the recorded process has exited before removal.
 Different recipes get different identities. Full optimizer resume is not claimed.

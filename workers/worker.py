@@ -352,7 +352,8 @@ class Job:
             atomic_json(temporary / "result.json", result)
             inventory = file_inventory(temporary, self.limits["max_output_bytes"])
             for entry in inventory:
-                with (temporary / entry["path"]).open("rb") as output:
+                # Windows fsync requires write access; update mode preserves asset bytes.
+                with (temporary / entry["path"]).open("r+b") as output:
                     os.fsync(output.fileno())
             atomic_json(temporary / "completion.json", {"schema_version": 1, "status": "complete",
                         "key": key, "files": inventory, "elapsed_seconds": time.monotonic() - start})
