@@ -111,4 +111,5 @@ running a decoder, solver or optimizer. It rejects overlapping inputs and
 different/advanced dependencies, retaining operation 1 across restart. The shared
 [reconstruction coordinator](jobs.md) now performs this preparation before fitting
 and keeps exclusive map ownership through dependent scene publication. Full
-video preflight/automatic solve chaining and complete worker control remain M1 work.
+video preflight/automatic solve chaining remain M1 work; batch command/control
+now uses the checked [worker protocol](worker.md).

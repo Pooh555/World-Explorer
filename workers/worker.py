@@ -112,10 +112,10 @@ def executable(name: str) -> str:
     return str(Path(found).resolve())
 
 
-def terminate(process: subprocess.Popen) -> None:
+def terminate(process: subprocess.Popen, isolated_group: bool = True) -> None:
     if process.poll() is not None:
         return
-    if os.name == "posix":
+    if os.name == "posix" and isolated_group:
         with contextlib.suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGTERM)
     else:
@@ -123,7 +123,7 @@ def terminate(process: subprocess.Popen) -> None:
     try:
         process.wait(timeout=1)
     except subprocess.TimeoutExpired:
-        if os.name == "posix":
+        if os.name == "posix" and isolated_group:
             with contextlib.suppress(ProcessLookupError):
                 os.killpg(process.pid, signal.SIGKILL)
         else:
@@ -143,9 +143,10 @@ def run_command(arguments: list[str], *, timeout: int = 60, log: Path | None = N
                         "MKL_NUM_THREADS": str(threads), "QT_QPA_PLATFORM": "offscreen",
                         "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"})
     start = time.monotonic()
+    isolated_group = os.name == "posix" and not (WIRE and WIRE.WRITER)
     process = subprocess.Popen(arguments, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, env=environment,
-                               start_new_session=os.name == "posix")
+                               start_new_session=isolated_group)
     output = bytearray()
     overflow = threading.Event()
     log_stream = log.open("ab") if log else None
@@ -192,7 +193,7 @@ def run_command(arguments: list[str], *, timeout: int = 60, log: Path | None = N
             time.sleep(0.05)
     finally:
         if process.poll() is None:
-            terminate(process)
+            terminate(process, isolated_group)
         for reader in readers:
             reader.join(timeout=5)
         if log_stream:
@@ -226,7 +227,7 @@ def capabilities() -> dict:
             packages[name] = None
     tools = {name: tool_identity(name) for name in ("ffmpeg", "ffprobe", "colmap")}
     return {"api_version": 1, "backend": "world_explorer_local", "backend_version": "0.1.0",
-            "wire_format": "flatbuffers-events-v1; jsonl diagnostic CLI available", "sensor_types": ["video", "image_sequence"],
+            "wire_format": "flatbuffers-commands/events-v2; jsonl diagnostic CLI available", "sensor_types": ["video", "image_sequence"],
             "batch": True, "streaming_tracker": False, "remote": False,
             "checkpoint_semantics": "completed_stages; appearance restarts (upstream checkpoints are eval-only)",
             "checkpoint_rights": "local user data; backend package licenses apply",
@@ -544,7 +545,7 @@ def main() -> int:
     global WIRE
     import we_protocol
     WIRE = we_protocol
-    WIRE.configure(sys.argv, backend="world_explorer_local", backend_version="0.1.0",
+    WIRE.configure(sys.argv, cancel_callback=CANCELLED.set, backend="world_explorer_local", backend_version="0.1.0",
                    sensors=["video", "image_sequence"], devices=["cpu_poses", "cuda_appearance_requires_probe"],
                    checkpoint_semantics="completed stages; upstream appearance restarts",
                    checkpoint_rights="local user data; backend package licenses apply", limits=LIMITS)

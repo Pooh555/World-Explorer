@@ -1,54 +1,93 @@
 # Worker boundary and stage format
 
 `we_process` and the GUI invoke the same native `run_worker` application command.
-Arguments are passed as an array without a shell. Native cancellation terminates
-the worker process tree (POSIX groups or Windows Job Object); Ctrl-C is handled by
-the CLI. Stdout/stderr are continuously drained; GUI logs are bounded at 128 KiB.
+Bootstrap arguments are passed as an array without a shell; native invocations
+then use bounded stdin commands and separately drained stdout/stderr. Ctrl-C is
+handled by the CLI; GUI logs remain bounded at 128 KiB.
 
-Native `run_worker` uses **FlatBuffers event protocol 1.0**, generated from
-[`events.fbs`](../../schemas/worker/events.fbs) with FlatBuffers **25.2.10**. C++/Python
-bindings and the matching Python runtime live in the build tree; no global Python
-install is needed. CLI, GUI and local gsplat start/resume use this shared path.
+Native `run_worker` uses **FlatBuffers command/event protocol 2.0**, generated
+from [`commands.fbs`](../../schemas/worker/commands.fbs) and
+[`events.fbs`](../../schemas/worker/events.fbs) with FlatBuffers **25.2.10**.
+C++/Python bindings and the matching Python runtime live in the build tree. No
+protocol 1 fallback is attempted. Existing artifact/request JSON schemas remain
+independent of this incompatible transport upgrade.
 
-Stdout contains standard size-prefixed envelopes: uint32 little-endian body length
-then a FlatBuffer with identifier `WEW1`. Maximum body is 1 MiB, checked before
-allocation. Verification limits are depth 16/tables 128; semantic checks validate
-version, UTF-8, lengths, finite durations, paths, hashes and resource limits.
-Sequence starts at zero, with ≤10,000 events per invocation. Handshake must be
-first and unique; progress follows; exactly one completion or failure ends the
-session. Unknown types/versions, sequence gaps/retries, data after terminal,
-truncated EOF and inconsistent process exit invalidate the invocation. Zero exit
-without completion fails. Invalid streams cancel and reap the worker.
+Both directions use standard uint32 little-endian size-prefixed FlatBuffers.
+Stdout envelopes have identifier `WEW2` and a maximum 1 MiB body; stdin envelopes
+have `WEC2` and a maximum 64 KiB total frame. Limits are checked before allocation.
+A fresh 64-character hexadecimal session binds every message. Event sequence
+starts at zero with ≤10,000 events; invocation operation is 1 (handshake uses 0).
+Native structural verification limits are depth 16/tables 128; semantic checks
+cover version, UTF-8, lengths, finite durations, paths, hashes, resource limits,
+sequence and lifecycle. Unknown types/versions/sessions, gaps, data after terminal,
+truncated EOF or inconsistent process exit invalidate the invocation.
+
+Commands in this one-batch-per-process profile:
+
+| Command | Sequence / operation | Behavior |
+|---|---|---|
+| START | 0 / 1 | Up to 64 adapter-owned argument strings, each nonempty UTF-8/NUL-free ≤4096 bytes, total ≤32 KiB. Carries selected options and explicit local JSON request paths as structured values; never shell text. |
+| CANCEL | 1 / 2 | Targets invocation operation 1; requests the worker's existing cancellation/checkpoint hook. |
+
+The worker advertises capabilities first. Only after native verification does the
+client send START; the worker acknowledges it before invoking the backend or
+emitting progress. The Python command reader explicitly verifies tables/vtables,
+field extents/alignment, references, strings, vectors and semantic bounds;
+generated Python accessors alone are not structural verifiers. START retries with
+identical decoded arguments acknowledge again without invoking twice, including
+valid alternate FlatBuffer layouts. Changed content under the same operation is
+rejected. CANCEL retries acknowledge again and call the cancellation hook once.
+At most 64 subsequent messages are admitted; no growing receipt history exists.
+Acknowledgements bind command kind, sequence and operation. Unsolicited replies
+are rejected. Success requires START acknowledgement and a checked completion.
+A protocol failure may end a session before START is accepted. The client imposes
+a 30-second startup/START-acknowledgement deadline.
 
 Handshake declares backend/version, sensors, batch/streaming capability, device
-options, checkpoint semantics/rights and frame/source/output limits. Concrete
-recipes remain batch-only, with no streaming tracker or remote transport.
-Completion references a bounded local manifest by absolute path, byte count and
-SHA-256; the native client checks the file before accepting the worker exit.
-Canonical scene/fit/pose admission independently verifies inventories and provenance.
+options, checkpoint semantics/rights and frame/source/output limits. Recipes
+remain batch-only; there is no streaming tracker, multi-job daemon or remote
+transport. Completion references a bounded local manifest by absolute path,
+byte count and SHA-256; the client checks it before accepting the exit. Scene/fit/
+pose admission independently verifies inventories and provenance. Session IDs do
+not change stage/checkpoint content identities; changed worker source still does.
 
-Stderr is separately drained in bounded blocks and delivered to the existing GUI/
-CLI log callback. Backend incidental stdout is redirected to stderr. POSIX uses
-inherited pipes; Windows uses local byte-mode named pipes rejecting remote clients.
-Commands and human-readable JSON request locations are selected through argv for
-this one-shot batch transport. Persistent bidirectional command/cancellation
-envelopes are pending; native process cancellation remains the control path.
+CANCEL acknowledgement means accepted, not that a checkpoint is already durable.
+The worker's terminal result/committed assets determine the outcome. The client
+allows two seconds for cooperative stop, then POSIX SIGTERM and a further two
+seconds before SIGKILL; Windows terminates the owned Job Object after its two
+seconds. Output keeps draining during cancellation and input backpressure.
+Invalid event streams force cleanup. A stop before START does not launch backend
+work. Cancellation after an atomic stage commit retains that valid stage.
 
-Direct Python CLI invocation without `--wire-bindings DIR` retains JSONL diagnostic
-output. This is explicit diagnostic compatibility, never a native fallback.
-`worker_configuration.framed_protocol=false` is used by labeled synthetic
-subprocess fixtures; production callers default to verified events.
+POSIX uses local pipes with nonblocking parent writes and reserves descriptors
+above 0–2 for desktop hosts with closed stdin. Thread-local SIGPIPE masking leaves
+the application signal policy intact. Native solver subprocesses stay in the
+owned worker process group; direct Python diagnostic runs retain their separate
+subprocess groups. Windows uses local named byte pipes with overlapped input
+writes, a whitelist of inherited stdio handles and a lifetime Job Object. Python
+wire streams explicitly use binary mode on Windows. C++ callbacks run on one
+process owner; Python command acknowledgements and worker events share a locked
+writer. The input reader uses raw `os.read`, avoiding a buffered stdin lock during
+interpreter shutdown. EOF/malformed commands request backend stop even if writing
+the failure to a disconnected stdout fails.
+
+Direct Python CLI invocation without wire bootstrap retains JSONL diagnostics.
+This is explicit diagnostic compatibility, never a native fallback.
+`worker_configuration.framed_protocol=false` remains reserved for labeled synthetic
+subprocess fixtures. Native Windows/macOS execution and real optimizer cancellation
+through the new command transport remain unqualified.
 Native decoded-frame replay, completed-pose import/replay and fresh selected-frame
 COLMAP batch solving are integrated; see [capture](capture.md) and [poses](poses.md).
 Canonical FlatBuffers pose/calibration interchange is implemented in
 [`poses.fbs`](../../schemas/map/poses.fbs); see [pose assets](poses.md).
 Native [persistent maps](maps.md) retain snapshots and retry receipts.
-Automatic pipeline integration and complete command control remain M1 work.
+Durable pose preparation is integrated with fitting; automatic full-video
+preflight/solve chaining remains M1 work.
 
 `solve-journal --request PATH` consumes a hash-bound native RGB journal, commits a
 checked PNG stage and runs the same CPU COLMAP path. It does not inspect/decode the
 video or fit appearance. The native estimator always uses verified event transport;
-the request is still an explicit JSON file selected through argv. Original PTS,
+the request is still an explicit JSON file selected through START arguments. Original PTS,
 capture times and source identities are preserved. The optional native event
 observer exposes typed worker capability/failure/completion messages to adapters.
 

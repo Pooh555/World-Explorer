@@ -2,22 +2,27 @@
 import contextlib
 import hashlib
 import importlib
+import os
 from pathlib import Path
 import sys
+import threading
 
 MESSAGE_LIMIT = 1024 * 1024
 WRITER = None
+CONTROL = None
 
 
 class event_writer:
-    def __init__(self, bindings, stream):
+    def __init__(self, bindings, stream, session):
         sys.path.insert(0, str(Path(bindings).resolve(strict=True)))
         self.runtime = importlib.import_module("flatbuffers")
         if self.runtime.__version__ != "25.2.10":
             raise RuntimeError("FlatBuffers 25.2.10 runtime is required")
         self.modules = {name: importlib.import_module("world_explorer.wire." + name)
                         for name in ("envelope", "handshake", "progress", "artifact_reference",
-                                     "completed", "failure", "payload")}
+                                     "completed", "failure", "payload", "command_acknowledged", "command_kind")}
+        self.session = session
+        self.lock = threading.RLock()
         self.stream = stream
         self.sequence = 0
         self.terminal = False
@@ -30,18 +35,31 @@ class event_writer:
         return module.End(builder)
 
     def write(self, builder, name, value):
-        if self.terminal or self.sequence >= 10000:
-            raise RuntimeError("Worker event lifecycle exceeded")
-        body = self.table(builder, "envelope", {"ApiMajor": 1, "Sequence": self.sequence,
-                          "BodyType": getattr(self.modules["payload"].payload, name), "Body": value})
-        builder.FinishSizePrefixed(body, file_identifier=b"WEW1")
-        data = builder.Output()
-        if len(data) - 4 > MESSAGE_LIMIT:
-            raise RuntimeError("Worker event exceeds message limit")
-        self.stream.write(data)
-        self.stream.flush()
-        self.sequence += 1
-        self.terminal = name in ("completed", "failure")
+        with self.lock:
+            if self.terminal:
+                return
+            if self.sequence >= 10000:
+                raise RuntimeError("Worker event lifecycle exceeded")
+            session = builder.CreateString(self.session)
+            body = self.table(builder, "envelope", {"ApiMajor": 2, "Sequence": self.sequence,
+                              "Session": session, "Operation": 0 if name == "handshake" else 1,
+                              "BodyType": getattr(self.modules["payload"].payload, name), "Body": value})
+            builder.FinishSizePrefixed(body, file_identifier=b"WEW2")
+            data = builder.Output()
+            if len(data) - 4 > MESSAGE_LIMIT:
+                raise RuntimeError("Worker event exceeds message limit")
+            self.stream.write(data)
+            self.stream.flush()
+            self.sequence += 1
+            self.terminal = name in ("completed", "failure")
+
+    def acknowledge(self, kind):
+        builder = self.runtime.Builder(128)
+        value = self.table(builder, "command_acknowledged", {
+            "CommandSequence": 0 if kind == "START" else 1,
+            "CommandOperation": 1 if kind == "START" else 2,
+            "Kind": getattr(self.modules["command_kind"].command_kind, kind)})
+        self.write(builder, "command_acknowledged", value)
 
     def handshake(self, *, backend, backend_version, sensors, devices, checkpoint_semantics,
                   checkpoint_rights, limits):
@@ -91,17 +109,32 @@ class event_writer:
         self.write(builder, "failure", self.table(builder, "failure", values))
 
 
-def configure(arguments, **handshake):
-    global WRITER
+def configure(arguments, *, cancel_callback=None, **handshake):
+    global WRITER, CONTROL
     if "--wire-bindings" not in arguments:
         return
-    index = arguments.index("--wire-bindings")
-    if index + 1 >= len(arguments):
-        raise ValueError("--wire-bindings requires a local directory")
-    bindings = arguments[index + 1]
-    del arguments[index:index + 2]
-    WRITER = event_writer(bindings, sys.stdout.buffer)
+    if len(arguments) != 5 or arguments[1] != "--wire-bindings" or arguments[3] != "--wire-session":
+        raise ValueError("Wire mode requires only explicit bindings/session bootstrap arguments")
+    bindings, session = arguments[2], arguments[4]
+    if len(session) != 64 or any(character not in "0123456789abcdef" for character in session):
+        raise ValueError("Invalid worker session")
+    if os.name == "nt":
+        import msvcrt
+        msvcrt.setmode(0, os.O_BINARY)
+        msvcrt.setmode(1, os.O_BINARY)
+    WRITER = event_writer(bindings, sys.stdout.buffer, session)
     WRITER.handshake(**handshake)
+    from we_control import command_session
+    CONTROL = command_session(session, WRITER, cancel_callback)
+    try:
+        CONTROL.start(arguments)
+    except (ValueError, OSError, UnicodeError) as error:
+        WRITER.failure("PROTOCOL_INVALID", "control", str(error), "Restart with a valid START command.")
+        raise SystemExit(2)
+
+
+def cancel_requested():
+    return bool(CONTROL and CONTROL.cancelled.is_set())
 
 
 def diagnostic_context():

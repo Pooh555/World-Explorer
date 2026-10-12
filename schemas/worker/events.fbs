@@ -39,13 +39,21 @@ table failure {
   recovery:string (required);
 }
 
-union payload { handshake, progress, completed, failure }
+enum command_kind:ubyte { START, CANCEL }
+table command_acknowledged {
+  command_sequence:ulong;
+  command_operation:ulong;
+  kind:command_kind;
+}
+union payload { handshake, progress, completed, failure, command_acknowledged }
 table envelope {
-  api_major:ushort = 1;
+  api_major:ushort = 2;
   api_minor:ushort;
   sequence:ulong;
   body:payload;
+  session:string (required);
+  operation:ulong;
 }
 root_type envelope;
-file_identifier "WEW1";
+file_identifier "WEW2";
 file_extension "wewire";

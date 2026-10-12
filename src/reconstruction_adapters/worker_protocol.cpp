@@ -1,9 +1,13 @@
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
+#include "commands_generated.h"
 #include "events_generated.h"
 #include "world_explorer/core/hash.hpp"
 #include <algorithm>
+#include <array>
+#include <chrono>
 #include <cmath>
 #include <limits>
+#include <random>
 #include <stdexcept>
 #include <string_view>
 namespace world_explorer {
@@ -50,6 +54,14 @@ strings(const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>* val
         result.push_back(text(value, 128));
     return result;
 }
+bool session_valid(const std::string& session) {
+    return session.size() == 64 &&
+           session.find_first_not_of("0123456789abcdef") == std::string::npos;
+}
+std::vector<std::byte> copy_command(const flatbuffers::FlatBufferBuilder& builder) {
+    const auto bytes = std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
+    return {bytes.begin(), bytes.end()};
+}
 } // namespace
 result<worker_event> worker_stream_decoder::decode() {
     try {
@@ -61,8 +73,10 @@ result<worker_event> worker_stream_decoder::decode() {
         if (!wire::VerifySizePrefixedenvelopeBuffer(verifier))
             return fail(error_code::INVALID_DATA, "Invalid FlatBuffers worker envelope");
         const auto* envelope = wire::GetSizePrefixedenvelope(pending_.data());
-        if (envelope->api_major() != 1 || envelope->api_minor() != 0 ||
-            envelope->sequence() != sequence_ || sequence_ >= 10000 || terminal_)
+        if (envelope->api_major() != 2 || envelope->api_minor() != 0 || !session_valid(session_) ||
+            text(envelope->session(), 64) != session_ ||
+            envelope->operation() != (handshake_ ? 1U : 0U) || envelope->sequence() != sequence_ ||
+            sequence_ >= 10000 || terminal_)
             return fail(error_code::INVALID_DATA, "Worker version, sequence or lifecycle mismatch");
         const auto kind = envelope->body_type();
         if (!handshake_ && kind != wire::payload::handshake)
@@ -92,7 +106,26 @@ result<worker_event> worker_stream_decoder::decode() {
             handshake_ = true;
             break;
         }
+        case wire::payload::command_acknowledged: {
+            const auto* value = envelope->body_as_command_acknowledged();
+            if (!value)
+                return fail(error_code::INVALID_DATA, "Missing worker command acknowledgement");
+            if (start_sent_ && value->kind() == wire::command_kind::START &&
+                value->command_sequence() == 0 && value->command_operation() == 1) {
+                started_ = true;
+                event = worker_command_acknowledged{worker_command_kind::START, {1}};
+            } else if (value->kind() == wire::command_kind::CANCEL &&
+                       value->command_sequence() == 1 && value->command_operation() == 2 &&
+                       started_ && cancel_sent_) {
+                event = worker_command_acknowledged{worker_command_kind::CANCEL, {2}};
+            } else
+                return fail(error_code::INVALID_DATA, "Unexpected worker command acknowledgement");
+            break;
+        }
         case wire::payload::progress: {
+            if (!started_)
+                return fail(error_code::INVALID_DATA,
+                            "Worker progress precedes START acknowledgement");
             const auto* value = envelope->body_as_progress();
             if (!value || !std::isfinite(value->elapsed_seconds()) || value->elapsed_seconds() < 0)
                 return fail(error_code::INVALID_DATA, "Invalid worker progress duration");
@@ -101,6 +134,9 @@ result<worker_event> worker_stream_decoder::decode() {
             break;
         }
         case wire::payload::completed: {
+            if (!started_)
+                return fail(error_code::INVALID_DATA,
+                            "Worker completion precedes START acknowledgement");
             const auto* value = envelope->body_as_completed();
             if (!value)
                 return fail(error_code::INVALID_DATA, "Missing worker completion");
@@ -180,71 +216,167 @@ result<void> worker_stream_decoder::finish(int exit_code) const {
                     "Incomplete worker stream or inconsistent process exit");
     return {};
 }
+result<std::vector<std::byte>> encode_worker_start(const std::string& session,
+                                                   const std::vector<std::string>& arguments) {
+    try {
+        if (!session_valid(session) || arguments.empty() || arguments.size() > 64)
+            return fail(error_code::INVALID_ARGUMENT,
+                        "Invalid worker START session/argument count");
+        std::size_t total{};
+        flatbuffers::FlatBufferBuilder builder;
+        std::vector<flatbuffers::Offset<flatbuffers::String>> offsets;
+        for (const auto& argument : arguments) {
+            if (argument.empty() || argument.size() > 4096 || !utf8(argument))
+                return fail(error_code::INVALID_ARGUMENT, "Invalid worker START argument");
+            total += argument.size();
+            if (total > 32768)
+                return fail(error_code::RESOURCE_EXHAUSTED, "Worker START arguments exceed budget");
+            offsets.push_back(builder.CreateString(argument));
+        }
+        const auto args = builder.CreateVector(offsets);
+        const auto body = control::Createstart_command(builder, args);
+        const auto token = builder.CreateString(session);
+        control::FinishSizePrefixedcommand_envelopeBuffer(
+            builder,
+            control::Createcommand_envelope(builder, 2, 0, token, 0, 1,
+                                            control::command_payload::start_command, body.Union()));
+        if (builder.GetSize() > PROCESS_INPUT_LIMIT)
+            return fail(error_code::RESOURCE_EXHAUSTED, "Worker START frame exceeds budget");
+        return copy_command(builder);
+    } catch (const std::bad_alloc&) {
+        return fail(error_code::RESOURCE_EXHAUSTED, "Worker START allocation failed");
+    }
+}
+result<std::vector<std::byte>> encode_worker_cancel(const std::string& session) {
+    try {
+        if (!session_valid(session))
+            return fail(error_code::INVALID_ARGUMENT, "Invalid worker CANCEL session");
+        flatbuffers::FlatBufferBuilder builder;
+        const auto body = control::Createcancel_command(builder, 1);
+        const auto token = builder.CreateString(session);
+        control::FinishSizePrefixedcommand_envelopeBuffer(
+            builder, control::Createcommand_envelope(builder, 2, 0, token, 1, 2,
+                                                     control::command_payload::cancel_command,
+                                                     body.Union()));
+        return copy_command(builder);
+    } catch (const std::bad_alloc&) {
+        return fail(error_code::RESOURCE_EXHAUSTED, "Worker CANCEL allocation failed");
+    }
+}
 result<int> execute_worker_protocol(const std::string& python, const std::filesystem::path& script,
                                     const std::vector<std::string>& arguments,
                                     const std::stop_token& stop, const process_output_callback& log,
                                     const worker_event_callback& observed) {
-    std::stop_source cancellation;
-    std::stop_callback forward(stop, [&] { cancellation.request_stop(); });
-    std::vector<std::string> command{python, "-u", script.string(), "--wire-bindings",
-                                     WE_WIRE_BINDINGS};
-    command.insert(command.end(), arguments.begin(), arguments.end());
-    worker_stream_decoder decoder;
-    std::optional<error> failure;
-    const auto event = [&](const worker_event& value) {
-        if (const auto* progress = std::get_if<worker_progress>(&value); progress && log)
-            log(progress->stage + ": " + progress->message + "\n");
-        if (const auto* completed = std::get_if<worker_completed>(&value);
-            completed && completed->artifact) {
-            const auto& asset = *completed->artifact;
-            std::error_code filesystem_error;
-            const auto status = std::filesystem::symlink_status(asset.path, filesystem_error);
-            if (filesystem_error || !std::filesystem::is_regular_file(status)) {
-                failure = error{error_code::INVALID_DATA,
-                                "Worker completion manifest must be a regular file"};
-                cancellation.request_stop();
-                return;
+    try {
+        std::random_device random;
+        std::array<std::uint32_t, 8> entropy{};
+        for (auto& word : entropy)
+            word = random();
+        const auto session = sha256(std::as_bytes(std::span(entropy)));
+        auto start_command = encode_worker_start(session, arguments);
+        auto cancel_command = encode_worker_cancel(session);
+        if (!start_command)
+            return std::unexpected(start_command.error());
+        if (!cancel_command)
+            return std::unexpected(cancel_command.error());
+        std::stop_source cancellation;
+        std::stop_callback forward(stop, [&] { cancellation.request_stop(); });
+        std::vector<std::string> command{
+            python,           "-u",   script.string(), "--wire-bindings", WE_WIRE_BINDINGS,
+            "--wire-session", session};
+        worker_stream_decoder decoder(session);
+        bool ready{}, start_sent{}, cancel_sent{}, start_acknowledged{};
+        const auto start_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        std::optional<error> failure;
+        const auto event = [&](const worker_event& value) {
+            if (std::holds_alternative<worker_handshake>(value))
+                ready = true;
+            if (const auto* ack = std::get_if<worker_command_acknowledged>(&value)) {
+                if (ack->kind == worker_command_kind::START)
+                    start_acknowledged = true;
+                if (log)
+                    log(ack->kind == worker_command_kind::START ? "Worker accepted START.\n"
+                                                                : "Worker accepted CANCEL.\n");
             }
-            const auto digest = sha256_file(asset.path, static_cast<std::size_t>(asset.bytes),
-                                            cancellation.get_token());
-            const auto bytes = std::filesystem::file_size(asset.path, filesystem_error);
-            if (!digest && digest.error().code == error_code::CANCELLED) {
-                failure = digest.error();
-                return;
+            if (const auto* progress = std::get_if<worker_progress>(&value); progress && log)
+                log(progress->stage + ": " + progress->message + "\n");
+            if (const auto* completed = std::get_if<worker_completed>(&value);
+                completed && completed->artifact) {
+                const auto& asset = *completed->artifact;
+                std::error_code filesystem_error;
+                const auto status = std::filesystem::symlink_status(asset.path, filesystem_error);
+                if (filesystem_error || !std::filesystem::is_regular_file(status)) {
+                    failure = error{error_code::INVALID_DATA,
+                                    "Worker completion manifest must be a regular file"};
+                    cancellation.request_stop();
+                    return;
+                }
+                const auto digest = sha256_file(asset.path, static_cast<std::size_t>(asset.bytes),
+                                                cancellation.get_token());
+                const auto bytes = std::filesystem::file_size(asset.path, filesystem_error);
+                if (!digest && digest.error().code == error_code::CANCELLED) {
+                    failure = digest.error();
+                    return;
+                }
+                if (!digest || filesystem_error || bytes != asset.bytes ||
+                    *digest != asset.sha256) {
+                    failure = error{error_code::INVALID_DATA,
+                                    "Worker completion manifest checksum/size mismatch"};
+                    cancellation.request_stop();
+                } else if (log)
+                    log("Worker completed: " + asset.path.string() + "\n");
             }
-            if (!digest || filesystem_error || bytes != asset.bytes || *digest != asset.sha256) {
-                failure = error{error_code::INVALID_DATA,
-                                "Worker completion manifest checksum/size mismatch"};
-                cancellation.request_stop();
-            } else if (log)
-                log("Worker completed: " + asset.path.string() + "\n");
-        }
-        if (const auto* error = std::get_if<worker_failure>(&value); error && log)
-            log(error->stage + ": " + error->code + ": " + error->message + "\n" + error->recovery +
-                "\n");
-        if (observed && !failure)
-            observed(value);
-    };
-    const auto result = execute_process(
-        command, cancellation.get_token(),
-        [&](const std::string& output) {
-            if (failure)
-                return;
-            const auto decoded =
-                decoder.feed(std::as_bytes(std::span(output.data(), output.size())), event);
-            if (!decoded) {
-                failure = decoded.error();
-                cancellation.request_stop();
-            }
-        },
-        log);
-    if (failure)
-        return std::unexpected(*failure);
-    if (!result)
-        return std::unexpected(result.error());
-    const auto complete = decoder.finish(*result);
-    if (!complete)
-        return std::unexpected(complete.error());
-    return result;
+            if (const auto* error = std::get_if<worker_failure>(&value); error && log)
+                log(error->stage + ": " + error->code + ": " + error->message + "\n" +
+                    error->recovery + "\n");
+            if (observed && !failure)
+                observed(value);
+        };
+        const auto executed = execute_process(
+            command, cancellation.get_token(),
+            [&](const std::string& output) {
+                if (failure)
+                    return;
+                const auto decoded =
+                    decoder.feed(std::as_bytes(std::span(output.data(), output.size())), event);
+                if (!decoded) {
+                    failure = decoded.error();
+                    cancellation.request_stop();
+                }
+            },
+            log,
+            {[&](bool cancelling) -> result<std::vector<std::byte>> {
+                 if (failure)
+                     return std::unexpected(*failure);
+                 if (!start_acknowledged && std::chrono::steady_clock::now() > start_deadline)
+                     return fail(error_code::BACKEND_FAILURE,
+                                 "Worker START acknowledgement deadline exceeded");
+                 if (ready && !start_sent && !cancelling) {
+                     start_sent = true;
+                     decoder.expect_start();
+                     return std::move(*start_command);
+                 }
+                 if (start_sent && cancelling && !cancel_sent) {
+                     cancel_sent = true;
+                     decoder.expect_cancel();
+                     return std::move(*cancel_command);
+                 }
+                 return std::vector<std::byte>{};
+             },
+             std::chrono::seconds(2)});
+        if (failure)
+            return std::unexpected(*failure);
+        if (!executed)
+            return std::unexpected(executed.error());
+        const auto complete = decoder.finish(*executed);
+        if (!complete)
+            return std::unexpected(complete.error());
+        return executed;
+    } catch (const std::bad_alloc&) {
+        return fail(error_code::RESOURCE_EXHAUSTED, "Worker protocol allocation failed");
+    } catch (const std::exception& e) {
+        return fail(error_code::BACKEND_FAILURE,
+                    std::string("Worker protocol failed: ") + e.what());
+    }
 }
 } // namespace world_explorer

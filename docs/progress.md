@@ -71,8 +71,9 @@ The first worker transport slice now generates pinned FlatBuffers C++/Python
 bindings and verifies bounded, ordered typed events on the shared native path.
 Real capture inspection, typed gsplat failure and checked completed-fit reuse
 were exercised. Four local profiles pass 27/27 tests, including ASan/UBSan/LSan.
-See [worker wire evidence](validation/2026-10-11-worker-wire.md). Commands still
-select explicit JSON requests through argv; persistent bidirectional control is pending.
+See [worker wire evidence](validation/2026-10-11-worker-wire.md). At that stage commands
+still selected JSON requests through argv; the batch control upgrade below now
+replaces that transport.
 
 The native `frame_source` now replays that committed decode stage with immutable
 RGB leases, stable IDs, original PTS, seek/reset/EOF, bounded decoding and cancellation.
@@ -181,18 +182,39 @@ Working retained-fit continuation (no pose solve or optimizer):
 build/dev/we_process reconstruct --request artifacts/sample2-pipeline-20261012/reuse-original.json
 ```
 
-Next executable task: add checked length-prefixed FlatBuffers worker commands and
-bidirectional cancellation/control to `schemas/worker/`, the native process/
-protocol path and Python workers. Preserve bounded framing, operation/session
-identity and existing stage/checkpoint dependencies; test malformed/duplicate
-commands and cancellation/restart before connecting automatic video preflight
-and pose-to-fit chaining. Continue to reuse retained successful outputs rather
-than rerun COLMAP/gsplat. Keep the original decode pointer untouched; select its
-explicit retained stage. Direct Python JSONL diagnostics remain transitional,
-not a waiver. Full video preflight and automatic fresh solve chaining are pending.
+The shared native worker path now uses FlatBuffers **2.0** START/CANCEL commands
+on bounded stdin and session-bound stdout events. START follows verified
+capabilities and is acknowledged before backend execution. Semantic retries are
+idempotent across alternate encodings; changed operation content, unsafe offsets,
+wrong sessions and unsolicited acknowledgements fail. CANCEL calls the existing
+worker/fit checkpoint hook once; a bounded grace period precedes process-tree
+termination. Native POSIX backend children now remain in the owned group, with a
+forced-stop descendant check. Input backpressure/closed pipes cannot block stop;
+descriptor reservation handles desktop hosts without stdin. Windows has
+nonblocking input and restricted inherited handles, but is not natively qualified.
+
+Six local profiles pass **64/64** tests, including separate TSan and
+ASan/UBSan/LSan, plus format/boundaries/tidy. Final real metadata inspection of the
+retained capture completes and reuses the identical committed result in separate
+sessions; a separate inspection acknowledges START/CANCEL and exits 130. No RGB
+frames were decoded and no COLMAP, optimizer or GPU run occurred. Eight original
+input/job/scene manifests retain their hashes. Synthetic cancellation markers are
+not real optimizer checkpoint proof. Original completed fits remain reusable;
+changed worker source does not silently upgrade older optimizer checkpoints.
+See [worker control evidence](validation/2026-10-12-worker-control.md).
+
+Next executable task: add shared full-video preflight and automatic stage
+orchestration into the application request/coordinator path: inspect the selected
+video, select a fresh owned pose job or explicitly adopt checked retained poses,
+then prepare the durable map, fit/reuse and compile the scene. GUI and CLI must
+share the command, preserve cancellation/restart dependencies and avoid repeating
+successful stages. Exercise retained-output adoption first; do not rerun the
+original COLMAP/gsplat work. Keep the stale original decode pointer untouched and
+select its explicit retained stage. Direct Python JSONL diagnostics remain
+transitional; full video preflight and automatic fresh solve chaining are pending.
 
 Outstanding gates include the prescribed ≤250k fixture, reference renderer parity,
-complete worker control protocol, automatic video/solve chaining,
+automatic video/solve chaining and native worker-control qualification,
 native Windows/Mac runs, prescribed corpus/performance and geometry/collision work. No Phase 1 milestone is complete.
 M7–M8 remain deferred. User edits to `docs/execution_prompt.md` and
 `docs/technical_plan.md` remain untouched and excluded from implementation commits.
