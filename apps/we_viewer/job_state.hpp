@@ -10,6 +10,9 @@
 
 namespace world_explorer::viewer {
 
+// Classification follows explicit scene provenance, never the startup flag/path.
+bool is_synthetic_scene(const scene_snapshot& scene);
+
 // The UI reads results under mutex; one owned job publishes immutable snapshots.
 // job is last so its destructor cancels/joins before any captured state is destroyed.
 struct application_state {

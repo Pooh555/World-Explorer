@@ -24,3 +24,25 @@ TEST_CASE("viewer completion waits for published snapshots after the loader clea
     CHECK(admitted == scene);
     CHECK_FALSE(state.has_pending_work());
 }
+
+TEST_CASE("viewer synthetic labels follow current provenance instead of startup selection") {
+    CHECK(!viewer::is_synthetic_scene({}));
+    scene_snapshot current = make_diagnostic_scene();
+    CHECK(viewer::is_synthetic_scene(current));
+    auto replacement = std::make_shared<scene_state>(*current);
+    replacement->provenance = {
+        {"diagnostic", "synthetic asymmetric render reference v2; not a capture"}};
+    current = replacement;
+    CHECK(viewer::is_synthetic_scene(current));
+    replacement = std::make_shared<scene_state>(*current);
+    replacement->provenance = {{"source_kind", "capture"},
+                               {"fixture", "synthetic_named_real_capture"}};
+    current = replacement;
+    CHECK(!viewer::is_synthetic_scene(current));
+    replacement = std::make_shared<scene_state>(*current);
+    replacement->provenance.clear();
+    current = replacement;
+    CHECK(!viewer::is_synthetic_scene(current));
+    current = make_diagnostic_scene();
+    CHECK(viewer::is_synthetic_scene(current));
+}
