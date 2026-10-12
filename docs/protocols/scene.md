@@ -8,8 +8,11 @@ rotation is not a measured gravity alignment.
 
 Runtime Gaussians contain float means, positive decoded scale, normalized wxyz
 rotation, opacity in [0,1], SH degree 0–3 and 48 coefficient-major RGB scalars.
-SH and alpha compositing use the captured display-encoded domain. This initial
-renderer has no linear HDR intermediate or hybrid mesh pass yet.
+SH and alpha compositing use the captured display-encoded domain, with negative
+evaluated colors clamped to zero and values above one preserved until presentation.
+The raster path accumulates in a queried FP32 attachment, then clamps once to SDR
+and draws UI. This is not linear HDR conversion or relightable albedo; a hybrid
+mesh pass is still absent. Precision/profile rationale: [ADR 006](../adr/006-fp32-capture-compositing.md).
 
 Synthetic bundles declare provenance `source_kind=synthetic_diagnostic` and a named
 `fixture`. The viewer classifies the active snapshot using this explicit marker;
@@ -44,7 +47,16 @@ require exclusive writer ownership. Never write into an attacker-mutated directo
 enqueue preserves caller data; accepted updates move the immutable snapshot.
 Duplicates are checked by metadata and content hash within a bounded 256-operation
 window. Admission charges pending, visible and not-yet-retired payloads. The GPU
-adapter additionally budgets staging, old/new buffers and sort scratch.
+adapter additionally budgets staging, old/new buffers, sort scratch and FP32
+framebuffers using actual Vulkan allocation requirements. Temporary staging is
+charged while allocating its replacement; insufficient residency fails before
+device-memory allocation. `allocated_bytes` counts owned buffer/image allocations,
+including retired buffers; `framebuffer_bytes` is its image subset. Driver/internal
+pipeline/descriptor/swapchain allocations and other processes are excluded; this
+is not a complete or peak VRAM measurement. Framebuffer dimensions identify the
+actual render extent. Resize retires old images after device idle and rebuilds
+presentation descriptors. Unsupported FP32 attachment blending fails explicitly;
+there is no silent UNORM/FP16 fallback or portable-device qualification claim.
 Cancellation drops queued work; already consumed GPU work finishes safely.
 Accepted → assets available → uploaded → render-visible → retired is explicit.
 Visibility means submitted atomically for rendering, not that display scanout is

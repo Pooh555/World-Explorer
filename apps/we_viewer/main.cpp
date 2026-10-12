@@ -157,6 +157,7 @@ int viewer_main(int argc, char** argv) {
     init.QueueFamily = context.queue_family;
     init.Queue = native<VkQueue>(context.queue);
     init.RenderPass = native<VkRenderPass>(context.render_pass);
+    init.Subpass = context.subpass;
     init.DescriptorPoolSize = 128;
     init.MinImageCount = context.min_image_count;
     init.ImageCount = context.image_count;
@@ -373,6 +374,8 @@ int viewer_main(int argc, char** argv) {
                 ImGui::Text("Splats: %zu", stats.resident_splat_count);
                 ImGui::Text("GPU allocated: %.1f MiB",
                             static_cast<double>(stats.allocated_bytes) / 1048576);
+                ImGui::Text("FP32 framebuffers: %.1f MiB",
+                            static_cast<double>(stats.framebuffer_bytes) / 1048576);
                 ImGui::Text("CPU frame: %.2f ms", stats.last_cpu_frame_ms);
                 ImGui::Text("Validation errors: %u", stats.validation_errors);
             }
@@ -590,6 +593,8 @@ int viewer_main(int argc, char** argv) {
                                 {"frames", stats.submitted_frames},
                                 {"resident_splats", stats.resident_splat_count},
                                 {"allocated_bytes", stats.allocated_bytes},
+                                {"framebuffer_bytes", stats.framebuffer_bytes},
+                                {"fp32_compositing", renderer->capabilities().fp32_compositing},
                                 {"validation_errors", stats.validation_errors},
                                 {"fixture",
                                  is_synthetic_scene(current) ? "synthetic" : "user-selected"}}

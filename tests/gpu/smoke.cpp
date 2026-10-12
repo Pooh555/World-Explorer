@@ -44,17 +44,27 @@ int main(int argc, char** argv) {
         } sdl;
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
             SDL_CreateWindow("World Explorer GPU verification", 512, 512,
-                             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE),
+                             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
             SDL_DestroyWindow);
         require(window != nullptr, SDL_GetError());
         renderer_options options;
         options.max_splats = 1024;
         options.shader_directory = WE_SHADER_DIRECTORY;
+        auto constrained = options;
+        constrained.max_splats = 1;
+        constrained.residency_bytes = std::size_t{1024} * 1024;
+        const auto rejected = vulkan_renderer::create(window.get(), constrained);
+        require(!rejected &&
+                    rejected.error().message.find("floating framebuffer") != std::string::npos,
+                "framebuffer allocation escaped the residency budget");
         auto created = vulkan_renderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().message);
         auto renderer = std::move(*created);
         require(renderer->capabilities().validation_enabled,
                 "Validation layer unavailable: this is not a passing GPU test");
+        require(renderer->capabilities().fp32_compositing &&
+                    renderer->diagnostics().framebuffer_bytes > 0,
+                "FP32 framebuffer capability/accounting missing");
         auto batch = make_snapshot_batch(overlap_fixture(), {1}).value();
         require(renderer->updates().enqueue(batch).has_value(), "initial scene admission failed");
         camera_view camera;
@@ -95,6 +105,7 @@ int main(int argc, char** argv) {
         delta.full_snapshot = false;
         delta.base_revision = {1};
         require(renderer->updates().enqueue(delta).has_value(), "replacement admission failed");
+        bool resized = false, restored = false;
         for (int frame = 0; frame < 40; ++frame) {
             SDL_PumpEvents();
             if (frame == 8)
@@ -113,9 +124,20 @@ int main(int argc, char** argv) {
             }
             const auto drawn = renderer->draw(camera);
             require(drawn.has_value(), drawn ? "" : drawn.error().message);
+            const auto extent = renderer->diagnostics();
+            if (frame >= 8 && frame < 16)
+                resized = resized ||
+                          (extent.framebuffer_width == 640 && extent.framebuffer_height == 360);
+            if (frame >= 16)
+                restored = restored ||
+                           (extent.framebuffer_width == 512 && extent.framebuffer_height == 512);
         }
+        require(resized && restored, "native framebuffer resize/restore was not observed");
         require(renderer->wait_for_idle().has_value(), "final GPU completion failed");
         const auto stats = renderer->diagnostics();
+        require(stats.allocated_bytes <= options.residency_bytes &&
+                    stats.allocated_bytes >= stats.framebuffer_bytes + stats.scratch_bytes,
+                "owned allocation accounting escaped its budget");
         require(stats.validation_errors == 0, "Vulkan validation reported errors");
         require(stats.resident_splat_count == 0 &&
                     renderer->updates().visible_snapshot()->revision.value == 3,
@@ -123,7 +145,8 @@ int main(int argc, char** argv) {
         std::cout << "GPU verification: overlap pixel=" << static_cast<int>(pixel[0]) << ','
                   << static_cast<int>(pixel[1]) << ',' << static_cast<int>(pixel[2])
                   << "; replace/delete/resize passed; validation_errors=0; frames="
-                  << stats.submitted_frames << '\n';
+                  << stats.submitted_frames << "; framebuffer_bytes=" << stats.framebuffer_bytes
+                  << "; constrained budget rejected\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "GPU verification failed: " << error.what() << '\n';

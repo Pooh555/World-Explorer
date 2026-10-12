@@ -82,6 +82,47 @@ scene_snapshot fixture() {
     scene->chunks.emplace(transformed->id, transformed);
     return scene;
 }
+scene_snapshot compositing_fixture(bool termination) {
+    auto scene = std::make_shared<scene_state>();
+    scene->id = {termination ? 73ULL : 72ULL};
+    scene->revision = {1};
+    scene->provenance = {
+        {"source_kind", "synthetic_diagnostic"},
+        {"fixture", termination ? "exclusive_termination_v1" : "compositing_stress_v1"}};
+    auto chunk = std::make_shared<scene_chunk>();
+    chunk->id = {1};
+    chunk->bounds = {{-2, -2, -2}, {2, 2, 2}};
+    const auto add = [&](std::array<float, 3> mean, float opacity, std::array<float, 3> color) {
+        gaussian splat;
+        splat.mean = mean;
+        splat.scale = {0.5F, 0.45F, 0.08F};
+        splat.opacity = opacity;
+        splat.sh_degree = 3;
+        for (std::size_t channel = 0; channel < 3; ++channel)
+            splat.sh[channel] = (color[channel] - 0.5F) / 0.2820947918F;
+        chunk->splats.push_back(splat);
+    };
+    if (termination) {
+        // Normalized colors, deliberately near the pinned exclusive cutoff.
+        // This must remain a separate case even if the raster path fails it.
+        add({0, 0, 0.4F}, 0.95F, {0, 0, 0});
+        add({0, 0, -0.4F}, 1.F, {1, 1, 1});
+        scene->chunks.emplace(chunk->id, chunk);
+        return scene;
+    }
+    // A bright rear contribution must retain its energy until the dark front
+    // layer attenuates it. Per-fragment/per-layer UNORM clamping is incorrect.
+    add({-1.2F, 0, 0.4F}, 0.8F, {0, 0, 0});
+    add({-1.2F, 0, -0.4F}, 0.8F, {6, 2, 0.5F});
+    // Distinct depths avoid tie-order ambiguity. The pinned reference terminates
+    // exclusively at T <= 1e-4; normalized colors bound the omitted tail energy.
+    for (int index = 0; index < 24; ++index)
+        add({1.2F, 0, 1.F - 0.06F * static_cast<float>(index)}, 0.82F,
+            {0.12F, 0.35F, index % 2 ? 0.2F : 0.88F});
+    add({1.2F, 0, -1.F}, 0.8F, {6, 2, 0.5F});
+    scene->chunks.emplace(chunk->id, chunk);
+    return scene;
+}
 json export_chunks(const scene_state& scene) {
     json chunks = json::array();
     for (const auto& [id, chunk] : scene.chunks) {
@@ -106,10 +147,14 @@ json export_chunks(const scene_state& scene) {
 } // namespace
 int main(int argc, char** argv) {
     try {
-        require(argc == 2, "usage: we_gpu_reference <new output directory>");
+        require(argc == 2 || (argc == 3 && (std::string_view(argv[2]) == "--compositing" ||
+                                            std::string_view(argv[2]) == "--termination")),
+                "usage: we_gpu_reference <new output directory> [--compositing|--termination]");
+        const bool compositing = argc == 3;
+        const bool termination = compositing && std::string_view(argv[2]) == "--termination";
         const std::filesystem::path output(argv[1]);
         require(std::filesystem::create_directory(output), "output directory must not exist");
-        const auto scene = fixture();
+        const auto scene = compositing ? compositing_fixture(termination) : fixture();
         auto saved = write_bundle(output / "fixture.wexplore", scene);
         require(saved.has_value(), saved ? "" : saved.error().message);
         require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
@@ -140,7 +185,10 @@ int main(int argc, char** argv) {
                     unchanged->state == update_state::ACCEPTED,
                 "invalid camera consumed the pending scene update");
         json views = json::array();
-        for (const std::string name : {"centered", "off_center", "rolled", "translated"}) {
+        std::vector<std::string> names{"centered", "off_center", "rolled", "translated"};
+        if (compositing)
+            names.insert(names.end(), {"orbit_left", "orbit_right", "close_up"});
+        for (const auto& name : names) {
             camera_view camera;
             camera.position = {0, 0, 6};
             camera.far_plane = 20;
@@ -153,6 +201,14 @@ int main(int argc, char** argv) {
             }
             if (name == "translated")
                 camera.position = {-0.3, 0.15, 6.4};
+            if (name == "orbit_left" || name == "orbit_right") {
+                const auto yaw = name == "orbit_left" ? -0.6 : 0.6;
+                camera.position = {6 * std::sin(yaw), 0, 6 * std::cos(yaw)};
+                camera.right = {std::cos(yaw), 0, -std::sin(yaw)};
+                camera.forward = {-std::sin(yaw), 0, -std::cos(yaw)};
+            }
+            if (name == "close_up")
+                camera.position = {0.2, 0.1, 2.8};
             const auto k = camera.calibration->intrinsics;
             views.push_back({{"name", name},
                              {"position", vector(camera.position)},
@@ -186,19 +242,25 @@ int main(int argc, char** argv) {
         require(stats.validation_errors == 0, "Vulkan validation errors");
         write_json(output / "fixture.json",
                    {{"schema", 1},
-                    {"label", "synthetic asymmetric reference v3; not a capture"},
+                    {"label", termination   ? "synthetic exclusive termination v1; not a capture"
+                              : compositing ? "synthetic compositing stress v1; not a capture"
+                                            : "synthetic asymmetric reference v3; not a capture"},
                     {"width", WIDTH},
                     {"height", HEIGHT},
                     {"background", {0.045F, 0.051F, 0.063F}},
                     {"chunks", export_chunks(*scene)},
                     {"views", views},
                     {"scene_content_sha256", scene_content_hash(*scene)}});
-        write_json(output / "native.json", {{"device", renderer->capabilities().device_name},
-                                            {"validation_errors", stats.validation_errors},
-                                            {"splat_count", stats.resident_splat_count},
-                                            {"submitted_frames", stats.submitted_frames}});
-        std::cout << "Synthetic fixed-camera fixture: " << stats.resident_splat_count
-                  << " splats, 4 views, 1280x720, validation_errors=0\n";
+        write_json(output / "native.json",
+                   {{"device", renderer->capabilities().device_name},
+                    {"fp32_compositing", renderer->capabilities().fp32_compositing},
+                    {"framebuffer_bytes", stats.framebuffer_bytes},
+                    {"allocated_bytes", stats.allocated_bytes},
+                    {"validation_errors", stats.validation_errors},
+                    {"splat_count", stats.resident_splat_count},
+                    {"submitted_frames", stats.submitted_frames}});
+        std::cout << "Synthetic fixed-camera fixture: " << stats.resident_splat_count << " splats, "
+                  << names.size() << " views, 1280x720, validation_errors=0\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "Fixed-camera rendering failed: " << error.what() << '\n';

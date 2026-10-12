@@ -27,7 +27,9 @@ class vulkan_device {
     vulkan_device& operator=(const vulkan_device&) = delete;
 
     void initialize();
-    detail::gpu_buffer allocate(VkDeviceSize bytes, VkBufferUsageFlags usage, bool host_visible);
+    detail::gpu_buffer allocate(VkDeviceSize bytes, VkBufferUsageFlags usage, bool host_visible,
+                                std::size_t budget);
+    detail::gpu_image allocate_color_image(VkExtent2D extent, VkFormat format, std::size_t budget);
     VkShaderModule load_shader_module(const std::filesystem::path& shader_directory,
                                       const char* name) const;
     VkPipeline create_compute_pipeline(const char* name, VkPipelineLayout pipeline_layout,

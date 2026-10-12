@@ -38,6 +38,7 @@ struct gpu_buffer {
     VkBuffer buffer{};
     VkDeviceMemory memory{};
     VkDeviceSize bytes{};
+    VkDeviceSize allocation_bytes{};
     void* mapped{};
 
     gpu_buffer() = default;
@@ -62,6 +63,7 @@ struct gpu_buffer {
         std::swap(buffer, other.buffer);
         std::swap(memory, other.memory);
         std::swap(bytes, other.bytes);
+        std::swap(allocation_bytes, other.allocation_bytes);
         std::swap(mapped, other.mapped);
     }
 };
@@ -69,6 +71,37 @@ struct gpu_buffer {
 struct gpu_splat {
     std::array<float, 4> mean_opacity, scale_degree, rotation, world_to_sh;
     std::array<float, 48> sh;
+};
+struct gpu_image {
+    VkDevice device{};
+    VkImage image{};
+    VkImageView view{};
+    VkDeviceMemory memory{};
+    VkDeviceSize bytes{};
+    gpu_image() = default;
+    gpu_image(const gpu_image&) = delete;
+    gpu_image& operator=(const gpu_image&) = delete;
+    gpu_image(gpu_image&& other) noexcept { swap(other); }
+    gpu_image& operator=(gpu_image&& other) noexcept {
+        gpu_image temporary(std::move(other));
+        swap(temporary);
+        return *this;
+    }
+    ~gpu_image() {
+        if (view)
+            vkDestroyImageView(device, view, nullptr);
+        if (image)
+            vkDestroyImage(device, image, nullptr);
+        if (memory)
+            vkFreeMemory(device, memory, nullptr);
+    }
+    void swap(gpu_image& other) noexcept {
+        std::swap(device, other.device);
+        std::swap(image, other.image);
+        std::swap(view, other.view);
+        std::swap(memory, other.memory);
+        std::swap(bytes, other.bytes);
+    }
 };
 static_assert(sizeof(gpu_splat) == 256);
 

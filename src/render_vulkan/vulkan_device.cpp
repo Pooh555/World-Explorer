@@ -275,7 +275,7 @@ void vulkan_device::create_logical_device() {
 // Vulkan's distinct integer typedefs retain their native argument order at this boundary.
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes, VkBufferUsageFlags usage,
-                                           bool host_visible) {
+                                           bool host_visible, std::size_t budget) {
     detail::gpu_buffer output;
     output.device = device_;
     output.bytes = std::max<VkDeviceSize>(bytes, 16);
@@ -287,6 +287,8 @@ detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes, VkBufferUsageFlag
 
     VkMemoryRequirements requirements{};
     vkGetBufferMemoryRequirements(device_, output.buffer, &requirements);
+    if (requirements.size > budget)
+        throw std::runtime_error("GPU buffer exceeds remaining residency budget");
     const VkMemoryPropertyFlags required =
         host_visible ? (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
                      : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -308,10 +310,62 @@ detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes, VkBufferUsageFlag
     allocation.memoryTypeIndex = memory_type;
     detail::check(vkAllocateMemory(device_, &allocation, nullptr, &output.memory),
                   "allocate GPU memory");
+    output.allocation_bytes = requirements.size;
     detail::check(vkBindBufferMemory(device_, output.buffer, output.memory, 0), "bind GPU memory");
     if (host_visible)
         detail::check(vkMapMemory(device_, output.memory, 0, output.bytes, 0, &output.mapped),
                       "map staging memory");
+    return output;
+}
+
+detail::gpu_image vulkan_device::allocate_color_image(VkExtent2D extent, VkFormat format,
+                                                      std::size_t budget) {
+    if (!extent.width || !extent.height || extent.width > properties_.limits.maxImageDimension2D ||
+        extent.height > properties_.limits.maxImageDimension2D)
+        throw std::runtime_error("floating framebuffer extent exceeds device limits");
+    detail::gpu_image output;
+    output.device = device_;
+    auto info = detail::structure<VkImageCreateInfo>(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
+    info.imageType = VK_IMAGE_TYPE_2D;
+    info.format = format;
+    info.extent = {extent.width, extent.height, 1};
+    info.mipLevels = info.arrayLayers = 1;
+    info.samples = VK_SAMPLE_COUNT_1_BIT;
+    info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    detail::check(vkCreateImage(device_, &info, nullptr, &output.image),
+                  "create floating framebuffer");
+    VkMemoryRequirements requirements{};
+    vkGetImageMemoryRequirements(device_, output.image, &requirements);
+    if (requirements.size > budget)
+        throw std::runtime_error("floating framebuffer exceeds remaining residency budget");
+    std::uint32_t memory_type = memory_properties_.memoryTypeCount;
+    for (std::uint32_t index = 0; index < memory_properties_.memoryTypeCount; ++index)
+        if ((requirements.memoryTypeBits & (1U << index)) &&
+            (memory_properties_.memoryTypes[index].propertyFlags &
+             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+            memory_type = index;
+            break;
+        }
+    if (memory_type == memory_properties_.memoryTypeCount)
+        throw std::runtime_error("no device-local floating framebuffer memory type");
+    auto allocation =
+        detail::structure<VkMemoryAllocateInfo>(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
+    allocation.allocationSize = requirements.size;
+    allocation.memoryTypeIndex = memory_type;
+    detail::check(vkAllocateMemory(device_, &allocation, nullptr, &output.memory),
+                  "allocate floating framebuffer");
+    output.bytes = requirements.size;
+    detail::check(vkBindImageMemory(device_, output.image, output.memory, 0),
+                  "bind floating framebuffer");
+    auto view = detail::structure<VkImageViewCreateInfo>(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
+    view.image = output.image;
+    view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    view.format = format;
+    view.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    detail::check(vkCreateImageView(device_, &view, nullptr, &output.view),
+                  "create floating framebuffer view");
     return output;
 }
 

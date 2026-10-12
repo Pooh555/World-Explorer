@@ -49,8 +49,18 @@ pinned classic gsplat covariance filter and `0.3 * tan_fov` derivative margin;
 
 `we_gpu_reference` generates a labeled synthetic scene bundle, four calibrated
 1280×720 captures and their exact input JSON through normal update admission.
+`--compositing` selects a separate saturation/overlap fixture with seven views,
+including orbit/close-up; `--termination` selects a separate near-opaque exclusive
+cutoff fixture. Defaults and existing fixtures remain unchanged.
 `tests/gpu/compare_reference.py` requires the pinned local training environment and
 native CUDA; it never downloads/trains. It preserves float reference images, PNGs,
 error heatmaps and per-view metrics. Fixed diagnostic tolerances (PSNR ≥45 dB,
-maximum eight 8-bit levels) account for the current UNORM raster path; they do not
+maximum eight 8-bit levels) compare quantized SDR output; they do not
 replace Q/P gates. Commands/results and untested cases belong in validation evidence.
+
+Splat blending uses FP32 in subpass 0; subpass 1 reads that attachment, clamps the
+complete captured-domain color to SDR, then draws the overlay. The adapter's
+`vulkan_overlay_context.subpass` identifies the correct overlay subpass. Read and
+store/discard access and reuse of per-image targets have explicit dependencies.
+Back-to-front raster blending does not reproduce pinned exclusive termination;
+the failing near-opaque fixture remains an open correctness check.

@@ -55,7 +55,11 @@ struct vulkan_renderer::implementation {
     VkRenderPass render_pass{};
     descriptor_resources bindings;
     VkPipeline project_pipeline{}, histogram_pipeline{}, scan_pipeline{}, scatter_pipeline{},
-        draw_pipeline{};
+        draw_pipeline{}, present_pipeline{};
+    VkDescriptorSetLayout present_layout{};
+    VkPipelineLayout present_pipeline_layout{};
+    VkDescriptorPool present_pool{};
+    std::vector<VkDescriptorSet> present_sets;
     VkSemaphore timeline{};
     std::uint64_t submitted_timeline{};
     std::size_t frame_index{};
@@ -72,6 +76,7 @@ struct vulkan_renderer::implementation {
     scene_snapshot visible_scene;
     vec3d scene_origin{};
     std::size_t splat_count{};
+    std::size_t initial_buffer_reservation{};
     struct retired_buffer {
         std::uint64_t timeline;
         gpu_buffer buffer;
@@ -98,8 +103,8 @@ struct vulkan_renderer::implementation {
             if (current.pool)
                 vkDestroyCommandPool(device, current.pool, nullptr);
         }
-        for (auto pipeline :
-             {draw_pipeline, project_pipeline, histogram_pipeline, scan_pipeline, scatter_pipeline})
+        for (auto pipeline : {draw_pipeline, present_pipeline, project_pipeline, histogram_pipeline,
+                              scan_pipeline, scatter_pipeline})
             if (pipeline)
                 vkDestroyPipeline(device, pipeline, nullptr);
         if (bindings.pipeline_layout)
@@ -110,12 +115,24 @@ struct vulkan_renderer::implementation {
             vkDestroyDescriptorPool(device, bindings.overlay_pool, nullptr);
         if (bindings.layout)
             vkDestroyDescriptorSetLayout(device, bindings.layout, nullptr);
+        if (present_pool)
+            vkDestroyDescriptorPool(device, present_pool, nullptr);
+        if (present_pipeline_layout)
+            vkDestroyPipelineLayout(device, present_pipeline_layout, nullptr);
+        if (present_layout)
+            vkDestroyDescriptorSetLayout(device, present_layout, nullptr);
         swapchain_backend.reset();
         device_backend.reset();
     }
 
-    gpu_buffer allocate(VkDeviceSize bytes, VkBufferUsageFlags usage, bool host_visible) {
-        return device_backend->allocate(bytes, usage, host_visible);
+    gpu_buffer allocate(VkDeviceSize bytes, VkBufferUsageFlags usage, bool host_visible,
+                        VkDeviceSize transient_bytes = 0) {
+        const auto live = live_buffer_bytes();
+        if (live > options.residency_bytes || transient_bytes > options.residency_bytes - live)
+            throw std::runtime_error("GPU buffers exceed residency budget");
+        return device_backend->allocate(bytes, usage, host_visible,
+                                        options.residency_bytes - live -
+                                            static_cast<std::size_t>(transient_bytes));
     }
 
     void initialize() {
@@ -140,12 +157,16 @@ struct vulkan_renderer::implementation {
         properties = device_backend->properties();
         timeline = device_backend->timeline();
         device_backend->create_descriptor_layout(bindings);
+        initial_buffer_reservation = scratch + 16;
+        create_present_layout();
         refresh_swapchain();
+        initial_buffer_reservation = 0;
         create_pipelines();
         create_frames();
         scene_buffer = allocate(
             16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
-        diagnostics.scratch_bytes = scratch;
+        diagnostics.scratch_bytes = scratch_allocation_bytes();
+        diagnostics.allocated_bytes = live_buffer_bytes();
     }
     void create_pipelines() {
         project_pipeline = device_backend->create_compute_pipeline(
@@ -156,11 +177,19 @@ struct vulkan_renderer::implementation {
             "radix_scan.comp", bindings.pipeline_layout, options.shader_directory);
         scatter_pipeline = device_backend->create_compute_pipeline(
             "radix_scatter.comp", bindings.pipeline_layout, options.shader_directory);
+        draw_pipeline =
+            create_graphics_pipeline("splat.vert", "splat.frag", bindings.pipeline_layout, 0, true);
+        present_pipeline = create_graphics_pipeline("present.vert", "present.frag",
+                                                    present_pipeline_layout, 1, false);
+    }
+    VkPipeline create_graphics_pipeline(const char* vertex_name, const char* fragment_name,
+                                        VkPipelineLayout layout, std::uint32_t subpass,
+                                        bool blend_enabled) {
         const auto vertex =
-            device_backend->load_shader_module(options.shader_directory, "splat.vert");
+            device_backend->load_shader_module(options.shader_directory, vertex_name);
         VkShaderModule fragment{};
         try {
-            fragment = device_backend->load_shader_module(options.shader_directory, "splat.frag");
+            fragment = device_backend->load_shader_module(options.shader_directory, fragment_name);
         } catch (...) {
             vkDestroyShaderModule(device, vertex, nullptr);
             throw;
@@ -189,7 +218,7 @@ struct vulkan_renderer::implementation {
             VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO);
         multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
         VkPipelineColorBlendAttachmentState blend{};
-        blend.blendEnable = VK_TRUE;
+        blend.blendEnable = blend_enabled ? VK_TRUE : VK_FALSE;
         blend.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
         blend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         blend.colorBlendOp = VK_BLEND_OP_ADD;
@@ -220,13 +249,71 @@ struct vulkan_renderer::implementation {
         info.pMultisampleState = &multisample;
         info.pColorBlendState = &blending;
         info.pDynamicState = &dynamic;
-        info.layout = bindings.pipeline_layout;
+        info.layout = layout;
         info.renderPass = render_pass;
+        info.subpass = subpass;
+        VkPipeline pipeline{};
         const auto status =
-            vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &draw_pipeline);
+            vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
         vkDestroyShaderModule(device, vertex, nullptr);
         vkDestroyShaderModule(device, fragment, nullptr);
-        check(status, "create Gaussian graphics pipeline");
+        if (status != VK_SUCCESS && pipeline)
+            vkDestroyPipeline(device, pipeline, nullptr);
+        check(status, "create graphics pipeline");
+        return pipeline;
+    }
+    void create_present_layout() {
+        const VkDescriptorSetLayoutBinding binding{0, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
+                                                   VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+        auto info = structure<VkDescriptorSetLayoutCreateInfo>(
+            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
+        info.bindingCount = 1;
+        info.pBindings = &binding;
+        check(vkCreateDescriptorSetLayout(device, &info, nullptr, &present_layout),
+              "create presentation layout");
+        auto pipeline =
+            structure<VkPipelineLayoutCreateInfo>(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
+        pipeline.setLayoutCount = 1;
+        pipeline.pSetLayouts = &present_layout;
+        check(vkCreatePipelineLayout(device, &pipeline, nullptr, &present_pipeline_layout),
+              "create presentation pipeline layout");
+    }
+    void create_present_descriptors() {
+        if (present_pool) {
+            vkDestroyDescriptorPool(device, present_pool, nullptr);
+            present_pool = VK_NULL_HANDLE;
+        }
+        present_sets.clear();
+        const auto count = static_cast<std::uint32_t>(images.size());
+        const VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, count};
+        auto pool =
+            structure<VkDescriptorPoolCreateInfo>(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO);
+        pool.maxSets = count;
+        pool.poolSizeCount = 1;
+        pool.pPoolSizes = &size;
+        check(vkCreateDescriptorPool(device, &pool, nullptr, &present_pool),
+              "create presentation descriptor pool");
+        const std::vector<VkDescriptorSetLayout> layouts(count, present_layout);
+        present_sets.resize(count);
+        auto allocation =
+            structure<VkDescriptorSetAllocateInfo>(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO);
+        allocation.descriptorPool = present_pool;
+        allocation.descriptorSetCount = count;
+        allocation.pSetLayouts = layouts.data();
+        check(vkAllocateDescriptorSets(device, &allocation, present_sets.data()),
+              "allocate presentation descriptors");
+        for (std::size_t index = 0; index < present_sets.size(); ++index) {
+            const VkDescriptorImageInfo image{VK_NULL_HANDLE,
+                                              swapchain_backend->color_targets()[index].view,
+                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+            auto write = structure<VkWriteDescriptorSet>(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+            write.dstSet = present_sets[index];
+            write.dstBinding = 0;
+            write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+            write.pImageInfo = &image;
+            vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+        }
     }
     void create_frames() {
         for (auto& current : frames) {
@@ -298,9 +385,20 @@ struct vulkan_renderer::implementation {
         }
     }
     std::size_t live_buffer_bytes() const {
-        std::size_t bytes = scene_buffer.bytes + diagnostics.scratch_bytes;
+        std::size_t bytes =
+            static_cast<std::size_t>(scene_buffer.allocation_bytes) + scratch_allocation_bytes();
+        if (swapchain_backend)
+            bytes += swapchain_backend->allocated_bytes();
         for (const auto& item : retired)
-            bytes += item.buffer.bytes;
+            bytes += static_cast<std::size_t>(item.buffer.allocation_bytes);
+        return bytes;
+    }
+    std::size_t scratch_allocation_bytes() const {
+        std::size_t bytes = 0;
+        for (const auto& current : frames)
+            bytes += static_cast<std::size_t>(
+                current.projected.allocation_bytes + current.keys_a.allocation_bytes +
+                current.keys_b.allocation_bytes + current.histogram.allocation_bytes);
         return bytes;
     }
     void upload(VkCommandBuffer command, const scene_snapshot& snapshot, vec3d origin,
@@ -318,8 +416,9 @@ struct vulkan_renderer::implementation {
             throw std::runtime_error(
                 "atomic replacement exceeds old + new + staging + scratch residency budget");
         auto staging = allocate(bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true);
-        auto replacement = allocate(
-            bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
+        auto replacement =
+            allocate(bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                     false, staging.allocation_bytes);
         auto* destination = static_cast<gpu_splat*>(staging.mapped);
         std::size_t index = 0;
         for (const auto& [id, chunk] : snapshot->chunks) {
@@ -454,13 +553,20 @@ struct vulkan_renderer::implementation {
         screenshot_path.reset();
     }
     bool refresh_swapchain() {
+        const auto previous_images = swapchain_backend ? swapchain_backend->allocated_bytes() : 0;
+        const auto other_bytes = live_buffer_bytes() - previous_images;
+        if (other_bytes > options.residency_bytes ||
+            initial_buffer_reservation > options.residency_bytes - other_bytes)
+            throw std::runtime_error("renderer buffers exceed residency budget before resize");
+        const auto framebuffer_budget =
+            options.residency_bytes - other_bytes - initial_buffer_reservation;
         if (!swapchain_backend) {
             swapchain_backend =
-                std::make_unique<vulkan_swapchain>(device, physical, surface, format);
-            if (!swapchain_backend->create(window))
+                std::make_unique<vulkan_swapchain>(*device_backend, surface, format);
+            if (!swapchain_backend->create(window, framebuffer_budget))
                 return false;
         } else {
-            if (swapchain_backend->create(window)) {
+            if (swapchain_backend->create(window, framebuffer_budget)) {
                 // create() already reinitializes a resize-safe swapchain and populates the new
                 // handles.
             } else {
@@ -477,6 +583,11 @@ struct vulkan_renderer::implementation {
         views = swapchain_backend->image_views();
         framebuffers = swapchain_backend->framebuffers();
         present_semaphores = swapchain_backend->present_semaphores();
+        diagnostics.framebuffer_bytes = swapchain_backend->allocated_bytes();
+        diagnostics.framebuffer_width = extent.width;
+        diagnostics.framebuffer_height = extent.height;
+        capabilities.fp32_compositing = true;
+        create_present_descriptors();
         return true;
     }
     void draw(const camera_view& camera, bool draw_appearance) {
@@ -558,6 +669,12 @@ struct vulkan_renderer::implementation {
                                sizeof(params), &params);
             vkCmdDraw(current.command, 6, static_cast<std::uint32_t>(splat_count), 0, 0);
         }
+        vkCmdNextSubpass(current.command, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS, present_pipeline);
+        vkCmdBindDescriptorSets(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                present_pipeline_layout, 0, 1, &present_sets[image_index], 0,
+                                nullptr);
+        vkCmdDraw(current.command, 3, 1, 0, 0);
         if (overlay)
             overlay(reinterpret_cast<std::uintptr_t>(current.command));
         vkCmdEndRenderPass(current.command);
@@ -614,7 +731,7 @@ struct vulkan_renderer::implementation {
         diagnostics.staging_bytes = 0;
         for (const auto& item : retired)
             if (item.buffer.mapped)
-                diagnostics.staging_bytes += item.buffer.bytes;
+                diagnostics.staging_bytes += static_cast<std::size_t>(item.buffer.allocation_bytes);
         diagnostics.last_cpu_frame_ms =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin)
                 .count();
@@ -656,7 +773,8 @@ vulkan_overlay_context vulkan_renderer::overlay_context() const noexcept {
             reinterpret_cast<std::uintptr_t>(impl_->render_pass),
             impl_->queue_family,
             static_cast<std::uint32_t>(impl_->images.size()),
-            impl_->minimum_images};
+            impl_->minimum_images,
+            1};
 }
 void vulkan_renderer::set_overlay_callback(std::function<void(std::uintptr_t)> callback) {
     impl_->overlay = std::move(callback);

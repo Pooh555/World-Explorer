@@ -114,7 +114,8 @@ def main():
     with torch.no_grad():
         for view in data["views"]:
             name = view["name"]
-            assert name in ("centered", "off_center", "rolled", "translated")
+            assert name in ("centered", "off_center", "rolled", "translated",
+                            "orbit_left", "orbit_right", "close_up")
             rendered = reference(data, view)
             assert torch.isfinite(rendered).all().item(), "nonfinite reference render"
             floating = rendered.cpu().numpy()

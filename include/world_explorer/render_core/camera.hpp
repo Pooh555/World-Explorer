@@ -33,6 +33,8 @@ struct renderer_diagnostics {
     std::size_t allocated_bytes{};
     std::size_t staging_bytes{};
     std::size_t scratch_bytes{};
+    std::size_t framebuffer_bytes{};
+    std::uint32_t framebuffer_width{}, framebuffer_height{};
     std::uint32_t validation_errors{};
     double last_cpu_frame_ms{};
 };

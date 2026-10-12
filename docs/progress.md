@@ -25,16 +25,19 @@ Earlier [viewer controls/handoff checks](validation/2026-10-12-viewer-controls.m
 cover specified defaults, saved remaps, malformed keys, active overlays and
 one-frame-minimum startup. Automatic exit waits for queued snapshot admission.
 
-[Fixed-camera comparison](validation/2026-10-12-render-reference.md): explicit
-calibration/roll and framebuffer admission checks; corrected gsplat covariance
-margin. The identical **18-splat synthetic fixture**, four 1280×720 views, reaches
-**53.90–54.81 dB PSNR**, maximum 1–4 color levels, zero Vulkan errors. **90/90 dev,
-87/87 explicit C++23 and libc++ tests** pass; format/tidy/boundaries pass. These are
-local correctness diagnostics, not performance, Q6 or real reconstruction gates.
+Earlier [fixed-camera](validation/2026-10-12-render-reference.md) and
+[provenance](validation/2026-10-12-synthetic-labels.md) checks establish calibration,
+roll, covariance margins and imported synthetic labels, including hidden panels.
 
-Latest [synthetic provenance checks](validation/2026-10-12-synthetic-labels.md):
-**91/91 dev tests** pass. Imported synthetic scenes keep visible labels with panels
-hidden; canonical/legacy fixtures and the retained real scene classify correctly.
+Latest [FP32 composition](validation/2026-10-12-compositing.md) preserves bright SH
+energy until SDR presentation. Seven saturation/overlap/orbit/close-up views pass
+at **63.88–69.09 dB**, max 1–6 color levels; the unchanged original four views pass
+at **63.01–65.14 dB**, max 1. **91/91 GCC C++26 and Clang C++23 viewer/core checks**
+pass. Native observed resize, replacement/deletion, pause/resume and constrained
+allocation rejection pass with zero validation errors. Actual buffer/framebuffer
+allocations are budgeted; portable FP32 blending remains unqualified. A separate
+two-splat exclusive-termination fixture still fails five views (max 12–15);
+thresholds/failures are preserved. No performance/Q6/reconstruction gate is certified.
 
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
@@ -67,11 +70,14 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 
 ## Next executable work and blockers
 
-Next executable task: extend the fixed-camera suite to saturation, high-opacity
-overlap/early termination and rotating/close-up views; preserve existing fixtures
-and tolerances. Then add calibrated comparison of the retained real scene without
-trimming its 304,867 splats. `--source-view` remains an upright spectator reset;
-it cannot substitute for calibrated parity or drive spectator navigation.
+Next executable task: implement budgeted front-to-back composition matching pinned
+gsplat's exclusive `next_T <= 1e-4` cutoff, following specification §4.6's tiled
+path. Reproduce the retained failure with
+`.venv-train/bin/python tests/gpu/compare_reference.py artifacts/validation/compositing-20261012/termination`.
+Preserve fixtures/tolerances; no unbounded per-splat pass loop or trainer patch.
+Then add calibrated comparison of the retained real scene without trimming its
+304,867 splats. `--source-view` remains an upright spectator reset, not calibrated
+parity or capture-driven navigation.
 
 Reference-hardware/native-platform qualification and the real owned fresh RGB/
 solver/fit chain remain pending. Do not weaken gates, silently trim the retained

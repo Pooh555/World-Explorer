@@ -19,13 +19,14 @@ struct renderer_options {
 struct vulkan_overlay_context {
     std::uintptr_t instance{}, physical_device{}, device{}, queue{}, descriptor_pool{},
         render_pass{};
-    std::uint32_t queue_family{}, image_count{}, min_image_count{};
+    std::uint32_t queue_family{}, image_count{}, min_image_count{}, subpass{};
 };
 struct renderer_capabilities {
     std::string device_name;
     std::uint32_t instance_version{}, device_version{};
     bool validation_enabled{}, portability_subset{};
     std::size_t max_splats{};
+    bool fp32_compositing{};
 };
 class vulkan_renderer {
   public:
