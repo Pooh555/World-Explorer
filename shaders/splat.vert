@@ -12,7 +12,7 @@ void main() {
     distance_pixels=corners[gl_VertexIndex]*splat.center_radius.zw;
     conic_opacity=splat.conic_opacity;
     color=splat.color_depth.rgb;
-    // Vulkan raster pixel centers are half-integer; canonical cameras use integer centers.
-    vec2 pixel=splat.center_radius.xy+distance_pixels+vec2(0.5);
+    // Projection already converted canonical camera centers to raster coordinates.
+    vec2 pixel=splat.center_radius.xy+distance_pixels;
     gl_Position=vec4(pixel/params.viewport_clip.xy*2-1,0,1);
 }

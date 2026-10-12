@@ -358,15 +358,13 @@ struct vulkan_renderer::implementation {
         splat_count = count;
         scene_origin = origin;
     }
-    push_parameters parameters(const camera_view& camera) const {
-        const auto focal =
-            static_cast<float>(0.5 * extent.height / std::tan(camera.vertical_fov_radians * 0.5));
+    push_parameters parameters(const camera_view& camera,
+                               const std::array<float, 4>& intrinsics) const {
         return {floats(camera.right),
                 floats(camera.down),
                 floats(camera.forward),
                 floats(camera.position - scene_origin),
-                {focal, focal, (static_cast<float>(extent.width) - 1) * 0.5F,
-                 (static_cast<float>(extent.height) - 1) * 0.5F},
+                intrinsics,
                 {static_cast<float>(extent.width), static_cast<float>(extent.height),
                  camera.near_plane, camera.far_plane},
                 {static_cast<std::uint32_t>(splat_count), 0,
@@ -483,12 +481,6 @@ struct vulkan_renderer::implementation {
     }
     void draw(const camera_view& camera, bool draw_appearance) {
         const auto begin = std::chrono::steady_clock::now();
-        if (!finite(camera.position) || !finite(camera.right) || !finite(camera.down) ||
-            !finite(camera.forward) || !std::isfinite(camera.vertical_fov_radians) ||
-            camera.vertical_fov_radians <= 0.05 || camera.vertical_fov_radians >= 3.1 ||
-            !std::isfinite(camera.near_plane) || !std::isfinite(camera.far_plane) ||
-            camera.near_plane <= 0 || camera.far_plane <= camera.near_plane)
-            throw std::runtime_error("invalid viewer camera");
         int width = 0, height = 0;
         SDL_GetWindowSizeInPixels(window, &width, &height);
         if (width <= 0 || height <= 0)
@@ -497,6 +489,10 @@ struct vulkan_renderer::implementation {
             extent.height != static_cast<std::uint32_t>(height))
             if (!refresh_swapchain())
                 return;
+        // Reject invalid cameras before admitting updates or recording GPU work.
+        const auto checked_camera = raster_intrinsics(camera, extent.width, extent.height);
+        if (!checked_camera)
+            throw std::runtime_error(checked_camera.error().message);
         auto& current = frames[frame_index];
         wait_timeline(current.completion);
         std::uint64_t completed = 0;
@@ -535,7 +531,7 @@ struct vulkan_renderer::implementation {
                    dot(camera.position - scene_origin, camera.position - scene_origin) > 100000000)
             upload(current.command, visible_scene, camera.position, completion);
         descriptors(current);
-        auto params = parameters(camera);
+        auto params = parameters(camera, *checked_camera);
         if (splat_count && draw_appearance)
             record_projection(current, params);
         VkClearValue clear{};

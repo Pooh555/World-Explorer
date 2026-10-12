@@ -32,7 +32,8 @@ void main() {
     float fx=params.intrinsics.x,fy=params.intrinsics.y;
     vec2 center=vec2(fx*p.x/p.z,fy*p.y/p.z)+params.intrinsics.zw;
     // Pinned gsplat perspective Jacobian clips only derivative coordinates at the image margin.
-    vec2 limits=0.3*params.viewport_clip.xy/vec2(fx,fy);
+    // gsplat 1.5.3 Utils.cuh: 0.3 * tan_fov, with tan_fov = 0.5 * extent / focal.
+    vec2 limits=0.15*params.viewport_clip.xy/vec2(fx,fy);
     float tx=p.z*clamp(p.x/p.z,-params.intrinsics.z/fx-limits.x,(params.viewport_clip.x-params.intrinsics.z)/fx+limits.x);
     float ty=p.z*clamp(p.y/p.z,-params.intrinsics.w/fy-limits.y,(params.viewport_clip.y-params.intrinsics.w)/fy+limits.y);
     vec3 jx=vec3(fx/p.z,0,-fx*tx/(p.z*p.z));

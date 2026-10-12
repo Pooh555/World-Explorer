@@ -8,7 +8,7 @@ Read by task; do not load the entire directory for routine work.
 | Agent execution rules | [Runbook](execution_prompt.md), repository [AGENTS.md](../AGENTS.md) |
 | Product, thresholds, architecture, roadmap | [Technical plan](technical_plan.md); controlling specification |
 | Write/update documentation | [Documentation protocol](protocols/documentation.md) |
-| Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/handoff](protocols/viewer.md) |
+| Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/camera/handoff](protocols/viewer.md) |
 | Find historical results | [Validation index](validation/README.md); reports preserve their original scope |
 | Understand a consequential choice | [Decision records](adr/) |
 | Build/use the application | Repository [README](../README.md) |

@@ -25,7 +25,7 @@ layout(push_constant) uniform parameters {
     vec4 down;
     vec4 forward;
     vec4 camera_position;
-    vec4 intrinsics; // fx, fy, integer-center cx, cy
+    vec4 intrinsics; // fx, fy, raster half-integer-center cx, cy
     vec4 viewport_clip; // width, height, near, far
     uvec4 count_shift; // splat count, radix shift, group count
 } params;
