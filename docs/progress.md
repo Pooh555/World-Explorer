@@ -13,15 +13,17 @@ Current contracts: [capture](protocols/capture.md), [poses](protocols/poses.md),
 [jobs](protocols/jobs.md). [Historical evidence](validation/README.md) retains
 implementation sequence, failures, identities, timings and profile differences.
 
-Documentation [consolidation](validation/2026-10-12-documentation.md) changes no
-software qualification. Latest reconstruction integration slice: `f115d90`.
-**79/79 CPU/worker tests in six local profiles**;
-format, boundaries and targeted tidy pass. Synthetic complete fresh-chain
-publication/restart passes. Real automatic decode selects **63/628 frames**, checks
-inventory, reuses its cache across processes and cancels before pose invocation
-(CLI 130). No RGB journal, pose backend request, map or scene is published by that
-probe; 18 prior manifests/video hashes remain unchanged.
-[Exact scope](validation/2026-10-12-stage-chain.md).
+Latest [fit-calibration admission](validation/2026-10-12-fit-calibration.md) checks
+undistorted camera bytes, original/resized dimensions and intrinsic matrices on
+the shared path before map/fitter admission and scene publication. **84/84 tests
+pass in four local profiles** (dev, explicit C++23, libc++, ASan/UBSan/LSan);
+format, boundaries and targeted tidy pass. Real original-fit publication/restart,
+six malformed fit rejects, separate recovery-map rejection and native journal
+mismatch/restart checks preserve **84 protected files**. The new native scene has
+identical original splat bytes; viewer inspection reports zero Vulkan/sync errors.
+Earlier [stage-chain evidence](validation/2026-10-12-stage-chain.md) covers synthetic
+complete chaining and real 63/628-frame decode/cache/pre-solver cancellation;
+**full real fresh solve/fit chaining remains unverified**.
 
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
@@ -37,7 +39,7 @@ Run from repository root; all media/jobs/screenshots stay local and ignored.
 
 ```sh
 build/dev/we_viewer --scene artifacts/sample2.wexplore --source-view --max-splats 500000
-build/dev/we_process reconstruct --request artifacts/sample2-preflight-20261012/adopt-original.json
+build/dev/we_process reconstruct --request artifacts/sample2-fit-boundary-20261012/original.json
 ```
 
 The reconstruction command adopts checked retained metadata and original completed
@@ -54,18 +56,18 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 
 ## Next executable work and blockers
 
-Validate fresh chaining's final real pose/fit boundaries using checked retained
-decode and native recovery outputs: exercise admission, journal/pose/map/fit
-dependency rejection and scene publication while preserving distinct solutions.
-The owned fresh path is available for an explicitly selected fresh capture/job;
-**full real fresh solve/fit chaining remains unverified**.
+Next executable task: build a fixed-camera Gaussian render comparison using an
+asymmetric, labeled **≤250k-splat fixture**, the pinned gsplat reference and native
+Vulkan. Include off-center intrinsics, camera roll, anisotropy/overlap and pixel/
+color/SH conventions. Current `--source-view` is an upright spectator reset and
+cannot substitute for calibrated parity. Keep spectator navigation independent.
 
-Finish the prescribed **≤250k fixture and reference renderer parity** on available
-native hardware. Label synthetic/reference cases; do not silently trim the
-304,867-splat scene or substitute it for the required fixture. Selection remains
-timestamp sampling; blur/cut/lens/coverage qualification is pending. Python JSONL
-diagnostics remain transitional. Decoded-storage estimation also applies to
-metadata inspection; unknown/inadequate space fails explicitly.
+Reference-hardware/native-platform qualification and the real owned fresh RGB/
+solver/fit chain remain pending. Do not weaken gates, silently trim the retained
+304,867-splat scene, rerun original successful COLMAP/gsplat or rewrite its stale
+decode pointer. Timestamp-only selection, blur/cut/lens/coverage diagnostics and
+transitional Python JSONL remain as recorded. Unknown/inadequate storage fails;
+metadata inspection still applies the decoded-storage estimate.
 
 Native Windows/macOS control/viewer/release, Apple Silicon/AMD, corpus/reference
 performance, geometry/collision, coverage/fuzzing and complete Q/P/N/E gates remain

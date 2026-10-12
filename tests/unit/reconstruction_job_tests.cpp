@@ -1,6 +1,7 @@
 #include "inspection_fixture.hpp"
 #include "pose_fixture.hpp"
 #include "stage_chain_fixture.hpp"
+#include "training_camera_fixture.hpp"
 #include "world_explorer/application/pose_preparation.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/application/scenes.hpp"
@@ -45,8 +46,10 @@ struct job_fixture {
         source_hash = sha256_file(job.video, 1024).value();
         std::ofstream(stage / "training/images/frame.png") << "diagnostic image bytes";
         image_hash = sha256_file(stage / "training/images/frame.png", 1024).value();
-        for (const auto* name : {"cameras.bin", "images.bin", "points3D.bin"})
+        for (const auto* name : {"images.bin", "points3D.bin"})
             std::ofstream(stage / "training/sparse" / name) << "diagnostic model bytes";
+        test::write_training_camera(stage / "training/sparse/cameras.bin",
+                                    test::training_camera_bytes());
         poses.inventory(stage);
         std::ofstream(job.fit_directory / "assets/fit.ply")
             << "ply\nformat ascii 1.0\ncomment exporter gsplat-1.5.3\ncomment color_domain srgb\n"
@@ -84,6 +87,9 @@ struct job_fixture {
                 {{"name", name},
                  {"sha256", image_hash},
                  {"height", 128},
+                 {"width", 128},
+                 {"original_height", 128},
+                 {"original_width", 128},
                  {"view",
                   {{x.x, y.x, z.x, t.x}, {x.y, y.y, z.y, t.y}, {x.z, y.z, z.z, t.z}, {0, 0, 0, 1}}},
                  {"intrinsic", {{200, 0, 64}, {0, 200, 64}, {0, 0, 1}}}});
@@ -178,6 +184,35 @@ TEST_CASE(
         auto input = nlohmann::json::parse(std::ifstream(path));
         input["dataset"]["frames"][0]["view"][0][3] = 100.;
         save_json(path, input);
+    }
+    SECTION("different fit focal length") {
+        const auto path = fixture.job.fit_directory / "input_manifest.json";
+        auto input = nlohmann::json::parse(std::ifstream(path));
+        input["dataset"]["frames"][0]["intrinsic"][0][0] = 201.;
+        save_json(path, input);
+    }
+    SECTION("wrong half-pixel convention") {
+        const auto path = fixture.job.fit_directory / "input_manifest.json";
+        auto input = nlohmann::json::parse(std::ifstream(path));
+        input["dataset"]["frames"][0]["intrinsic"][0][2] = 63.5;
+        save_json(path, input);
+    }
+    SECTION("wrong original image domain") {
+        const auto path = fixture.job.fit_directory / "input_manifest.json";
+        auto input = nlohmann::json::parse(std::ifstream(path));
+        input["dataset"]["frames"][0]["original_width"] = 127;
+        save_json(path, input);
+    }
+    SECTION("wrong resized domain") {
+        const auto path = fixture.job.fit_directory / "input_manifest.json";
+        auto input = nlohmann::json::parse(std::ifstream(path));
+        input["dataset"]["frames"][0]["width"] = 127;
+        save_json(path, input);
+    }
+    SECTION("rehashed invalid training camera") {
+        test::write_training_camera(fixture.stage / "training/sparse/cameras.bin",
+                                    test::training_camera_bytes(4));
+        fixture.poses.inventory(fixture.stage);
     }
     SECTION("incomplete camera inventory") {
         const auto path = fixture.job.fit_directory / "input_manifest.json";
@@ -900,4 +935,48 @@ TEST_CASE("pose preparation rejects unsafe destinations and cancelled admission"
     }
     CHECK_FALSE(prepare_completed_pose_map(request, {}));
     CHECK_FALSE(std::filesystem::exists(request.map_directory / "manifest.json"));
+}
+
+TEST_CASE("fit admission preserves nearest-even resizing and independent intrinsic scales") {
+    job_fixture fixture;
+    fixture.job.max_image_dimension = 128;
+    test::write_training_camera(fixture.stage / "training/sparse/cameras.bin",
+                                test::training_camera_bytes(1, 256, 241, {400, 420, 128, 120.5}));
+    fixture.poses.inventory(fixture.stage);
+    const auto path = fixture.job.fit_directory / "input_manifest.json";
+    auto input = nlohmann::json::parse(std::ifstream(path));
+    input["max_image_dimension"] = 128;
+    for (auto& frame : input["dataset"]["frames"]) {
+        frame["original_width"] = 256;
+        frame["original_height"] = 241;
+        frame["width"] = 128;
+        frame["height"] = 120;
+        frame["intrinsic"] = {
+            {200., 0, 64.}, {0, static_cast<float>(420. * 120 / 241), 60.}, {0, 0, 1}};
+    }
+    save_json(path, input);
+    const auto initial = reconstruct(fixture.job, {}, {});
+    INFO((initial ? "accepted" : initial.error().message));
+    REQUIRE(initial);
+    const auto committed = sha256_file(fixture.job.scene_output / "manifest.json", 65536).value();
+    // 241 * .5 = 120.5 rounds to even 120 in the recorded Python recipe.
+    for (auto& frame : input["dataset"]["frames"])
+        frame["height"] = 121;
+    save_json(path, input);
+    CHECK_FALSE(reconstruct(fixture.job, {}, {}));
+    CHECK(sha256_file(fixture.job.scene_output / "manifest.json", 65536).value() == committed);
+}
+
+TEST_CASE("invalid training calibration fails before durable map or scene publication") {
+    job_fixture fixture;
+    test::write_training_camera(fixture.stage / "training/sparse/cameras.bin",
+                                test::training_camera_bytes(4));
+    fixture.poses.inventory(fixture.stage);
+    const auto rejected = reconstruct(fixture.job, {}, {});
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == error_code::UNSUPPORTED_OPERATION);
+    auto map = fixture.job.fit_directory;
+    map += ".map";
+    CHECK_FALSE(std::filesystem::exists(map));
+    CHECK_FALSE(std::filesystem::exists(fixture.job.scene_output));
 }
