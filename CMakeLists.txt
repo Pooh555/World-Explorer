@@ -112,8 +112,14 @@ add_custom_command(OUTPUT "${WE_POSE_DIRECTORY}/poses_generated.h"
   COMMAND $<TARGET_FILE:${WE_FLATC}> --cpp --scoped-enums --gen-mutable -o "${WE_POSE_DIRECTORY}" "${PROJECT_SOURCE_DIR}/schemas/map/poses.fbs"
   DEPENDS ${WE_FLATC} schemas/map/poses.fbs
   VERBATIM)
+add_custom_command(OUTPUT "${WE_POSE_DIRECTORY}/checkpoint_generated.h"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${WE_POSE_DIRECTORY}"
+  COMMAND $<TARGET_FILE:${WE_FLATC}> --cpp --scoped-enums --gen-mutable -o "${WE_POSE_DIRECTORY}" "${PROJECT_SOURCE_DIR}/schemas/map/checkpoint.fbs"
+  DEPENDS ${WE_FLATC} schemas/map/checkpoint.fbs schemas/map/poses.fbs
+  VERBATIM)
 add_library(map_store src/map_store/map_store.cpp src/map_store/pose_asset.cpp
-  "${WE_POSE_DIRECTORY}/poses_generated.h")
+  src/map_store/map_codec.cpp src/map_store/map_files.cpp src/map_store/map_persistence.cpp
+  "${WE_POSE_DIRECTORY}/poses_generated.h" "${WE_POSE_DIRECTORY}/checkpoint_generated.h")
 we_target(map_store)
 target_include_directories(map_store SYSTEM PRIVATE "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
 target_link_libraries(map_store PUBLIC reconstruction_api)
@@ -130,7 +136,8 @@ target_link_libraries(navigation PUBLIC core)
 add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/scene_import.cpp src/application/source_view.cpp
   src/application/reconstruction_job.cpp src/application/job_validation.cpp src/application/pose_replay.cpp
-  src/application/pose_pipeline.cpp src/application/pose_solve.cpp src/application/pose_export.cpp)
+  src/application/pose_pipeline.cpp src/application/pose_solve.cpp src/application/pose_export.cpp
+  src/application/map_commands.cpp)
 we_target(application)
 target_link_libraries(application PUBLIC scene_store navigation reconstruction_adapters map_store PRIVATE nlohmann_json::nlohmann_json)
 

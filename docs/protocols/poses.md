@@ -58,8 +58,8 @@ The adapter freezes its own snapshot so mutable aliases cannot alter emitted pos
 application command: real frame leases → capacity-one estimator replay with retry
 on backpressure → one atomic in-memory map commit. Pose timestamps must match their
 observation records. This inspection does not alter job pointers or persist maps.
-Persistent map snapshots and complete worker
-command control remain follow-up work.
+Native [persistent map snapshots](maps.md) now retain retry receipts; automatic
+pipeline integration and complete worker command control remain follow-up work.
 
 ## Fresh selected-frame batch
 
@@ -161,7 +161,8 @@ POSIX flushes the published parent directory; Windows flushes file contents.
 A failure after linking can leave a complete verifiable asset; there is no
 power-loss/native Windows/macOS qualification claim. Existing files always stay
 untouched. These assets contain no operation receipts: they do **not** restore
-a durable `map_store` or certify restart-safe revision/retry behavior.
+a durable `map_store`. The separate [map checkpoint](maps.md) persists snapshots
+and retry receipts.
 
 `export_completed_pose_asset` and
 `we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]`

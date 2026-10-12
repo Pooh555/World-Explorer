@@ -119,13 +119,26 @@ immutable snapshot and print JSON inspection. Images stay in the original local
 job. Scale remains arbitrary and gravity unknown; this file is pose interchange,
 not a resumable map-store log.
 
+Persistent native maps now retain snapshots and retry receipts across restart:
+
+```sh
+build/dev/we_process init-map NEW_MAP_DIRECTORY
+build/dev/we_process import-map INPUT.weposes SHA256 MAP_DIRECTORY
+build/dev/we_process inspect-map MAP_DIRECTORY
+```
+
+Use a fresh output directory with an existing parent. The checked canonical source
+is copied into the store; the original capture/job is preserved. Repeating an import
+is idempotent, and corrupt/missing manifests never silently reset the map. See the
+[map contract](docs/protocols/maps.md) for writer ownership, cancellation, retention
+budgets and recovery limits. Scale remains arbitrary; walking is unavailable.
+
 `build/dev/we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE`
 runs a fresh isolated CPU COLMAP solve from native RGB leases. Use a fresh output
 directory; accepted frames are journaled locally, and failures retain diagnostics.
 The command publishes a checked in-memory map and does not fit appearance or modify
 the original completed job. An explicit `--recipe exhaustive_guided` selects the
-existing recovery recipe. Persistent map storage and automatic video-to-fit chaining
-remain pending.
+existing recovery recipe. Automatic video-to-fit chaining remains pending.
 
 The explicitly named local development fit now works with real gsplat output;
 see [worker setup](workers/gsplat/README.md) for its pinned environment and native

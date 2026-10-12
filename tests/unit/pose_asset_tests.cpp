@@ -278,8 +278,10 @@ TEST_CASE("canonical pose file publication is immutable and concurrent writers p
     CHECK(successes == 1);
     CHECK(read_pose_asset(raced, *hash));
     CHECK_FALSE(write_pose_asset(temporary.path / "missing" / "poses.weposes", asset));
-    for (const auto& entry : std::filesystem::directory_iterator(temporary.path))
-        CHECK_FALSE(entry.path().filename().string().starts_with(".weposes-tmp-"));
+    for (const auto& entry : std::filesystem::directory_iterator(temporary.path)) {
+        CHECK(!entry.path().filename().string().starts_with(".weposes-tmp-"));
+        CHECK(!entry.path().filename().string().starts_with(".we-map-tmp-"));
+    }
     std::fstream file(path, std::ios::binary | std::ios::in | std::ios::out);
     file.put('!');
     file.close();

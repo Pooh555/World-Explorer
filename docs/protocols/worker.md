@@ -42,7 +42,8 @@ Native decoded-frame replay, completed-pose import/replay and fresh selected-fra
 COLMAP batch solving are integrated; see [capture](capture.md) and [poses](poses.md).
 Canonical FlatBuffers pose/calibration interchange is implemented in
 [`poses.fbs`](../../schemas/map/poses.fbs); see [pose assets](poses.md).
-Persistent map-store recovery and revision receipts remain M1 work.
+Native [persistent maps](maps.md) retain snapshots and retry receipts.
+Automatic pipeline integration and complete command control remain M1 work.
 
 `solve-journal --request PATH` consumes a hash-bound native RGB journal, commits a
 checked PNG stage and runs the same CPU COLMAP path. It does not inspect/decode the

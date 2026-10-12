@@ -1,4 +1,5 @@
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/pose_export.hpp"
 #include "world_explorer/application/pose_replay.hpp"
 #include "world_explorer/application/pose_solve.hpp"
@@ -43,6 +44,9 @@ int main(int argc, char** argv) {
                    "  we_process replay-poses POSE_JOB VIDEO (completed-output replay; no solve)\n"
                    "  we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]\n"
                    "  we_process inspect-poses INPUT.weposes SHA256 (checked JSON inspection)\n"
+                   "  we_process init-map MAP_DIRECTORY\n"
+                   "  we_process import-map INPUT.weposes SHA256 MAP_DIRECTORY\n"
+                   "  we_process inspect-map MAP_DIRECTORY (checked restart/recovery)\n"
                    "  we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE\n"
                    "  we_process fixture OUTPUT.wexplore  (synthetic diagnostic)\n"
                    "Worker overrides: --worker-script PATH --worker-python EXECUTABLE\n";
@@ -112,6 +116,30 @@ int main(int argc, char** argv) {
             if (interrupted)
                 cancellation.request_stop();
         });
+        if (command == "init-map" || command == "import-map" || command == "inspect-map") {
+            if (argc != (command == "import-map" ? 5 : 3)) {
+                std::cerr << "Usage: init-map DIR | import-map INPUT.weposes SHA256 DIR | "
+                             "inspect-map DIR\n";
+                return 2;
+            }
+            const auto snapshot =
+                command == "init-map" ? initialize_persistent_map(argv[2], cancellation.get_token())
+                : command == "import-map"
+                    ? import_canonical_pose_map(argv[2], argv[3], argv[4], cancellation.get_token())
+                    : inspect_persistent_map(argv[2], cancellation.get_token());
+            if (!snapshot) {
+                std::cerr << snapshot.error().message << '\n';
+                return snapshot.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Persistent map: epoch " << (*snapshot)->epoch.value << ", revision "
+                      << (*snapshot)->revision.value << ", " << (*snapshot)->observations.size()
+                      << " observations, " << (*snapshot)->poses.size() << " poses, "
+                      << (*snapshot)->calibrations.size() << " calibrations; scale arbitrary\n";
+            if ((*snapshot)->initial_pose_asset_sha256)
+                std::cout << "Initial canonical pose asset SHA-256 "
+                          << *(*snapshot)->initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
         if (command == "export-poses") {
             if (argc != 5 && !(argc == 7 && std::string_view(argv[5]) == "--decode-stage")) {
                 std::cerr << "Usage: we_process export-poses POSE_JOB VIDEO OUTPUT.weposes "

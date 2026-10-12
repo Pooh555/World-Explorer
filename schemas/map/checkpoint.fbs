@@ -1,0 +1,21 @@
+include "poses.fbs";
+namespace world_explorer.map_wire;
+table receipt { operation:ulong; revision:ulong; digest:string (required); }
+table checkpoint {
+  schema_version:uint;
+  coordinates:world_explorer.pose_wire.coordinate_profile = UNKNOWN;
+  scale:world_explorer.pose_wire.scale_provenance = UNKNOWN;
+  epoch:ulong; revision:ulong;
+  calibrations:[world_explorer.pose_wire.calibration] (required);
+  observations:[world_explorer.pose_wire.observation] (required);
+  alignments:[world_explorer.pose_wire.alignment] (required);
+  poses:[world_explorer.pose_wire.pose] (required);
+  invalidated_frames:[ulong] (required);
+  receipts:[receipt] (required);
+  // Immutable canonical asset used to seed revision 1, retained across corrections.
+  initial_pose_asset_sha256:string;
+  // Project transaction hashing profile, independent of compiler/native ABI.
+  digest_profile:uint = 1;
+}
+root_type checkpoint;
+file_identifier "WEMP";
