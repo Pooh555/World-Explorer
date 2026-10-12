@@ -55,7 +55,7 @@ struct vulkan_renderer::implementation {
     VkRenderPass render_pass{};
     descriptor_resources bindings;
     VkPipeline project_pipeline{}, histogram_pipeline{}, scan_pipeline{}, scatter_pipeline{},
-        draw_pipeline{}, present_pipeline{};
+        composite_pipeline{}, draw_pipeline{}, present_pipeline{};
     VkDescriptorSetLayout present_layout{};
     VkPipelineLayout present_pipeline_layout{};
     VkDescriptorPool present_pool{};
@@ -68,7 +68,7 @@ struct vulkan_renderer::implementation {
         VkCommandBuffer command{};
         VkSemaphore acquired{};
         std::uint64_t completion{};
-        gpu_buffer projected, keys_a, keys_b, histogram;
+        gpu_buffer projected, keys_a, keys_b, histogram, captured;
         std::array<VkDescriptorSet, 2> descriptors{};
     };
     std::array<frame, 2> frames;
@@ -98,13 +98,14 @@ struct vulkan_renderer::implementation {
             current.keys_a = {};
             current.keys_b = {};
             current.histogram = {};
+            current.captured = {};
             if (current.acquired)
                 vkDestroySemaphore(device, current.acquired, nullptr);
             if (current.pool)
                 vkDestroyCommandPool(device, current.pool, nullptr);
         }
         for (auto pipeline : {draw_pipeline, present_pipeline, project_pipeline, histogram_pipeline,
-                              scan_pipeline, scatter_pipeline})
+                              scan_pipeline, scatter_pipeline, composite_pipeline})
             if (pipeline)
                 vkDestroyPipeline(device, pipeline, nullptr);
         if (bindings.pipeline_layout)
@@ -177,14 +178,15 @@ struct vulkan_renderer::implementation {
             "radix_scan.comp", bindings.pipeline_layout, options.shader_directory);
         scatter_pipeline = device_backend->create_compute_pipeline(
             "radix_scatter.comp", bindings.pipeline_layout, options.shader_directory);
+        composite_pipeline = device_backend->create_compute_pipeline(
+            "composite.comp", bindings.pipeline_layout, options.shader_directory);
         draw_pipeline =
-            create_graphics_pipeline("splat.vert", "splat.frag", bindings.pipeline_layout, 0, true);
-        present_pipeline = create_graphics_pipeline("present.vert", "present.frag",
-                                                    present_pipeline_layout, 1, false);
+            create_graphics_pipeline("present.vert", "composite.frag", bindings.pipeline_layout, 0);
+        present_pipeline =
+            create_graphics_pipeline("present.vert", "present.frag", present_pipeline_layout, 1);
     }
     VkPipeline create_graphics_pipeline(const char* vertex_name, const char* fragment_name,
-                                        VkPipelineLayout layout, std::uint32_t subpass,
-                                        bool blend_enabled) {
+                                        VkPipelineLayout layout, std::uint32_t subpass) {
         const auto vertex =
             device_backend->load_shader_module(options.shader_directory, vertex_name);
         VkShaderModule fragment{};
@@ -218,13 +220,6 @@ struct vulkan_renderer::implementation {
             VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO);
         multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
         VkPipelineColorBlendAttachmentState blend{};
-        blend.blendEnable = blend_enabled ? VK_TRUE : VK_FALSE;
-        blend.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-        blend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        blend.colorBlendOp = VK_BLEND_OP_ADD;
-        blend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        blend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        blend.alphaBlendOp = VK_BLEND_OP_ADD;
         blend.colorWriteMask = VkColorComponentFlags{VK_COLOR_COMPONENT_R_BIT} |
                                VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
                                VK_COLOR_COMPONENT_A_BIT;
@@ -364,16 +359,17 @@ struct vulkan_renderer::implementation {
     }
     void descriptors(frame& current) {
         for (std::size_t pass = 0; pass < 2; ++pass) {
-            const std::array<VkDescriptorBufferInfo, 5> buffers{
+            const std::array<VkDescriptorBufferInfo, 6> buffers{
                 {{scene_buffer.buffer, 0, scene_buffer.bytes},
                  {current.projected.buffer, 0, current.projected.bytes},
                  {pass == 0 ? current.keys_a.buffer : current.keys_b.buffer, 0,
                   current.keys_a.bytes},
                  {pass == 0 ? current.keys_b.buffer : current.keys_a.buffer, 0,
                   current.keys_a.bytes},
-                 {current.histogram.buffer, 0, current.histogram.bytes}}};
-            std::array<VkWriteDescriptorSet, 5> writes{};
-            for (std::uint32_t binding = 0; binding < 5; ++binding) {
+                 {current.histogram.buffer, 0, current.histogram.bytes},
+                 {current.captured.buffer, 0, current.captured.bytes}}};
+            std::array<VkWriteDescriptorSet, 6> writes{};
+            for (std::uint32_t binding = 0; binding < writes.size(); ++binding) {
                 writes[binding].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 writes[binding].dstSet = current.descriptors[pass];
                 writes[binding].dstBinding = binding;
@@ -381,7 +377,8 @@ struct vulkan_renderer::implementation {
                 writes[binding].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                 writes[binding].pBufferInfo = &buffers[binding];
             }
-            vkUpdateDescriptorSets(device, 5, writes.data(), 0, nullptr);
+            vkUpdateDescriptorSets(device, static_cast<std::uint32_t>(writes.size()), writes.data(),
+                                   0, nullptr);
         }
     }
     std::size_t live_buffer_bytes() const {
@@ -398,7 +395,8 @@ struct vulkan_renderer::implementation {
         for (const auto& current : frames)
             bytes += static_cast<std::size_t>(
                 current.projected.allocation_bytes + current.keys_a.allocation_bytes +
-                current.keys_b.allocation_bytes + current.histogram.allocation_bytes);
+                current.keys_b.allocation_bytes + current.histogram.allocation_bytes +
+                current.captured.allocation_bytes);
         return bytes;
     }
     void upload(VkCommandBuffer command, const scene_snapshot& snapshot, vec3d origin,
@@ -474,7 +472,7 @@ struct vulkan_renderer::implementation {
         vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE, bindings.pipeline_layout,
                                 0, 1, &current.descriptors[0], 0, nullptr);
         vkCmdPushConstants(command, bindings.pipeline_layout,
-                           VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0,
+                           VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(params), &params);
         vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, project_pipeline);
         vkCmdDispatch(command, params.count_shift[2], 1, 1);
@@ -482,7 +480,7 @@ struct vulkan_renderer::implementation {
         for (std::uint32_t pass = 0; pass < 8; ++pass) {
             params.count_shift[1] = pass * 4;
             vkCmdPushConstants(command, bindings.pipeline_layout,
-                               VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0,
+                               VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                                sizeof(params), &params);
             vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE,
                                     bindings.pipeline_layout, 0, 1, &current.descriptors[pass % 2],
@@ -497,8 +495,20 @@ struct vulkan_renderer::implementation {
             vkCmdDispatch(command, params.count_shift[2], 1, 1);
             compute_barrier(command);
         }
-        memory_barrier(command, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                       VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+    }
+    void record_composition(frame& current, push_parameters params, bool draw_appearance) {
+        if (!draw_appearance)
+            params.count_shift[0] = 0;
+        vkCmdBindDescriptorSets(current.command, VK_PIPELINE_BIND_POINT_COMPUTE,
+                                bindings.pipeline_layout, 0, 1, &current.descriptors[0], 0,
+                                nullptr);
+        vkCmdPushConstants(current.command, bindings.pipeline_layout,
+                           VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                           sizeof(params), &params);
+        vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, composite_pipeline);
+        vkCmdDispatch(current.command, (extent.width + 15) / 16, (extent.height + 15) / 16, 1);
+        memory_barrier(current.command, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                       VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
                        VK_ACCESS_2_SHADER_READ_BIT);
     }
     void copy_screenshot(VkCommandBuffer command, std::uint32_t image_index,
@@ -553,6 +563,13 @@ struct vulkan_renderer::implementation {
         screenshot_path.reset();
     }
     bool refresh_swapchain() {
+        // Resize already requires device-idle retirement of the presentation targets.
+        // Retire pixel scratch at the same boundary before allocating its replacement.
+        if (swapchain_backend) {
+            check(vkDeviceWaitIdle(device), "wait before resizing composition scratch");
+            for (auto& current : frames)
+                current.captured = {};
+        }
         const auto previous_images = swapchain_backend ? swapchain_backend->allocated_bytes() : 0;
         const auto other_bytes = live_buffer_bytes() - previous_images;
         if (other_bytes > options.residency_bytes ||
@@ -583,6 +600,15 @@ struct vulkan_renderer::implementation {
         views = swapchain_backend->image_views();
         framebuffers = swapchain_backend->framebuffers();
         present_semaphores = swapchain_backend->present_semaphores();
+        const auto pixel_bytes = static_cast<VkDeviceSize>(extent.width) * extent.height * 16;
+        if (pixel_bytes > properties.limits.maxStorageBufferRange ||
+            (extent.width + 15) / 16 > properties.limits.maxComputeWorkGroupCount[0] ||
+            (extent.height + 15) / 16 > properties.limits.maxComputeWorkGroupCount[1])
+            throw std::runtime_error("framebuffer exceeds composition buffer or dispatch limits");
+        for (auto& current : frames)
+            current.captured = allocate(pixel_bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false,
+                                        initial_buffer_reservation);
+        diagnostics.scratch_bytes = scratch_allocation_bytes();
         diagnostics.framebuffer_bytes = swapchain_backend->allocated_bytes();
         diagnostics.framebuffer_width = extent.width;
         diagnostics.framebuffer_height = extent.height;
@@ -645,6 +671,7 @@ struct vulkan_renderer::implementation {
         auto params = parameters(camera, *checked_camera);
         if (splat_count && draw_appearance)
             record_projection(current, params);
+        record_composition(current, params, draw_appearance);
         VkClearValue clear{};
         clear.color = {{0.045F, 0.051F, 0.063F, 1}};
         auto pass = structure<VkRenderPassBeginInfo>(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
@@ -659,15 +686,15 @@ struct vulkan_renderer::implementation {
         const VkRect2D scissor{{0, 0}, extent};
         vkCmdSetViewport(current.command, 0, 1, &viewport);
         vkCmdSetScissor(current.command, 0, 1, &scissor);
-        if (splat_count && draw_appearance) {
+        {
             vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS, draw_pipeline);
             vkCmdBindDescriptorSets(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     bindings.pipeline_layout, 0, 1, &current.descriptors[0], 0,
                                     nullptr);
             vkCmdPushConstants(current.command, bindings.pipeline_layout,
-                               VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT, 0,
+                               VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                                sizeof(params), &params);
-            vkCmdDraw(current.command, 6, static_cast<std::uint32_t>(splat_count), 0, 0);
+            vkCmdDraw(current.command, 3, 1, 0, 0);
         }
         vkCmdNextSubpass(current.command, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS, present_pipeline);

@@ -174,7 +174,7 @@ if(WE_BUILD_VIEWER)
   target_link_libraries(render_vulkan PUBLIC render_core PRIVATE SDL3::SDL3 Vulkan::Vulkan)
 
   set(WE_SHADER_OUTPUTS)
-  foreach(shader project.comp radix_histogram.comp radix_scan.comp radix_scatter.comp splat.vert splat.frag present.vert present.frag)
+  foreach(shader project.comp radix_histogram.comp radix_scan.comp radix_scatter.comp composite.comp composite.frag present.vert present.frag)
     set(output "${PROJECT_BINARY_DIR}/shaders/${shader}.spv")
 
     add_custom_command(OUTPUT "${output}"

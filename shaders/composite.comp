@@ -1,0 +1,74 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=16,local_size_y=16) in;
+// Fixed scratch, independent of tile overlap count. Stable compaction preserves
+// the global front-to-back sort (including ties). No contributor is dropped.
+shared projected_data batch[256];
+shared uint masks[8];
+shared uint batch_count;
+shared uint active_pixels;
+void main() {
+    uint lane=gl_LocalInvocationIndex;
+    uvec2 tile=gl_WorkGroupID.xy;
+    uvec2 pixel=gl_GlobalInvocationID.xy;
+    bool inside=all(lessThan(pixel,uvec2(params.viewport_clip.xy)));
+    bool pixel_active=inside;
+    if(lane==0) active_pixels=0;
+    barrier();
+    if(pixel_active) atomicAdd(active_pixels,1);
+    barrier();
+    float transmittance=1;
+    vec3 color=vec3(0);
+    for(uint start=0;start<params.count_shift.x;start+=256) {
+        if(active_pixels==0) break; // Uniform workgroup decision before barriers.
+        if(lane<8) masks[lane]=0;
+        barrier();
+        uint index=start+lane;
+        bool intersects=false;
+        projected_data candidate;
+        if(index<params.count_shift.x) {
+            candidate=projected[keys_in[index].y];
+            vec2 lower=floor((candidate.center_radius.xy-candidate.center_radius.zw)/16);
+            vec2 upper=ceil((candidate.center_radius.xy+candidate.center_radius.zw)/16);
+            intersects=candidate.conic_opacity.w>0 &&
+                all(greaterThanEqual(vec2(tile),lower)) && all(lessThan(vec2(tile),upper));
+        }
+        if(intersects) atomicOr(masks[lane/32],1u<<(lane%32));
+        barrier();
+        if(intersects) {
+            uint rank=0;
+            for(uint word=0;word<lane/32;++word) rank+=bitCount(masks[word]);
+            rank+=bitCount(masks[lane/32]&((1u<<(lane%32))-1u));
+            batch[rank]=candidate;
+        }
+        if(lane==0) {
+            batch_count=0;
+            for(uint word=0;word<8;++word) batch_count+=bitCount(masks[word]);
+        }
+        barrier();
+        if(pixel_active) {
+            for(uint index_in_batch=0;index_in_batch<batch_count;++index_in_batch) {
+                projected_data splat=batch[index_in_batch];
+                vec2 delta=splat.center_radius.xy-(vec2(pixel)+0.5);
+                vec3 conic=splat.conic_opacity.xyz;
+                float sigma=0.5*(conic.x*delta.x*delta.x+conic.z*delta.y*delta.y)+conic.y*delta.x*delta.y;
+                float alpha=min(0.999,splat.conic_opacity.w*exp(-sigma));
+                if(sigma<0 || alpha<1.0/255.0) continue;
+                float next_transmittance=transmittance*(1-alpha);
+                // Pinned gsplat's cutoff is exclusive: skip this contributor and
+                // retain the previous transmittance for the background.
+                if(next_transmittance<=1e-4) {
+                    pixel_active=false;
+                    atomicAdd(active_pixels,0xffffffffu);
+                    break;
+                }
+                color+=alpha*transmittance*splat.color_depth.rgb;
+                transmittance=next_transmittance;
+            }
+        }
+        barrier(); // Readers finish before any lane overwrites shared scratch.
+    }
+    if(inside) captured[pixel.y*uint(params.viewport_clip.x)+pixel.x]=
+        vec4(color+transmittance*vec3(0.045,0.051,0.063),1);
+}

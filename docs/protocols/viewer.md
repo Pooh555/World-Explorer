@@ -51,16 +51,35 @@ pinned classic gsplat covariance filter and `0.3 * tan_fov` derivative margin;
 1280×720 captures and their exact input JSON through normal update admission.
 `--compositing` selects a separate saturation/overlap fixture with seven views,
 including orbit/close-up; `--termination` selects a separate near-opaque exclusive
-cutoff fixture. Defaults and existing fixtures remain unchanged.
+cutoff fixture; `--batches` selects 1,027 splats to exercise compaction/shared-memory
+reuse across batch boundaries. Defaults and existing fixtures remain unchanged.
 `tests/gpu/compare_reference.py` requires the pinned local training environment and
-native CUDA; it never downloads/trains. It preserves float reference images, PNGs,
-error heatmaps and per-view metrics. Fixed diagnostic tolerances (PSNR ≥45 dB,
+native CUDA; it never downloads/trains. Diagnostic JSON input is bounded to 4 MiB.
+It preserves float reference images, PNGs, error heatmaps and per-view metrics.
+Fixed diagnostic tolerances (PSNR ≥45 dB,
 maximum eight 8-bit levels) compare quantized SDR output; they do not
 replace Q/P gates. Commands/results and untested cases belong in validation evidence.
 
-Splat blending uses FP32 in subpass 0; subpass 1 reads that attachment, clamps the
-complete captured-domain color to SDR, then draws the overlay. The adapter's
-`vulkan_overlay_context.subpass` identifies the correct overlay subpass. Read and
-store/discard access and reuse of per-image targets have explicit dependencies.
-Back-to-front raster blending does not reproduce pinned exclusive termination;
-the failing near-opaque fixture remains an open correctness check.
+Splat keys sort positive finite center depths front-to-back, stably retaining input
+order for ties. A 16×16 compute workgroup scans these keys in fixed 256-splat
+batches, compacts tile overlaps stably into shared memory, and composites each
+pixel in FP32. Tile bounds, half-integer samples, alpha clamp 0.999, minimum alpha
+1/255 and exclusive `next_T <= 1e-4` termination follow the pinned gsplat recipe.
+Termination skips that contributor and retains the preceding transmittance for
+background composition. Out-of-frame lanes participate in all shared barriers;
+a group stops only after every in-frame pixel terminates. No overlap list,
+unbounded per-splat dispatch loop or silently dropped contributor is used.
+
+Each in-flight frame owns a budgeted FP32 pixel buffer; dimensions, storage range,
+dispatch limits and shared-memory capacity are checked. Timeline completion gates
+reuse; device-idle resize retires old pixel scratch before replacement. Actual
+Vulkan allocation requirements count toward residency. A fullscreen triangle
+copies completed captured-domain colors into the FP32 attachment in subpass 0;
+subpass 1 clamps once to SDR, then draws UI. No FP32 attachment blending support
+is needed. `vulkan_overlay_context.subpass` remains 1. Compute-write/fragment-read,
+input-read/store and per-image reuse have explicit dependencies.
+
+This bounded development path still scans the global sorted list per active tile.
+The specification's overlap count/exclusive scan/reference index and qualified
+performance are pending. Center-depth ordering remains an approximation for
+extended/intersecting Gaussians; these diagnostic passes do not certify full parity.

@@ -123,6 +123,30 @@ scene_snapshot compositing_fixture(bool termination) {
     scene->chunks.emplace(chunk->id, chunk);
     return scene;
 }
+scene_snapshot batch_fixture() {
+    auto scene = std::make_shared<scene_state>();
+    scene->id = {74};
+    scene->revision = {1};
+    scene->provenance = {{"source_kind", "synthetic_diagnostic"}, {"fixture", "tile_batches_v1"}};
+    auto chunk = std::make_shared<scene_chunk>();
+    chunk->id = {1};
+    chunk->bounds = {{-2, -2, -2}, {2, 2, 2}};
+    for (std::size_t index = 0; index < 1027; ++index) {
+        gaussian splat;
+        splat.mean = {1.2F * (static_cast<float>(index % 3) - 1), 0,
+                      0.5F - 0.001F * static_cast<float>(index)};
+        splat.scale = {0.5F, 0.45F, 0.08F};
+        splat.opacity = 0.03F;
+        splat.sh_degree = 3;
+        for (std::size_t channel = 0; channel < 3; ++channel) {
+            const auto color = static_cast<float>((index + channel) % 7) / 6;
+            splat.sh[channel] = (color - 0.5F) / 0.2820947918F;
+        }
+        chunk->splats.push_back(splat);
+    }
+    scene->chunks.emplace(chunk->id, chunk);
+    return scene;
+}
 json export_chunks(const scene_state& scene) {
     json chunks = json::array();
     for (const auto& [id, chunk] : scene.chunks) {
@@ -148,13 +172,18 @@ json export_chunks(const scene_state& scene) {
 int main(int argc, char** argv) {
     try {
         require(argc == 2 || (argc == 3 && (std::string_view(argv[2]) == "--compositing" ||
-                                            std::string_view(argv[2]) == "--termination")),
-                "usage: we_gpu_reference <new output directory> [--compositing|--termination]");
+                                            std::string_view(argv[2]) == "--termination" ||
+                                            std::string_view(argv[2]) == "--batches")),
+                "usage: we_gpu_reference <new output directory> "
+                "[--compositing|--termination|--batches]");
         const bool compositing = argc == 3;
         const bool termination = compositing && std::string_view(argv[2]) == "--termination";
+        const bool batches = compositing && std::string_view(argv[2]) == "--batches";
         const std::filesystem::path output(argv[1]);
         require(std::filesystem::create_directory(output), "output directory must not exist");
-        const auto scene = compositing ? compositing_fixture(termination) : fixture();
+        const auto scene = batches       ? batch_fixture()
+                           : compositing ? compositing_fixture(termination)
+                                         : fixture();
         auto saved = write_bundle(output / "fixture.wexplore", scene);
         require(saved.has_value(), saved ? "" : saved.error().message);
         require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
@@ -242,7 +271,8 @@ int main(int argc, char** argv) {
         require(stats.validation_errors == 0, "Vulkan validation errors");
         write_json(output / "fixture.json",
                    {{"schema", 1},
-                    {"label", termination   ? "synthetic exclusive termination v1; not a capture"
+                    {"label", batches       ? "synthetic tile batches v1; not a capture"
+                              : termination ? "synthetic exclusive termination v1; not a capture"
                               : compositing ? "synthetic compositing stress v1; not a capture"
                                             : "synthetic asymmetric reference v3; not a capture"},
                     {"width", WIDTH},

@@ -11,15 +11,11 @@ struct projected_data {
     vec4 color_depth;
 };
 layout(std430,binding=0) readonly buffer splats_buffer { splat_data splats[]; };
-#ifdef WE_VERTEX_STAGE
-layout(std430,binding=1) readonly buffer projected_buffer { projected_data projected[]; };
-layout(std430,binding=2) readonly buffer keys_in_buffer { uvec2 keys_in[]; };
-#else
 layout(std430,binding=1) buffer projected_buffer { projected_data projected[]; };
 layout(std430,binding=2) buffer keys_in_buffer { uvec2 keys_in[]; };
-#endif
 layout(std430,binding=3) buffer keys_out_buffer { uvec2 keys_out[]; };
 layout(std430,binding=4) buffer histogram_buffer { uint histogram[]; };
+layout(std430,binding=5) buffer captured_buffer { vec4 captured[]; };
 layout(push_constant) uniform parameters {
     vec4 right;
     vec4 down;

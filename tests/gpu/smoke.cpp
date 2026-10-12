@@ -28,7 +28,7 @@ scene_snapshot overlap_fixture() {
         near.sh[channel] = (channel == 0 ? 0.5F : -0.5F) / 0.2820947918F;
         far.sh[channel] = (channel == 2 ? 0.5F : -0.5F) / 0.2820947918F;
     }
-    chunk->splats = {near, far}; // Intentionally opposite the required draw order.
+    chunk->splats = {far, near}; // Intentionally opposite the required front-to-back order.
     scene->chunks.emplace(chunk->id, chunk);
     return scene;
 }
@@ -65,6 +65,21 @@ int main(int argc, char** argv) {
         require(renderer->capabilities().fp32_compositing &&
                     renderer->diagnostics().framebuffer_bytes > 0,
                 "FP32 framebuffer capability/accounting missing");
+        const auto initial = renderer->diagnostics();
+        const auto pixel_bytes =
+            static_cast<std::size_t>(initial.framebuffer_width) * initial.framebuffer_height * 16;
+        require(initial.scratch_bytes >= 2 * pixel_bytes,
+                "per-frame composition scratch was not charged");
+        constrained = options;
+        constrained.residency_bytes = initial.allocated_bytes - pixel_bytes / 2;
+        renderer.reset();
+        const auto scratch_rejected = vulkan_renderer::create(window.get(), constrained);
+        require(!scratch_rejected &&
+                    scratch_rejected.error().message.find("buffer") != std::string::npos,
+                "composition scratch escaped the residency budget");
+        created = vulkan_renderer::create(window.get(), options);
+        require(created.has_value(), created ? "" : created.error().message);
+        renderer = std::move(*created);
         auto batch = make_snapshot_batch(overlap_fixture(), {1}).value();
         require(renderer->updates().enqueue(batch).has_value(), "initial scene admission failed");
         camera_view camera;
@@ -146,7 +161,7 @@ int main(int argc, char** argv) {
                   << static_cast<int>(pixel[1]) << ',' << static_cast<int>(pixel[2])
                   << "; replace/delete/resize passed; validation_errors=0; frames="
                   << stats.submitted_frames << "; framebuffer_bytes=" << stats.framebuffer_bytes
-                  << "; constrained budget rejected\n";
+                  << "; framebuffer and composition-scratch budgets rejected\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "GPU verification failed: " << error.what() << '\n';

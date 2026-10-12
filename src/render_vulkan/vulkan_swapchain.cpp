@@ -28,10 +28,9 @@ bool vulkan_swapchain::create(SDL_Window* window, std::size_t framebuffer_budget
     VkFormatProperties floating_format{};
     vkGetPhysicalDeviceFormatProperties(physical_device_, VK_FORMAT_R32G32B32A32_SFLOAT,
                                         &floating_format);
-    constexpr VkFormatFeatureFlags REQUIRED =
-        VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
+    constexpr VkFormatFeatureFlags REQUIRED = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
     if ((floating_format.optimalTilingFeatures & REQUIRED) != REQUIRED)
-        throw std::runtime_error("device lacks FP32 color-attachment blending; no UNORM fallback");
+        throw std::runtime_error("device lacks FP32 color attachments; no UNORM fallback");
 
     if (swapchain_) {
         detail::check(vkDeviceWaitIdle(device_), "wait for swapchain resize");
