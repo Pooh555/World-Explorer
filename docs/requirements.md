@@ -5,8 +5,8 @@ thresholds or platform requirements have been waived. Status on 2026-10-12:
 
 | Requirement | Implementation / checks | Status | Evidence |
 |---|---|---|---|
-| M1 vertical slice | Real COLMAP 63/63 → 7k gsplat → checked scene → native viewer; shared GUI/CLI automatic metadata inspection or retained preflight, with durable map/scene dependencies | IN_PROGRESS | Explicit recipe/resume/reuse, owned inspection with capability-gated START/CANCEL/cache reuse, durable preparation and checked publication; fresh decode/pose chaining, prescribed fixture, contracts and native reference/platform qualification pending |
-| M1 four contracts | Native frame source, checked pose/calibration import, completed replay and fresh batch estimator, map/scene revisions, update sink; verified FlatBuffers 2.0 worker START/CANCEL/events, canonical FlatBuffers pose assets and durable map checkpoints | IN_PROGRESS | 74 CPU/worker checks pass in six local profiles; real automatic inspection, acknowledged cancellation, ownership/overlap rejection and unchanged restart; 63/63 durable maps; full fresh video/solve chaining and native platform control qualification pending |
+| M1 vertical slice | Real COLMAP 63/63 → 7k gsplat → checked scene → native viewer; shared GUI/CLI owned inspection/decode/fresh pose chain or retained adoption, with durable map/scene dependencies | IN_PROGRESS | Synthetic fresh-chain publication/restart checks; real automatic decode/cache/pre-solver cancellation; full real fresh solve/fit chain, prescribed fixture, contracts and native reference/platform qualification pending |
+| M1 four contracts | Native frame source, checked pose/calibration import, completed replay and fresh batch estimator, map/scene revisions, update sink; verified FlatBuffers 2.0 worker START/CANCEL/events, canonical FlatBuffers pose assets and durable map checkpoints | IN_PROGRESS | 79 CPU/worker checks pass in six local profiles; owned stage requests/intents and checked RGB replay; real 63-frame decode/cache cancellation and preserved outputs; real end-to-end and native platform control qualification pending |
 | M2 renderer / updates | Initial GPU projection/radix/quad code | IN_PROGRESS | Parity, lifetime stress and performance pending |
 | M3 offline geometry / walk | Worker cancellation/stages started; no supported geometry | NOT_STARTED | Full milestone unverified |
 | M4 platforms / Brush | Native source portability intended; hosted Windows CPU build succeeds | BLOCKED | Complete native viewer/device/release qualification on Windows, Apple Silicon and AMD unavailable; CPU CI is narrower |
@@ -53,3 +53,5 @@ Worker command/control: [local protocol and cancellation evidence](validation/20
 Retained metadata preflight: [local admission, restart and real-scene parity evidence](validation/2026-10-12-video-preflight.md).
 
 Automatic inspection: [local ownership, capabilities, cancellation and real cache/payload checks](validation/2026-10-12-automatic-inspection.md).
+
+Fresh stage chaining: [synthetic publication/restart, real decode/cache and cancellation scope](validation/2026-10-12-stage-chain.md).

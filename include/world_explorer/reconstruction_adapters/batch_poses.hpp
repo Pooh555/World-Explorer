@@ -19,12 +19,16 @@ struct batch_pose_config {
     byte_budget journal_bytes{std::size_t{2} * 1024 * 1024 * 1024};
     std::size_t cpu_threads{4};
     std::function<void(std::string)> log{};
+    // Caller must own the job and its exact source/configuration intent. Rebuilds
+    // ordered receipts; existing immutable RGB assets must match byte-for-byte.
+    bool resume_input{};
 };
 // Offline single-camera selected-frame profile. start requires capacity for the
 // inspected selection; successful submit persists RGB before consuming its lease.
 // finish closes admission and synchronously runs the isolated worker. Invoke it
 // on the application's job thread; request_stop may interrupt it from any thread.
-// Fresh output directory only; a failed run retains its journal for diagnosis.
+// Fresh output by default; an owning coordinator can explicitly replay identical
+// input with resume_input. Failed runs retain their journal for diagnosis.
 class batch_pose_estimator : public pose_estimator {
   public:
     virtual result<std::shared_ptr<const completed_pose_dataset>> acquire_dataset() const = 0;

@@ -1,5 +1,6 @@
 #include "inspection_fixture.hpp"
 #include "pose_fixture.hpp"
+#include "stage_chain_fixture.hpp"
 #include "world_explorer/application/pose_preparation.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/application/scenes.hpp"
@@ -127,6 +128,26 @@ struct job_fixture {
         if (!job.inspection)
             throw std::logic_error("Fixture inspection has not been prepared");
         return *job.inspection;
+    }
+    void fresh(const std::string& mode = "valid", bool automatic = false) {
+        adopt_inspection();
+        auto metadata = nlohmann::json::parse(std::ifstream(inspection().stage / "result.json"));
+        metadata["rotation_degrees"] = 0;
+        save_json(inspection().stage / "result.json", metadata);
+        poses.inventory(inspection().stage);
+        inspection().completion_sha256 =
+            sha256_file(inspection().stage / "completion.json", 65536).value();
+        job.pose_job = root / "fresh poses";
+        job.fresh_poses =
+            fresh_pose_configuration{{root / "pose worker.py", WE_TEST_PYTHON}, WE_TEST_PYTHON};
+        test::stage_worker(root / "pose worker.py", poses, mode);
+        if (automatic) {
+            test::stage_worker(root / "decode worker.py", poses);
+            job.automatic_decode = automatic_video_decode{
+                root / "decoded video", {root / "decode worker.py", WE_TEST_PYTHON}};
+        } else
+            job.selected_decode = retained_video_decode{
+                poses.decoded, sha256_file(poses.decoded / "completion.json", 65536).value()};
     }
 };
 } // namespace
@@ -691,6 +712,170 @@ TEST_CASE(
             REQUIRE(reconstruct(fixture.job, {}, {}));
         }
     }
+}
+
+TEST_CASE("fresh coordinator chains decode RGB admission solve and publication with restart",
+          "[stage-chain]") {
+    job_fixture fixture;
+    const auto automatic = GENERATE(false, true);
+    fixture.fresh("valid", automatic);
+    std::string log;
+    const auto completed =
+        reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; });
+    INFO(log);
+    INFO((completed ? "complete" : completed.error().message));
+    REQUIRE(completed);
+    const auto manifest = fixture.job.scene_output / "manifest.json";
+    const auto published = sha256_file(manifest, 65536).value();
+    const auto counter = sha256_file(fixture.job.pose_job / "capabilities.json", 65536).value();
+    log.clear();
+    REQUIRE(reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; }));
+    CHECK(log.find("solver skipped") != std::string::npos);
+    CHECK(sha256_file(fixture.job.pose_job / "capabilities.json", 65536).value() == counter);
+    CHECK(sha256_file(manifest, 65536).value() == published);
+    SECTION("corrupt RGB receipt") {
+        std::ofstream(fixture.job.pose_job / "input/1.ppm") << "changed";
+    }
+    SECTION("different decode dependency") {
+        fixture.poses.inventory(fixture.poses.decoded);
+        if (fixture.job.selected_decode)
+            fixture.job.selected_decode->completion_sha256 = std::string(64, 'd');
+        else if (fixture.job.automatic_decode)
+            fixture.job.automatic_decode->sample_fps = 2.;
+    }
+    SECTION("recipe change") {
+        REQUIRE(fixture.job.fresh_poses);
+        if (fixture.job.fresh_poses)
+            fixture.job.fresh_poses->recipe = pose_recipe::EXHAUSTIVE_GUIDED;
+    }
+    SECTION("pose worker change") {
+        std::ofstream(fixture.root / "pose worker.py", std::ios::app) << "\n# changed\n";
+    }
+    CHECK_FALSE(reconstruct(fixture.job, {}, {}));
+    CHECK(sha256_file(manifest, 65536).value() == published);
+    CHECK(sha256_file(fixture.job.pose_job / "capabilities.json", 65536).value() == counter);
+}
+
+TEST_CASE("fresh stage cancellation resumes checked journals and preserves existing scene",
+          "[stage-chain]") {
+    job_fixture fixture;
+    REQUIRE(reconstruct(fixture.job, {}, {}));
+    const auto manifest = fixture.job.scene_output / "manifest.json";
+    const auto original = sha256_file(manifest, 65536).value();
+    fixture.fresh("cancel_once");
+    fixture.job.map_directory = fixture.root / "fresh-map";
+    std::stop_source cancellation;
+    std::string log;
+    const auto failed =
+        reconstruct(fixture.job, cancellation.get_token(), [&](const std::string& text) {
+            log += text;
+            if (text.find("Worker accepted START") != std::string::npos)
+                cancellation.request_stop();
+        });
+    INFO(log);
+    REQUIRE_FALSE(failed);
+    CHECK(failed.error().code == error_code::CANCELLED);
+    CHECK(sha256_file(manifest, 65536).value() == original);
+    CHECK_FALSE(std::filesystem::exists(fixture.job.map_directory));
+    const auto receipt = sha256_file(fixture.job.pose_job / "input/1.ppm", 4096).value();
+    const auto journal = sha256_file(fixture.job.pose_job / "input/journal.json", 65536).value();
+    const auto completed = reconstruct(fixture.job, {}, {});
+    INFO((completed ? "restarted" : completed.error().message));
+    REQUIRE(completed);
+    CHECK(sha256_file(fixture.job.pose_job / "input/1.ppm", 4096).value() == receipt);
+    CHECK(sha256_file(fixture.job.pose_job / "input/journal.json", 65536).value() == journal);
+}
+
+TEST_CASE("fresh stage failure and unowned poses cannot publish or invoke fitting",
+          "[stage-chain]") {
+    job_fixture fixture;
+    REQUIRE(reconstruct(fixture.job, {}, {}));
+    const auto manifest = fixture.job.scene_output / "manifest.json";
+    const auto original = sha256_file(manifest, 65536).value();
+    fixture.fresh("failure", true);
+    fixture.job.map_directory = fixture.root / "fresh-map";
+    SECTION("pose backend fails") {}
+    SECTION("decode corrupt") {
+        test::stage_worker(fixture.root / "decode worker.py", fixture.poses, "corrupt");
+    }
+    SECTION("unowned existing poses") {
+        std::filesystem::create_directory(fixture.job.pose_job);
+        std::ofstream(fixture.job.pose_job / "foreign") << "preserve";
+    }
+    SECTION("overlapping request") {
+        fixture.job.request_file = fixture.job.pose_job / "request.json";
+    }
+    REQUIRE_FALSE(reconstruct(fixture.job, {}, {}));
+    CHECK_FALSE(std::filesystem::exists(fixture.job.map_directory));
+    CHECK(sha256_file(manifest, 65536).value() == original);
+}
+
+TEST_CASE("fresh reconstruction requests require explicit stages resources and disjoint jobs",
+          "[stage-chain]") {
+    job_fixture fixture;
+    fixture.fresh("valid", true);
+    const auto request = fixture.root / "request.json";
+    auto config = nlohmann::json{{"schema_version", 2},
+                                 {"recipe", "local_gsplat_v1"},
+                                 {"action", "reuse_completed"},
+                                 {"pose_action", "solve"},
+                                 {"video", "capture.mp4"},
+                                 {"pose_job", "fresh poses"},
+                                 {"fit_directory", "fit"},
+                                 {"scene_output", "scene.wexplore"},
+                                 {"steps", 7000},
+                                 {"max_image_dimension", 1280},
+                                 {"max_splats", 2000000},
+                                 {"completed_fit_identity", fixture.identity},
+                                 {"inspection",
+                                  {{"action", "adopt_completed"},
+                                   {"stage", test::path_utf8(fixture.inspection().stage)},
+                                   {"completion_sha256", fixture.inspection().completion_sha256},
+                                   {"minimum_free_bytes", 1}}},
+                                 {"pose_worker",
+                                  {{"worker_script", "pose worker.py"},
+                                   {"worker_python", WE_TEST_PYTHON},
+                                   {"pose_python", WE_TEST_PYTHON},
+                                   {"recipe", "sequential"},
+                                   {"cpu_threads", 4},
+                                   {"journal_bytes", 2147483648ULL}}},
+                                 {"decode",
+                                  {{"action", "decode"},
+                                   {"job_directory", "decoded video"},
+                                   {"worker_script", "decode worker.py"},
+                                   {"python", WE_TEST_PYTHON},
+                                   {"sample_fps", 3.},
+                                   {"max_frames", 120},
+                                   {"cpu_threads", 4},
+                                   {"max_output_bytes", 34359738368ULL}}}};
+    save_json(request, config);
+    const auto parsed = read_reconstruction_job(request);
+    INFO((parsed ? "parsed" : parsed.error().message));
+    REQUIRE(parsed);
+    REQUIRE(parsed->fresh_poses);
+    REQUIRE(parsed->automatic_decode);
+    REQUIRE(reconstruct(*parsed, {}, {}));
+    SECTION("unknown decode option") { config["decode"]["remote"] = true; }
+    SECTION("unknown pose option") { config["pose_worker"]["remote"] = true; }
+    SECTION("missing executable") { config["pose_worker"].erase("pose_python"); }
+    SECTION("different pose action") { config["pose_action"] = "adopt_completed"; }
+    SECTION("invalid rate") { config["decode"]["sample_fps"] = 0.; }
+    SECTION("non-numeric rate") { config["decode"]["sample_fps"] = "3"; }
+    SECTION("fractional frame limit") { config["decode"]["max_frames"] = 120.5; }
+    SECTION("oversized frames") { config["decode"]["max_frames"] = 121; }
+    SECTION("negative bytes") { config["decode"]["max_output_bytes"] = -1; }
+    SECTION("insufficient journal") { config["pose_worker"]["journal_bytes"] = 1; }
+    SECTION("unknown recipe") { config["pose_worker"]["recipe"] = "automatic_fallback"; }
+    SECTION("decode includes request") { config["decode"]["job_directory"] = "."; }
+    SECTION("decode mutates retained input") { config["decode"]["job_directory"] = "poses"; }
+    SECTION("pose output includes decoder") { config["pose_job"] = "decoded video"; }
+    SECTION("map mutates pose intent") { config["map_directory"] = "fresh poses.plan/map"; }
+    SECTION("scene overlaps intent") { config["scene_output"] = "fresh poses.plan"; }
+    SECTION("legacy decode selection has different meaning") {
+        config["decode_stage"] = "poses/stages/decode-" + fixture.poses.decode_key;
+    }
+    save_json(request, config);
+    CHECK_FALSE(read_reconstruction_job(request));
 }
 
 TEST_CASE("pose preparation rejects unsafe destinations and cancelled admission",

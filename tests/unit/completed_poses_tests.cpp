@@ -204,6 +204,45 @@ TEST_CASE("batch cancellation interrupts isolated finish without publishing succ
     CHECK_FALSE((*batch)->submit(retry));
     CHECK(retry.frame.pixels.bytes);
 }
+
+TEST_CASE("owned batch resume verifies admitted RGB and preserves caller data on mismatch",
+          "[stage-chain]") {
+    pose_fixture fixture;
+    const auto dataset = fixture.load().value();
+    auto config = batch_config(fixture);
+    auto initial = make_batch_pose_estimator(config).value();
+    REQUIRE(initial->start({{std::size_t{4} * 1024 * 1024}, 3}));
+    auto first = observation(*dataset, 0);
+    REQUIRE(initial->submit(first));
+    const auto asset = config.job_directory / "input/1.ppm";
+    const auto hash = sha256_file(asset, 4096).value();
+    initial.reset();
+    config.resume_input = true;
+    SECTION("identical replay") {
+        auto resumed = make_batch_pose_estimator(config).value();
+        REQUIRE(resumed->start({{std::size_t{4} * 1024 * 1024}, 3}));
+        auto replay = observation(*dataset, 0);
+        REQUIRE(resumed->submit(replay));
+        CHECK_FALSE(replay.frame.pixels.bytes);
+        CHECK(sha256_file(asset, 4096).value() == hash);
+    }
+    SECTION("different content") {
+        std::ofstream(asset) << "changed RGB";
+        const auto retained = sha256_file(asset, 4096).value();
+        auto resumed = make_batch_pose_estimator(config).value();
+        REQUIRE(resumed->start({{std::size_t{4} * 1024 * 1024}, 3}));
+        auto replay = observation(*dataset, 0);
+        CHECK_FALSE(resumed->submit(replay));
+        CHECK(replay.frame.pixels.bytes);
+        CHECK(sha256_file(asset, 4096).value() == retained);
+    }
+    SECTION("uncommitted temporary input") {
+        std::ofstream(config.job_directory / "input/2.ppm.tmp") << "partial";
+        auto resumed = make_batch_pose_estimator(config).value();
+        CHECK_FALSE(resumed->start({{std::size_t{4} * 1024 * 1024}, 3}));
+        CHECK(sha256_file(asset, 4096).value() == hash);
+    }
+}
 TEST_CASE("completed pose import preserves calibration model coefficients optical poses and IDs") {
     pose_fixture fixture;
     const auto dataset = fixture.load();
