@@ -126,3 +126,12 @@ Missing prescribed reference hardware/native Windows/macOS/AMD runners, ≤250k
 real fixture qualification, FlatBuffers, complete map/adapters, rights/metric
 locks, full corpus/coverage/fuzzing and later geometry/scaling gates remain
 unchanged. M7–M8 are deferred. User specification/runbook edits are untouched.
+
+## Handoff details retained during documentation consolidation
+
+The prior progress record also documented separation of viewer jobs,
+preferences/theme and scene-import/source-view conversion into distinct files;
+renderer-budget-aware loading; atomic settings replacement on Windows/POSIX; and
+snapshot/device lifetime cleanup rechecked through shutdown. Source view is an
+explicit upright spectator reset, not camera following or calibrated reference
+parity. These are carried-over observations, not new native-platform results.

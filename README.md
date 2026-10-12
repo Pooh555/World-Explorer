@@ -174,3 +174,6 @@ directory. `sample.mp4`, dependency caches, generated scenes and `artifacts/` ar
 ignored by Git. Raw captures and their diagnostic images must never be committed.
 
 The full design and acceptance gates are in [the specification](docs/technical_plan.md).
+Use the [documentation map](docs/README.md) for contracts, historical evidence and
+[documentation standards](docs/protocols/documentation.md). Check local documentation
+links with `python3 tools/check_docs.py`.

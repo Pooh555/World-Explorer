@@ -52,6 +52,8 @@ jobs:
         run: ctest --preset compat-cxx23
       - name: Include boundaries
         run: python tools/check_boundaries.py
+      - name: Documentation links
+        run: python tools/check_docs.py
   linux-clang:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -68,3 +70,5 @@ jobs:
       - run: ctest --preset clang
       - name: Include boundaries
         run: python tools/check_boundaries.py
+      - name: Documentation links
+        run: python tools/check_docs.py

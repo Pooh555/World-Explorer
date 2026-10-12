@@ -63,3 +63,9 @@ The renderer device/swapchain extraction initially exposed destruction-order and
 render-pass leaks. Fixed before the implementation commit; final smoke log
 `artifacts/validation/overlap-final.log` includes shutdown and no validation messages.
 SDL key bindings stay in the viewer, preserving the CPU-only navigation boundary.
+
+Environment probe retained from the prior handoff: authorized native
+`vulkaninfo --summary` detected the above GPU/driver; sandbox-only ICD loading
+failed. Local environment additionally recorded CMake 4.4.4, SDL 3.4.18, Vulkan
+headers/loader 1.4.363, OpenSSL 3.6.5 and system Python 3.14.8 (distinct from the
+Python 3.12.15 pose environment). Foundation commit: `ea289fc`; no remote push.

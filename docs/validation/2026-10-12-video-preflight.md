@@ -29,14 +29,9 @@ Arch Linux, GCC 16.2.1, Clang/format/tidy 23.1.1, CMake 4.4.4, OpenSSL 3.6.5,
 Python 3.14.8, pinned FlatBuffers 25.2.10. Final build/test logs use
 `artifacts/validation/preflight-*-final-v2.log`.
 
-| Commands | Scope |
-|---|---|
-| `cmake --build --preset dev -j 4`; `ctest --preset dev --output-on-failure` | GCC C++26 native viewer/CLI/core |
-| `cmake --build --preset clang -j 4`; `ctest --preset clang --output-on-failure` | Clang C++26 |
-| `cmake --build --preset compat-cxx23 -j 4`; `ctest --preset compat-cxx23 --output-on-failure` | Explicit GCC C++23 CPU |
-| `cmake --build build/ci-libcxx -j 4`; `ctest --test-dir build/ci-libcxx --output-on-failure` | Existing libc++ 23.1.1 C++23 CPU configuration |
-| `cmake --build --preset asan -j 4`; `ctest --preset asan --output-on-failure` | Native ASan/UBSan/LSan CPU |
-| `cmake --build --preset tsan -j 4`; `ctest --preset tsan --output-on-failure` | Separate native TSan CPU |
+Actual commands: [2026-10-12 check reference](checks-2026-10-12.md),
+DEV, CLANG, COMPAT, LIBCXX, ASAN and TSAN; results/counts and logs elsewhere apply
+to this report only.
 
 All six final profiles pass **67/67** tests; each build/CTest command exits 0.
 Native sanitizer build/discovery/execution uses

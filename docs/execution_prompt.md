@@ -226,23 +226,12 @@ Use the plan's Q1–Q6, P1–P6, N1–N2 and E1–E2 IDs. L1 is a future pilot t
 
 ## 10. Durable project state and documentation
 
-Create only the documents that make implementation and continuation reliable. Keep existing equivalent files when appropriate instead of duplicating them.
-
-| File | Purpose and update policy |
-|---|---|
-| `AGENTS.md` | Concise durable repository rules, actual build/check commands, module constraints and pointers to this runbook/plan. Aim for roughly 60–100 useful lines. Preserve existing instructions; avoid copying the full report or milestone history |
-| `docs/progress.md` | Single current handoff: active milestone, completed behavior, evidence, precise remaining work, blockers, next executable action and any changed assumptions |
-| `docs/requirements.md` | Requirement/milestone → implementation → test/benchmark → status → evidence. Preserve target definitions and approved deviations |
-| `docs/adr/` | Short consequential decisions: options, criterion, choice, evidence, trade-off and revisit trigger. Do not write an ADR for every helper function |
-| `docs/protocols/` | Implemented coordinate, scene, worker, revision and compatibility contracts, kept aligned with code |
-| `docs/validation/` | Compact reproducible results and manifests; large traces/datasets referenced by authorized location and hash |
-| `README.md`, build/user guides | Actual supported quickstart, dependency installation, import/view controls, capability limits and troubleshooting |
-
-Requirement status must distinguish `NOT_STARTED`, `IN_PROGRESS`, `IMPLEMENTED_UNVERIFIED`, `VERIFIED`, `BLOCKED` and `DEFERRED_BY_USER`. Mark `VERIFIED` only with current relevant evidence. A requirement may be verified on one platform and blocked on another.
-
-Update handoff state after coherent work and before a session ends or context is lost. Include the first useful next command/task, not “continue implementation.” New sessions inspect the relevant code and state before resuming. Do not reread the whole research appendix before every edit or repeatedly regenerate the project plan.
-
-Keep evidence portable: relative repository paths for project files, reproducible commands and no credentials in logs. If committing is already authorized, use focused commits and record them. Otherwise leave a reviewable diff and record its identity; do not invent commits or push remotely.
+Follow the [documentation protocol](protocols/documentation.md): record ownership,
+status vocabulary, evidence fields, compact templates and handoff/update rules are
+mandatory. Use the [documentation map](README.md) for scoped reading. Reuse existing
+equivalent files. Update current handoff/requirements after coherent work and before
+interruption; include the first executable next task. Resume from code/state;
+do not regenerate the plan or reread its full research appendix for each edit.
 
 ## 11. Completion and communication
 

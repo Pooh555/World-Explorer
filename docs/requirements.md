@@ -25,7 +25,7 @@ thresholds or platform requirements have been waived. Status on 2026-10-12:
 | P6 asynchronous updates | Replay, retry, retirement tests and native replace/delete pass | IN_PROGRESS | Staged upload/latency/stress pending |
 | N1 fly controls | Camera + gated SDL input; CPU tests pass | IN_PROGRESS | Full native input/HiDPI/latency inspection pending |
 | N2 walking | Disabled until independent scale/geometry | NOT_STARTED | No invented collision |
-| E1 correctness/coverage | Contract/worker/coordinator tests; native sync validation including render pause/resume; targeted lint | IN_PROGRESS | Current profile counts in coordinator evidence; coverage, fuzzing and full gate fixtures pending |
+| E1 correctness/coverage | Contract/worker/coordinator tests; native sync validation including render pause/resume; targeted lint | IN_PROGRESS | Current profile counts in stage-chain evidence; coverage, fuzzing and full gate fixtures pending |
 | E2 build/delivery | Local GCC/Clang C++26 and explicit C++23 builds; libc++ CPU checks; pinned dev archives; corrected native CPU CI | IN_PROGRESS | Hosted Windows build and 22/24 checks pass; follow-up portability fixes locally pass; complete hosted tests, native viewer/release and distribution-hash qualification pending |
 | L1 / M7–M8 | Only future-compatible contracts in Phase 1 | DEFERRED_BY_USER | No live reconstruction implementation |
 
@@ -33,25 +33,8 @@ Each gate requires the measurement scope prescribed by the specification. A loca
 synthetic smoke test does not satisfy quality, performance, capture completion or
 another operating system's native qualification.
 
-Commands and narrow local results: [foundation evidence](validation/2026-10-11-foundation.md).
-Current fit and checks: [capture evidence](validation/2026-10-11-capture.md).
-Shared job command checks: [coordinator evidence](validation/2026-10-11-coordinator.md).
-Native CPU workflow repair: [CI evidence](validation/2026-10-11-ci.md).
-JSON/path portability follow-up: [current checks](validation/2026-10-11-ci-followup.md).
-Worker event protocol: [wire evidence](validation/2026-10-11-worker-wire.md).
-Native frame source: [replay evidence](validation/2026-10-11-frame-replay.md).
-Native pose import/replay: [current evidence](validation/2026-10-12-pose-replay.md).
-Native fresh batch admission/solve: [current evidence](validation/2026-10-12-batch-poses.md).
-Canonical pose/calibration v1: [local serialization/publication evidence](validation/2026-10-12-pose-assets.md).
-Persistent maps: [local restart/publication evidence](validation/2026-10-12-persistent-maps.md).
-No Q/P/N/E requirement is fully certified; configured CI is not a native pass.
-
-Durable pose preparation and coordinator dependencies: [local integration evidence](validation/2026-10-12-pose-preparation.md).
-
-Worker command/control: [local protocol and cancellation evidence](validation/2026-10-12-worker-control.md).
-
-Retained metadata preflight: [local admission, restart and real-scene parity evidence](validation/2026-10-12-video-preflight.md).
-
-Automatic inspection: [local ownership, capabilities, cancellation and real cache/payload checks](validation/2026-10-12-automatic-inspection.md).
-
-Fresh stage chaining: [synthetic publication/restart, real decode/cache and cancellation scope](validation/2026-10-12-stage-chain.md).
+Evidence is indexed by implementation slice in the [validation index](validation/README.md);
+reports retain exact commands, identities, counts, failures and native scope.
+The current check count belongs to [stage chaining](validation/2026-10-12-stage-chain.md),
+not the older coordinator report. No Q/P/N/E requirement is fully certified;
+configured CI is not a native pass.
