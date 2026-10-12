@@ -23,6 +23,8 @@
 - Static analysis uses clang-tidy 23.1.1; do not weaken warnings to pass.
 - GPU execution requires native device access; sandbox driver-load failure is not GPU absence.
 - Record actual commands/results in `docs/validation/`, not inferred passes.
+- Follow `docs/protocols/documentation.md`; use `docs/README.md` for scoped reading.
+- Check documentation with `python3 tools/check_docs.py` and `git diff --check`.
 
 ## Architecture
 - `core` owns typed IDs, math, errors and byte/count limits.

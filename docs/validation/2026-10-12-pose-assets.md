@@ -30,14 +30,9 @@ Arch Linux. These extend the previous 40 tests with four canonical-asset fixture
 and two retained-job/provenance fixtures. Generator cases exercise malformed
 structure and rehashed invalid data independently of checksum mismatch.
 
-| Commands | Profile / result |
-|---|---|
-| `cmake --build --preset dev -j 4`; `ctest --preset dev --output-on-failure` | GCC C++26 viewer/CLI/core; 46/46 |
-| `cmake --build --preset clang -j 4`; `ctest --preset clang --output-on-failure` | Clang C++26; 46/46 |
-| `cmake --build --preset compat-cxx23 -j 4`; `ctest --preset compat-cxx23 --output-on-failure` | Explicit GCC C++23; 46/46 |
-| `cmake --build --preset asan -j 4`; `ctest --preset asan --output-on-failure` | Native ASan/UBSan/LSan CPU; 46/46 |
-| `cmake --build build/ci-libcxx -j 4`; `ctest --test-dir build/ci-libcxx --output-on-failure` | Existing libc++ 23.1.1 / C++23 CPU configuration; 46/46 |
-| `cmake --build --preset tsan -j 4`; `ctest --preset tsan --output-on-failure` | Separate native ThreadSanitizer CPU; 46/46 |
+Actual commands: [2026-10-12 check reference](checks-2026-10-12.md),
+DEV, CLANG, COMPAT, LIBCXX, ASAN and TSAN; results/counts and logs elsewhere apply
+to this report only.
 
 Sanitizer discovery/execution used authorized native escalation. Final runtime
 edits were rechecked in all six profiles. The final comment-only clarification of

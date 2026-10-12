@@ -1,338 +1,75 @@
-# Current progress
+# Current handoff
 
-Updated 2026-10-12 (Asia/Hong_Kong). Active milestone: **M1, IN_PROGRESS**.
+Updated 2026-10-12 (Asia/Hong_Kong). **M1: IN_PROGRESS. No M1–M6 milestone or
+Q/P/N/E requirement is fully certified. M7–M8: DEFERRED_BY_USER.**
 
-The native foundation builds and runs on Arch Linux. GCC 16.2.1 and Clang 23.1.1
-C++26 builds, contract/worker tests, address/undefined/leak sanitizers, formatting,
-include boundaries and targeted static analysis pass. Native GPU tests cover
-two-splat compositing, replacement, deletion and resize with zero Vulkan and
-synchronization validation errors. No M1–M6 milestone has passed its complete gate.
+## Implemented and checked
 
-Implemented and integrated foundation: native SDL3/ImGui application; Vulkan
-anisotropic splat projection/radix sort/quad renderer; bounded update sink;
-transactional scene/map snapshots and checked scene bundles; native cancellable
-worker launch; real FFmpeg/COLMAP/gsplat worker adapters; fly navigation.
+Native SDL3/ImGui viewer/CLI, Vulkan anisotropic projection/radix/quad rendering,
+fly navigation, bounded asynchronous updates, transactional scene/map snapshots,
+checked bundles, isolated FFmpeg/COLMAP/gsplat workers. GUI/CLI share commands.
+Current contracts: [capture](protocols/capture.md), [poses](protocols/poses.md),
+[maps](protocols/maps.md), [scenes](protocols/scene.md), [workers](protocols/worker.md),
+[jobs](protocols/jobs.md). [Historical evidence](validation/README.md) retains
+implementation sequence, failures, identities, timings and profile differences.
 
-The original video failed connected poses, including one explicit recovery.
-The user replaced it and authorized moving the replacement to ignored
-`data/local/sample.mp4`. It is 20.948333 s, 3840×2160 H.264, 30 FPS; SHA-256
-`51263d9991dcbc2136d0809ecba1a8ba1b261896f3b222b7afba19784a153ef6`.
-`artifacts/sample2-job` successfully registered **63/63 frames in one COLMAP
-model**. Inspect/decode/pose times: 0.159/92.066/265.764 s. The explicit local
-gsplat development recipe completed **7,000 steps and 304,867 Gaussians** after
-native cancellation at step 4,323 and compatible optimizer/RNG resume. Its
-checksummed output is published at `artifacts/sample2.wexplore` and displayed
-in the native viewer with zero Vulkan/synchronization errors. Scale is arbitrary;
-geometry/walking remain unavailable. Imagery stays local. Earlier failed fits
-and the corrected uninterrupted fit are retained separately.
+Documentation [consolidation](validation/2026-10-12-documentation.md) changes no
+software qualification. Latest code slice: `f115d90`. **79/79 CPU/worker tests in six local profiles**;
+format, boundaries and targeted tidy pass. Synthetic complete fresh-chain
+publication/restart passes. Real automatic decode selects **63/628 frames**, checks
+inventory, reuses its cache across processes and cancels before pose invocation
+(CLI 130). No RGB journal, pose backend request, map or scene is published by that
+probe; 18 prior manifests/video hashes remain unchanged.
+[Exact scope](validation/2026-10-12-stage-chain.md).
 
-Local environment: Arch Linux, GCC 16.2.1, Clang/format/tidy 23.1.1, CMake 4.4.4,
-SDL 3.4.18, Vulkan headers/loader 1.4.363, OpenSSL 3.6.5, Python 3.14.8.
-An escalated `vulkaninfo --summary` detected NVIDIA RTX 4060 Laptop GPU,
-Vulkan 1.4.351, driver 615.78.08. This is not reference fixture H_R/H_V.
-Sandbox-only GPU probes fail to load the ICD; do not misreport that as missing hardware.
+Retained real result: replacement capture → **63/63 connected poses → 7,000-step
+fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
+and compatible optimizer/RNG resume. Native GPU smoke covers overlap,
+replace/delete/resize, shutdown and render pause/resume with zero Vulkan/sync
+errors. RTX 4060 Laptop/driver 615.78.08 is **not H_R/H_V**. Scale is arbitrary;
+gravity unknown; geometry/walk unavailable. Independent recovery poses remain a
+separate solution; their map cannot reuse the original fit.
 
-Working inspection command:
+## Usable commands and protected data
+
+Run from repository root; all media/jobs/screenshots stay local and ignored.
 
 ```sh
 build/dev/we_viewer --scene artifacts/sample2.wexplore --source-view --max-splats 500000
-```
-
-Viewer jobs, preferences/theme and scene import/source-view conversion now have
-separate files. Loading honors renderer budgets. Source view is an explicit
-upright spectator reset, not physical-camera following or calibrated reference
-parity. Settings replace atomically on Windows as well as POSIX. Snapshot/device
-ownership cleanup was fixed and rechecked through shutdown.
-
-The shared native coordinator now continues those completed poses with explicit
-`local_gsplat_v1` start/resume/completed-reuse actions, verifies the full pose
-inventory and fit provenance, publishes a checked bundle and loads it in the GUI.
-Appearance drawing pauses during processing while the UI/cancellation remains
-available. A native completed-checkpoint restore reproduced the identical final
-PLY hash without repeating optimization or poses. The GUI startup command and
-render pause/resume were exercised on the native GPU. See the
-[job contract](protocols/jobs.md) and [coordinator evidence](validation/2026-10-11-coordinator.md).
-
-The user reported native CI: Ubuntu core passed, while Linux Clang/macOS failed
-required library probes and Windows failed OpenSSL discovery. The workflow now
-selects compatible compiler/library pairs and explicit SDK roots, retaining the
-feature and warning gates. Local GCC C++26, GCC C++23 CPU and Clang C++23 CPU
-each pass 24/24 tests; actionlint, format, boundaries and targeted tidy pass.
-Follow-up hosted logs confirm macOS configuration succeeds and Windows builds,
-with 22/24 Windows checks passing. The remaining macOS byte-to-JSON compilation
-error and Windows test assumptions about short/long path spellings are repaired.
-Local checks now also pass 24/24 with libc++ 23.1.1 and with an aliased temporary
-directory. The latest fixes remain IMPLEMENTED_UNVERIFIED on the hosted native
-profiles until the next user push. See [initial CI evidence](validation/2026-10-11-ci.md)
-and [follow-up evidence](validation/2026-10-11-ci-followup.md). Apple Clang/viewer/release
-qualification remains separate from the macOS LLVM 20 CPU job.
-
-The first worker transport slice now generates pinned FlatBuffers C++/Python
-bindings and verifies bounded, ordered typed events on the shared native path.
-Real capture inspection, typed gsplat failure and checked completed-fit reuse
-were exercised. Four local profiles pass 27/27 tests, including ASan/UBSan/LSan.
-See [worker wire evidence](validation/2026-10-11-worker-wire.md). At that stage commands
-still selected JSON requests through argv; the batch control upgrade below now
-replaces that transport.
-
-The native `frame_source` now replays that committed decode stage with immutable
-RGB leases, stable IDs, original PTS, seek/reset/EOF, bounded decoding and cancellation.
-All 63 real frames replay; independent first/last RGB hashes match. Five local
-profiles pass 31/31 CPU/worker checks. See [frame evidence](validation/2026-10-11-frame-replay.md)
-and [source contract](protocols/capture.md).
-
-Checked native pose import and a labeled `COMPLETED_REPLAY` estimator now preserve
-OPENCV coefficients, source IDs/timestamps and optical transforms. Shared stage
-verification also protects existing fit continuation. Capacity-one replay of the
-63 real frames publishes an immutable in-memory map snapshot; five local profiles
-pass 37/37 CPU/worker tests. See [pose evidence](validation/2026-10-12-pose-replay.md)
-and [contract](protocols/poses.md). It does not certify a fresh pose solve.
-
-The current `artifacts/sample2-job/decode.json` points to the older capture's stage,
-while its completed poses/result still belong to the replacement. Do not rewrite
-that pointer or restart work. Use the explicit retained stage:
-
-```sh
-build/dev/we_process replay-poses artifacts/sample2-job data/local/sample.mp4 --decode-stage artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7dcab6451304305b9987c5e1da3e8ab1f5eaa9c6b
-```
-
-The native `BATCH_SOLVE` estimator now admits ordered RGB leases into a bounded
-immutable journal before consuming them and runs isolated CPU COLMAP at finish.
-Its shared application/CLI path preserves failed admission, retries and cancellation;
-five local profiles pass **40/40** tests. Real PPM conversion exposed an automatic
-FFmpeg probing error, fixed with explicit image2/PPM decoding. The subsequent
-sequential attempt produced 2- and 63-frame models and was rejected without changing
-the single-model gate. One explicit exhaustive-guided recovery succeeds in
-`artifacts/sample2-native-poses-20261012-recovery`: one model, **63/63 poses**,
-30294 points, one OPENCV calibration, an immutable in-memory map at epoch 0/revision 1.
-The 62.842 s PNG stage and 1162.089 s pose stage are development timings, not P1.
-Pillow independently confirms RGB equivalence for all 63 original/admitted/converted
-frames. No optimizer was run; original poses/fit and both failures remain preserved.
-See [batch evidence](validation/2026-10-12-batch-poses.md) and [contract](protocols/poses.md).
-
-Working inspection of the fresh result (no solve or fit):
-
-```sh
-build/dev/we_process replay-poses artifacts/sample2-native-poses-20261012-recovery data/local/sample.mp4
-```
-
-Canonical FlatBuffers pose/calibration v1 interchange now has a checked native
-writer/reader and shared `export-poses`/`inspect-poses` commands. It preserves
-double transforms, world/submap dependencies, OPENCV distortion, crop/resize,
-original timestamps, epoch/revisions, invalidation IDs and source/decode/pose/
-optional-journal provenance. Scale remains arbitrary, gravity unknown. Bounded
-structural/semantic checks reject corrupt assets; atomic no-overwrite publication
-preserves existing files and concurrent winners. Six local profiles pass **46/46**
-CPU/worker checks, including separate TSan and ASan/UBSan/LSan. The retained fresh
-63-pose recovery exported/reloaded in 19,960 bytes; all 63 transforms/timestamps/
-image hashes and camera coefficients match independently, and original job/scene
-manifests remain unchanged. No solver, pixel decoder or optimizer ran. See
-[canonical asset evidence](validation/2026-10-12-pose-assets.md).
-Canonical interchange contains no operation receipts; the separate checkpoint
-format below supplies restart recovery. Native Windows/macOS publication and
-power-loss behavior remain unqualified.
-
-Native `map_store` now opens checked persistent checkpoints with a lifetime writer
-lock, atomic asset-first manifest publication and bounded retry receipts. Restart
-preserves epoch/base checks, correction/deletion invalidation and old snapshot
-lifetimes. Canonical import retains a checked initial source dependency inside the
-store. Shared native/CLI `init-map`, `import-map` and `inspect-map` commands work;
-six local profiles pass **54/54** tests, including separate TSan and
-ASan/UBSan/LSan. The real 63-pose map reopens/retries in separate processes and
-re-encodes to the identical canonical asset hash. A native 4 KiB file-size limit
-forces a partial-write failure without changing the previous manifest; subsequent
-recovery succeeds. Original job/scene manifests remain unchanged. See
-[durable map evidence](validation/2026-10-12-persistent-maps.md) and
-[map contract](protocols/maps.md). Native Windows/macOS, power-loss and true ENOSPC
-qualification remain pending; no full M1 gate was promoted.
-
-Working inspection (no reconstruction):
-
-```sh
-build/dev/we_process inspect-map artifacts/sample2-persistent-map-20261012
-```
-
-The shared pose preparation/coordinator path now publishes canonical poses into
-an initial durable map before fitting and reuses identical dependencies/operation
-1 after restart. The writer remains owned through fit/publication; changed or
-advanced maps require resync rather than silent reseeding. Both GUI and CLI use
-this path. Fit camera views and the complete registered inventory are checked
-against canonical poses; scenes retain the map epoch/revision, canonical/pose
-hashes and conservative source-frame dependencies. Fresh selected-frame solves
-now route successful events to the same publisher at `NEW_JOB.map`; no additional
-fresh solve was run in this slice. `prepare-poses` provides retained-output
-preparation without a solver, pixel decoder or optimizer.
-
-Six local profiles pass **57/57** tests, including separate TSan and
-ASan/UBSan/LSan, format, boundaries and targeted tidy. Original completed-fit
-reuse publishes `artifacts/sample2-pipeline-20261012/original.wexplore` with its
-own durable map and original pose completion dependency. Separate recovery map
-preparation preserves that recovery's distinct canonical hash. Cross-process
-restart preserves the map manifests; an attempt to combine the original fit with
-the recovery map is rejected. Independent committed-index inspection confirms
-all **304,867 splats are byte-identical** to the original appearance, with 63
-registered frame dependencies added. Eight original input/job/scene manifests
-remain unchanged, including the stale decode pointer. No new GPU/platform or
-benchmark qualification is claimed. See
-[pipeline evidence](validation/2026-10-12-pose-preparation.md).
-
-Working retained-fit continuation (no pose solve or optimizer):
-
-```sh
-build/dev/we_process reconstruct --request artifacts/sample2-pipeline-20261012/reuse-original.json
-```
-
-The shared native worker path now uses FlatBuffers **2.0** START/CANCEL commands
-on bounded stdin and session-bound stdout events. START follows verified
-capabilities and is acknowledged before backend execution. Semantic retries are
-idempotent across alternate encodings; changed operation content, unsafe offsets,
-wrong sessions and unsolicited acknowledgements fail. CANCEL calls the existing
-worker/fit checkpoint hook once; a bounded grace period precedes process-tree
-termination. Native POSIX backend children now remain in the owned group, with a
-forced-stop descendant check. Input backpressure/closed pipes cannot block stop;
-descriptor reservation handles desktop hosts without stdin. Windows has
-nonblocking input and restricted inherited handles, but is not natively qualified.
-
-Six local profiles pass **64/64** tests, including separate TSan and
-ASan/UBSan/LSan, plus format/boundaries/tidy. Final real metadata inspection of the
-retained capture completes and reuses the identical committed result in separate
-sessions; a separate inspection acknowledges START/CANCEL and exits 130. No RGB
-frames were decoded and no COLMAP, optimizer or GPU run occurred. Eight original
-input/job/scene manifests retain their hashes. Synthetic cancellation markers are
-not real optimizer checkpoint proof. Original completed fits remain reusable;
-changed worker source does not silently upgrade older optimizer checkpoints.
-See [worker control evidence](validation/2026-10-12-worker-control.md).
-
-Schema-2 reconstruction requests now explicitly adopt a committed video metadata
-inspection by stage/completion SHA and retained poses. Shared native preflight
-checks the complete bounded inspection inventory, parsed-byte checksum, selected
-video identity, dimensions/duration, orthogonal rotation, original rational time
-base, SDR policy and current storage at all three outputs. It creates no outputs
-and launches no worker. Outputs cannot overlap the inspection job/video or use a
-file as their existing ancestor. Preflight runs before durable map preparation
-and again before compilation; scenes retain the inspection dependency. Legacy
-schema-1 requests remain supported without claiming metadata preflight.
-
-This is retained-metadata admission, not complete video preflight: codec/color
-conversion qualification, capability probing for later stages,
-storage forecasting/reservation and blur/cut/lens diagnostics remain pending.
-The explicit free-space threshold is a current check on each output filesystem;
-it does not promise that the complete job will fit. See
-[preflight evidence](validation/2026-10-12-video-preflight.md) and
-[request contract](protocols/jobs.md).
-
-Six local profiles pass **67/67** CPU/worker tests, including libc++ C++23,
-ASan/UBSan/LSan and separate TSan, plus format/boundaries/targeted tidy. libc++
-exposed unknown free-space reporting; admission now rejects that sentinel.
-Real schema-2 adoption/restart and wrong-inspection rejection preserve both new
-output manifests, the selected inspection and eight original input/job/scene
-manifests. All 304,867 splat payloads remain byte-identical to the original scene;
-the scene binds its own 63-pose map and selected inspection SHA. No solver,
-optimizer, GPU or native GUI/platform qualification was run in this slice.
-
-Working retained-output adoption (no decoder, solver or optimizer):
-
-```sh
-build/dev/we_process reconstruct --request artifacts/sample2-preflight-20261012/adopt-original.json
-```
-
-Schema-2 `inspection.action: inspect` now runs an explicitly configured local
-worker in a fresh or matching owned metadata job. Current storage and protected
-path checks precede ownership/launch; a native OS writer lock releases on exit.
-Source/script/Python identity prevents accidental job takeover. Verified video
-batch/resource capabilities gate START. The returned contained immutable artifact
-feeds shared preflight; mutable job pointers are not used for selection. Identical
-restart enters a fresh transport session and reuses the worker's compatible cached
-stage. Failed inspection/cancellation cannot prepare a map or publish a scene.
-All writable coordinator outputs now protect the request file. Both GUI and CLI
-use this shared command; no new GUI layout or native input qualification occurred.
-
-Six local profiles pass **74/74** tests, including explicit C++23/libc++,
-ASan/UBSan/LSan and separate TSan; format/boundaries/targeted tidy pass. Real
-automatic inspection of the retained video, separate-process cache reuse,
-ownership/overlap rejection before START and acknowledged CANCEL (exit 130) pass.
-Eleven prior manifests (eight historical input/job/scene manifests, the prior
-inspection completion and two prior preflight output manifests), plus the video,
-retain their hashes. Seven current metadata/map/scene manifests remain unchanged
-across restart/rejection/cancellation. Committed-index inspection confirms all
-304,867 original splat payloads and 63 pose-frame dependencies remain intact.
-No RGB decoder, COLMAP, optimizer or GPU run was performed. Python worker source
-and original optimizer recipe identities remain untouched. See
-[automatic inspection evidence](validation/2026-10-12-automatic-inspection.md).
-
-Working automatic metadata inspection with original pose/fit adoption:
-
-```sh
 build/dev/we_process reconstruct --request artifacts/sample2-inspection-pipeline-20261012/inspect-and-adopt.json
-```
-
-Schema-2 `pose_action: solve` now explicitly chooses owned automatic decode or a
-checksummed retained decode, plus local pose worker/recipe/resources. Immutable
-decode requests and verified capacity gate START; source/inspection/decode
-inventories and image domain/time base are checked. An exclusive `POSE_JOB.plan`
-intent binds the source/decode/worker/recipe. Native frame leases feed the batch
-estimator, then normal durable map preparation and fit/compile. Compatible restart
-replays byte-identical admitted RGB assets and exact journal/request bytes, or
-checks/reuses the completed solve without invoking it. Changed/corrupt input,
-unowned directories, overlaps or incompatible intent never reseed caller data.
-The intent stays locked through publication. Inspection/decode share bounded
-ownership admission without changing the existing metadata owner identity.
-
-Six local profiles pass **79/79** tests, including libc++ C++23 and separate
-ASan/UBSan/LSan/TSan; format/boundaries/targeted tidy pass. Five new fixtures cover
-fresh native chaining/publication, cached solve reuse, cooperative solver
-cancellation/restart, RGB replay/mismatch admission, failures and explicit
-schema/resources/overlap policy. Their tiny workers/assets are synthetic; they
-do not qualify real reconstruction. Real automatic decode produces **63 selected
-frames from 628 originals**, verifies every immutable file, then cancels before
-solver invocation (exit 130). A separate restart uses the cached decode and
-identical ownership/request/completion/pose intent; cancellation again precedes
-solver invocation. No full RGB journal, pose backend request, map or scene is
-published by that real probe. **18 prior manifests and the video** retain hashes;
-the original successful COLMAP/gsplat and stale decode pointer are untouched.
-No new solver, optimizer, GPU or native GUI run occurred. See
-[stage chaining evidence](validation/2026-10-12-stage-chain.md).
-
-The real cancellation probe is reproducible with an owned fresh request:
-
-```sh
 python3 artifacts/validation/stage-chain-real/verify.py
 ```
 
-That probe intentionally exits the application with 130 before solving; it is
-not a complete-scene success. Existing complete continuation still works:
+The reconstruction command adopts original completed poses/fit after automatic
+metadata inspection; it does not repeat optimization. The probe intentionally
+cancels before solving. Additional replay/export/map/preparation/adoption commands
+are indexed in [validation](validation/README.md).
 
-```sh
-build/dev/we_process reconstruct --request artifacts/sample2-inspection-pipeline-20261012/inspect-and-adopt.json
-```
+Private source: `data/local/sample.mp4`, 20.948333 s, 3840×2160 H.264/30 FPS;
+SHA-256 `51263d9991dcbc2136d0809ecba1a8ba1b261896f3b222b7afba19784a153ef6`.
+`artifacts/sample2-job/decode.json` still selects the old capture's 92-frame stage.
+Do not rewrite it or rerun successful original COLMAP/gsplat. For retained replay,
+explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7dcab6451304305b9987c5e1da3e8ab1f5eaa9c6b`.
 
-Next executable task: validate the fresh chain's final real pose/fit boundaries
-without repeating successful original work: use checked retained decode/native
-recovery pose outputs to exercise admission, journal/pose/map/fit dependency
-rejection and scene publication, preserving their distinct pose solutions. Keep
-the new owned fresh path available for a deliberately selected fresh capture/job;
-its real solve/fit end-to-end gate remains unverified. In parallel with that
-boundary work, finish M1's prescribed ≤250k fixture and reference renderer parity
-checks on available native hardware (synthetic/reference cases must stay labeled;
-the retained 304,867-splat scene cannot substitute for the prescribed fixture).
-Do not weaken gates, silently trim original assets, rerun original successful
-COLMAP/gsplat or rewrite the stale decode pointer. Selection remains timestamp
-sampling until blur/cut/lens/coverage work is implemented and qualified. Direct
-Python JSONL diagnostics remain transitional. The decoded-storage estimate still
-applies to metadata inspection; unknown/inadequate space is an explicit failure.
+## Next executable work and blockers
 
-Outstanding gates include the prescribed ≤250k fixture, reference renderer parity,
-real end-to-end fresh chain and native worker-control qualification,
-native Windows/Mac runs, prescribed corpus/performance and geometry/collision work. No Phase 1 milestone is complete.
-M7–M8 remain deferred. User edits to `docs/execution_prompt.md` and
-`docs/technical_plan.md` remain untouched and excluded from implementation commits.
-See [local evidence](validation/2026-10-11-foundation.md) for check scope and commands.
-See [capture and current checks](validation/2026-10-11-capture.md) for the real fit,
-failure/resume evidence and exact capture/fixture identities. The coordinator
-report records its historical **24/24** CPU checks in GCC/Clang C++26, explicit C++23,
-ASan/UBSan/LSan and separate TSan, plus native GUI and GPU checks.
-The development resize (1280 px), 304,867-splat scene and this laptop do not
-certify original benchmark/platform gates. No milestone was promoted to VERIFIED.
-Local commits: foundation `ea289fc`; subsequent capture slice is the commit
-containing the newer validation report. The coordinator slice contains its own
-validation report. No remote push.
+Validate fresh chaining's final real pose/fit boundaries using checked retained
+decode and native recovery outputs: exercise admission, journal/pose/map/fit
+dependency rejection and scene publication while preserving distinct solutions.
+The owned fresh path is available for an explicitly selected fresh capture/job;
+**full real fresh solve/fit chaining remains unverified**.
+
+Finish the prescribed **≤250k fixture and reference renderer parity** on available
+native hardware. Label synthetic/reference cases; do not silently trim the
+304,867-splat scene or substitute it for the required fixture. Selection remains
+timestamp sampling; blur/cut/lens/coverage qualification is pending. Python JSONL
+diagnostics remain transitional. Decoded-storage estimation also applies to
+metadata inspection; unknown/inadequate space fails explicitly.
+
+Native Windows/macOS control/viewer/release, Apple Silicon/AMD, corpus/reference
+performance, geometry/collision, coverage/fuzzing and complete Q/P/N/E gates remain
+pending; [requirements](requirements.md) tracks each scope. Hosted Windows CPU
+build/22-of-24 historical checks are narrower; subsequent fixes passed locally,
+not on hosted runners. Sandbox ICD failure is not GPU absence. Local commits are
+authorized; remote pushes/uploads are not. Follow the
+[documentation protocol](protocols/documentation.md) for subsequent handoffs.

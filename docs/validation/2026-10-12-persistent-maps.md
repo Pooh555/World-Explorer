@@ -29,14 +29,9 @@ Arch Linux; GCC 16.2.1, Clang/format/tidy 23.1.1, CMake 4.4.4, OpenSSL 3.6.5,
 Python 3.14.8; pinned FlatBuffers 25.2.10. The previous 46-case suite is extended
 with eight persistent-map fixtures, including generator variants.
 
-| Commands | Profile/result |
-|---|---|
-| `cmake --build --preset dev -j 4`; `ctest --preset dev --output-on-failure` | GCC C++26 viewer/CLI/core, 54/54 |
-| `cmake --build --preset clang -j 4`; `ctest --preset clang --output-on-failure` | Clang C++26, 54/54 |
-| `cmake --build --preset compat-cxx23 -j 4`; `ctest --preset compat-cxx23 --output-on-failure` | Explicit GCC C++23, 54/54 |
-| `cmake --build --preset asan -j 4`; `ctest --preset asan --output-on-failure` | Native ASan/UBSan/LSan CPU, 54/54 |
-| `cmake --build --preset tsan -j 4`; `ctest --preset tsan --output-on-failure` | Separate native ThreadSanitizer CPU, 54/54 |
-| `cmake --build build/ci-libcxx -j 4`; `ctest --test-dir build/ci-libcxx --output-on-failure` | Existing libc++ 23.1.1 / C++23 CPU configuration, 54/54 |
+Actual commands: [2026-10-12 check reference](checks-2026-10-12.md),
+DEV, CLANG, COMPAT, LIBCXX, ASAN and TSAN; results/counts and logs elsewhere apply
+to this report only.
 
 Native sanitizer execution used authorized escalation. Formatting,
 `python3 tools/check_boundaries.py` and `git diff --check` exit 0.
