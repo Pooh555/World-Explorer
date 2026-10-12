@@ -2,6 +2,10 @@
 #include "world_explorer/application/reconstruction_job.hpp"
 
 namespace world_explorer::viewer {
+bool application_state::has_pending_work() {
+    std::lock_guard lock(mutex);
+    return busy || static_cast<bool>(loaded);
+}
 
 void application_state::append(std::string text) {
     std::lock_guard lock(mutex);

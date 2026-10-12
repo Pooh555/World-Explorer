@@ -24,6 +24,9 @@ struct application_state {
     std::chrono::steady_clock::time_point started;
     std::jthread job;
 
+    // A completed loader may leave a snapshot awaiting UI admission after busy clears.
+    bool has_pending_work();
+
     void append(std::string text);
     void load(std::filesystem::path path);
     void worker(worker_configuration configuration, std::vector<std::string> arguments);

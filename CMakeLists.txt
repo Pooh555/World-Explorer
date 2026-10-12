@@ -227,6 +227,15 @@ if(BUILD_TESTING)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   target_compile_definitions(we_core_tests PRIVATE WE_TEST_PYTHON="${Python3_EXECUTABLE}" WE_TEST_PROTOCOL_MODULE="${PROJECT_SOURCE_DIR}/workers")
 
+  if(WE_BUILD_VIEWER)
+    add_executable(we_viewer_tests tests/ui/preferences_tests.cpp tests/ui/job_state_tests.cpp
+      apps/we_viewer/preferences.cpp apps/we_viewer/job_state.cpp)
+    we_target(we_viewer_tests)
+    target_include_directories(we_viewer_tests PRIVATE "${PROJECT_SOURCE_DIR}/apps/we_viewer")
+    target_link_libraries(we_viewer_tests PRIVATE application SDL3::SDL3 we_imgui Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
+    catch_discover_tests(we_viewer_tests PROPERTIES LABELS "cpu;viewer")
+  endif()
+
   add_test(NAME worker_integration COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tests/integration -p "worker*_test.py" -v)
   set_tests_properties(worker_integration PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;worker")
 endif()

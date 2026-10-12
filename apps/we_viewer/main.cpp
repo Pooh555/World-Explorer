@@ -224,7 +224,7 @@ int viewer_main(int argc, char** argv) {
         const auto now = std::chrono::steady_clock::now();
         const auto elapsed = std::chrono::duration<double>(now - previous).count();
         previous = now;
-        if (!reconstruction_request.empty() && !state.busy && !pending_ticket) {
+        if (!reconstruction_request.empty() && !state.has_pending_work() && !pending_ticket) {
             state.reconstruction(std::exchange(reconstruction_request, {}));
         }
         movement.captured = captured;
@@ -416,9 +416,15 @@ int viewer_main(int argc, char** argv) {
                 ImGui::TextUnformatted(state.log.c_str());
         }
         if (settings.controls)
-            ImGui::TextWrapped(
-                "Click viewport: mouse look | W/S/A/D: move | Space/Shift: vertical "
-                "| Ctrl: accelerate | Wheel: speed | Esc: release. Remap in Settings.");
+            ImGui::TextWrapped("Click viewport: mouse look | %s/%s/%s/%s: move | %s/%s: vertical "
+                               "| %s: accelerate | Wheel: speed | Esc: release. Remap in Settings.",
+                               SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[0])),
+                               SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[1])),
+                               SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[2])),
+                               SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[3])),
+                               SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[4])),
+                               SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[5])),
+                               SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[6])));
         ImGui::End();
         if (show_open)
             ImGui::OpenPopup("Open scene");
@@ -523,8 +529,8 @@ int viewer_main(int argc, char** argv) {
             ImGui::EndPopup();
         }
         ImGui::Render();
-        if (!screenshot.empty() && !screenshot_requested && frames >= 8 && !state.busy &&
-            reconstruction_request.empty() &&
+        if (!screenshot.empty() && !screenshot_requested && frames >= 8 &&
+            !state.has_pending_work() && reconstruction_request.empty() &&
             (!(require_reconstruction_success || !scene_path.empty()) ||
              (current && !pending_ticket))) {
             if (require_reconstruction_success) {
@@ -553,7 +559,7 @@ int viewer_main(int argc, char** argv) {
             }
         }
         ++frames;
-        if (frame_limit && frames >= frame_limit && !state.busy && !pending_ticket) {
+        if (frame_limit && frames >= frame_limit && !state.has_pending_work() && !pending_ticket) {
             if (require_reconstruction_success) {
                 std::lock_guard lock(state.mutex);
                 if (!state.reconstruction_error.empty())
