@@ -7,10 +7,10 @@ on its owned background thread; appearance projection/drawing pauses while UI,
 presentation and cancellation remain active. Resident scene assets are retained.
 The completed scene enters the usual renderer update path after bounded loading.
 
-This command continues a completed pose job. It does not restart successful
-poses. Use the existing pose-worker request (`stop_after: "poses"`) to produce
-that job first. Schema 2 can inspect metadata automatically or adopt a checked
-retained inspection before preparing poses. Fresh decode/solve chaining remains M1 work.
+This command explicitly solves fresh poses or continues a completed pose job.
+Schema 2 can inspect metadata automatically or adopt a checked retained
+inspection, then decode/solve in owned jobs or adopt completed poses. Successful
+stages are preserved; no recipe or completed fit is silently replaced.
 The `local_gsplat_v1` recipe is explicitly selected, development only, and does
 not substitute for the upstream Q2/Q3 recipe. There are no downloads or remote
 fallbacks. An existing bundle and completed fit can be published/viewed without
@@ -28,8 +28,8 @@ retained decode stage belonging to this pose job. It never rewrites a stale
 the pose/video inputs. Existing requests retain schema 1, but now require the
 checked canonical pose and decode inventories in the completed job.
 
-Schema 2 retains the same recipe/fit fields and requires `pose_action` to be
-`adopt_completed`, plus one explicit inspection action. For retained metadata:
+Schema 2 retains the same recipe/fit fields and requires an explicit `pose_action`
+and inspection action. For retained poses and metadata:
 
 ```json
 {
@@ -113,7 +113,77 @@ preserve the previous scene and any valid map/fit. The scene records
 Retained metadata verification does not probe current backend capabilities,
 certify codec decoding/color conversion or improve timestamp-sampled selection.
 New worker stages still require their own capability handshake. Blur/cuts/lens
-diagnostics and automatic fresh decode/pose chaining remain pending.
+diagnostics and end-to-end real fresh-chain qualification remain pending.
+
+For fresh solving, select `pose_action: "solve"`, omit `decode_stage`, and add
+both `decode` and `pose_worker`. Example fragment for a full schema-2 request:
+
+```json
+{
+  "pose_action": "solve",
+  "pose_job": "room-poses",
+  "decode": {
+    "action": "decode",
+    "job_directory": "room-decode",
+    "worker_script": "../workers/worker.py",
+    "python": "python3",
+    "sample_fps": 3.0,
+    "max_frames": 120,
+    "cpu_threads": 4,
+    "max_output_bytes": 34359738368
+  },
+  "pose_worker": {
+    "worker_script": "../workers/worker.py",
+    "worker_python": "python3",
+    "pose_python": "../.venv-worker/bin/python",
+    "recipe": "sequential",
+    "cpu_threads": 4,
+    "journal_bytes": 2147483648
+  }
+}
+```
+
+Decode can instead explicitly adopt an existing inventory with
+`{"action":"adopt_completed","stage":"JOB/stages/decode-<key>","completion_sha256":"<digest>"}`.
+That selection is the **pose input**, separate from the legacy `decode_stage`
+field selecting a retained pose job's domain. Decode/pose configuration is
+rejected for `pose_action: adopt_completed`; schema 1 remains unchanged.
+
+Decode uses a separate owned job and immutable `decode-request.json`. Parameters
+are explicit: finite sample rate [0.1, 4], 3–120 selected frames, 1–4 CPU threads,
+positive output bytes ≤32 GiB. Current timestamp sampling defaults to 3 fps; it
+does not implement the planned blur/exposure/cut/coverage selection. Source,
+selected inspection, worker and parameters bind ownership. START requires video
+batch capacity and the requested byte/frame limits. The returned bounded artifact
+must belong to that decode job; all inventory bytes, catalog IDs/timestamps and
+inspected dimensions/rotation/time base are checked. Changed parameters require
+fresh output rather than reseeding old ownership. Existing decoded image hashes
+are checked again before scene compilation.
+
+Fresh poses use native `frame_source` leases and the isolated batch estimator,
+with an immutable intent at `POSE_JOB.plan/owner.json` and a lifetime writer lock.
+This binds video/decode SHA, worker/path/Python choices, recipe, threads and
+journal budget (4 MiB–2 GiB). Decode, pose, intent, map, fit and scene directories
+must be disjoint and protect request/worker/backend/checkpoint inputs. Existing
+unowned pose jobs are not taken over; explicitly adopt them or select fresh output.
+
+Successful native RGB admission writes each immutable PPM before consuming the
+lease. Restart replays the same checked selection, reusing only byte-identical
+PPMs and exact journal/request bytes; mismatches preserve caller leases/data.
+Temporary/uncommitted input or a surviving Python worker lock requires explicit
+diagnosis, not deletion. Cooperatively cancelled solver work can restart from its
+complete journal and compatible cached stages. Completed solves from the same
+owned intent are checked/reused without invoking the solver; their original
+recipe/provenance is retained. Input journal/source/frame hashes are verified
+before normal durable map preparation and fitting. A different intent, corrupt
+input, stale map epoch/revision or different fit-camera solution rejects publication.
+The intent lock remains held through fit/scene publication. Old `solve-poses`
+defaults to fresh output; only owning callers explicitly enable input replay.
+
+No decoder/solver/optimizer dependency is installed implicitly. `pose_python`
+must select the deliberately installed local COLMAP environment. Fresh solving
+typically pairs with fit `action: start`; completed fit reuse is still explicitly
+selected and must match the new pose solution, not just video/image bytes.
 
 Example continuing poses with a fresh appearance job:
 
@@ -185,8 +255,8 @@ success. No scene is silently trimmed to fit a smaller renderer budget.
 
 Shared native subprocess calls use verified FlatBuffers 2.0 START/CANCEL commands
 and events described in [worker.md](worker.md). Direct Python invocation retains
-JSONL diagnostics. Automatic inspection-to-retained-poses-to-fit works; full fresh
-video-to-pose-to-fit chaining and native
-platform qualification remain required M1 work. Worker source changes retain
+JSONL diagnostics. Fresh chaining is implemented with synthetic contract checks;
+real end-to-end fresh solve/fit and native platform qualification remain required
+M1 work. Worker source changes retain
 the original recipe/checkpoint identity checks; completed fits can still be
 explicitly reused, but older optimizer checkpoints are not silently upgraded.

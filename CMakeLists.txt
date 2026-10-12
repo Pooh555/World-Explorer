@@ -147,7 +147,8 @@ add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/reconstruction_job.cpp src/application/job_validation.cpp src/application/pose_replay.cpp
   src/application/pose_pipeline.cpp src/application/pose_solve.cpp src/application/pose_export.cpp
   src/application/map_commands.cpp src/application/pose_preparation.cpp src/application/video_preflight.cpp
-  src/application/video_inspection.cpp)
+  src/application/video_inspection.cpp src/application/owned_job.cpp src/application/video_decode.cpp
+  src/application/pose_job.cpp)
 we_target(application)
 target_link_libraries(application PUBLIC scene_store navigation reconstruction_adapters map_store PRIVATE nlohmann_json::nlohmann_json)
 

@@ -266,22 +266,63 @@ Working automatic metadata inspection with original pose/fit adoption:
 build/dev/we_process reconstruct --request artifacts/sample2-inspection-pipeline-20261012/inspect-and-adopt.json
 ```
 
-Next executable task: extend the shared request/coordinator with explicit fresh
-decode/pose actions in separate owned jobs. Write bounded immutable decode
-requests, drive the existing isolated worker through START/CANCEL, validate its
-returned decode inventory and consume it via `frame_source` and the existing
-batch estimator. Route successful canonical poses through durable preparation
-and the existing fit/compile path, with exact source/stage/checkpoint identities,
-compatible restart and no accidental takeover of retained output. Reuse checked
-retained outputs for real integration first; do not rerun original successful
+Schema-2 `pose_action: solve` now explicitly chooses owned automatic decode or a
+checksummed retained decode, plus local pose worker/recipe/resources. Immutable
+decode requests and verified capacity gate START; source/inspection/decode
+inventories and image domain/time base are checked. An exclusive `POSE_JOB.plan`
+intent binds the source/decode/worker/recipe. Native frame leases feed the batch
+estimator, then normal durable map preparation and fit/compile. Compatible restart
+replays byte-identical admitted RGB assets and exact journal/request bytes, or
+checks/reuses the completed solve without invoking it. Changed/corrupt input,
+unowned directories, overlaps or incompatible intent never reseed caller data.
+The intent stays locked through publication. Inspection/decode share bounded
+ownership admission without changing the existing metadata owner identity.
+
+Six local profiles pass **79/79** tests, including libc++ C++23 and separate
+ASan/UBSan/LSan/TSan; format/boundaries/targeted tidy pass. Five new fixtures cover
+fresh native chaining/publication, cached solve reuse, cooperative solver
+cancellation/restart, RGB replay/mismatch admission, failures and explicit
+schema/resources/overlap policy. Their tiny workers/assets are synthetic; they
+do not qualify real reconstruction. Real automatic decode produces **63 selected
+frames from 628 originals**, verifies every immutable file, then cancels before
+solver invocation (exit 130). A separate restart uses the cached decode and
+identical ownership/request/completion/pose intent; cancellation again precedes
+solver invocation. No full RGB journal, pose backend request, map or scene is
+published by that real probe. **18 prior manifests and the video** retain hashes;
+the original successful COLMAP/gsplat and stale decode pointer are untouched.
+No new solver, optimizer, GPU or native GUI run occurred. See
+[stage chaining evidence](validation/2026-10-12-stage-chain.md).
+
+The real cancellation probe is reproducible with an owned fresh request:
+
+```sh
+python3 artifacts/validation/stage-chain-real/verify.py
+```
+
+That probe intentionally exits the application with 130 before solving; it is
+not a complete-scene success. Existing complete continuation still works:
+
+```sh
+build/dev/we_process reconstruct --request artifacts/sample2-inspection-pipeline-20261012/inspect-and-adopt.json
+```
+
+Next executable task: validate the fresh chain's final real pose/fit boundaries
+without repeating successful original work: use checked retained decode/native
+recovery pose outputs to exercise admission, journal/pose/map/fit dependency
+rejection and scene publication, preserving their distinct pose solutions. Keep
+the new owned fresh path available for a deliberately selected fresh capture/job;
+its real solve/fit end-to-end gate remains unverified. In parallel with that
+boundary work, finish M1's prescribed ≤250k fixture and reference renderer parity
+checks on available native hardware (synthetic/reference cases must stay labeled;
+the retained 304,867-splat scene cannot substitute for the prescribed fixture).
+Do not weaken gates, silently trim original assets, rerun original successful
 COLMAP/gsplat or rewrite the stale decode pointer. Selection remains timestamp
-sampling until the separately specified blur/cut/lens/coverage work is implemented
-and qualified. GUI and CLI must keep sharing this command. Direct Python JSONL
-diagnostics remain transitional. The worker's decoded-storage estimate applies
-even to metadata inspection; unknown/inadequate space is an explicit failure.
+sampling until blur/cut/lens/coverage work is implemented and qualified. Direct
+Python JSONL diagnostics remain transitional. The decoded-storage estimate still
+applies to metadata inspection; unknown/inadequate space is an explicit failure.
 
 Outstanding gates include the prescribed ≤250k fixture, reference renderer parity,
-automatic video/solve chaining and native worker-control qualification,
+real end-to-end fresh chain and native worker-control qualification,
 native Windows/Mac runs, prescribed corpus/performance and geometry/collision work. No Phase 1 milestone is complete.
 M7–M8 remain deferred. User edits to `docs/execution_prompt.md` and
 `docs/technical_plan.md` remain untouched and excluded from implementation commits.

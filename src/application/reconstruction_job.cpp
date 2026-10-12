@@ -1,10 +1,12 @@
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "job_validation.hpp"
+#include "pose_job.hpp"
 #include "pose_pipeline.hpp"
 #include "video_preflight_detail.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/core/hash.hpp"
 #include <array>
+#include <cmath>
 #include <set>
 
 namespace world_explorer {
@@ -59,6 +61,83 @@ result<void> validate_job(const reconstruction_job& job) {
         return fail(error_code::INVALID_ARGUMENT, "Invalid retained video inspection selection");
     if (job.inspection && job.automatic_inspection)
         return fail(error_code::INVALID_ARGUMENT, "Select one inspection action");
+    if (!job.fresh_poses && (job.automatic_decode || job.selected_decode))
+        return fail(error_code::INVALID_ARGUMENT,
+                    "Decode actions require an explicit fresh pose action");
+    if (job.fresh_poses) {
+        const auto& config = *job.fresh_poses;
+        if (std::filesystem::is_symlink(job.pose_job))
+            return fail(error_code::INVALID_ARGUMENT, "Fresh pose job may not be a symlink");
+        if ((!job.inspection && !job.automatic_inspection) || !job.decode_stage.empty() ||
+            (job.automatic_decode.has_value() == job.selected_decode.has_value()) ||
+            config.worker.script.empty() || config.worker.python.empty() ||
+            config.pose_python.empty() || config.worker.python.size() > 4096 ||
+            config.pose_python.size() > 4096 ||
+            config.worker.python.find('\0') != std::string::npos ||
+            config.pose_python.find('\0') != std::string::npos || !config.worker.framed_protocol ||
+            !config.cpu_threads || config.cpu_threads > 4 ||
+            config.journal_bytes.bytes < std::size_t{4} * 1024 * 1024 ||
+            config.journal_bytes.bytes > std::size_t{2} * 1024 * 1024 * 1024 ||
+            (config.recipe != pose_recipe::SEQUENTIAL &&
+             config.recipe != pose_recipe::EXHAUSTIVE_GUIDED))
+            return fail(error_code::INVALID_ARGUMENT, "Invalid explicit fresh pose action");
+        auto plan = std::filesystem::weakly_canonical(job.pose_job);
+        plan += ".plan";
+        std::vector<std::filesystem::path> read_only{job.video,         job.request_file,
+                                                     job.gsplat_source, job.fitting_worker.script,
+                                                     job.checkpoint,    config.worker.script};
+        if (std::filesystem::path(config.worker.python).has_parent_path())
+            read_only.emplace_back(config.worker.python);
+        if (std::filesystem::path(config.pose_python).has_parent_path())
+            read_only.emplace_back(config.pose_python);
+        if (job.inspection)
+            read_only.push_back(job.inspection->stage.parent_path().parent_path());
+        if (job.automatic_inspection) {
+            read_only.push_back(job.automatic_inspection->job_directory);
+            read_only.push_back(job.automatic_inspection->worker.script);
+            if (std::filesystem::path(job.automatic_inspection->worker.python).has_parent_path())
+                read_only.emplace_back(job.automatic_inspection->worker.python);
+        }
+        if (std::filesystem::path(job.fitting_worker.python).has_parent_path())
+            read_only.emplace_back(job.fitting_worker.python);
+        if (job.selected_decode) {
+            if (!job_detail::valid_digest(job.selected_decode->completion_sha256) ||
+                job.selected_decode->stage.empty())
+                return fail(error_code::INVALID_ARGUMENT, "Invalid retained decode selection");
+            read_only.push_back(job.selected_decode->stage.parent_path().parent_path());
+        }
+        if (job.automatic_decode) {
+            const auto& decode = *job.automatic_decode;
+            if (decode.job_directory.empty() || decode.worker.script.empty() ||
+                decode.worker.python.empty() || !decode.worker.framed_protocol ||
+                decode.worker.python.size() > 4096 ||
+                decode.worker.python.find('\0') != std::string::npos ||
+                !std::isfinite(decode.sample_fps) || decode.sample_fps < .1 ||
+                decode.sample_fps > 4 || decode.max_frames < 3 || decode.max_frames > 120 ||
+                !decode.cpu_threads || decode.cpu_threads > 4 || !decode.max_output_bytes ||
+                decode.max_output_bytes > 32ULL * 1024 * 1024 * 1024)
+                return fail(error_code::INVALID_ARGUMENT, "Invalid automatic decode action");
+            read_only.push_back(decode.worker.script);
+            if (std::filesystem::path(decode.worker.python).has_parent_path())
+                read_only.emplace_back(decode.worker.python);
+        }
+        std::vector<std::filesystem::path> writable{inputs[1], plan, map, fit, output};
+        if (job.automatic_decode)
+            writable.push_back(
+                std::filesystem::weakly_canonical(job.automatic_decode->job_directory));
+        for (std::size_t index = 0; index < writable.size(); ++index) {
+            for (std::size_t other = index + 1; other < writable.size(); ++other)
+                if (video_detail::overlaps(writable[index], writable[other]))
+                    return fail(error_code::INVALID_ARGUMENT,
+                                "Fresh reconstruction jobs/outputs overlap");
+            for (const auto& input : read_only)
+                if (!input.empty() &&
+                    video_detail::overlaps(writable[index],
+                                           std::filesystem::weakly_canonical(input)))
+                    return fail(error_code::INVALID_ARGUMENT,
+                                "Fresh reconstruction output overlaps a protected input");
+        }
+    }
     if (!job.request_file.empty())
         for (const auto& destination : {fit, map, output})
             if (video_detail::overlaps(destination,
@@ -144,7 +223,9 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
                                            "map_directory",
                                            "decode_stage",
                                            "pose_action",
-                                           "inspection"};
+                                           "inspection",
+                                           "decode",
+                                           "pose_worker"};
         if (!value.is_object() || !value.at("schema_version").is_number_unsigned() ||
             (value.at("schema_version") != 1 && value.at("schema_version") != 2) ||
             value.at("recipe") != "local_gsplat_v1")
@@ -167,7 +248,7 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
         reconstruction_job job;
         job.request_file = std::filesystem::canonical(request);
         if (value.at("schema_version") == 2) {
-            if (value.at("pose_action") != "adopt_completed")
+            if (value.at("pose_action") != "adopt_completed" && value.at("pose_action") != "solve")
                 return fail(error_code::INVALID_DATA,
                             "Only explicit retained pose adoption is supported");
             const auto& inspection = value.at("inspection");
@@ -195,7 +276,8 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
                     inspection.at("minimum_free_bytes").get<std::uint64_t>()};
             } else
                 return fail(error_code::INVALID_DATA, "Unknown or malformed inspection action");
-        } else if (value.contains("pose_action") || value.contains("inspection"))
+        } else if (value.contains("pose_action") || value.contains("inspection") ||
+                   value.contains("decode") || value.contains("pose_worker"))
             return fail(error_code::INVALID_DATA, "Inspection adoption requires schema 2");
         job.video = path("video");
         job.pose_job = path("pose_job");
@@ -234,6 +316,70 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
                         "Fitting requires an explicit local Python executable");
         job.checkpoint = path("checkpoint", false);
         job.completed_fit_identity = value.value("completed_fit_identity", std::string{});
+        const auto local_path = [&](const nlohmann::json& object, const char* name) {
+            const auto text = object.at(name).get<std::string>();
+            if (text.empty() || text.size() > 4096 || text.find('\0') != std::string::npos)
+                throw std::invalid_argument("Invalid stage path/executable");
+            const std::filesystem::path selected(text);
+            return selected.is_absolute() ? selected : base / selected;
+        };
+        const auto executable = [&](const nlohmann::json& object, const char* name) {
+            auto text = object.at(name).get<std::string>();
+            if (text.empty() || text.size() > 4096 || text.find('\0') != std::string::npos)
+                throw std::invalid_argument("Invalid explicit stage executable");
+            return std::filesystem::path(text).has_parent_path() ? local_path(object, name).string()
+                                                                 : text;
+        };
+        const auto integer = [&](const nlohmann::json& object, const char* name,
+                                 std::uint64_t maximum) {
+            const auto& field = object.at(name);
+            if (!field.is_number_unsigned() || field.get<std::uint64_t>() > maximum)
+                throw std::invalid_argument("Invalid stage integer limit");
+            return field.get<std::uint64_t>();
+        };
+        if (value.at("schema_version") == 2 && value.at("pose_action") == "solve") {
+            const auto& pose = value.at("pose_worker");
+            if (!pose.is_object() || pose.size() != 6)
+                return fail(error_code::INVALID_DATA,
+                            "Fresh solving requires explicit local worker/recipe/limits");
+            fresh_pose_configuration config;
+            config.worker = {local_path(pose, "worker_script"), executable(pose, "worker_python")};
+            config.pose_python = executable(pose, "pose_python");
+            const auto recipe = pose.at("recipe").get<std::string>();
+            if (recipe != "sequential" && recipe != "exhaustive_guided")
+                return fail(error_code::INVALID_DATA, "Unknown explicit pose recipe");
+            config.recipe =
+                recipe == "sequential" ? pose_recipe::SEQUENTIAL : pose_recipe::EXHAUSTIVE_GUIDED;
+            config.cpu_threads = static_cast<std::uint32_t>(integer(pose, "cpu_threads", 4));
+            config.journal_bytes = {static_cast<std::size_t>(
+                integer(pose, "journal_bytes", std::size_t{2} * 1024 * 1024 * 1024))};
+            job.fresh_poses = std::move(config);
+            const auto& decode = value.at("decode");
+            if (!decode.is_object())
+                return fail(error_code::INVALID_DATA, "Invalid explicit decode action");
+            if (decode.at("action") == "adopt_completed" && decode.size() == 3)
+                job.selected_decode = retained_video_decode{
+                    local_path(decode, "stage"), decode.at("completion_sha256").get<std::string>()};
+            else if (decode.at("action") == "decode" && decode.size() == 8) {
+                automatic_video_decode config_decode;
+                config_decode.job_directory = local_path(decode, "job_directory");
+                config_decode.worker = {local_path(decode, "worker_script"),
+                                        executable(decode, "python")};
+                if (!decode.at("sample_fps").is_number())
+                    return fail(error_code::INVALID_DATA, "Invalid frame selection rate");
+                config_decode.sample_fps = decode.at("sample_fps").get<double>();
+                config_decode.max_frames =
+                    static_cast<std::uint32_t>(integer(decode, "max_frames", 120));
+                config_decode.cpu_threads =
+                    static_cast<std::uint32_t>(integer(decode, "cpu_threads", 4));
+                config_decode.max_output_bytes =
+                    integer(decode, "max_output_bytes", 32ULL * 1024 * 1024 * 1024);
+                job.automatic_decode = std::move(config_decode);
+            } else
+                return fail(error_code::INVALID_DATA, "Unknown or malformed decode action");
+        } else if (value.contains("decode") || value.contains("pose_worker"))
+            return fail(error_code::INVALID_DATA,
+                        "Decode/pose worker configuration requires a solve action");
         const auto valid = validate_job(job);
         if (!valid)
             return std::unexpected(valid.error());
@@ -281,6 +427,31 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
                                      : sha256_file(job.video, 16ULL * 1024 * 1024 * 1024, stop);
         if (!source_hash)
             return std::unexpected(source_hash.error());
+        std::unique_ptr<file_lock> pose_intent_lock;
+        std::optional<decoded_video> selected_decode;
+        if (job.fresh_poses) {
+            if (!selected_inspection || !preflight)
+                return fail(error_code::INVALID_ARGUMENT,
+                            "Fresh poses require checked video preflight");
+            result<decoded_video> decoded =
+                fail(error_code::INVALID_ARGUMENT, "Missing decode action");
+            if (job.automatic_decode)
+                decoded =
+                    decode_video({job.video,
+                                  *selected_inspection,
+                                  *job.automatic_decode,
+                                  {pose_map_directory(job), job.fit_directory, job.scene_output}},
+                                 stop, log);
+            else if (job.selected_decode)
+                decoded = adopt_video_decode(*job.selected_decode, *source_hash, stop);
+            if (!decoded)
+                return std::unexpected(decoded.error());
+            selected_decode = *decoded;
+            auto ready = job_detail::prepare_pose_job(job, *decoded, *preflight, stop, log);
+            if (!ready)
+                return std::unexpected(ready.error());
+            pose_intent_lock = std::move(*ready);
+        }
         if (log)
             log("Verifying completed poses...\n");
         const auto poses = job_detail::verify_poses(job, *source_hash, stop);
@@ -370,6 +541,12 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
             if (rechecked->source_sha256 != *source_hash)
                 return fail(error_code::INVALID_DATA,
                             "Video changed after preflight; previous scene retained");
+        }
+        if (selected_decode) {
+            const auto rechecked =
+                adopt_video_decode(selected_decode->selected, *source_hash, stop);
+            if (!rechecked)
+                return std::unexpected(rechecked.error());
         }
         if (log)
             log("Compiling checked fit and publishing scene...\n");

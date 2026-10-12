@@ -1,12 +1,14 @@
 #include "world_explorer/reconstruction_adapters/batch_poses.hpp"
 #include "artifact_io.hpp"
 #include "observation_identity.hpp"
+#include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
 #include <algorithm>
 #include <fstream>
 #include <map>
 #include <new>
+#include <set>
 
 namespace world_explorer {
 namespace {
@@ -16,10 +18,19 @@ std::string utf8(const std::filesystem::path& path) {
     const auto bytes = path.generic_u8string();
     return {bytes.begin(), bytes.end()};
 }
-void publish_json(const std::filesystem::path& path, const nlohmann::json& value) {
+void publish_json(const std::filesystem::path& path, const nlohmann::json& value,
+                  bool resume = false) {
     const auto text = value.dump();
-    if (text.size() > MAX_JSON || std::filesystem::exists(path))
+    if (text.size() > MAX_JSON)
         throw std::invalid_argument("Batch manifest is oversized or already published");
+    if (std::filesystem::exists(std::filesystem::symlink_status(path))) {
+        if (resume && !std::filesystem::is_symlink(path)) {
+            const auto digest = sha256_file(path, MAX_JSON);
+            if (digest && *digest == sha256(std::as_bytes(std::span(text))))
+                return;
+        }
+        throw std::invalid_argument("Existing batch manifest differs from the resumed intent");
+    }
     auto temporary = path;
     temporary += ".tmp";
     if (std::filesystem::exists(temporary))
@@ -50,10 +61,43 @@ class colmap_batch_estimator final : public batch_pose_estimator {
                     error_code::INVALID_ARGUMENT,
                     "Batch start requires capacity for the complete selected-frame journal");
             std::filesystem::create_directories(config_.job_directory.parent_path());
-            if (!std::filesystem::create_directory(config_.job_directory))
+            if (!std::filesystem::create_directory(config_.job_directory) && !config_.resume_input)
                 return fail(error_code::WOULD_BLOCK,
                             "Batch output exists; choose a fresh directory");
+            if (config_.resume_input) {
+                if (std::filesystem::is_symlink(config_.job_directory))
+                    return fail(error_code::INVALID_DATA, "Batch job may not be a symlink");
+                const std::set<std::string> allowed{"input",
+                                                    "stages",
+                                                    "batch-request.json",
+                                                    "request.json",
+                                                    "capabilities.json",
+                                                    "result.json",
+                                                    "decode.json",
+                                                    "poses.json",
+                                                    "job.lock"};
+                for (const auto& entry : std::filesystem::directory_iterator(config_.job_directory))
+                    if (entry.is_symlink() || !allowed.contains(entry.path().filename().string()))
+                        return fail(error_code::INVALID_DATA,
+                                    "Batch job contains unexpected entries");
+                if (std::filesystem::exists(config_.job_directory / "job.lock"))
+                    return fail(error_code::WOULD_BLOCK,
+                                "Batch worker lock exists; verify its process before recovery");
+            }
             std::filesystem::create_directory(config_.job_directory / "input");
+            if (std::filesystem::is_symlink(config_.job_directory / "input"))
+                return fail(error_code::INVALID_DATA, "Batch input may not be a symlink");
+            if (config_.resume_input) {
+                std::set<std::string> allowed{"journal.json"};
+                for (std::size_t index = 0; index < catalog_.observations.size(); ++index)
+                    allowed.insert(std::to_string(index + 1) + ".ppm");
+                for (const auto& entry :
+                     std::filesystem::directory_iterator(config_.job_directory / "input"))
+                    if (entry.is_symlink() || !entry.is_regular_file() ||
+                        !allowed.contains(entry.path().filename().string()))
+                        return fail(error_code::INVALID_DATA,
+                                    "Batch input contains uncommitted assets");
+            }
             memory_ = config.memory;
             started_ = true;
             return {};
@@ -134,6 +178,28 @@ class colmap_batch_estimator final : public batch_pose_estimator {
             destination = config_.job_directory / "input" / name;
             temporary = destination;
             temporary += ".tmp";
+            if (config_.resume_input && std::filesystem::exists(destination) &&
+                !std::filesystem::exists(temporary)) {
+                if (std::filesystem::is_symlink(destination) ||
+                    std::filesystem::file_size(destination) != bytes + prefix.size())
+                    return fail(error_code::INVALID_DATA, "Resumed RGB asset shape differs");
+                sha256_builder expected_hash;
+                expected_hash.update(std::as_bytes(std::span(prefix)));
+                expected_hash.update(*frame.pixels.bytes);
+                const auto digest =
+                    sha256_file(destination, bytes + prefix.size(), cancellation_.get_token());
+                if (!digest)
+                    return std::unexpected(digest.error());
+                if (*digest != expected_hash.finish())
+                    return fail(error_code::INVALID_DATA, "Resumed RGB asset content differs");
+                record["sha256"] = *digest;
+                records.push_back(std::move(record));
+                receipts_.swap(receipts);
+                records_.swap(records);
+                asset_bytes_ += bytes + prefix.size();
+                observation.frame.pixels.bytes.reset();
+                return ticket;
+            }
             if (std::filesystem::exists(destination) || std::filesystem::exists(temporary))
                 return fail(error_code::INVALID_DATA, "Batch observation asset already exists");
             std::ofstream output(temporary, std::ios::binary);
@@ -240,25 +306,29 @@ class colmap_batch_estimator final : public batch_pose_estimator {
     result<std::shared_ptr<const completed_pose_dataset>> solve() {
         try {
             const auto journal = config_.job_directory / "input" / "journal.json";
-            publish_json(journal, {{"schema_version", 1},
-                                   {"profile", "native_rgb_journal_v1"},
-                                   {"source_sha256", config_.source_sha256},
-                                   {"decode_completion_sha256", catalog_.completion_sha256},
-                                   {"source_frame_count", metadata_.at("source_frame_count")},
-                                   {"frames", records_}});
+            publish_json(journal,
+                         {{"schema_version", 1},
+                          {"profile", "native_rgb_journal_v1"},
+                          {"source_sha256", config_.source_sha256},
+                          {"decode_completion_sha256", catalog_.completion_sha256},
+                          {"source_frame_count", metadata_.at("source_frame_count")},
+                          {"frames", records_}},
+                         config_.resume_input);
             const auto digest = sha256_file(journal, MAX_JSON, cancellation_.get_token());
             if (!digest)
                 return std::unexpected(digest.error());
             const auto request = config_.job_directory / "batch-request.json";
-            publish_json(request, {{"schema_version", 1},
-                                   {"journal", utf8(journal)},
-                                   {"journal_sha256", *digest},
-                                   {"job_dir", utf8(config_.job_directory)},
-                                   {"pose_python", config_.pose_python},
-                                   {"pose_recipe", config_.recipe == pose_recipe::SEQUENTIAL
-                                                       ? "sequential"
-                                                       : "exhaustive_guided"},
-                                   {"limits", {{"cpu_threads", config_.cpu_threads}}}});
+            publish_json(
+                request,
+                {{"schema_version", 1},
+                 {"journal", utf8(journal)},
+                 {"journal_sha256", *digest},
+                 {"job_dir", utf8(config_.job_directory)},
+                 {"pose_python", config_.pose_python},
+                 {"pose_recipe",
+                  config_.recipe == pose_recipe::SEQUENTIAL ? "sequential" : "exhaustive_guided"},
+                 {"limits", {{"cpu_threads", config_.cpu_threads}}}},
+                config_.resume_input);
             std::optional<error> worker_error;
             const auto observe = [&](const worker_event& event) {
                 if (const auto* handshake = std::get_if<worker_handshake>(&event)) {

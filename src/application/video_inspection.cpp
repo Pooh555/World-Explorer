@@ -1,13 +1,12 @@
 #include "job_validation.hpp"
+#include "owned_job.hpp"
 #include "video_preflight_detail.hpp"
 #include "world_explorer/application/video_preflight.hpp"
 #include "world_explorer/core/file_lock.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
 #include <algorithm>
-#include <fstream>
 #include <new>
-#include <set>
 
 namespace world_explorer {
 namespace {
@@ -17,52 +16,6 @@ constexpr std::size_t MAX_SCRIPT = std::size_t{16} * 1024 * 1024;
 constexpr std::string_view OWNER_FILE = ".we-inspection-owner.json";
 constexpr std::string_view LOCK_FILE = ".we-inspection.lock";
 
-result<bool> check_directory(const std::filesystem::path& root, const std::string& owner_hash) {
-    if (!std::filesystem::exists(std::filesystem::symlink_status(root)))
-        return false;
-    if (std::filesystem::is_symlink(root) || !std::filesystem::is_directory(root))
-        return fail(error_code::INVALID_DATA, "Inspection job must be a local directory");
-    const auto owner = root / OWNER_FILE;
-    const bool owned = std::filesystem::exists(std::filesystem::symlink_status(owner));
-    if (owned) {
-        if (std::filesystem::is_symlink(owner))
-            return fail(error_code::INVALID_DATA, "Inspection owner may not be a symlink");
-        const auto checked = job_detail::read_json(owner, MAX_JSON, owner_hash);
-        if (!checked)
-            return fail(error_code::INVALID_DATA,
-                        "Inspection job belongs to different inputs/configuration or is corrupt; "
-                        "select a fresh directory");
-    }
-    const std::set<std::string> allowed{
-        std::string(OWNER_FILE), std::string(LOCK_FILE), "request.json", "capabilities.json",
-        "result.json",           "inspect.json",         "stages",       "job.lock"};
-    std::size_t entries{};
-    for (const auto& entry : std::filesystem::directory_iterator(root)) {
-        const auto name = entry.path().filename().string();
-        if (++entries > 16 || entry.is_symlink() || !allowed.contains(name) ||
-            (!owned && name != LOCK_FILE) ||
-            (name == "stages" ? !entry.is_directory() : !entry.is_regular_file()))
-            return fail(error_code::INVALID_DATA, "Inspection output is unowned or contains "
-                                                  "unexpected entries; select a fresh directory");
-    }
-    return owned;
-}
-result<void> write_owner(const std::filesystem::path& root, const std::string& text) {
-    // The native lifetime lock excludes other coordinators. An interrupted owner
-    // write is not adopted as ownership; it requires diagnosis/fresh output.
-    const auto pending = root / ".we-inspection-owner.pending";
-    if (std::filesystem::exists(std::filesystem::symlink_status(pending)))
-        return fail(error_code::INVALID_DATA, "Incomplete inspection ownership file retained");
-    std::ofstream output(pending, std::ios::binary);
-    if (!output)
-        return fail(error_code::IO_ERROR, "Cannot create inspection ownership file");
-    output.write(text.data(), static_cast<std::streamsize>(text.size()));
-    output.close();
-    if (!output)
-        return fail(error_code::IO_ERROR, "Cannot write inspection ownership file");
-    std::filesystem::rename(pending, root / OWNER_FILE);
-    return {};
-}
 } // namespace
 
 result<inspected_video> inspect_video(const video_inspection_request& request,
@@ -114,25 +67,13 @@ result<inspected_video> inspect_video(const video_inspection_request& request,
             {"protocol_major", 2},           {"source_sha256", *source_hash},
             {"worker_sha256", *script_hash}, {"worker_script", script.string()},
             {"python", config.worker.python}};
-        const auto owner_text = owner.dump(2) + '\n';
-        const auto owner_hash = sha256(std::as_bytes(std::span(owner_text)));
-        const auto admitted = check_directory(directory, owner_hash);
-        if (!admitted)
-            return std::unexpected(admitted.error());
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Video inspection cancelled before ownership");
-        std::filesystem::create_directories(directory);
-        auto lock = file_lock::acquire(directory / LOCK_FILE);
+        auto lock = job_detail::open_owned_job(
+            directory, {std::string(OWNER_FILE), std::string(LOCK_FILE)}, owner,
+            {"request.json", "capabilities.json", "result.json", "inspect.json", "stages",
+             "job.lock"},
+            stop);
         if (!lock)
             return std::unexpected(lock.error());
-        const auto locked_admission = check_directory(directory, owner_hash);
-        if (!locked_admission)
-            return std::unexpected(locked_admission.error());
-        if (!*locked_admission) {
-            const auto written = write_owner(directory, owner_text);
-            if (!written)
-                return std::unexpected(written.error());
-        }
         if (std::filesystem::exists(std::filesystem::symlink_status(directory / "job.lock")))
             return fail(error_code::WOULD_BLOCK, "Inspection worker lock exists; verify its "
                                                  "recorded process is gone before recovery");
