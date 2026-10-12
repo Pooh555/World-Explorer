@@ -1,3 +1,4 @@
+#include "inspection_fixture.hpp"
 #include "pose_fixture.hpp"
 #include "world_explorer/application/pose_preparation.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
@@ -5,6 +6,7 @@
 #include "world_explorer/core/hash.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <chrono>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -588,6 +590,107 @@ TEST_CASE("coordinator preflight failure preserves output and inspection depende
         REQUIRE_FALSE(result);
     }
     CHECK(sha256_file(manifest, 65536).value() == committed);
+}
+
+TEST_CASE("automatic inspection request resolves local worker paths and rejects protected overlaps",
+          "[inspection]") {
+    job_fixture fixture;
+    test::inspection_fixture inspector{fixture.root / "inspection-inputs", fixture.job.video};
+    const auto request = fixture.root / "request.json";
+    auto config = nlohmann::json{{"schema_version", 2},
+                                 {"recipe", "local_gsplat_v1"},
+                                 {"action", "reuse_completed"},
+                                 {"pose_action", "adopt_completed"},
+                                 {"video", "capture.mp4"},
+                                 {"pose_job", "poses"},
+                                 {"fit_directory", "fit"},
+                                 {"scene_output", "scene.wexplore"},
+                                 {"steps", 7000},
+                                 {"max_image_dimension", 1280},
+                                 {"max_splats", 2000000},
+                                 {"completed_fit_identity", fixture.identity},
+                                 {"inspection",
+                                  {{"action", "inspect"},
+                                   {"job_directory", "inspection-inputs/metadata $ ; job"},
+                                   {"worker_script", "inspection-inputs/worker with spaces.py"},
+                                   {"python", WE_TEST_PYTHON},
+                                   {"minimum_free_bytes", 1}}}};
+    save_json(request, config);
+    const auto parsed = read_reconstruction_job(request);
+    REQUIRE(parsed);
+    REQUIRE(parsed->automatic_inspection);
+    CHECK_FALSE(parsed->inspection);
+    CHECK(parsed->request_file == std::filesystem::canonical(request));
+    if (parsed->automatic_inspection) {
+        CHECK(std::filesystem::equivalent(parsed->automatic_inspection->worker.script,
+                                          inspector.request.configuration.worker.script));
+        CHECK(parsed->automatic_inspection->job_directory ==
+              inspector.request.configuration.job_directory);
+    }
+    SECTION("missing local worker") { config["inspection"].erase("worker_script"); }
+    SECTION("missing executable choice") { config["inspection"].erase("python"); }
+    SECTION("unknown inspection option") { config["inspection"]["remote"] = true; }
+    SECTION("implicit reuse is rejected") {
+        config["inspection"]["completion_sha256"] = std::string(64, 'a');
+    }
+    SECTION("pose job protected") { config["inspection"]["job_directory"] = "poses/metadata"; }
+    SECTION("map protected") { config["inspection"]["job_directory"] = "fit.map/metadata"; }
+    SECTION("fit protected") { config["inspection"]["job_directory"] = "fit/metadata"; }
+    SECTION("scene protected") {
+        config["inspection"]["job_directory"] = "scene.wexplore/metadata";
+    }
+    SECTION("worker protected") { config["inspection"]["job_directory"] = "inspection-inputs"; }
+    SECTION("request protected from scene output") { config["scene_output"] = "request.json"; }
+    SECTION("request protected from fit output") { config["fit_directory"] = "request.json"; }
+    SECTION("request protected from metadata output") {
+        config["inspection"]["job_directory"] = ".";
+    }
+    SECTION("invalid resource threshold") { config["inspection"]["minimum_free_bytes"] = 0; }
+    save_json(request, config);
+    CHECK_FALSE(read_reconstruction_job(request));
+    CHECK_FALSE(std::filesystem::exists(inspector.request.configuration.job_directory));
+}
+
+TEST_CASE(
+    "shared coordinator inspects before retained map preparation and preserves scene on failure",
+    "[inspection]") {
+    job_fixture fixture;
+    REQUIRE(reconstruct(fixture.job, {}, {}));
+    const auto manifest = fixture.job.scene_output / "manifest.json";
+    const auto original = sha256_file(manifest, 65536).value();
+    const auto mode = GENERATE("valid", "failure", "escape", "no_video", "cancel_once");
+    test::inspection_fixture inspector{fixture.root / "inspection-inputs", fixture.job.video, mode};
+    fixture.job.automatic_inspection = inspector.request.configuration;
+    fixture.job.map_directory = fixture.root / "automatic-map";
+    std::stop_source cancellation;
+    std::string log;
+    const auto result =
+        reconstruct(fixture.job, cancellation.get_token(), [&](const std::string& text) {
+            log += text;
+            if (std::string_view(mode) == "cancel_once" &&
+                text.find("Worker accepted START") != std::string::npos)
+                cancellation.request_stop();
+        });
+    INFO(log);
+    if (std::string_view(mode) == "valid") {
+        REQUIRE(result);
+        const auto committed = sha256_file(manifest, 65536).value();
+        const auto scene = load_bundle(fixture.job.scene_output).value();
+        const auto stage = inspector.request.configuration.job_directory / "stages" /
+                           ("inspect-" + std::string(64, 'c'));
+        CHECK(scene->provenance.at("inspection_completion_sha256") ==
+              sha256_file(stage / "completion.json", 65536).value());
+        REQUIRE(reconstruct(fixture.job, {}, {}));
+        CHECK(sha256_file(manifest, 65536).value() == committed);
+    } else {
+        REQUIRE_FALSE(result);
+        CHECK(sha256_file(manifest, 65536).value() == original);
+        CHECK_FALSE(std::filesystem::exists(fixture.job.map_directory));
+        if (std::string_view(mode) == "cancel_once") {
+            CHECK(result.error().code == error_code::CANCELLED);
+            REQUIRE(reconstruct(fixture.job, {}, {}));
+        }
+    }
 }
 
 TEST_CASE("pose preparation rejects unsafe destinations and cancelled admission",

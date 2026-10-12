@@ -28,6 +28,25 @@ struct video_preflight_report {
     std::int32_t rotation_degrees{};
     std::int64_t time_base_numerator{}, time_base_denominator{};
 };
+struct automatic_video_inspection {
+    std::filesystem::path job_directory;
+    worker_configuration worker;
+    std::uint64_t minimum_free_bytes{};
+};
+struct video_inspection_request {
+    std::filesystem::path video;
+    automatic_video_inspection configuration;
+    std::vector<std::filesystem::path> outputs;
+};
+struct inspected_video {
+    retained_video_inspection inspection;
+    video_preflight_report report;
+};
+// Creates a fresh owned metadata job or restarts the same source/worker identity.
+// Capabilities gate START, verified completion selects a contained immutable
+// inspection, and preflight checks it before return. No pose solve or RGB decode.
+result<inspected_video> inspect_video(const video_inspection_request& request,
+                                      const std::stop_token& stop, const log_callback& log = {});
 // Bounded verification, no writes, pixel decoding or backend dependency. Checks
 // source/metadata identity and current storage; does not certify codec decoding,
 // frame selection quality, color conversion, geometry or reconstruction quality.

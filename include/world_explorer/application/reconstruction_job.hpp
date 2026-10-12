@@ -31,6 +31,9 @@ struct reconstruction_job {
     // Schema 2 explicitly adopts checked metadata before retained pose preparation.
     // Absent in legacy schema 1; those requests do not claim video preflight.
     std::optional<retained_video_inspection> inspection;
+    std::optional<automatic_video_inspection> automatic_inspection;
+    // Filled by the reader so writable job outputs cannot contain the request.
+    std::filesystem::path request_file;
 };
 
 // Strict, bounded schema; relative paths resolve against the request's directory.

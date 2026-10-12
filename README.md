@@ -40,9 +40,9 @@ build/dev/we_viewer --reconstruction-request artifacts/reconstruction.json --max
 ```
 
 See the [job schema](docs/protocols/jobs.md) for fresh fitting, checkpoint resume
-and explicit completed-fit reuse. Schema 2 can adopt a checksummed retained video
-inspection and check metadata/current output storage before preparing poses. It
-requires explicit stage and completion selection; automatic fresh video-to-pose
+and explicit completed-fit reuse. Schema 2 can run automatic local metadata
+inspection in an owned job or adopt a checksummed retained inspection, then check
+metadata/current output storage before preparing poses. Fresh video-to-pose
 chaining remains unfinished. The development recipe does not certify quality.
 
 ## View a scene
