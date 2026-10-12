@@ -1,5 +1,6 @@
 #include "world_explorer/application/video_preflight.hpp"
 #include "job_validation.hpp"
+#include "video_preflight_detail.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/worker_artifacts.hpp"
 #include <charconv>
@@ -27,13 +28,43 @@ std::uint64_t unsigned_integer(const nlohmann::json& value) {
         throw std::invalid_argument("Expected an unsigned metadata integer");
     return value.get<std::uint64_t>();
 }
+} // namespace
+namespace video_detail {
 bool overlaps(const std::filesystem::path& first, const std::filesystem::path& second) {
     const auto relative = first.lexically_relative(second);
     const auto reverse = second.lexically_relative(first);
     return first == second || (!relative.empty() && *relative.begin() != "..") ||
            (!reverse.empty() && *reverse.begin() != "..");
 }
-} // namespace
+result<void> check_storage(const std::vector<std::filesystem::path>& outputs,
+                           std::uint64_t minimum_free_bytes, const std::stop_token& stop) {
+    if (minimum_free_bytes == 0 || minimum_free_bytes > MAX_FREE_BYTES || outputs.empty() ||
+        outputs.size() > 4)
+        return fail(error_code::INVALID_ARGUMENT, "Invalid output storage requirements");
+    for (const auto& output : outputs) {
+        if (stop.stop_requested())
+            return fail(error_code::CANCELLED, "Video preflight cancelled");
+        if (output.empty())
+            return fail(error_code::INVALID_ARGUMENT, "Empty output storage path");
+        auto ancestor = std::filesystem::weakly_canonical(output);
+        while (!std::filesystem::exists(ancestor)) {
+            const auto parent = ancestor.parent_path();
+            if (parent == ancestor || parent.empty())
+                return fail(error_code::IO_ERROR, "No existing output volume for preflight");
+            ancestor = parent;
+        }
+        if (!std::filesystem::is_directory(ancestor))
+            return fail(error_code::INVALID_ARGUMENT, "Output ancestor is not a directory");
+        const auto available = std::filesystem::space(ancestor).available;
+        if (available == std::numeric_limits<std::uintmax_t>::max())
+            return fail(error_code::IO_ERROR, "Available output storage is unknown");
+        if (available < minimum_free_bytes)
+            return fail(error_code::RESOURCE_EXHAUSTED,
+                        "Insufficient available space at output: " + output.string());
+    }
+    return {};
+}
+} // namespace video_detail
 
 result<video_preflight_report> preflight_video(const video_preflight_request& request,
                                                const std::stop_token& stop,
@@ -59,7 +90,7 @@ result<video_preflight_report> preflight_video(const video_preflight_request& re
             if (output.empty())
                 return fail(error_code::INVALID_ARGUMENT, "Empty preflight output path");
             const auto path = std::filesystem::weakly_canonical(output);
-            if (overlaps(path, video) || overlaps(path, inspection_job))
+            if (video_detail::overlaps(path, video) || video_detail::overlaps(path, inspection_job))
                 return fail(error_code::INVALID_ARGUMENT, "Preflight output overlaps its inputs");
         }
         const auto checked =
@@ -121,25 +152,10 @@ result<video_preflight_report> preflight_video(const video_preflight_request& re
         report.height = static_cast<std::uint32_t>(height);
         report.duration_seconds = duration;
         report.rotation_degrees = static_cast<std::int32_t>(rotation);
-        for (const auto& output : request.outputs) {
-            if (stop.stop_requested())
-                return fail(error_code::CANCELLED, "Video preflight cancelled");
-            auto ancestor = std::filesystem::weakly_canonical(output);
-            while (!std::filesystem::exists(ancestor)) {
-                const auto parent = ancestor.parent_path();
-                if (parent == ancestor || parent.empty())
-                    return fail(error_code::IO_ERROR, "No existing output volume for preflight");
-                ancestor = parent;
-            }
-            if (!std::filesystem::is_directory(ancestor))
-                return fail(error_code::INVALID_ARGUMENT, "Output ancestor is not a directory");
-            const auto available = std::filesystem::space(ancestor).available;
-            if (available == std::numeric_limits<std::uintmax_t>::max())
-                return fail(error_code::IO_ERROR, "Available output storage is unknown");
-            if (available < selected.minimum_free_bytes)
-                return fail(error_code::RESOURCE_EXHAUSTED,
-                            "Insufficient available space at output: " + output.string());
-        }
+        const auto storage =
+            video_detail::check_storage(request.outputs, selected.minimum_free_bytes, stop);
+        if (!storage)
+            return std::unexpected(storage.error());
         const auto final_hash =
             sha256_file(stage / "completion.json", std::size_t{64} * 1024, stop);
         if (!final_hash)

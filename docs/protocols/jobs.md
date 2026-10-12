@@ -9,8 +9,8 @@ The completed scene enters the usual renderer update path after bounded loading.
 
 This command continues a completed pose job. It does not restart successful
 poses. Use the existing pose-worker request (`stop_after: "poses"`) to produce
-that job first. Schema 2 adds checked retained metadata preflight below; automatic
-inspection/solve chaining remains M1 work.
+that job first. Schema 2 can inspect metadata automatically or adopt a checked
+retained inspection before preparing poses. Fresh decode/solve chaining remains M1 work.
 The `local_gsplat_v1` recipe is explicitly selected, development only, and does
 not substitute for the upstream Q2/Q3 recipe. There are no downloads or remote
 fallbacks. An existing bundle and completed fit can be published/viewed without
@@ -29,7 +29,7 @@ the pose/video inputs. Existing requests retain schema 1, but now require the
 checked canonical pose and decode inventories in the completed job.
 
 Schema 2 retains the same recipe/fit fields and requires `pose_action` to be
-`adopt_completed`, plus this explicit inspection selection:
+`adopt_completed`, plus one explicit inspection action. For retained metadata:
 
 ```json
 {
@@ -50,6 +50,50 @@ worker is launched for adoption. This path can reuse a completed scene without
 Python, FFmpeg, COLMAP, CUDA or gsplat installed. Schema 1 rejects these new fields
 and remains the legacy retained-pose path without a metadata-preflight claim.
 
+For automatic local metadata inspection, replace the inspection object with:
+
+```json
+{
+  "action": "inspect",
+  "job_directory": "room-metadata",
+  "worker_script": "../workers/worker.py",
+  "python": "python3",
+  "minimum_free_bytes": 67108864
+}
+```
+
+All five fields are required. Paths resolve against the request directory; a bare
+Python executable uses PATH. `job_directory` must be fresh/empty or belong to the
+same source SHA, worker script/path and explicit Python choice. The native owner
+file is published before worker launch; unknown entries, symlinks, corrupt owners
+and incompatible identities fail without reseeding. Metadata output must not
+overlap capture, poses, map/fit/scene outputs, request, backend, checkpoint or
+worker inputs. All writable reconstruction outputs also protect the request file.
+
+A native nonblocking file lock protects ownership and worker execution. The lock
+file remains; OS ownership releases on process exit and is not inherited by the
+worker. This is cooperative local exclusion, not protection against external
+directory mutation or certified power-loss durability. An incomplete owner write
+requires diagnosis/fresh output. A surviving Python `job.lock` requires verifying
+its recorded process is gone before recovery; native code does not delete it.
+
+The FlatBuffers handshake must advertise video batch support and enough source
+bytes/16 MiB output capacity before START is sent. Automatic inspection always
+enters a new transport session; the worker reuses compatible committed stages
+using its current dependency/configuration identity. No RGB decoding, pose solve
+or optimizer is requested. The returned verified `inspect` artifact must be a
+bounded `result.json` inside this job's `stages/inspect-<key>`, and its immutable
+inventory/source are checked by shared preflight. Mutable job pointers do not
+select the returned artifact. Changes to the video, script or returned bytes fail
+before map preparation. Cancellation uses acknowledged CANCEL and retains valid
+committed stages; a subsequent matching request can restart.
+
+Current free-space checks cover the metadata job plus map/fit/scene outputs before
+ownership/START. The worker's existing decoded-frame storage estimate also applies
+to inspection; it does not allocate those frames. Existing retained-pose/fit
+preparation then runs through the same coordinator and records the inspection
+completion dependency in the scene. Retained adoption still requires no backend.
+
 Preflight verifies the exact selected completion digest and complete inventory
 (≤16 files, ≤16 MiB, completion/result JSON ≤64 KiB). It binds the parsed metadata
 bytes to their inventory hash, then checks original-video size/hash, primary video
@@ -69,7 +113,7 @@ preserve the previous scene and any valid map/fit. The scene records
 Retained metadata verification does not probe current backend capabilities,
 certify codec decoding/color conversion or improve timestamp-sampled selection.
 New worker stages still require their own capability handshake. Blur/cuts/lens
-diagnostics, automatic inspection and fresh pose chaining remain pending.
+diagnostics and automatic fresh decode/pose chaining remain pending.
 
 Example continuing poses with a fresh appearance job:
 
@@ -141,7 +185,8 @@ success. No scene is silently trimmed to fit a smaller renderer budget.
 
 Shared native subprocess calls use verified FlatBuffers 2.0 START/CANCEL commands
 and events described in [worker.md](worker.md). Direct Python invocation retains
-JSONL diagnostics. Full automatic video-to-pose-to-fit chaining and native
+JSONL diagnostics. Automatic inspection-to-retained-poses-to-fit works; full fresh
+video-to-pose-to-fit chaining and native
 platform qualification remain required M1 work. Worker source changes retain
 the original recipe/checkpoint identity checks; completed fits can still be
 explicitly reused, but older optimizer checkpoints are not silently upgraded.

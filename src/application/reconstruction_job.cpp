@@ -1,6 +1,7 @@
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "job_validation.hpp"
 #include "pose_pipeline.hpp"
+#include "video_preflight_detail.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/core/hash.hpp"
 #include <array>
@@ -56,6 +57,42 @@ result<void> validate_job(const reconstruction_job& job) {
                            !job.inspection->minimum_free_bytes ||
                            job.inspection->minimum_free_bytes > 32ULL * 1024 * 1024 * 1024))
         return fail(error_code::INVALID_ARGUMENT, "Invalid retained video inspection selection");
+    if (job.inspection && job.automatic_inspection)
+        return fail(error_code::INVALID_ARGUMENT, "Select one inspection action");
+    if (!job.request_file.empty())
+        for (const auto& destination : {fit, map, output})
+            if (video_detail::overlaps(destination,
+                                       std::filesystem::weakly_canonical(job.request_file)))
+                return fail(error_code::INVALID_ARGUMENT,
+                            "Reconstruction output overlaps its request file");
+    if (job.automatic_inspection) {
+        const auto& config = *job.automatic_inspection;
+        if (config.job_directory.empty() || config.worker.script.empty() ||
+            config.worker.python.empty() || config.worker.python.size() > 4096 ||
+            config.worker.python.find('\0') != std::string::npos ||
+            !config.worker.framed_protocol || !config.minimum_free_bytes ||
+            config.minimum_free_bytes > 32ULL * 1024 * 1024 * 1024)
+            return fail(error_code::INVALID_ARGUMENT, "Invalid automatic inspection configuration");
+        const auto directory = std::filesystem::weakly_canonical(config.job_directory);
+        auto protected_paths = std::vector<std::filesystem::path>{inputs[0],
+                                                                  inputs[1],
+                                                                  fit,
+                                                                  output,
+                                                                  map,
+                                                                  job.request_file,
+                                                                  job.gsplat_source,
+                                                                  job.fitting_worker.script,
+                                                                  job.checkpoint,
+                                                                  job.decode_stage,
+                                                                  config.worker.script};
+        if (std::filesystem::path(config.worker.python).has_parent_path())
+            protected_paths.emplace_back(config.worker.python);
+        for (const auto& input : protected_paths)
+            if (!input.empty() &&
+                video_detail::overlaps(directory, std::filesystem::weakly_canonical(input)))
+                return fail(error_code::INVALID_ARGUMENT,
+                            "Metadata job overlaps reconstruction inputs/outputs");
+    }
     if (job.action == fit_action::REUSE_COMPLETED) {
         if (!job_detail::valid_digest(job.completed_fit_identity) || !job.checkpoint.empty())
             return fail(error_code::INVALID_ARGUMENT,
@@ -128,24 +165,36 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
             return selected.is_absolute() ? selected : base / selected;
         };
         reconstruction_job job;
+        job.request_file = std::filesystem::canonical(request);
         if (value.at("schema_version") == 2) {
             if (value.at("pose_action") != "adopt_completed")
                 return fail(error_code::INVALID_DATA,
                             "Only explicit retained pose adoption is supported");
             const auto& inspection = value.at("inspection");
-            if (!inspection.is_object() || inspection.size() != 4 ||
-                inspection.at("action") != "adopt_completed" ||
+            if (!inspection.is_object() ||
                 !inspection.at("minimum_free_bytes").is_number_unsigned())
-                return fail(error_code::INVALID_DATA, "Invalid retained inspection request");
-            const auto selected = inspection.at("stage").get<std::string>();
-            if (selected.empty() || selected.size() > 4096 ||
-                selected.find('\0') != std::string::npos)
-                return fail(error_code::INVALID_DATA, "Invalid inspection stage path");
-            const std::filesystem::path stage(selected);
-            job.inspection =
-                retained_video_inspection{stage.is_absolute() ? stage : base / stage,
-                                          inspection.at("completion_sha256").get<std::string>(),
-                                          inspection.at("minimum_free_bytes").get<std::uint64_t>()};
+                return fail(error_code::INVALID_DATA, "Invalid inspection request");
+            const auto nested_path = [&](const char* name) {
+                const auto text = inspection.at(name).get<std::string>();
+                if (text.empty() || text.size() > 4096 || text.find('\0') != std::string::npos)
+                    throw std::invalid_argument("Invalid inspection path");
+                const std::filesystem::path selected(text);
+                return selected.is_absolute() ? selected : base / selected;
+            };
+            if (inspection.at("action") == "adopt_completed" && inspection.size() == 4)
+                job.inspection = retained_video_inspection{
+                    nested_path("stage"), inspection.at("completion_sha256").get<std::string>(),
+                    inspection.at("minimum_free_bytes").get<std::uint64_t>()};
+            else if (inspection.at("action") == "inspect" && inspection.size() == 5) {
+                auto python = inspection.at("python").get<std::string>();
+                if (std::filesystem::path(python).has_parent_path())
+                    python = nested_path("python").string();
+                job.automatic_inspection = automatic_video_inspection{
+                    nested_path("job_directory"),
+                    {nested_path("worker_script"), std::move(python)},
+                    inspection.at("minimum_free_bytes").get<std::uint64_t>()};
+            } else
+                return fail(error_code::INVALID_DATA, "Unknown or malformed inspection action");
         } else if (value.contains("pose_action") || value.contains("inspection"))
             return fail(error_code::INVALID_DATA, "Inspection adoption requires schema 2");
         job.video = path("video");
@@ -204,13 +253,23 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
         if (stop.stop_requested())
             return fail(error_code::CANCELLED, "Reconstruction cancelled");
         if (log)
-            log("Recipe: local_gsplat_v1 (development; quality unqualified).\nVerifying completed "
-                "poses...\n");
+            log("Recipe: local_gsplat_v1 (development; quality unqualified).\n");
         std::optional<video_preflight_report> preflight;
-        if (job.inspection) {
+        auto selected_inspection = job.inspection;
+        if (job.automatic_inspection) {
+            const auto inspected =
+                inspect_video({job.video,
+                               *job.automatic_inspection,
+                               {pose_map_directory(job), job.fit_directory, job.scene_output}},
+                              stop, log);
+            if (!inspected)
+                return std::unexpected(inspected.error());
+            selected_inspection = inspected->inspection;
+            preflight = inspected->report;
+        } else if (selected_inspection) {
             const auto inspected =
                 preflight_video({job.video,
-                                 *job.inspection,
+                                 *selected_inspection,
                                  {pose_map_directory(job), job.fit_directory, job.scene_output}},
                                 stop, log);
             if (!inspected)
@@ -222,6 +281,8 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
                                      : sha256_file(job.video, 16ULL * 1024 * 1024 * 1024, stop);
         if (!source_hash)
             return std::unexpected(source_hash.error());
+        if (log)
+            log("Verifying completed poses...\n");
         const auto poses = job_detail::verify_poses(job, *source_hash, stop);
         if (!poses)
             return std::unexpected(poses.error());
@@ -298,10 +359,10 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
             (void)pose;
             dependency.source_frames.push_back(frame);
         }
-        if (job.inspection) {
+        if (selected_inspection) {
             const auto rechecked =
                 preflight_video({job.video,
-                                 *job.inspection,
+                                 *selected_inspection,
                                  {pose_map_directory(job), job.fit_directory, job.scene_output}},
                                 stop);
             if (!rechecked)

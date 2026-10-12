@@ -214,7 +214,7 @@ and again before compilation; scenes retain the inspection dependency. Legacy
 schema-1 requests remain supported without claiming metadata preflight.
 
 This is retained-metadata admission, not complete video preflight: codec/color
-conversion qualification, capability probing for new stages, automatic inspection,
+conversion qualification, capability probing for later stages,
 storage forecasting/reservation and blur/cut/lens diagnostics remain pending.
 The explicit free-space threshold is a current check on each output filesystem;
 it does not promise that the complete job will fit. See
@@ -236,17 +236,49 @@ Working retained-output adoption (no decoder, solver or optimizer):
 build/dev/we_process reconstruct --request artifacts/sample2-preflight-20261012/adopt-original.json
 ```
 
-Next executable task: extend schema 2 with automatic inspection in a fresh owned
-metadata job, using the existing FlatBuffers START/CANCEL capability handshake
-and checked stage publication. Feed its immutable completion into `preflight_video`
-before adding explicit fresh pose/decode chaining, then use the existing durable
-map/fit/compile coordinator. Reject output/request overlap and incompatible job
-ownership before launching a worker; preserve cancellation and compatible stage
-restart. Verify inspection plus retained original pose/fit adoption first, without
-rerunning successful COLMAP/gsplat or rewriting the stale decode pointer. Fresh
-video selection still needs its own bounded decode/preprocessing policy. GUI and
-CLI must continue to share the same application command. Direct Python JSONL
-diagnostics remain transitional.
+Schema-2 `inspection.action: inspect` now runs an explicitly configured local
+worker in a fresh or matching owned metadata job. Current storage and protected
+path checks precede ownership/launch; a native OS writer lock releases on exit.
+Source/script/Python identity prevents accidental job takeover. Verified video
+batch/resource capabilities gate START. The returned contained immutable artifact
+feeds shared preflight; mutable job pointers are not used for selection. Identical
+restart enters a fresh transport session and reuses the worker's compatible cached
+stage. Failed inspection/cancellation cannot prepare a map or publish a scene.
+All writable coordinator outputs now protect the request file. Both GUI and CLI
+use this shared command; no new GUI layout or native input qualification occurred.
+
+Six local profiles pass **74/74** tests, including explicit C++23/libc++,
+ASan/UBSan/LSan and separate TSan; format/boundaries/targeted tidy pass. Real
+automatic inspection of the retained video, separate-process cache reuse,
+ownership/overlap rejection before START and acknowledged CANCEL (exit 130) pass.
+Eleven prior manifests (eight historical input/job/scene manifests, the prior
+inspection completion and two prior preflight output manifests), plus the video,
+retain their hashes. Seven current metadata/map/scene manifests remain unchanged
+across restart/rejection/cancellation. Committed-index inspection confirms all
+304,867 original splat payloads and 63 pose-frame dependencies remain intact.
+No RGB decoder, COLMAP, optimizer or GPU run was performed. Python worker source
+and original optimizer recipe identities remain untouched. See
+[automatic inspection evidence](validation/2026-10-12-automatic-inspection.md).
+
+Working automatic metadata inspection with original pose/fit adoption:
+
+```sh
+build/dev/we_process reconstruct --request artifacts/sample2-inspection-pipeline-20261012/inspect-and-adopt.json
+```
+
+Next executable task: extend the shared request/coordinator with explicit fresh
+decode/pose actions in separate owned jobs. Write bounded immutable decode
+requests, drive the existing isolated worker through START/CANCEL, validate its
+returned decode inventory and consume it via `frame_source` and the existing
+batch estimator. Route successful canonical poses through durable preparation
+and the existing fit/compile path, with exact source/stage/checkpoint identities,
+compatible restart and no accidental takeover of retained output. Reuse checked
+retained outputs for real integration first; do not rerun original successful
+COLMAP/gsplat or rewrite the stale decode pointer. Selection remains timestamp
+sampling until the separately specified blur/cut/lens/coverage work is implemented
+and qualified. GUI and CLI must keep sharing this command. Direct Python JSONL
+diagnostics remain transitional. The worker's decoded-storage estimate applies
+even to metadata inspection; unknown/inadequate space is an explicit failure.
 
 Outstanding gates include the prescribed ≤250k fixture, reference renderer parity,
 automatic video/solve chaining and native worker-control qualification,
