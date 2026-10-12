@@ -100,5 +100,15 @@ CLI import uses operation 1 and is idempotent after restart within its receipt
 window. Inspection takes the writer lock briefly while validating/reloading and
 returns an immutable snapshot. A producer can use `acquire_snapshot` within an
 open store while consumers retain previous snapshots. Canonical interchange is
-separate from recovery checkpoints; it contains no operation receipts. Automatic
-pose-to-map-to-fit orchestration and complete worker command control remain M1 work.
+separate from recovery checkpoints; it contains no operation receipts. Native
+import also accepts a checked in-memory canonical asset, serializing and retaining
+it through the same byte/count admission and publication path. File import keeps
+the exact supplied bytes and hash; it never substitutes a re-encoding.
+
+`prepare-poses POSE_JOB VIDEO MAP_DIRECTORY [--decode-stage DIR]` verifies the
+retained job and source, then creates/reopens the initial durable map without
+running a decoder, solver or optimizer. It rejects overlapping inputs and
+different/advanced dependencies, retaining operation 1 across restart. The shared
+[reconstruction coordinator](jobs.md) now performs this preparation before fitting
+and keeps exclusive map ownership through dependent scene publication. Full
+video preflight/automatic solve chaining and complete worker control remain M1 work.

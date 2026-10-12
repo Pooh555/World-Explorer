@@ -11,6 +11,7 @@
 #include <mutex>
 #include <optional>
 #include <set>
+#include <span>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -62,6 +63,7 @@ class map_persistence;
 // input on failure. Retry acknowledgements persist within remembered_operations;
 // older retries require snapshot resynchronization. Persistence performs blocking
 // file IO: call commit off the rendering thread.
+struct canonical_pose_asset;
 class map_store {
   public:
     explicit map_store(map_store_limits limits = {});
@@ -77,6 +79,9 @@ class map_store {
     result<map_revision_id> import_pose_asset(const std::filesystem::path& path,
                                               const std::string& sha256, operation_id operation,
                                               const std::stop_token& stop = {});
+    result<map_revision_id> import_pose_asset(const canonical_pose_asset& asset,
+                                              operation_id operation,
+                                              const std::stop_token& stop = {});
 
   private:
     mutable std::mutex mutex_;
@@ -90,6 +95,10 @@ class map_store {
     std::deque<remembered> operations_;
     std::unique_ptr<map_persistence> persistence_;
     friend class map_persistence;
+    result<map_revision_id> import_encoded_pose_asset(std::span<const std::byte> bytes,
+                                                      const std::string& hash,
+                                                      operation_id operation,
+                                                      const std::stop_token& stop);
     result<map_revision_id> commit_locked(const map_transaction& transaction,
                                           const std::stop_token& stop,
                                           std::optional<std::string> initial_asset = {});

@@ -84,7 +84,8 @@ result<pose_input> verify_poses(const reconstruction_job& job, const std::string
 }
 
 result<std::string> verify_fit(const reconstruction_job& job, const pose_input& poses,
-                               const std::string& source_hash) {
+                               const std::string& source_hash,
+                               const completed_pose_dataset& dataset) {
     const auto result_file = read_json(job.fit_directory / "result.json", std::size_t{1024} * 1024);
     const auto inputs =
         read_json(job.fit_directory / "input_manifest.json", std::size_t{1024} * 1024);
@@ -106,8 +107,12 @@ result<std::string> verify_fit(const reconstruction_job& job, const pose_input& 
         return fail(error_code::INVALID_DATA,
                     "Completed fit identity differs from the explicitly selected fit");
     const auto& frames = inputs->at("dataset").at("frames");
-    if (!frames.is_array() || frames.empty() || frames.size() > 120)
+    if (!frames.is_array() || frames.empty() || frames.size() > 120 ||
+        frames.size() != dataset.poses.size())
         return fail(error_code::INVALID_DATA, "Invalid fit frame inventory");
+    std::map<frame_id, const pose_estimate*> registered;
+    for (const auto& pose : dataset.poses)
+        registered.emplace(pose.frame, &pose);
     std::set<std::string> names;
     for (const auto& frame : frames) {
         const auto name = frame.at("name").get<std::string>();
@@ -116,6 +121,28 @@ result<std::string> verify_fit(const reconstruction_job& job, const pose_input& 
             found->second != frame.at("sha256").get<std::string>())
             return fail(error_code::INVALID_DATA,
                         "Fit images differ from the committed pose stage");
+        const auto source_frame = dataset.training_frames.find(name);
+        if (source_frame == dataset.training_frames.end() ||
+            !registered.contains(source_frame->second))
+            return fail(error_code::INVALID_DATA, "Fit image has no registered canonical pose");
+        const auto& transform = registered.at(source_frame->second)->submap_from_camera;
+        const auto q = transform.rotation;
+        const quatd inverse{q.w, -q.x, -q.y, -q.z};
+        // Native COLMAP cam_from_world = canonical cam_from_world * Rx(pi).
+        const auto x = rotate(inverse, {1, 0, 0});
+        const auto y = rotate(inverse, {0, -1, 0});
+        const auto z = rotate(inverse, {0, 0, -1});
+        const auto t = rotate(inverse, transform.translation) * -1;
+        const std::array<std::array<double, 4>, 4> expected{
+            {{x.x, y.x, z.x, t.x}, {x.y, y.y, z.y, t.y}, {x.z, y.z, z.z, t.z}, {0, 0, 0, 1}}};
+        const auto view = frame.at("view").get<std::array<std::array<double, 4>, 4>>();
+        for (std::size_t row = 0; row < 4; ++row)
+            for (std::size_t column = 0; column < 4; ++column)
+                if (!std::isfinite(view[row][column]) ||
+                    std::abs(view[row][column] - expected[row][column]) >
+                        5e-6 * std::max(1., std::abs(expected[row][column])))
+                    return fail(error_code::INVALID_DATA,
+                                "Fit cameras differ from the canonical pose dependency");
     }
     auto identity = result_file->at("identity").get<std::string>();
     if (!valid_digest(identity))

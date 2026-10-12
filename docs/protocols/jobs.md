@@ -20,6 +20,13 @@ requests over 64 KiB and excessive JSON nesting. Relative filesystem paths
 resolve against the request file's directory; a bare `fit_python` executable is
 looked up through PATH. The UI has separate pose and reconstruction request fields.
 
+Optional `map_directory` selects the durable pose output; when omitted, it is
+the sibling `FIT_DIRECTORY.map`. Optional `decode_stage` explicitly selects the
+retained decode stage belonging to this pose job. It never rewrites a stale
+`decode.json` pointer. Map, scene and fit outputs must not overlap each other or
+the pose/video inputs. Existing requests retain schema 1, but now require the
+checked canonical pose and decode inventories in the completed job.
+
 Example continuing poses with a fresh appearance job:
 
 ```json
@@ -60,6 +67,25 @@ undistorted model presence and path containment. Symlinks, extra uncommitted fil
 and changed bytes fail. Source and pose inventory are checked again after fitting.
 Nonzero worker exits and missing completion manifests cannot publish a scene.
 
+Before fitting, shared native pose preparation converts the retained dataset to
+canonical FlatBuffers and publishes it inside a persistent map. It uses operation
+1, epoch 0/revision 1, retaining source/decode/pose/optional-journal completion
+dependencies and retry receipts. An empty owned map can finish interrupted
+preparation; an identical committed map is reused after restart. A different
+dependency, correction/new epoch, corrupt manifest or occupied unowned directory
+fails without reseeding or resetting. The coordinator holds the writer lock until
+scene publication finishes. A cancelled/failed fit leaves valid prepared poses
+available, alongside the previous scene.
+
+Fit admission checks the complete registered image inventory and its native
+COLMAP camera views against canonical poses, applying Rx(pi) and a relative
+`5e-6` tolerance for the trainer's float32 matrices. Thus identical image bytes
+cannot attach a fit from a different camera solve. Source, decode and pose
+dependencies are checked again before compilation. The scene records the
+canonical asset/pose-completion hashes and map epoch/revision; appearance chunks
+conservatively depend on every registered source frame. This initial-fit path
+requires revision 1; it does not silently reuse a fit after pose corrections.
+
 Cancellation interrupts checksum reads and worker processes. The previous scene
 manifest survives failures before publication. Final immutable asset writing and
 atomic manifest replacement form a commit boundary; a later cancellation cannot
@@ -69,6 +95,7 @@ published scene, the error includes its output path and keeps the previous scene
 The startup request mode returns failure instead of treating an empty viewer as
 success. No scene is silently trimmed to fit a smaller renderer budget.
 
-The subprocess boundary still uses the staged JSONL diagnostic transport described
-in [worker.md](worker.md). Length-prefixed FlatBuffers and concrete native
-frame/pose adapters remain required M1 work.
+Shared native subprocess calls consume verified length-prefixed FlatBuffers
+events described in [worker.md](worker.md). Direct Python invocation retains
+JSONL diagnostics. Typed bidirectional worker commands/control and full automatic
+video-to-pose-to-fit chaining remain required M1 work.

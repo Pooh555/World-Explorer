@@ -10,7 +10,7 @@ class map_persistence {
                                                    const std::stop_token& stop);
     result<void> publish(const map_state& state, const std::deque<map_store::remembered>& receipts,
                          const std::stop_token& stop);
-    result<void> install_pose_asset(const std::filesystem::path& path, const std::string& hash,
+    result<void> install_pose_asset(std::span<const std::byte> bytes, const std::string& hash,
                                     const std::stop_token& stop);
     bool requires_reopen() const noexcept { return uncertain_; }
 

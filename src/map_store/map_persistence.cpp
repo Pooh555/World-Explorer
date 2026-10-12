@@ -330,13 +330,10 @@ result<void> map_persistence::reload(map_store& store, const std::stop_token& st
         return fail(error_code::INVALID_DATA, std::string("Malformed map manifest: ") + e.what());
     }
 }
-result<void> map_persistence::install_pose_asset(const std::filesystem::path& path,
+result<void> map_persistence::install_pose_asset(std::span<const std::byte> bytes,
                                                  const std::string& hash,
                                                  const std::stop_token& stop) {
-    const auto bytes = map_files::read_bytes(path, std::size_t{256} * 1024 * 1024, stop);
-    if (!bytes)
-        return std::unexpected(bytes.error());
-    const auto checked = decode_pose_asset(*bytes, hash, {}, stop);
+    const auto checked = decode_pose_asset(bytes, hash, {}, stop);
     if (!checked)
         return std::unexpected(checked.error());
     const auto destination = pose_path(config_.directory, hash);
@@ -349,10 +346,10 @@ result<void> map_persistence::install_pose_asset(const std::filesystem::path& pa
             return std::unexpected(existing.error());
         return {};
     }
-    const auto admitted = admit_asset(bytes->size());
+    const auto admitted = admit_asset(bytes.size());
     if (!admitted)
         return std::unexpected(admitted.error());
-    const auto written = map_files::publish_asset(destination, *bytes, stop);
+    const auto written = map_files::publish_asset(destination, bytes, stop);
     if (!written)
         return std::unexpected(written.error());
     return {};

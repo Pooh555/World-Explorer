@@ -22,6 +22,10 @@ struct reconstruction_job {
     fit_action action{fit_action::START};
     std::filesystem::path checkpoint;
     std::string completed_fit_identity;
+    // Empty map_directory selects the sibling FIT_DIRECTORY.map. Explicit
+    // decode_stage selects a retained stage without rewriting a stale pointer.
+    std::filesystem::path map_directory;
+    std::filesystem::path decode_stage;
 };
 
 // Strict, bounded schema; relative paths resolve against the request's directory.

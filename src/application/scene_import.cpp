@@ -5,6 +5,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <set>
 
 namespace world_explorer {
 namespace {
@@ -12,6 +13,7 @@ struct splat_import_context {
     std::map<std::string, std::string> provenance;
     std::string expected_hash;
     std::optional<std::uint64_t> expected_count;
+    std::optional<fit_pose_dependency> poses{};
 };
 result<void> publish_scene(const scene_import_request& request, splat_import_context context) {
     const auto& ply = request.input;
@@ -51,6 +53,16 @@ result<void> publish_scene(const scene_import_request& request, splat_import_con
     scene->provenance["input_sha256"] = *source_hash;
     scene->provenance["exporter"] = "gsplat-1.5.3";
     scene->provenance["quality_gate"] = "UNVERIFIED";
+    if (context.poses) {
+        scene->epoch = context.poses->epoch;
+        for (auto& [id, chunk] : scene->chunks) {
+            (void)id;
+            auto dependent = std::make_shared<scene_chunk>(*chunk);
+            dependent->pose_revision = {context.poses->revision.value};
+            dependent->source_frames = context.poses->source_frames;
+            chunk = std::move(dependent);
+        }
+    }
     if (request.stop.stop_requested())
         return fail(error_code::CANCELLED, "Scene publication cancelled; previous scene retained");
     return write_bundle(destination, scene);
@@ -178,6 +190,23 @@ result<void> compile_fit_scene(const scene_import_request& request,
                                       {"walk", "UNAVAILABLE"}},
                                      ply_hash,
                                      splats};
+        if (expectation.poses) {
+            const auto& dependency = *expectation.poses;
+            std::set<frame_id> frames;
+            if (!valid_digest(dependency.asset_sha256) ||
+                !valid_digest(dependency.pose_completion_sha256) || dependency.epoch.value ||
+                dependency.revision.value != 1 || dependency.source_frames.empty() ||
+                dependency.source_frames.size() > 120)
+                return fail(error_code::INVALID_DATA, "Invalid initial fit pose dependency");
+            for (const auto frame : dependency.source_frames)
+                if (!frame.value || !frames.insert(frame).second)
+                    return fail(error_code::INVALID_DATA, "Invalid fit source frame dependency");
+            context.provenance["pose_asset_sha256"] = dependency.asset_sha256;
+            context.provenance["pose_completion_sha256"] = dependency.pose_completion_sha256;
+            context.provenance["map_epoch"] = std::to_string(dependency.epoch.value);
+            context.provenance["map_revision"] = std::to_string(dependency.revision.value);
+            context.poses = dependency;
+        }
         const auto input_manifest = root / "input_manifest.json";
         if (std::filesystem::exists(input_manifest)) {
             if (std::filesystem::canonical(input_manifest).parent_path() != root)
