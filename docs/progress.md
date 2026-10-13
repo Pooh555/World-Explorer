@@ -64,6 +64,17 @@ SHA-256 `51263d9991dcbc2136d0809ecba1a8ba1b261896f3b222b7afba19784a153ef6`.
 Do not rewrite it or rerun successful original COLMAP/gsplat. For retained replay,
 explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7dcab6451304305b9987c5e1da3e8ab1f5eaa9c6b`.
 
+## User-requested video runs
+
+[New local runs](validation/2026-10-13-new-videos.md): renamed `sample_1.mp4`
+is identical to the original; completed outputs were preserved. `sample_2.avi`
+failed with three disconnected COLMAP models (exit 2); its failed solve is retained.
+`sample_3.mp4` is running in `artifacts/new-videos-20261013-sample_3`: 92 decoded
+frames, native RGB journal complete, poses started. Check `run.log` and
+`run-result.json` before retrying; do not start a duplicate or rerun completed fits.
+On success validate/open `scene.wexplore` with `--source-view --max-splats 2000000`.
+No new reconstruction gate or viewer pass is claimed.
+
 ## Next executable work and blockers
 
 Next executable task: extend Import review with optional checked retained video
