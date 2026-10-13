@@ -42,5 +42,13 @@ No gate status changes from cleanup or starting a run.
 [Model selection repair](validation/2026-10-13-model-selection.md) corrects a false
 POSE_DISCONNECTED rejection for the original sample: a complete 63-frame model
 was accompanied by a redundant four-frame subset. 15 worker/114 CPU checks and
-real recovered pose replay pass; fresh fitting/publication is pending. No gate
+real recovered pose replay pass; fresh sample_1 fitting/publication/native viewing
+passed with 295,952 splats. No gate
 thresholds were changed and genuinely separate/ambiguous models still fail.
+
+[Service/orientation repair](validation/2026-10-13-service-orientation.md) preserves
+all fitted sample_1 assets while correcting explicit source-view presentation up.
+116 GCC C++26 / Clang C++23 checks and 18 worker checks pass. Remaining videos
+use independent, bounded sequential supervision and single-pair CPU matching;
+terminal results are pending. Canonical world axes and unknown gravity/scale
+remain explicit; no Q/P/N/E gate is newly certified.

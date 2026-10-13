@@ -103,3 +103,32 @@ TEST_CASE("source view reset rejects missing or invalid camera metadata") {
     scene.provenance["source_inspection_view"] = std::string(4097, ' ');
     CHECK_FALSE(source_view(scene));
 }
+
+TEST_CASE("source view preserves recorded roll without claiming gravity") {
+    scene_state scene;
+    nlohmann::json metadata{{"schema_version", 2},
+                            {"position", {1, 2, 3}},
+                            {"forward", {0, 0, -1}},
+                            {"up", {-1, 0, 0}},
+                            {"up_reference", "CAPTURE_ORIENTATION"},
+                            {"speed", 2},
+                            {"vertical_fov_radians", 1},
+                            {"frame_name", "000001.png"}};
+    scene.provenance["source_inspection_view"] = metadata.dump();
+    const auto view = source_view(scene);
+    REQUIRE(view);
+    CHECK(view->camera.up_axis == vec3d{-1, 0, 0});
+    CHECK(view->camera.forward().z == Catch::Approx(-1));
+    CHECK(view->camera.right().y == Catch::Approx(1));
+    CHECK(view->camera.down().x == Catch::Approx(1));
+    metadata["up"] = {0, 0, -1};
+    scene.provenance["source_inspection_view"] = metadata.dump();
+    CHECK_FALSE(source_view(scene));
+    metadata["up"] = {0, 0, 0};
+    scene.provenance["source_inspection_view"] = metadata.dump();
+    CHECK_FALSE(source_view(scene));
+    metadata["schema_version"] = 1;
+    scene.provenance["source_inspection_view"] = metadata.dump();
+    REQUIRE(source_view(scene));
+    CHECK(source_view(scene)->camera.up_axis == vec3d{0, 1, 0});
+}

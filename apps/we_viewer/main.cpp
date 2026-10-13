@@ -55,7 +55,8 @@ int viewer_main(int argc, char** argv) {
                    "          [--screenshot FILE.ppm] [--settings FILE] [--shader-dir DIR]\n"
                    "          [--worker-python EXE] [--worker-script FILE] [--no-validation]\n"
                    "          [--max-splats N] [--residency-mib N]\n";
-            std::cout << "          [--source-view] (explicit upright spectator reset)\n";
+            std::cout
+                << "          [--source-view] (explicit capture-orientation spectator reset)\n";
             std::cout
                 << "          [--reconstruction-request JOB.json] [--review-request JOB.json]\n";
             return 0;
@@ -269,6 +270,7 @@ int viewer_main(int argc, char** argv) {
             if (admitted) {
                 pending_ticket = *admitted;
                 current = loaded;
+                camera.up_axis = {0, 1, 0};
                 camera.fit(world_bounds(*current));
                 if (inspect_source) {
                     const auto inspection = source_view(*current);
@@ -325,8 +327,8 @@ int viewer_main(int argc, char** argv) {
         }
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-            ImGui::SetTooltip("Reset toward the first recorded source view, keeping world up. No "
-                              "camera following.");
+            ImGui::SetTooltip("Reset using the recorded capture orientation. Fly keeps this up "
+                              "direction; gravity remains unmeasured. No camera following.");
         ImGui::SameLine();
         ImGui::TextUnformatted("Fly");
         ImGui::SameLine();
@@ -358,6 +360,9 @@ int viewer_main(int argc, char** argv) {
                 ImGui::TextWrapped("Scale: %s", current->scale == scale_status::ARBITRARY
                                                     ? "arbitrary (not measured)"
                                                     : "measured metric");
+                ImGui::TextWrapped("View up: %s (gravity unmeasured)",
+                                   camera.up_axis == vec3d{0, 1, 0} ? "world axis"
+                                                                    : "capture orientation");
                 ImGui::TextWrapped("Coverage outside captured surfaces is unknown.");
                 if (ImGui::Button("Save bookmark"))
                     bookmark = camera_bookmark{current->id, current->epoch, camera};

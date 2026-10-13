@@ -56,8 +56,18 @@ The worker now selects a unique strict superset, preserving genuine disconnected
 and ambiguous-model rejection. Retained-model recovery completed in a separate
 `pose-recovery/` job, and native replay passed: 63 observations/poses, one calibration.
 The new sequential recovery queue uses `request-recovery.json` per video:
-sample_1's normal 7k fit is active; sample_2/3 are pending. Scene publication and
-native viewing remain pending. No original saved stages or requests were changed.
+sample_1 completed its 7k fit: **295,952 splats**, validated/native-viewed with zero
+Vulkan errors. All 204 original pose files and 18 completed fit files remain
+unchanged. Its viewing metadata now preserves capture orientation on an explicit
+Source view reset; canonical world/poses/SH and unknown gravity are unchanged.
+
+Sample_2's later stop was cancellation (exit 130); the original trigger is not
+established. Remaining jobs now run sequentially in an independent, resource-
+bounded user service. A custom-folder stale-lock bug was corrected. Measured CPU
+matching memory pressure required single-pair matching, retaining all features
+and frames. Current requests are `request-bounded.json`, with two extraction/map
+threads and new `pose-bounded/` outputs. Sample_2 is running; sample_3 is pending.
+See [service/orientation evidence](validation/2026-10-13-service-orientation.md).
 See [fresh reset evidence](validation/2026-10-13-fresh-video-reset.md).
 
 ```sh
@@ -75,10 +85,11 @@ artifacts remain ignored; [layout protocol](protocols/artifacts.md).
 
 ## Next executable work and blockers
 
-Next executable task: inspect the active recovery queue, validate/view sample_1
-on successful publication, and record its terminal result and preservation audit.
-Then inspect sample_2/3, which run sequentially using the fixed selector. Do not
-launch duplicates or accept genuinely separate models as a completed scene.
+Next executable task: inspect the active user service and terminal queue results
+for sample_2/3; validate/view successful scenes and retain actual failure evidence.
+Do not launch duplicates or rerun sample_1's completed fit. Current sample_1 view:
+`build/dev/we_viewer --scene artifacts/sample_1/scene.wexplore --source-view --max-splats 1000000`.
+Source view is a viewing reference, not measured gravity or floor/collision.
 After this run slice resume checked retained metadata/current-storage Import review.
 
 Reference hardware, prescribed fixture/platform qualification and complete gates

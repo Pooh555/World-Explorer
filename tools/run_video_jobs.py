@@ -8,6 +8,7 @@ import os
 import signal
 import subprocess
 import time
+import sys
 from pathlib import Path
 
 
@@ -17,10 +18,41 @@ def write_json(path, value):
     pending.replace(path)
 
 
+def owned_job_directories(request, artifacts):
+    """Only mutable worker outputs selected by this reconstruction request."""
+    with request.open("rb") as stream:
+        payload = stream.read(65537)
+    if len(payload) > 65536:
+        raise ValueError("request exceeds 64 KiB")
+    data = json.loads(payload)
+    if not isinstance(data, dict):
+        raise ValueError("request must be an object")
+    paths = []
+    if data.get("pose_action") == "solve":
+        paths.append(data["pose_job"])
+    for stage, action in [("inspection", "inspect"), ("decode", "decode")]:
+        config = data.get(stage, {})
+        if not isinstance(config, dict):
+            raise ValueError("invalid worker configuration")
+        if config.get("action") == action:
+            paths.append(config["job_directory"])
+    directories = []
+    for value in paths:
+        if not isinstance(value, str) or not value:
+            raise ValueError("invalid worker output path")
+        directory = Path(value).resolve()
+        if not directory.is_relative_to(artifacts.resolve()):
+            raise ValueError("worker output is outside artifacts/")
+        directories.append(directory)
+    return directories
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("requests", nargs="+", type=Path)
     parser.add_argument("--recover-stale-locks", action="store_true")
+    parser.add_argument("--service", action="store_true",
+                        help="Use a transient Linux user service (2 CPU cores, 7 GiB memory cap)")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     artifacts = root / "artifacts"
@@ -31,6 +63,26 @@ def main():
         if not request.is_file() or not request.is_relative_to(artifacts.resolve()):
             parser.error("requests must be files inside artifacts/")
 
+    if args.service:
+        unit = "world-explorer-video-jobs"
+        command = ["systemd-run", "--user", "--collect", "--service-type=exec",
+                   f"--unit={unit}", f"--working-directory={root}",
+                   "--property=CPUQuota=200%", "--property=MemoryHigh=6G",
+                   "--property=MemoryMax=7G", "--property=MemorySwapMax=1G",
+                   "--property=OOMPolicy=stop", "--property=KillSignal=SIGINT",
+                   "--property=TimeoutStopSec=90s",
+                   f"--property=StandardOutput=append:{artifacts / 'queue.log'}",
+                   f"--property=StandardError=append:{artifacts / 'queue.log'}",
+                   sys.executable, str(Path(__file__).resolve())]
+        if args.recover_stale_locks:
+            command.append("--recover-stale-locks")
+        command.extend(str(p) for p in requests)
+        subprocess.run(command, check=True)
+        write_json(artifacts / "queue-service.json", {
+            "unit": unit, "argv": command, "started_epoch": time.time(),
+        })
+        return
+
     # A kernel-owned lock releases on a crash without requiring PID-file removal.
     with (artifacts / ".queue.lock").open("w") as lock:
         try:
@@ -40,10 +92,13 @@ def main():
 
         child = None
         stopped = False
+        blocked = False
 
         def stop(_signal, _frame):
             nonlocal stopped
             stopped = True
+            queue["stop_signal"] = signal.Signals(_signal).name
+            queue["stop_epoch"] = time.time()
             if child is not None and child.poll() is None:
                 child.send_signal(signal.SIGINT)
 
@@ -59,6 +114,16 @@ def main():
                 break
             logs = request.parent / "logs"
             logs.mkdir(exist_ok=True)
+            previous = logs / "result.json"
+            if previous.exists():
+                history = logs / "history"
+                history.mkdir(exist_ok=True)
+                attempt = 1
+                while (history / f"attempt-{attempt:03d}").exists():
+                    attempt += 1
+                destination = history / f"attempt-{attempt:03d}"
+                destination.mkdir()
+                previous.rename(destination / "result.json")
             argv = [str(root / "build/dev/we_process"), "reconstruct", "--request", str(request)]
             start = time.monotonic()
             result = {}
@@ -73,8 +138,10 @@ def main():
                 log.flush()
                 try:
                     if args.recover_stale_locks:
-                        for stage in ["inspection", "decode", "poses"]:
-                            path = request.parent / stage / "job.lock"
+                        for directory in owned_job_directories(request, artifacts):
+                            path = directory / "job.lock"
+                            if path.is_symlink():
+                                raise ValueError("worker lock may not be a symbolic link")
                             if path.exists():
                                 pid = int(path.read_text().strip())
                                 if pid <= 0:
@@ -83,9 +150,13 @@ def main():
                                     os.kill(pid, 0)
                                 except ProcessLookupError:
                                     path.unlink()
-                                    log.write(f"Removed stale {stage} lock: PID {pid} is gone.\n")
+                                    log.write(f"Removed stale {directory.name} lock: PID {pid} is gone.\n")
                                     log.flush()
+                                except PermissionError as error:
+                                    blocked = True
+                                    raise RuntimeError(f"cannot verify worker PID {pid}") from error
                                 else:
+                                    blocked = True
                                     raise RuntimeError(f"worker PID {pid} is still alive")
                     if stopped:
                         raise RuntimeError("queue cancelled before launch")
@@ -105,7 +176,7 @@ def main():
                             ], cwd=root, stdin=subprocess.DEVNULL,
                                 stdout=validation, stderr=subprocess.STDOUT)
                         result["validation_exit_code"] = checked.returncode
-                except (OSError, ValueError, RuntimeError) as error:
+                except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
                     result.update(exit_code=2, error=str(error))
                 finally:
                     if child is not None:
@@ -116,10 +187,14 @@ def main():
             result.update(elapsed_seconds=time.monotonic() - start, sequential=True,
                           scene_published=(request.parent / "scene.wexplore/manifest.json").exists())
             write_json(logs / "result.json", result)
-            job.update(status="COMPLETED" if result["exit_code"] == 0 and
-                       result.get("validation_exit_code") == 0 else "FAILED", **result)
+            status = "COMPLETED" if result["exit_code"] == 0 and result.get("validation_exit_code") == 0 else "FAILED"
+            if stopped or result["exit_code"] == 130:
+                status = "CANCELLED"
+            job.update(status=status, **result)
             write_json(artifacts / "queue.json", queue)
-        queue["status"] = "CANCELLED" if stopped else "FINISHED"
+            if blocked:
+                break
+        queue["status"] = "BLOCKED" if blocked else "CANCELLED" if stopped else "FINISHED"
         write_json(artifacts / "queue.json", queue)
 
 

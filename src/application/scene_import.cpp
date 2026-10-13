@@ -123,9 +123,11 @@ result<std::string> inspection_view_metadata(const std::filesystem::path& path,
         position[1] = -position[1];
         position[2] = -position[2];
         const nlohmann::json result{
-            {"schema_version", 1},
+            {"schema_version", 2},
             {"position", position},
             {"forward", {view[2][0], -view[2][1], -view[2][2]}},
+            {"up", {-view[1][0], view[1][1], view[1][2]}},
+            {"up_reference", "CAPTURE_ORIENTATION"},
             {"vertical_fov_radians", 2 * std::atan(height / (2 * intrinsic[1][1]))},
             {"speed", std::clamp(scene_scale * 0.2, 0.01, 10000.)},
             {"frame_name", frame.at("name").get<std::string>()}};

@@ -27,7 +27,9 @@ def main():
         reader_options={"camera_model": "OPENCV"},
         extraction_options={"num_threads": args.threads, "use_gpu": False},
         device=pycolmap.Device.cpu)
-    matching = {"num_threads": args.threads, "use_gpu": False,
+    # CPU SIFT builds dense descriptor-distance workspaces. One pair at a time
+    # avoids multiplying that memory by the extraction/mapping thread budget.
+    matching = {"num_threads": 1, "use_gpu": False,
                 "guided_matching": args.recipe == "exhaustive_guided"}
     if args.recipe == "exhaustive_guided":
         pycolmap.match_exhaustive(database, matching_options=matching, device=pycolmap.Device.cpu)
