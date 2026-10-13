@@ -86,12 +86,15 @@ bindings are preserved; the controls overlay shows the active keys. The wheel
 changes speed and Escape releases the mouse. Focus
 loss releases capture. Settings remap keys and reset panels. Walking is disabled
 because independent scale and supported collision geometry are not implemented.
-Bookmarks are session-local. Settings persist but input capture never does.
+Bookmarks are session-local and restore pose and FOV together. Settings persist
+but input capture never does. UI scale follows the current display; Import remains
+within the viewport when resized.
 
 The interface has open/import dialogs, background scene loading, worker logs and
-cancellation. Import currently accepts a configured job JSON under Advanced;
-the full planned preflight and review UI remains incomplete. Dear ImGui currently
-has no screen-reader integration in this application.
+cancellation. Import reviews a configured job JSON before running, showing checked
+retained metadata, actions, limits and current output storage. Automatic inspection
+leaves metadata pending. The full planned preflight UI remains incomplete. Dear
+ImGui currently has no screen-reader integration in this application.
 
 ## Process a local video
 

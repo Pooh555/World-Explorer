@@ -40,7 +40,7 @@ template <class handle_type> handle_type native(std::uintptr_t value) {
 }
 int viewer_main(int argc, char** argv) {
     std::filesystem::path scene_path, reconstruction_request, review_request, screenshot,
-        settings_path, shader_path = WE_SHADER_DIRECTORY;
+        settings_path, input_trace_path, shader_path = WE_SHADER_DIRECTORY;
     worker_configuration worker{WE_WORKER_SCRIPT};
     std::size_t max_splats = 250000;
     std::size_t residency_mib = 512;
@@ -59,6 +59,8 @@ int viewer_main(int argc, char** argv) {
                 << "          [--source-view] (explicit capture-orientation spectator reset)\n";
             std::cout
                 << "          [--reconstruction-request JOB.json] [--review-request JOB.json]\n";
+            std::cout << "          [--input-trace FILE.jsonl] (bounded native input diagnostics; "
+                         "F12 readback)\n";
             return 0;
         }
         if (option == "--diagnostic-fixture")
@@ -79,6 +81,8 @@ int viewer_main(int argc, char** argv) {
                 screenshot = value;
             else if (option == "--settings")
                 settings_path = value;
+            else if (option == "--input-trace")
+                input_trace_path = value;
             else if (option == "--shader-dir")
                 shader_path = value;
             else if (option == "--worker-python")
@@ -147,9 +151,16 @@ int viewer_main(int argc, char** argv) {
     auto& io = ImGui::GetIO();
     io.ConfigFlags = ImGuiConfigFlags_NavEnableKeyboard;
     io.IniFilename = nullptr;
-    const float scale = std::clamp(SDL_GetWindowDisplayScale(window.get()), 1.F, 3.F);
+    float scale = 1;
+    std::array<ImFont*, 13> fonts{};
+    for (std::size_t index = 0; index < fonts.size(); ++index) {
+        ImFontConfig font;
+        font.SizePixels = 13.F * (1.F + static_cast<float>(index) * 0.25F);
+        fonts[index] = io.Fonts->AddFontDefault(&font);
+        if (!fonts[index])
+            throw std::runtime_error("Cannot prepare display font atlas");
+    }
     viewer::apply_theme(scale);
-    io.FontGlobalScale = scale;
     gui.sdl = ImGui_ImplSDL3_InitForVulkan(window.get());
     if (!gui.sdl)
         throw std::runtime_error("ImGui SDL initialization failed");
@@ -182,13 +193,33 @@ int viewer_main(int argc, char** argv) {
     read_preferences(settings_path, settings);
     fly_camera camera;
     double camera_fov = camera_view{}.vertical_fov_radians;
-    std::optional<camera_bookmark> bookmark;
+    struct saved_view {
+        camera_bookmark pose;
+        double vertical_fov_radians;
+    };
+    std::optional<saved_view> bookmark;
     std::optional<update_ticket> pending_ticket;
     scene_snapshot current;
     std::uint64_t next_operation = 1;
     bool running = true, captured = false, show_open = false, show_import = false,
          show_settings = false;
     int remapping = -1;
+    std::ofstream input_trace;
+    unsigned input_readbacks{};
+    nlohmann::json input_widgets = nlohmann::json::object();
+    if (!input_trace_path.empty()) {
+        if (std::filesystem::exists(std::filesystem::symlink_status(input_trace_path)))
+            throw std::runtime_error("Choose a new input trace file");
+        input_trace.open(input_trace_path, std::ios::binary);
+        if (!input_trace)
+            throw std::runtime_error("Cannot create input trace");
+    }
+    const auto trace_item = [&](const char* name) {
+        if (!input_trace.is_open())
+            return;
+        const auto minimum = ImGui::GetItemRectMin(), maximum = ImGui::GetItemRectMax();
+        input_widgets[name] = {minimum.x, minimum.y, maximum.x, maximum.y, ImGui::IsItemVisible()};
+    };
     std::array<char, 1024> path{}, source{}, output{}, request_path{}, pose_request_path{};
     std::snprintf(output.data(), output.size(), "%s", "artifacts/import-job");
     unsigned frames = 0;
@@ -213,6 +244,16 @@ int viewer_main(int argc, char** argv) {
                 release_mouse();
             if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_ESCAPE)
                 release_mouse();
+            if (input_trace.is_open() && input_readbacks < 16 && event.type == SDL_EVENT_KEY_DOWN &&
+                !event.key.repeat && event.key.scancode == SDL_SCANCODE_F12 && remapping < 0) {
+                const auto readback =
+                    input_trace_path.parent_path() /
+                    (input_trace_path.stem().string() + "-" + std::to_string(frames) + ".ppm");
+                const auto requested = renderer->request_screenshot(readback);
+                if (!requested)
+                    throw std::runtime_error(requested.error().message);
+                ++input_readbacks;
+            }
             if (event.type == SDL_EVENT_KEY_DOWN && remapping >= 0) {
                 if (event.key.scancode != SDL_SCANCODE_ESCAPE)
                     settings.keys[static_cast<std::size_t>(remapping)] = event.key.scancode;
@@ -284,9 +325,20 @@ int viewer_main(int argc, char** argv) {
                 state.status = "Scene admission failed: " + admitted.error().message +
                                ". Previous visible scene retained.";
         }
+        const auto scaling = viewer::display_scaling(SDL_GetWindowDisplayScale(window.get()),
+                                                     SDL_GetWindowPixelDensity(window.get()));
+        if (!scaling)
+            throw std::runtime_error(scaling.error().message);
+        if (scale != scaling->layout_scale) {
+            scale = scaling->layout_scale;
+            viewer::apply_theme(scale);
+        }
+        io.FontDefault = fonts[scaling->font_index];
+        io.FontGlobalScale = scaling->font_scale;
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
+        input_widgets = nlohmann::json::object();
         const auto display = io.DisplaySize;
         const float top = 56 * scale, bottom = 120 * scale;
         const bool compact = display.x < 1200 * scale;
@@ -303,16 +355,19 @@ int viewer_main(int argc, char** argv) {
             show_open = true;
             release_mouse();
         }
+        trace_item("open");
         ImGui::SameLine();
         if (ImGui::Button("Import video")) {
             show_import = true;
             release_mouse();
         }
+        trace_item("import");
         ImGui::SameLine();
         if (ImGui::Button("Fit") && current) {
             camera.fit(world_bounds(*current));
             camera_fov = camera_view{}.vertical_fov_radians;
         }
+        trace_item("fit");
         ImGui::SameLine();
         ImGui::BeginDisabled(!current || !current->provenance.contains("source_inspection_view"));
         if (ImGui::Button("Source view")) {
@@ -325,6 +380,7 @@ int viewer_main(int argc, char** argv) {
                 state.status = inspection.error().message;
             }
         }
+        trace_item("source");
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
             ImGui::SetTooltip("Reset using the recorded capture orientation. Fly keeps this up "
@@ -343,6 +399,7 @@ int viewer_main(int argc, char** argv) {
             show_settings = true;
             release_mouse();
         }
+        trace_item("settings");
         ImGui::End();
         if (settings.left && !compact) {
             ImGui::SetNextWindowPos({0, top});
@@ -365,12 +422,16 @@ int viewer_main(int argc, char** argv) {
                                                                     : "capture orientation");
                 ImGui::TextWrapped("Coverage outside captured surfaces is unknown.");
                 if (ImGui::Button("Save bookmark"))
-                    bookmark = camera_bookmark{current->id, current->epoch, camera};
+                    bookmark = saved_view{{current->id, current->epoch, camera}, camera_fov};
+                trace_item("save_bookmark");
                 if (ImGui::Button("Return to bookmark") && bookmark) {
-                    auto restored = restore_bookmark(*bookmark, current->id, current->epoch);
-                    if (restored)
+                    auto restored = restore_bookmark(bookmark->pose, current->id, current->epoch);
+                    if (restored) {
                         camera = *restored;
+                        camera_fov = bookmark->vertical_fov_radians;
+                    }
                 }
+                trace_item("restore_bookmark");
             }
             ImGui::Spacing();
             ImGui::TextWrapped("Capture overlapping views while moving around surfaces. Avoid "
@@ -477,10 +538,16 @@ int viewer_main(int argc, char** argv) {
         }
         if (show_import)
             ImGui::OpenPopup("Import video");
+        const ImVec2 import_limit{display.x - 32 * scale, display.y - 32 * scale};
+        ImGui::SetNextWindowSizeConstraints(
+            {std::min(480 * scale, import_limit.x), std::min(360 * scale, import_limit.y)},
+            import_limit);
+        ImGui::SetNextWindowPos({display.x * 0.5F, display.y * 0.5F}, ImGuiCond_Always,
+                                {0.5F, 0.5F});
         ImGui::SetNextWindowSize({std::min(820 * scale, display.x - 32 * scale),
                                   std::min(680 * scale, display.y - 32 * scale)},
                                  ImGuiCond_Appearing);
-        if (ImGui::BeginPopupModal("Import video", &show_import)) {
+        if (ImGui::BeginPopupModal("Import video", &show_import, ImGuiWindowFlags_NoMove)) {
             ImGui::TextWrapped("Review a local reconstruction request before running. "
                                "This development recipe has unqualified quality.");
             ImGui::TextUnformatted("Reconstruction request");
@@ -492,6 +559,7 @@ int viewer_main(int argc, char** argv) {
             ImGui::BeginDisabled(!request_path[0]);
             if (ImGui::Button("Review request"))
                 state.review_request(request_path.data());
+            trace_item("review");
             ImGui::EndDisabled();
             ImGui::EndDisabled();
             std::shared_ptr<const viewer::request_summary> summary;
@@ -570,6 +638,7 @@ int viewer_main(int argc, char** argv) {
                 show_import = false;
                 ImGui::CloseCurrentPopup();
             }
+            trace_item("close_import");
             ImGui::TextWrapped("Running pauses scene rendering and retains the previous scene. "
                                "Changed requests require another review.");
             ImGui::EndPopup();
@@ -581,6 +650,7 @@ int viewer_main(int argc, char** argv) {
             ImGui::Checkbox("Inspector panel", &settings.right);
             if (ImGui::Button("Reset layout and bindings"))
                 settings = preferences{};
+            trace_item("reset_settings");
             constexpr std::array NAMES{"Forward", "Backward", "Left",      "Right",
                                        "Up",      "Down",     "Accelerate"};
             for (std::size_t index = 0; index < settings.keys.size(); ++index) {
@@ -592,6 +662,8 @@ int viewer_main(int argc, char** argv) {
                             ? "Press a key..."
                             : SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[index]))))
                     remapping = static_cast<int>(index);
+                if (index == 0)
+                    trace_item("forward_binding");
                 ImGui::PopID();
             }
             if (ImGui::Button("Close")) {
@@ -599,6 +671,7 @@ int viewer_main(int argc, char** argv) {
                 remapping = -1;
                 ImGui::CloseCurrentPopup();
             }
+            trace_item("close_settings");
             ImGui::EndPopup();
         }
         ImGui::Render();
@@ -637,6 +710,45 @@ int viewer_main(int argc, char** argv) {
             }
         }
         ++frames;
+        if (input_trace.is_open() && frames <= 4096) {
+            bool reviewed{};
+            {
+                std::lock_guard lock(state.mutex);
+                reviewed = state.reviewed_request != nullptr;
+            }
+            input_trace
+                << nlohmann::json{{"frame", frames},
+                                  {"position",
+                                   {camera.position.x, camera.position.y, camera.position.z}},
+                                  {"yaw", camera.yaw},
+                                  {"fov", camera_fov},
+                                  {"pitch", camera.pitch},
+                                  {"speed", camera.speed},
+                                  {"up", {camera.up_axis.x, camera.up_axis.y, camera.up_axis.z}},
+                                  {"captured", captured},
+                                  {"ui_mouse", io.WantCaptureMouse},
+                                  {"mouse", {io.MousePos.x, io.MousePos.y}},
+                                  {"focused", movement.focused},
+                                  {"forward", movement.forward},
+                                  {"text_input", movement.text_input},
+                                  {"import", show_import},
+                                  {"settings", show_settings},
+                                  {"remapping", remapping},
+                                  {"keys", settings.keys},
+                                  {"busy", state.busy.load()},
+                                  {"reviewed", reviewed},
+                                  {"visible", current && !pending_ticket},
+                                  {"logical", {display.x, display.y}},
+                                  {"display_scale", SDL_GetWindowDisplayScale(window.get())},
+                                  {"pixel_density", SDL_GetWindowPixelDensity(window.get())},
+                                  {"layout_scale", scale},
+                                  {"widgets", input_widgets}}
+                       .dump()
+                << '\n';
+            input_trace.flush();
+            if (!input_trace)
+                throw std::runtime_error("Input trace write failed");
+        }
         if (frame_limit && frames >= frame_limit && !state.has_pending_work() && !pending_ticket &&
             reconstruction_request.empty() && review_request.empty()) {
             if (require_reconstruction_success) {

@@ -3,10 +3,55 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <chrono>
+#include <cmath>
 #include <fstream>
+#include <imgui.h>
+#include <limits>
 #include <nlohmann/json.hpp>
 
 using namespace world_explorer::viewer;
+TEST_CASE("window scaling separates physical font pixels from logical layout coordinates",
+          "[dpi]") {
+    const auto native = display_scaling(1, 1);
+    REQUIRE(native);
+    CHECK(native->layout_scale == 1);
+    CHECK(native->font_scale == 1);
+    const auto windows = display_scaling(2, 1);
+    REQUIRE(windows);
+    CHECK(windows->layout_scale == 2);
+    const auto retina = display_scaling(2, 2);
+    REQUIRE(retina);
+    CHECK(retina->layout_scale == 1);
+    CHECK(retina->font_scale == 0.5F);
+    CHECK(retina->font_index == windows->font_index);
+    for (const auto scale : {1.25F, 1.5F, 1.75F, 2.F, 2.25F, 3.F, 4.F}) {
+        const auto metrics = display_scaling(scale, scale);
+        REQUIRE(metrics);
+        CHECK(metrics->layout_scale == 1);
+        CHECK(metrics->font_index < 13);
+        const auto physical_font = (1.F + static_cast<float>(metrics->font_index) * 0.25F);
+        CHECK(std::abs(physical_font * metrics->font_scale * scale - scale) < 0.0001F);
+    }
+    for (const auto invalid : {0.F, -1.F, 5.F, std::numeric_limits<float>::infinity(),
+                               std::numeric_limits<float>::quiet_NaN()}) {
+        CHECK_FALSE(display_scaling(invalid, 1));
+        CHECK_FALSE(display_scaling(1, invalid));
+    }
+}
+TEST_CASE("theme resize uses absolute scale without accumulating style multipliers", "[dpi]") {
+    ImGui::CreateContext();
+    struct context_owner {
+        ~context_owner() { ImGui::DestroyContext(); }
+    } owner;
+    apply_theme(1);
+    const auto padding = ImGui::GetStyle().WindowPadding;
+    apply_theme(2);
+    CHECK(ImGui::GetStyle().WindowPadding.x == padding.x * 2);
+    apply_theme(1);
+    CHECK(ImGui::GetStyle().WindowPadding.x == padding.x);
+    apply_theme(2);
+    CHECK(ImGui::GetStyle().WindowPadding.y == padding.y * 2);
+}
 namespace {
 struct preferences_fixture {
     std::filesystem::path file =

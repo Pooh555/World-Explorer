@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-13 (Asia/Hong_Kong). **M1: IN_PROGRESS. No M1–M6 milestone or
+Updated 2026-10-14 (Asia/Hong_Kong). **M1: IN_PROGRESS. No M1–M6 milestone or
 Q/P/N/E requirement is fully certified. M7–M8: DEFERRED_BY_USER.**
 
 ## Implemented and checked
@@ -108,12 +108,21 @@ recipe or checkpoint changes. Eleven new Python tests pass on 3.10/3.12/3.14;
 **119/119 CTest in each existing profile**. The preceding 120-case report counted
 the worker suite twice; retained logs and current references are corrected.
 
-Next executable task: M1 native input/HiDPI qualification using the retained
-sample_1 scene. Launch
-`build/dev/we_viewer --scene artifacts/sample_1/scene.wexplore --source-view --max-splats 1000000 --review-request artifacts/sample_1/request-view.json`;
-check viewport focus/Escape, remaps, source/bookmark resets and responsive Import
-review at the available display scale and 1024×640. Record actual input/scale scope;
-keep reference-hardware latency and other-platform results unqualified.
+[Native input/live HiDPI](validation/2026-10-14-native-input.md): **18/18**
+compositor-delivered control assertions and live 2→1.5→1→2 scale checks pass on
+the full sample_1 scene with zero Vulkan errors. Bookmark FOV and live Import
+resize clipping are repaired; **121/121** GCC C++26 / Clang C++23 checks,
+format/tidy/docs and **2,393 unchanged protected files**. Temporary headless
+scaling is not a physical-display or other-platform pass. Human/reference latency
+and event-to-state timing remain unqualified; no solve/fit rerun.
+
+Next executable task: M1 offline metric identity manifest. Inspect
+`workers/identity/local-development-20261013.json`,
+`docs/protocols/worker_identity.md` and the installed TorchMetrics LPIPS source;
+bind implementation and bundled LPIPS linear-weight hashes to the specification's
+AlexNet/normalize policy. The explicit AlexNet cache path was absent: do not
+search personal caches or download weights implicitly. Keep qualification blocked
+until authorized local backbone bytes and metric parity evidence are available.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
