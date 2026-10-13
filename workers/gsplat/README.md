@@ -18,6 +18,9 @@ The [installed-byte receipt](../identity/local-development-20261013.json) and
 version/file/notice inventory; they do not supply the missing wheel archives or
 metric/backbone qualification. Audit is independent of fitting and does not alter
 recipe sources, ownership or compatible optimizer checkpoints.
+A separate [CPU metric environment](../metrics/README.md) now locks LPIPS/SSIM
+identity and synthetic parity without changing this training profile. Existing fit
+results retain their original LPIPS-unavailable scope; corpus/rights remain pending.
 The official prebuilt wheel avoids rebuilding CUDA kernels with this host's
 CUDA 13.4/GCC 16. Dependencies must be explicitly installed before processing.
 

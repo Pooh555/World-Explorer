@@ -10,7 +10,7 @@ Read by task; do not load the entire directory for routine work.
 | Write/update documentation | [Documentation protocol](protocols/documentation.md) |
 | Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/camera/handoff](protocols/viewer.md) |
 | Organize outputs / add a local video | [Artifact layout and request helper](protocols/artifacts.md) |
-| Audit local worker versions/files/notices | [Installed identity receipts](protocols/worker_identity.md) |
+| Audit local worker/metric identities | [Installed identity receipts](protocols/worker_identity.md), [isolated CPU metric profile](../workers/metrics/README.md) |
 | Find historical results | [Validation index](validation/README.md); reports preserve their original scope |
 | Understand a consequential choice | [Decision records](adr/) |
 | Build/use the application | Repository [README](../README.md) |
