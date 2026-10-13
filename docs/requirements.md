@@ -50,5 +50,7 @@ thresholds were changed and genuinely separate/ambiguous models still fail.
 all fitted sample_1 assets while correcting explicit source-view presentation up.
 116 GCC C++26 / Clang C++23 checks and 18 worker checks pass. Remaining videos
 use independent, bounded sequential supervision and single-pair CPU matching;
-terminal results are pending. Canonical world axes and unknown gravity/scale
+the bounded solves completed with disconnected-model rejection. [Retained
+continuation](validation/2026-10-13-pose-continuation.md) reuses saved matches;
+24 worker checks pass, real recovery remains pending. Canonical world axes and unknown gravity/scale
 remain explicit; no Q/P/N/E gate is newly certified.
