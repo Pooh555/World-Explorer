@@ -14,6 +14,11 @@ namespace world_explorer::viewer {
 // Classification follows explicit scene provenance, never the startup flag/path.
 bool is_synthetic_scene(const scene_snapshot& scene);
 
+// Observed on the owned job thread after state update, outside the state mutex.
+// The stop token permits bounded diagnostic synchronization; events are borrowed.
+using reconstruction_observer =
+    std::function<void(const reconstruction_progress&, const std::stop_token&)>;
+
 // The UI reads results under mutex; one owned job publishes immutable snapshots.
 // job is last so its destructor cancels/joins before any captured state is destroyed.
 struct application_state {
@@ -36,10 +41,15 @@ struct application_state {
     void append(std::string text);
     void load(std::filesystem::path path);
     void worker(worker_configuration configuration, std::vector<std::string> arguments);
-    void reconstruction(std::filesystem::path request);
+    void reconstruction(std::filesystem::path request, reconstruction_observer observed = {});
+    // Called by the UI owner; stop callbacks run without the state mutex held.
+    void request_cancel();
     void update_reconstruction_progress(const reconstruction_progress& value);
     void complete_reconstruction(result<scene_snapshot> scene,
                                  const std::optional<std::filesystem::path>& published);
+
+  private:
+    bool begin_job();
 };
 
 } // namespace world_explorer::viewer

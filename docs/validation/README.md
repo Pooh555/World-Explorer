@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Owned viewer Cancel/reopen | [Stage-boundary cancellation](2026-10-13-viewer-cancel.md): pending job-admission repair, synchronous stop-callback access, seven owned-thread boundaries, native old-pixel preservation/full reopened visibility and 107 checks in both profiles |
 | Reconstruction processing status | [Typed stage/step events](2026-10-13-progress-status.md): bounded checked telemetry, terminal/handoff regressions, 105 checks in both profiles, native completed reuse and 670 unchanged protected files |
 | Fresh real owned chain | [Checkpoint resume repair](2026-10-13-fresh-chain.md): 63 real native RGB frames/poses → 7k fit → 297,489 splats → viewer; cancellation/resume/reuse, protected overlap tests, 99 checks in both profiles |
 | Recounted tile plans | [Geometry cache](2026-10-13-tile-plans.md): current-frame admission, bounded coverage/cache failures, native density/resize/overflow parity, unchanged 35 references; 97 checks in both profiles |

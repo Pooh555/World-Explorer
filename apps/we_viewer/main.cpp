@@ -405,6 +405,7 @@ int viewer_main(int argc, char** argv) {
         ImGui::SetNextWindowPos({0, display.y - bottom});
         ImGui::SetNextWindowSize({display.x, bottom});
         ImGui::Begin("Job status", nullptr, PANEL_FLAGS);
+        bool cancel_requested = false;
         {
             std::lock_guard lock(state.mutex);
             ImGui::TextWrapped("%s", state.status.c_str());
@@ -413,8 +414,7 @@ int viewer_main(int argc, char** argv) {
                 ImGui::Text("Elapsed %.1fs",
                             std::chrono::duration<double>(now - state.started).count());
                 ImGui::SameLine();
-                if (ImGui::Button("Cancel"))
-                    state.job.request_stop();
+                cancel_requested = ImGui::Button("Cancel");
             }
             if (state.progress && state.progress->backend_elapsed_seconds)
                 ImGui::Text("Backend event elapsed %.1fs (ETA unknown)",
@@ -422,6 +422,8 @@ int viewer_main(int argc, char** argv) {
             if (ImGui::CollapsingHeader("Diagnostic log"))
                 ImGui::TextUnformatted(state.log.c_str());
         }
+        if (cancel_requested)
+            state.request_cancel();
         if (settings.controls)
             ImGui::TextWrapped("Click viewport: mouse look | %s/%s/%s/%s: move | %s/%s: vertical "
                                "| %s: accelerate | Wheel: speed | Esc: release. Remap in Settings.",

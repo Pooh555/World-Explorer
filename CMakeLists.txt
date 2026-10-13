@@ -221,6 +221,14 @@ if(WE_BUILD_VIEWER)
   target_compile_definitions(we_gpu_viewer_regression PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
   add_dependencies(we_gpu_viewer_regression we_shaders)
 
+  add_executable(we_gpu_reconstruction_handoff tests/gpu/reconstruction_handoff.cpp
+    apps/we_viewer/job_state.cpp)
+  we_target(we_gpu_reconstruction_handoff)
+  target_include_directories(we_gpu_reconstruction_handoff PRIVATE "${PROJECT_SOURCE_DIR}/apps/we_viewer")
+  target_link_libraries(we_gpu_reconstruction_handoff PRIVATE application render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_gpu_reconstruction_handoff PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
+  add_dependencies(we_gpu_reconstruction_handoff we_shaders)
+
   install(TARGETS we_viewer RUNTIME DESTINATION bin)
   install(FILES ${WE_SHADER_OUTPUTS} DESTINATION share/world-explorer/shaders)
 endif()
@@ -250,6 +258,8 @@ if(BUILD_TESTING)
     add_executable(we_viewer_tests tests/ui/preferences_tests.cpp tests/ui/job_state_tests.cpp
       apps/we_viewer/preferences.cpp apps/we_viewer/job_state.cpp)
     we_target(we_viewer_tests)
+    target_compile_definitions(we_viewer_tests PRIVATE WE_TEST_PYTHON="${Python3_EXECUTABLE}"
+      WE_TEST_PROTOCOL_MODULE="${PROJECT_SOURCE_DIR}/workers")
     target_include_directories(we_viewer_tests PRIVATE "${PROJECT_SOURCE_DIR}/apps/we_viewer")
     target_link_libraries(we_viewer_tests PRIVATE application SDL3::SDL3 we_imgui Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
     catch_discover_tests(we_viewer_tests PROPERTIES LABELS "cpu;viewer")
