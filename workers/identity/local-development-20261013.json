@@ -1,0 +1,472 @@
+{
+  "auditor_sha256": "7a86651196d40950c75cda8ef4ae5ced5ca6c8fcb7e702e6ab7561b317a47385",
+  "backend_source": {
+    "files": {
+      ".deps/gsplat/LICENSE": "96a4f89293c0df19880da9b0e35f67589f5885ea61b224ef16bb2bd599a8a44d",
+      ".deps/gsplat/examples/simple_trainer.py": "79319e1cd7404e4d1ba0c425634235c39e6054f0643b904a01feea6179462c05",
+      "third_party/notices/gsplat-LICENSE.txt": "96a4f89293c0df19880da9b0e35f67589f5885ea61b224ef16bb2bd599a8a44d",
+      "workers/gsplat/dataset.py": "f6a44c697c1db7ec9001ee5951577142ec117192f2093a5420557054e5da50bf",
+      "workers/gsplat/fit.py": "9dcc88a02965d934bdab75464fc2d3745267d195fc1302e90396061a233d2ede",
+      "workers/gsplat/losses.py": "b6df8b0e28fcd8ef0d3b9fd677251c51fabc09dad8ba5e8d78aa7182ffc1b086",
+      "workers/gsplat/train.py": "d516735e4cc3b830642b4e369a81bafce62a42f13b834abb2e964767d2bd1f99"
+    },
+    "gsplat_commit": "937e29912570c372bed6747a5c9bf85fed877bae",
+    "tracked_changes": false
+  },
+  "captured_date": "2026-10-13",
+  "environments": {
+    "poses": {
+      "listed_bytes": 214788169,
+      "listed_files": 1039,
+      "packages": [
+        {
+          "installed_files_sha256": "b14c0f05fe05c21a7f65086a8b7e86cf72626c899dffc1f59b7de2e446d59f08",
+          "license_metadata_sha256": "402ea895755c28b81bb2f4190100f997beb016786283c6f7aeba370605d510de",
+          "metadata_sha256": "22d648f53848429464ca643b40d73b49a920d47876fc77c395d4dca4e834904a",
+          "name": "numpy",
+          "notice_files": 4,
+          "notice_inventory_sha256": "6658eaf064698d62a8d3e4695fd805055760215fa5764424787fa14d7a96f70c",
+          "record_sha256": "57a6ce5815ae3486c9773a8c91c4b733a342b284a7d56305c1211bdb2aaa4fa6",
+          "version": "2.2.6"
+        },
+        {
+          "installed_files_sha256": "3aebf07673e5a1b0fa129adbbc28dfeba94fc00925b57cba1ad817a196df9189",
+          "license_metadata_sha256": "7873ce89e33ac017e64316f4213359fab1bcc5c9fd2478afa99b48e3cfe0a4a7",
+          "metadata_sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73",
+          "name": "pillow",
+          "notice_files": 1,
+          "notice_inventory_sha256": "b135076be3e2c6d24749d1ce43204a1812f02fb7fd841df439644f827df8142d",
+          "record_sha256": "5950f5575759239d32ed1b7e67f3706febe5dee3fb365fcd5f35327c5b83c936",
+          "version": "11.3.0"
+        },
+        {
+          "installed_files_sha256": "08444ffa575233c0c3673aa3cfc5b850287198bcb422a2e2f1bff2b77548ba7c",
+          "license_metadata_sha256": "3011615164cc1de2b6ecbe6c3931b4024188755c26aee8c24f21e3e59c9ded13",
+          "metadata_sha256": "1d16f320752cecdfbc7f4fd7f2589f428b2546c3803daebd78eda5c5579dd973",
+          "name": "pycolmap",
+          "notice_files": 1,
+          "notice_inventory_sha256": "2268efdbf227545e8ad549cbde5bae0accfb843eebe077af84833d47d3c36b6b",
+          "record_sha256": "6af065861757aab0d39556a2179cd72fda7969140c42eb04eebfa6eebd90361b",
+          "version": "4.2.1"
+        }
+      ],
+      "platform": "linux",
+      "python": "3.12.15",
+      "receipt_sha256": "497537df30b2a9c01a314b1e78f96a5b9f8c560a7f6b7ba47abbc192492afb51",
+      "requirements": "workers/pose-requirements.txt",
+      "requirements_sha256": "a721af6f6990ea76663fc13a43cc5f598f2d8db358a1d48d77971e3c3074bd0f"
+    },
+    "training": {
+      "listed_bytes": 5489073341,
+      "listed_files": 19301,
+      "packages": [
+        {
+          "installed_files_sha256": "d6b0b20dec7f82ac19ad5b2edb479c72a24624cb355ca6ce6a285734cafeabe0",
+          "license_metadata_sha256": "1454c326f0de91cb8d17575e8d8efb741f27258b9fce4e0ad18462f2fd65e9f0",
+          "metadata_sha256": "2d80f43bd905689145c00b3133bc95895d654ced70a96a1802e9237e0d66599f",
+          "name": "filelock",
+          "notice_files": 1,
+          "notice_inventory_sha256": "fc80e6d227182319328f6dd1a9ba37fad107f03772638481bd1fefe3c4291e62",
+          "record_sha256": "977b6b42d26c24d999d1babdcd700a9cb146c085a61de15f7b252e2e441aee04",
+          "version": "3.32.3"
+        },
+        {
+          "installed_files_sha256": "4814475eaea5a57b27be1e72776b839eac52082a177a4aadf2d3fd348246d341",
+          "license_metadata_sha256": "867c3e2a37faccedc8597f2f599563c43ff5a33d20e4ce278f0e5c88b7a89b41",
+          "metadata_sha256": "88b1657585de14e3bb82aa5278aa9595b30aa4ca74ead073d8950615c808099d",
+          "name": "fsspec",
+          "notice_files": 1,
+          "notice_inventory_sha256": "6353cad46819c90ed70f738ad0d5f0f7e4946c5dc3852fe6692d9a89aa440019",
+          "record_sha256": "bf8970ef32f4fa1da4c23e55e648fbcd3980d3d67f14268a514a5973514fd2a0",
+          "version": "2026.7.0"
+        },
+        {
+          "installed_files_sha256": "abe98ac3dd1125329987690c7a5418314ad110ba00bacac9e54fc39aedecc091",
+          "license_metadata_sha256": "f10ea1c59ecc7df1b108546200004c626032ec99fef8b5a8a099bb0c485924b8",
+          "metadata_sha256": "64f2445baf103064fa92a07ecb9e0725ee761ca0c24fc1bc2936b6d222d74fa3",
+          "name": "gsplat",
+          "notice_files": 2,
+          "notice_inventory_sha256": "9f5164224267a0a4e21d79e5162fb79467abee44fa84e67ca0d258aee921e6d5",
+          "record_sha256": "b102c7f867720e63a39f177646c3f019541ab2b2c8a2f8db149c6da1c0c3a739",
+          "version": "1.5.3+pt24cu124"
+        },
+        {
+          "installed_files_sha256": "348b1a8af75e219644976f09449aeeed48f4477460715a6a653d6f92042bfbe5",
+          "license_metadata_sha256": "8569e353979185cf5a3673e17c1f3e19b60b430e15ef105f1937fb36da42c023",
+          "metadata_sha256": "1349570d090f75d2b5e95bb03d053fab0216329f73be7cf0050a7670eedd8576",
+          "name": "jaxtyping",
+          "notice_files": 2,
+          "notice_inventory_sha256": "bb212b96815514cb27c09c51579acbd89651a28ca0b5e3aed9a118a5cdbbbe91",
+          "record_sha256": "235ea62d76c2ebbe5d2d9b2d0c67c0cc71d932bcfdceec16c8fee5e160393dab",
+          "version": "0.3.7"
+        },
+        {
+          "installed_files_sha256": "f1bc27b95cbcce9cbf8c2b66984d31a5263f057ec03e0605060f8f3c700e06e8",
+          "license_metadata_sha256": "7bdddef07f7b1bf2c0fde80fe8114cca32214f2ca1ba0e831a0fbdccdc275bfc",
+          "metadata_sha256": "68c5548fb67c4132a13898d9b31ec50c6bea2abdd915d921f214355c3a6499c8",
+          "name": "jinja2",
+          "notice_files": 1,
+          "notice_inventory_sha256": "c6ba6409a5aeccf9b293faa0cc235ed07efe30d5c462b4e9fa56602b58989405",
+          "record_sha256": "4551b3fb657b85a9f01e961c0f8a235da65d758149b619400211964b3ac02bdc",
+          "version": "3.1.6"
+        },
+        {
+          "installed_files_sha256": "18f1076f99294069f69f6e51ad065ce37cb2078d031814742f35c174e197675f",
+          "license_metadata_sha256": "cb0e7926f233452e5998dfa78d0f97950b37e2fc4803ccfcf4e8022546b9f68b",
+          "metadata_sha256": "72c36ff516755443b1ecb61e17b2567a990230b49a504b0eb0c42d5f82448a9c",
+          "name": "markdown-it-py",
+          "notice_files": 2,
+          "notice_inventory_sha256": "b16019580045846fbced89dec2812918ad5a393d89fc2ef6e599096960c1d802",
+          "record_sha256": "48b2d9d60eb24ba1e2603474c4ee01212e85a9afad256bdfda7c6c7a86e1fdb1",
+          "version": "4.2.0"
+        },
+        {
+          "installed_files_sha256": "d31a38aeb70dbaa27c9846ee758e0decd5ba740fa152aa35f29a0875ed6e8794",
+          "license_metadata_sha256": "39f65b1194b59d4c3df7b8e8d16256e175ba60309a5045d9a28e940c798ddc16",
+          "metadata_sha256": "12b4cc61a7fa288cf7667ee3f213786d9619db57fb33ff6f934afbcb5c12ec81",
+          "name": "markupsafe",
+          "notice_files": 1,
+          "notice_inventory_sha256": "df51e10cd2129518b0062262b88dc2a6c6493bc20219998961cc5c56d689c818",
+          "record_sha256": "494795404f6325705a427772276c3b02a2f728f33066b38325aa08f98ff54a76",
+          "version": "3.0.3"
+        },
+        {
+          "installed_files_sha256": "afd6c4f78b36a0548a1d93d833ff1bb405a59c1c6fa1e6fba07b36011cbaa4d8",
+          "license_metadata_sha256": "aa4ffe65c6f9be8b81e29590286df31b6e269eeba1c40a44d470702cc9d65a0a",
+          "metadata_sha256": "b53b29d48f499367053fda3c81e7ce27d2558380ebbf83e66023b02eb7ddd25d",
+          "name": "mdurl",
+          "notice_files": 1,
+          "notice_inventory_sha256": "e931ad8d39eca2bec1572386a79bd2507b940b73d5d172f621f1f5cd0bece3a3",
+          "record_sha256": "9a1b05128e711beabd7684e116fcf408ce8cff7ef10e7e8b359b248924fe529c",
+          "version": "0.1.2"
+        },
+        {
+          "installed_files_sha256": "0f3a79a0e3204a44c7d3227f8804f81c27e663e2a4269f930171dbf1a4a45dc8",
+          "license_metadata_sha256": "8d8d2279c5ffdf8845af20348c1a8e2215b8ae5193388d1b3be20e50a0bdca6b",
+          "metadata_sha256": "44b66ea444b9c0d19ae94815d356bf047ae6b680c19268b5c265687cd6a81406",
+          "name": "mpmath",
+          "notice_files": 1,
+          "notice_inventory_sha256": "e614cc897d12f0afeb651353d41926bd0cf47aea6e07c0ddcdf9c0de35883c90",
+          "record_sha256": "09cbd04e87d0c5ab64aab08291b31883e4ea27e8d2c640710e0beb1995e86b9b",
+          "version": "1.3.0"
+        },
+        {
+          "installed_files_sha256": "35acfc6ad28131442f237db11bfc7c9f74e2f62a4cb011242a1c231a41bc756b",
+          "license_metadata_sha256": "fdd1d3fd849157db6d78163dfb8c8cb392c68686ecc7c39dc34a9f4d10f2f444",
+          "metadata_sha256": "2e5265dda876ef3c44fefa9e9553499bc564c89a16c95e38bdaf9babc556d1d7",
+          "name": "networkx",
+          "notice_files": 1,
+          "notice_inventory_sha256": "7eff255e95363c0d46744456bd0d34a42de26abf28c0895105b82737222cbee1",
+          "record_sha256": "221ae0a94c75acd963f62b9909b58a2827a8cdfba8f0adcfb4141b598b201779",
+          "version": "3.4.2"
+        },
+        {
+          "installed_files_sha256": "91cd6ada9b4824d1930d46637cd74d544c3a91710bf0a3fe4d702766e966ec5d",
+          "license_metadata_sha256": "91eefd525aef17059e0a8f30bad20b24f74dc1975b092cc26cb52a6db006ffb0",
+          "metadata_sha256": "9628f3ee4355eb4805e7afdb4b01e20129fb76dfb76e6f8c4ce86150842d611c",
+          "name": "ninja",
+          "notice_files": 1,
+          "notice_inventory_sha256": "a940a09cd914e898914b7fe500e0eb2c0c5968ac95fd11431bbd76186fb3b88b",
+          "record_sha256": "ef04a430763122dafbb01479a572962b1bf7f57e03b38eb90c494ed04a3cafea",
+          "version": "1.13.2"
+        },
+        {
+          "installed_files_sha256": "73c6903822983dd96435bf9cbd24ade82faa7f97bc1543f30a763900637cdecf",
+          "license_metadata_sha256": "9dff9eedb40a2507f0f271eb392a03618704b448d596bf53cbf68476622d0672",
+          "metadata_sha256": "b09734a7fed44e84b4c8161934ce532dff1e779ec6822d415644d117f6381070",
+          "name": "numpy",
+          "notice_files": 4,
+          "notice_inventory_sha256": "1ffb2535910e436925d8024ef00fa10191f26de99f70c8694fb254ccadf51745",
+          "record_sha256": "8cc123ac0bfcb4f5fb144e8263987697d11012d75051ab0a2fea492bad93eceb",
+          "version": "1.26.4"
+        },
+        {
+          "installed_files_sha256": "4947f563b7cb45441020a109f3a04e5b9de0364b6e443a3fd118d41add992098",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "ebd319a1e30b0af5b5d240cdd16657c5e325805c5da09ae4246a9f2d49ff0f42",
+          "name": "nvidia-cublas-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "3fb8e0bb87f9b9336a50f32fc55d627077f9f0b3df6e42e7910e9f7ab7ce6951",
+          "record_sha256": "b03ec23c7134d2836e5ae13ab82d9bb4114163e10fdf0787463d145d4d728cd5",
+          "version": "12.4.2.65"
+        },
+        {
+          "installed_files_sha256": "f9c1dd7d7fea1725219031ec988498a34a481676cf9b97143e001f7fc1659afb",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "5f07bccaeb2269d0b67dcbc481aeea1b86cfe09d61f9c22aa7cefddaeb1dd6c1",
+          "name": "nvidia-cuda-cupti-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "f076f3a1203379c6da1c9d9201d272c61b9474812f9f2509d4624f6c5737329f",
+          "record_sha256": "4360a059c6a82a06a33a12037190b1734748c79710888943638bc39e3ad2a55c",
+          "version": "12.4.99"
+        },
+        {
+          "installed_files_sha256": "609b151013e973e07f54ca403cc1d575e6da057840a6fa17579a67d2f637980a",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "da0b2d3b538382ed2a861d507c9508aba7efb1caa78cf72594bfa83a3b7e44e8",
+          "name": "nvidia-cuda-nvrtc-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "99154da2d302582c8e2cdb4f7ca85186ba7c0a176f7c4bc5b14bc2bae9b8eee7",
+          "record_sha256": "d2591c4d31b5c7d7fde36eb2fcbefd3ab83c6a891a5dc72c218dc109d3bb676d",
+          "version": "12.4.99"
+        },
+        {
+          "installed_files_sha256": "d093db988d609f3096e39de24faabd03fd70fed8484f5af43a929fe02044bf37",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "604e585b12231ba539bf6c333cd98aefad048a79af922b56265c2fb61e2ed323",
+          "name": "nvidia-cuda-runtime-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "8f1ef89cdefda5c0f181862ef6d398569dfd2a6f944bbee7992ea85abd270086",
+          "record_sha256": "a000721434e677cbc0afb5294d3a16100bf024ce023c5fa4f6e3ab7eff5d14d7",
+          "version": "12.4.99"
+        },
+        {
+          "installed_files_sha256": "442b0cc15c6cce525b91fe901118a95cab3cc980d59befa21bfa0ee084efdf4c",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "575bc4ecda950190d417aa63b4ee6e85bf5ab8805ef6a7d18bfb51deb6082b71",
+          "name": "nvidia-cudnn-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "5dc114d714617f2e23229462991a9ec2d8ff5545daf5a9d542e2cea8a9f651df",
+          "record_sha256": "5245de63babbeeb2311f657c2faa8ed27d51c8d9c103eb25c83ad9cfc6e06b3a",
+          "version": "9.1.0.70"
+        },
+        {
+          "installed_files_sha256": "ed9d81e5b36a788df8796cdc74be0225875745a51b9fafc654b1b6803e9d471d",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "9bff06506ca89c866ff4d2e41443524f0ed7f2b832bd8a085641d9caf7fd4b49",
+          "name": "nvidia-cufft-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "652a3b13f02dbbc9ef3d546fc6ef7ca8b9ef7ab86509b9963e454cb7fd0549ed",
+          "record_sha256": "5ce4a4a9bfb832f75fb690988a8cfc27a5e1eff5928a8bd29a68206f097df1b8",
+          "version": "11.2.0.44"
+        },
+        {
+          "installed_files_sha256": "bbef2cc56d58371beedfcb45a0ee7e16086260487e72f06d617c1ff99b258b41",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "60da6c3cdf1ba927d015a7da43ffb8f1aa1ea78f85742c8ab13242ccd5429146",
+          "name": "nvidia-curand-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "da4638aed05bafcc36d672dedc6d098a7605ba7a71b6fd530dacc1fa7ca18437",
+          "record_sha256": "b2e64f9bee90b6c9ca42323e38942474b26826a0a70831efd114a05585ffd3fb",
+          "version": "10.3.5.119"
+        },
+        {
+          "installed_files_sha256": "f31bebc57070052425236bb378a46cd0b0dd4c53fc833307085a99470e680971",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "7e3f93aa3e277f162473e48ee41d8acb6bf4cecb2aad34249f5ce0aae7a02465",
+          "name": "nvidia-cusolver-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "b880544a58d6f26ba41320b2da25d15121e3d522923c9bc649cd4ad09f77b3be",
+          "record_sha256": "76447301e852c64f8b1792290836712e2c6f993c1e3339b9df62629827d240e4",
+          "version": "11.6.0.99"
+        },
+        {
+          "installed_files_sha256": "ecd9d6735993413849765ca19c7040d69efed6792832bb0ec71f4e3f389c8565",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "73a03e04fdc43649d1339cb3eceb15d54a34ecccf24867dde9c88f885137668f",
+          "name": "nvidia-cusparse-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "9cda98ab7e6bed8a1a88434e33b3a71f9725447e44bce3f160d0b215c77cb8b8",
+          "record_sha256": "01489a28812ac598664d4de5e9f7d93720b112bcc4c3617565352a78869ace58",
+          "version": "12.3.0.142"
+        },
+        {
+          "installed_files_sha256": "1312fccf691906ae108893de69a808fbfdf5ec8c2c63b81a7cda2cb4099c2492",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "4348e1a6c7e3316c75f5e08064d07bf4ecb5f25eb3dee882f9f27489d1974427",
+          "name": "nvidia-nccl-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "143815155dcf71bd680b7657279740b888d77a49f7dabd4f4cbaab16eb824e10",
+          "record_sha256": "c29a0efa119ab781a4454a02e477b482e4f271334b9869889e2630f5560bd4a2",
+          "version": "2.20.5"
+        },
+        {
+          "installed_files_sha256": "d4b7051e8d2c0b6084f477593f10f6baa84e4ca1979dc078aeb8167879e6030b",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "ee19aeba5c205d996a44a4044b6f6e4647a35e8dd69a229db3f52c25e7ad10e6",
+          "name": "nvidia-nvjitlink-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "ab181a676c68582794506948189d4ec61894c554a4b8dbcdd4f3f001ae1f8ac9",
+          "record_sha256": "196b09826f7cf8e5aad9f10c810e0235b87d4d3b73db6c79280a3241419884f0",
+          "version": "12.4.99"
+        },
+        {
+          "installed_files_sha256": "e98cbbdefabe95633b30a83de19cc7527426c34086bb082c80320ee2a6bd539d",
+          "license_metadata_sha256": "71ca0696b6fc876a600dcb6982753d42bfa9d302f484644f5ed17502e62b0dab",
+          "metadata_sha256": "25041aee459254aae0490bd4fff4c83d8d47508c517870c6d400d149eba737c6",
+          "name": "nvidia-nvtx-cu12",
+          "notice_files": 1,
+          "notice_inventory_sha256": "8271e515cd1dbdeaf26a39db4fba461323db6e4ef7d87d7e4f813c63a634873e",
+          "record_sha256": "8ddf2aebd7681c212d819f55fcf32a73d6ae5af08b41fb024d97f5ad7972f5df",
+          "version": "12.4.99"
+        },
+        {
+          "installed_files_sha256": "9447cba6f69bf838f514fb3570a976dc11db67b94945d0c69f9f8eef9bd90392",
+          "license_metadata_sha256": "37e703e19483cc0d5b31874ce56ee982792ee2be252ffbc0c2e43ba616353d4f",
+          "metadata_sha256": "5b611a609c38fefc3d616bf45d20aec98fb7d53f245daca9e2c30fc85c7ac282",
+          "name": "packaging",
+          "notice_files": 3,
+          "notice_inventory_sha256": "553f95c27616dfe1f187ddeee18a0bea16f93e0dda9af6fdb4dabc690b475097",
+          "record_sha256": "10dc179c6b9e79f584a8f368bb5bb73bd11e4e5765bb9cfd085fe16867985985",
+          "version": "25.0"
+        },
+        {
+          "installed_files_sha256": "9d804e5222c43c53a10a98116a8c3c00e340a0a7fa9723f78b01fc5a305e4991",
+          "license_metadata_sha256": "7873ce89e33ac017e64316f4213359fab1bcc5c9fd2478afa99b48e3cfe0a4a7",
+          "metadata_sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73",
+          "name": "pillow",
+          "notice_files": 1,
+          "notice_inventory_sha256": "d05aad23e88eb4c61a0f82a2afe5e72b7967ab62af07218ca2a8ee1ff9cdfebd",
+          "record_sha256": "783a9d304f7aa7057e36f4d2dff3356f97207c55b21aa64812e4b25fd49e2c1e",
+          "version": "11.3.0"
+        },
+        {
+          "installed_files_sha256": "999e4ed3506926ff23e9557e7f828ab4d5ddb66df2f8f52d2e8483b3773f4305",
+          "license_metadata_sha256": "3011615164cc1de2b6ecbe6c3931b4024188755c26aee8c24f21e3e59c9ded13",
+          "metadata_sha256": "f105b22529eea87dd468384469be7fb7edd4d7eef51d666cb4a69c8241a9c75c",
+          "name": "pycolmap",
+          "notice_files": 1,
+          "notice_inventory_sha256": "65efe707d76eaa52e76182743b7d319ea59a6199a4962e5e2b231742f419b3bc",
+          "record_sha256": "2b18b85eb178466a1dfc2f47aa876fa051f618fb3e4473a0814a41fa30d41570",
+          "version": "3.12.6"
+        },
+        {
+          "installed_files_sha256": "697b2eaf413a98d9fffa6388b56faebe2030cd6d9baf4ac99266f07d81cb94be",
+          "license_metadata_sha256": "eeb566b727c7862f12ea3e2383401986183a30c4ceee66f4bd90535a476242c4",
+          "metadata_sha256": "1dde075570136774c706bf0009183a793fe0ee262e4a5590cc6eff8453eedd43",
+          "name": "pygments",
+          "notice_files": 1,
+          "notice_inventory_sha256": "6907ea3bfbcd4ae9c94f75b3cdbbc83bae4e305f516e5e762a9b79a5ffccc83a",
+          "record_sha256": "e252a0bde70e4c8edb590bac71e72aa1d09d4267035d398a4cb7e5366b37f841",
+          "version": "2.21.0"
+        },
+        {
+          "installed_files_sha256": "39054aa3422176f32523fed58c3aacee255d5839ab3bd3ff6bf3a0ebb8e31820",
+          "license_metadata_sha256": "dbe1150c9edd71a29e1cc7181398918541994bd2f290d5b2f2c6fe4762b03f30",
+          "metadata_sha256": "fad34fc603fac4481bf81f8dd629492fc302c0ec31909c86644751512afb2e3b",
+          "name": "rich",
+          "notice_files": 1,
+          "notice_inventory_sha256": "56d991b4c066b156831476fa0220b95dec57d61f476963c4d1bf409278340bfb",
+          "record_sha256": "1b725253b1bd316b53169a3a0b35d03d6c81bad9009ddae73d8645fb3cd3f292",
+          "version": "15.0.0"
+        },
+        {
+          "installed_files_sha256": "ae0b0db6814dd6f62c2bfc85248fb8ec0ee258b7a6ae4533ee7a2332921b11d7",
+          "license_metadata_sha256": "c39c21c8d5b116e2da837a745616521e20c05b4a91de1dc39a2a1bcb5933572b",
+          "metadata_sha256": "c75caf32b67a13a9fc16aacf993a8bb883b7a69744ffe77cbbd4f3bfbad28f3d",
+          "name": "scipy",
+          "notice_files": 5,
+          "notice_inventory_sha256": "5a9f000c103a5918996b2e4983d202c2ebb72a94aadd5c1dfd0555e8bea24eeb",
+          "record_sha256": "cdb5b36a168f9580b58a363ab6a08f4b51c4fdc645c61abc744a07ed6d7b4c8d",
+          "version": "1.15.3"
+        },
+        {
+          "installed_files_sha256": "dc2ac16016588536bf1ed533576e6c3afc38be13c1cb9af272e127ccd5ae22fc",
+          "license_metadata_sha256": "ba6b088801393783f72126d41b454857aebea4c304806e788eab267d6d238f00",
+          "metadata_sha256": "8a38c979e7476630c10f727747d74b73a3735b054b00c83797f06a8521332e49",
+          "name": "setuptools",
+          "notice_files": 21,
+          "notice_inventory_sha256": "44fcfa222c0278a2080b61203bbb83e6b61e53a45b8e088a9116a4193637706c",
+          "record_sha256": "15ce9369bd4bc75e806dc14ef6a0c3d6c9e21e44c8668fbd102a1b18d80fa23d",
+          "version": "75.8.0"
+        },
+        {
+          "installed_files_sha256": "0909db5c6b0112d3cdeb6842d4c3898e47a175145915b1359585dfa63a22a4cb",
+          "license_metadata_sha256": "715032f0127e0b48c113706dcf4311e2e122b4432f8f6c5b8e28db9cb488f220",
+          "metadata_sha256": "b756c2fbfd5be05ac5bdb0ebca61f55618f30f633ed92d88a5687429313a7595",
+          "name": "sympy",
+          "notice_files": 2,
+          "notice_inventory_sha256": "16c24eef0445ab1ea94233d2970c29e06bc69acec4dd5e3ac39ce1e16e3dd640",
+          "record_sha256": "3d4288eaf90307ab78734e02808fed7dd9f143d901194372524220573d4fc96b",
+          "version": "1.14.0"
+        },
+        {
+          "installed_files_sha256": "7d660db26dbeb2cb938b326f00cbc2b6df7755eed36beca0ce56a3775b5f9057",
+          "license_metadata_sha256": "f2a68bbf6c1feb9d672b2c4e73bec6398348badb5a71ed210e8581a70faab590",
+          "metadata_sha256": "9b7822fa34b9aaaed6dfb823a91e2928a7255ad9db590e1c195090e59e085bbd",
+          "name": "torch",
+          "notice_files": 2,
+          "notice_inventory_sha256": "ca9b131211ae797c93f9efa6b4c1c6f9d5c3d7c724950bd5be905c4075a0174e",
+          "record_sha256": "40ef79cf13d10f0ab7dcdaf60e4a6b3c677f176da393eb8f62e5f198333670cd",
+          "version": "2.4.1+cu124"
+        },
+        {
+          "installed_files_sha256": "ed1845b86bea3131de8e44272674f7ba2b129c073fc68dad81813207362f98b2",
+          "license_metadata_sha256": "d1a13dad58e4bd033d42e4fb8565ce2b20c9b2363b337e682beebea776848d3b",
+          "metadata_sha256": "aee279b3109c38d0e12569b3d6029c9858ac1cdb0c41a8824401b3c3aae7747f",
+          "name": "torchvision",
+          "notice_files": 1,
+          "notice_inventory_sha256": "7b82870e12b1a5a88d96b250af2b826e666eb61e45cb3f9dafd3ff7b8db26202",
+          "record_sha256": "1e85fc3e8b5d260a2cd26866b7739507b8a3a1cefe4685ee1359d4f9d01c1f84",
+          "version": "0.19.1+cu124"
+        },
+        {
+          "installed_files_sha256": "d30f695bf5524a920dedf64915e4d42be76ddbd589afe4abfe5c4b33b7a754e7",
+          "license_metadata_sha256": "3cbf62069fd100cbb0400de574e511b85375911e9982ca624bbf8b096afe8579",
+          "metadata_sha256": "e2dc9cf2c01b2e03cf75134dcc6179d43e508dc3be73c2f1b467561c328c9ef1",
+          "name": "triton",
+          "notice_files": 0,
+          "notice_inventory_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "record_sha256": "752de0c494afa0fec7f9ceb7a0525077d51304f7382761444f69eeb407114ff0",
+          "version": "3.0.0"
+        },
+        {
+          "installed_files_sha256": "9c6059c2f900198d446df2111f10b336ed4b006874f8f76e0025d0a7b910db94",
+          "license_metadata_sha256": "04e03744bb3fe03b33c8892334b744ab64238e9e2873fdb6799573ba60f89700",
+          "metadata_sha256": "b05084ca1d50879865178d9fff9fabeab61bdfb1f361bfbde95421ffc8f9be46",
+          "name": "typing-extensions",
+          "notice_files": 1,
+          "notice_inventory_sha256": "f3743edbe4b2283f68164de26a3b0f1601a4427699610a59ebaa64ecbcd57c3f",
+          "record_sha256": "9e07fea845cac76293d927afa7157a14ecba39b318bc8af236b8de530b7656c1",
+          "version": "4.16.0"
+        },
+        {
+          "installed_files_sha256": "fd3ea0384ebdecdc12620cb7e9b8befbcf0df53c44693bda8a66ea1d3110aa4e",
+          "license_metadata_sha256": "da2b2689becd5f8b35f25d22a49efa8a44d328f9d8b3eec5e520f264df67d310",
+          "metadata_sha256": "83659a4fe5e6a3a96abda2af32163a27769bb6e807e8babcd1fe37c54b87fa16",
+          "name": "wadler-lindig",
+          "notice_files": 1,
+          "notice_inventory_sha256": "90e3b0a1ea28d75c03352d72d79854c73872431290ba41813aedc90f80599506",
+          "record_sha256": "34a3fabd5064fec98c7b22b577efc531439f6cef01f265bb6b2c4afab8c1c3c7",
+          "version": "0.1.7"
+        }
+      ],
+      "platform": "linux",
+      "python": "3.10.22",
+      "receipt_sha256": "f4f2fed0c788216a33537ab2e6802536a0264e6333ddabb624231b3f0b62f6c9",
+      "requirements": "workers/gsplat/local-environment.txt",
+      "requirements_sha256": "72710b2ac119a08a24f170e20b1695cafc9070587eae094ce6c9845882346aa3"
+    }
+  },
+  "metrics": {
+    "alexnet_backbone_sha256": null,
+    "alexnet_default_cache": "ABSENT",
+    "certified": false,
+    "expected": {
+      "color_domain": "display-encoded RGB [0,1]",
+      "implementation": "TorchMetrics LPIPS",
+      "net_type": "alex",
+      "normalize": true,
+      "ssim_data_range": 1,
+      "ssim_k1": 0.01,
+      "ssim_k2": 0.03,
+      "ssim_sigma": 1.5,
+      "ssim_window": 11
+    },
+    "lpips": "NOT_INSTALLED",
+    "lpips_linear_weights_sha256": null,
+    "status": "BLOCKED",
+    "torchmetrics": "NOT_INSTALLED"
+  },
+  "parent_commit": "9d99dfcd630dda3791dad14cfa88f397033e2bc8",
+  "remaining": [
+    "Original wheel archives and SHA-256 provisioning",
+    "Triton selected-version source notice and transitive rights review",
+    "Pinned TorchMetrics implementation and learned LPIPS weights",
+    "Explicitly provisioned/reviewed AlexNet bytes",
+    "Complete runtime/system-library/interpreter identities and release SBOM"
+  ],
+  "schema_version": 1,
+  "scope": "local installed-byte receipts; not an installable archive lock, complete SBOM or rights/metric clearance",
+  "timezone": "Asia/Hong_Kong"
+}

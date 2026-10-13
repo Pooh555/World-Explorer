@@ -4,6 +4,12 @@ Scope/status: **M1/E1 IN_PROGRESS**. Read-only retained metadata and current
 storage review; no milestone or Q/P/N/E certification. Cwd: repository root.
 Parent `6250f25`; implementation is the local commit containing this report.
 Raw ignored evidence: `R = artifacts/validation/import-metadata-20261013`.
+
+Correction during the subsequent worker-identity audit: the original report
+said 120 CTest cases, but both retained logs show **119/119**. The worker suite
+was counted twice from overlapping CPU/worker labels. Counts below and current
+status/index references are corrected; no test was removed or changed.
+
 `identity.json` binds changed source, binaries, requests and verification runners.
 
 Import now calls shared preflight for an explicitly selected completed inspection:
@@ -26,7 +32,7 @@ RTX 4060 Laptop, not H_R/H_V/H_M. Commands below exited 0 unless stated.
 |---|---|
 | `cmake --preset dev`; `cmake --build --preset dev -j 4`; `cmake --build build/clang-viewer-cxx23 -j 4` | Both builds pass; `configure-dev.log`, `build-*-final.log` |
 | `python3 R/run_checks.py focused` (R expanded to the path above) | Viewer `[review]`: **8 cases / 187 assertions**; core `[inspection],[preflight]`: **11 cases / 650 assertions**; focused logs/argv |
-| `python3 R/run_checks.py dev`; `python3 R/run_checks.py clang` | Actual `ctest --preset dev` and Clang CTest: **120/120 each**; `*-commands.json`, `*-0.log` |
+| `python3 R/run_checks.py dev`; `python3 R/run_checks.py clang` | Actual `ctest --preset dev` and Clang CTest: **119/119 each**; `*-commands.json`, `*-0.log` |
 | `python3 R/run_checks.py tidy` | Five changed translation units, clang-tidy 23.1.1 `--warnings-as-errors=*`: final pass |
 | `python3 R/run_checks.py static` | Clang-format 23.1.1, boundaries, documentation and diff checks pass; exact argv/results retained |
 | `.venv-train/bin/python R/run_native.py` | Three native checks pass; exact viewer/handoff argv in `native-commands.json` |

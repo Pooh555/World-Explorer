@@ -95,16 +95,26 @@ artifacts remain ignored; [layout protocol](protocols/artifacts.md).
 
 Latest [checked Import metadata/storage](validation/2026-10-13-import-metadata.md)
 uses shared retained preflight and per-output current-space snapshots; automatic
-inspection keeps metadata pending. **120/120 GCC C++26 / Clang C++23 checks**,
+inspection keeps metadata pending. **119/119 GCC C++26 / Clang C++23 checks**,
 native default/compact dialogs and full 295,952-splat Cancel/reopen pass with zero
 Vulkan errors; **2,393 protected files** unchanged. No solve/fit rerun or gate change.
 
-Next executable task: M1 recipe/metric identity audit. Compare
-`workers/gsplat/local-environment.txt`, `workers/pose-requirements.txt` and
-`third_party/README.md` with the installed isolated environments and pinned
-`.deps/gsplat`; record installed distribution hashes/notices and locally available
-metric/backbone identities. Keep absent rights/backbone bytes blocked; no implicit
-downloads. For these videos, use the working sample_1 view below; preserve
+The [worker identity audit](validation/2026-10-13-worker-identity.md) now checks
+37 training / 3 pose distributions and 76 notice files against installed bytes.
+Its [compact receipt](../workers/identity/local-development-20261013.json) retains
+exact versions/hashes; wheel archives, Triton notice, transitive rights and
+TorchMetrics/AlexNet/learned LPIPS weight locks remain pending. No environment,
+recipe or checkpoint changes. Eleven new Python tests pass on 3.10/3.12/3.14;
+**119/119 CTest in each existing profile**. The preceding 120-case report counted
+the worker suite twice; retained logs and current references are corrected.
+
+Next executable task: M1 native input/HiDPI qualification using the retained
+sample_1 scene. Launch
+`build/dev/we_viewer --scene artifacts/sample_1/scene.wexplore --source-view --max-splats 1000000 --review-request artifacts/sample_1/request-view.json`;
+check viewport focus/Escape, remaps, source/bookmark resets and responsive Import
+review at the available display scale and 1024×640. Record actual input/scale scope;
+keep reference-hardware latency and other-platform results unqualified.
+For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
 Do not launch duplicates or rerun sample_1's completed fit. Current sample_1 view:

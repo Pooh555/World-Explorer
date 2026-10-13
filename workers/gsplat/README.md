@@ -13,6 +13,11 @@ Tested tuple: Python 3.10.22, PyTorch 2.4.1+cu124, gsplat 1.5.3+pt24cu124,
 official pycolmap 3.12.6, NumPy 1.26.4, Pillow 11.3.0, SciPy 1.15.3. Exact
 installed versions are in [local-environment.txt](local-environment.txt). This
 inventory is not a complete distribution-hash lock or release rights clearance.
+The [installed-byte receipt](../identity/local-development-20261013.json) and
+[audit protocol](../../docs/protocols/worker_identity.md) now bind the local
+version/file/notice inventory; they do not supply the missing wheel archives or
+metric/backbone qualification. Audit is independent of fitting and does not alter
+recipe sources, ownership or compatible optimizer checkpoints.
 The official prebuilt wheel avoids rebuilding CUDA kernels with this host's
 CUDA 13.4/GCC 16. Dependencies must be explicitly installed before processing.
 
