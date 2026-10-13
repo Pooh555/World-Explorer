@@ -29,7 +29,7 @@ nanoseconds and original PTS/time base. RGB comes from decoded captured PNGs;
 it is not relightable albedo. Capture timestamps must strictly increase. Negative,
 overflowing or inconsistent timestamps are rejected. Depth and IMU are absent.
 Intrinsics/distortion are not invented by this source; the calibration ID must
-be resolved through the forthcoming native pose/map adapter.
+be resolved through the native pose/map adapter.
 
 Opaque IDs are the first 16 hexadecimal digits of SHA-256 of UTF-8
 `world_explorer.observation.v1/{full_source_sha256}/{kind}/{external_id}`, parsed
@@ -46,4 +46,6 @@ Caller-retained leases survive subsequent reads, seek and source destruction.
 
 `we_process replay-frames DECODE_STAGE VIDEO` exercises this path and prints
 metadata/RGB digests, then releases each lease. It is an inspection command;
-native batch pose submission and automatic pose-to-fit chaining remain pending.
+the shared reconstruction command consumes the same leases through the isolated
+batch pose estimator and owned stage chain described in [jobs](jobs.md). Real
+integration and platform qualification are scoped separately in validation.

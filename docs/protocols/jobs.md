@@ -113,7 +113,7 @@ preserve the previous scene and any valid map/fit. The scene records
 Retained metadata verification does not probe current backend capabilities,
 certify codec decoding/color conversion or improve timestamp-sampled selection.
 New worker stages still require their own capability handshake. Blur/cuts/lens
-diagnostics and end-to-end real fresh-chain qualification remain pending.
+diagnostics and reference-platform end-to-end qualification remain pending.
 
 For fresh solving, select `pose_action: "solve"`, omit `decode_stage`, and add
 both `decode` and `pose_worker`. Example fragment for a full schema-2 request:
@@ -211,7 +211,11 @@ Actions:
   backend source, script and Python executable.
 - `resume`: same fields plus `checkpoint`, selecting a trusted local full
   optimizer/RNG checkpoint. The worker validates its exact input/recipe identity.
-  A completed fit directory is never reopened for optimization.
+  A completed fit directory is never reopened for optimization. Fresh-solve chaining
+  permits the fitter's canonical `FIT_DIRECTORY/checkpoint.pt` inside its writable
+  fit directory only for explicit resume. Other overlapping checkpoint locations
+  remain protected; a different checkpoint must be outside writable outputs.
+  Request/backend/worker aliases still reject even when they name that checkpoint.
 - `reuse_completed`: requires `completed_fit_identity`, the 64-character SHA-256
   identity from the selected local fit's `result.json`. Omit backend fields and
   checkpoint. Reuse checks source, recipe settings and training image hashes;
@@ -266,8 +270,9 @@ success. No scene is silently trimmed to fit a smaller renderer budget.
 
 Shared native subprocess calls use verified FlatBuffers 2.0 START/CANCEL commands
 and events described in [worker.md](worker.md). Direct Python invocation retains
-JSONL diagnostics. Fresh chaining is implemented with synthetic contract checks;
-real end-to-end fresh solve/fit and native platform qualification remain required
-M1 work. Worker source changes retain
+JSONL diagnostics. Fresh chaining has contract checks and [one real local owned run with checkpoint
+resume and native viewer handoff](../validation/2026-10-13-fresh-chain.md).
+Reference hardware, prescribed fixture/native-platform qualification and complete
+M1 gates remain required. Worker source changes retain
 the original recipe/checkpoint identity checks; completed fits can still be
 explicitly reused, but older optimizer checkpoints are not silently upgraded.
