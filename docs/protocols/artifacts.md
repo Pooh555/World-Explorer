@@ -110,3 +110,16 @@ changes concurrency, not frame selection, feature counts, image dimensions,
 matching recipe or pose acceptance. The current remaining-video requests use
 two extraction/mapping threads and fresh `pose-bounded/` jobs; checked retained
 inspection/decode data is adopted. No successful sample_1 fit is restarted.
+
+### Retained pose recovery
+
+`tools/recover_video_poses.py` writes a fresh, disjoint pose job from a retained
+failed solve and its verified decode stage. `--seed-images IMAGE IMAGE` remaps a
+copied feature/match database from one verified pair; `--initial-model MODEL`
+instead continues a copied model from that failed stage against all saved pairs.
+The modes are mutually exclusive. Without either flag, retained models are
+exported through the normal selection path. All modes retain the existing
+connected-model and 90% registration checks; partial results cannot publish a
+scene. Record the exact recovery command under the video's `logs/` and use the
+global queue flock when running it as a separate Linux service. Keep successful
+fits and original stages intact; this helper does not launch fitting.

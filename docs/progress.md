@@ -66,7 +66,13 @@ established. Remaining jobs now run sequentially in an independent, resource-
 bounded user service. A custom-folder stale-lock bug was corrected. Measured CPU
 matching memory pressure required single-pair matching, retaining all features
 and frames. Current requests are `request-bounded.json`, with two extraction/map
-threads and new `pose-bounded/` outputs. Sample_2 is running; sample_3 is pending.
+threads and new `pose-bounded/` outputs. Both bounded solves have now exited 2
+with POSE_DISCONNECTED: sample_2 has 52/64 frames across separate models;
+sample_3 failed the same single-model check. No scene was published for either.
+Sample_2 model continuation is running in the separate bounded service
+`world-explorer-pose-recovery.service`, using copied database/model inputs in
+`pose-continued/`; the completed matching stage is retained.
+See [pose continuation evidence](validation/2026-10-13-pose-continuation.md).
 See [service/orientation evidence](validation/2026-10-13-service-orientation.md).
 See [fresh reset evidence](validation/2026-10-13-fresh-video-reset.md).
 
@@ -85,8 +91,9 @@ artifacts remain ignored; [layout protocol](protocols/artifacts.md).
 
 ## Next executable work and blockers
 
-Next executable task: inspect the active user service and terminal queue results
-for sample_2/3; validate/view successful scenes and retain actual failure evidence.
+Next executable task: inspect `world-explorer-pose-recovery.service` and
+`artifacts/sample_2/logs/continued-recovery.log`; check connected pose coverage
+before fitting. Inspect sample_3's retained model graph after that recovery.
 Do not launch duplicates or rerun sample_1's completed fit. Current sample_1 view:
 `build/dev/we_viewer --scene artifacts/sample_1/scene.wexplore --source-view --max-splats 1000000`.
 Source view is a viewing reference, not measured gravity or floor/collision.

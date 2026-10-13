@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 import shutil
+import signal
 import sys
 
 
@@ -12,11 +13,18 @@ def main():
     parser.add_argument("--request", type=Path, required=True, help="Original batch-request.json")
     parser.add_argument("--failed-stage", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    seed = parser.add_mutually_exclusive_group()
+    seed.add_argument("--seed-images", nargs=2,
+                        help="Reinitialize mapping from this verified bridge; reuse features/matches")
+    seed.add_argument("--initial-model", type=Path,
+                      help="Continue one retained model against all saved feature/match pairs")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(root / "workers"))
     import worker
     from colmap.journal import run
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: worker.CANCELLED.set())
 
     request = worker.read_json(args.request.resolve(strict=True))
     original = Path(request["job_dir"]).resolve(strict=True)
@@ -54,8 +62,38 @@ def main():
         "retained_sparse": inventory,
     })
     worker.atomic_json(output / "batch-request.json", recovered)
+    if args.seed_images or args.initial_model:
+        mapping = output / "mapping"
+        mapping.mkdir()
+        database = failed / "database.db"
+        initial_hash = worker.sha256(database)
+        shutil.copyfile(database, mapping / "database.db")
+        worker.atomic_json(mapping / "input.json", {
+            "database_sha256": initial_hash, "seed_images": args.seed_images,
+            "initial_model": str(args.initial_model) if args.initial_model else None,
+            "decode_completion_sha256": worker.sha256(decoded / "completion.json"),
+        })
+        initialization = ["--seed-images", *args.seed_images] if args.seed_images else []
+        if args.initial_model:
+            model = args.initial_model.resolve(strict=True)
+            if model.parent != failed / "sparse":
+                parser.error("initial model must belong to the retained failed solve")
+            worker.file_inventory(model, worker.LIMITS["max_output_bytes"])
+            shutil.copytree(model, mapping / "initial-model")
+            initialization = ["--initial-model", str(mapping / "initial-model")]
+        worker.run_command([
+            request["pose_python"], str(root / "tools/remap_video_poses.py"),
+            "--database", str(mapping / "database.db"), "--images", str(decoded / "images"),
+            "--output", str(mapping / "sparse"), *initialization,
+            "--threads", str(request.get("limits", {}).get("cpu_threads", 2)),
+        ], timeout=worker.LIMITS["stage_timeout_seconds"], log=mapping / "backend.log",
+            threads=request.get("limits", {}).get("cpu_threads", 2),
+            output_directory=mapping, output_budget=worker.LIMITS["max_output_bytes"])
+        if worker.sha256(database) != initial_hash:
+            raise RuntimeError("Original match database changed during recovery")
+        sparse = mapping / "sparse"
     run(worker, recovered, retained_sparse=sparse)
-    if worker.file_inventory(sparse, worker.LIMITS["max_output_bytes"]) != inventory:
+    if worker.file_inventory(failed / "sparse", worker.LIMITS["max_output_bytes"]) != inventory:
         raise RuntimeError("original retained solve changed during recovery")
 
 
