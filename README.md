@@ -45,11 +45,11 @@ build/dev/we_viewer --reconstruction-request artifacts/reconstruction.json --max
 
 For a new video anywhere in `data/`, run
 `python3 tools/new_video_job.py data/local/room.mp4`. This creates and prints a
-request under `artifacts/videos/<name>-<content-hash>/runs/<UTC-timestamp>-reconstruction/`
+request under `artifacts/<video-name>/`
 without starting processing. Use that printed path with the commands above, or
 open it with `build/dev/we_viewer --review-request REQUEST_PATH`.
 See the [artifact layout](docs/protocols/artifacts.md) for limits, retained scenes
-and historical path mappings. All of `data/` and `artifacts/` is ignored by Git.
+and repeat-attempt naming. All of `data/` and `artifacts/` is ignored by Git.
 
 See the [job schema](docs/protocols/jobs.md) for fresh fitting, checkpoint resume
 and explicit completed-fit reuse. Schema 2 can run automatic local metadata
