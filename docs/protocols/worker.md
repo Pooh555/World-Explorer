@@ -111,8 +111,12 @@ are restricted to file/pipe. Local filesystem URLs are not a remote transport.
 
 Pose solving uses official pycolmap 4.2.1, CPU SIFT, single OPENCV intrinsics,
 sequential matching and incremental mapping. The explicit recovery recipe uses
-exhaustive guided matching. Multiple reconstructed components fail visibly; fewer
-than 90% registered selected frames also fails. Original native COLMAP outputs and
+exhaustive guided matching. Model directories are inspected by registered frame
+identity rather than counted as disconnected components. One model is accepted
+when it is the unique strict superset of every other candidate's frame set; smaller
+redundant attempts are retained but not merged. Separate/partially overlapping
+coverage and equal ambiguous candidates fail visibly. Fewer than 90% registered
+selected frames also fails. Original native COLMAP outputs and
 canonical JSON poses are retained. Appearance is not attempted after failed poses.
 
 The upstream appearance wrapper requires the exact gsplat 1.5.3 source commit,

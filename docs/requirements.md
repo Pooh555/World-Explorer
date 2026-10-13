@@ -38,3 +38,9 @@ runs](validation/2026-10-13-fresh-video-reset.md). Prior validation documentatio
 retains historical observations; old private raw data and path mappings are no
 longer available. New runs use the [simple per-video layout](protocols/artifacts.md).
 No gate status changes from cleanup or starting a run.
+
+[Model selection repair](validation/2026-10-13-model-selection.md) corrects a false
+POSE_DISCONNECTED rejection for the original sample: a complete 63-frame model
+was accompanied by a redundant four-frame subset. 15 worker/114 CPU checks and
+real recovered pose replay pass; fresh fitting/publication is pending. No gate
+thresholds were changed and genuinely separate/ambiguous models still fail.

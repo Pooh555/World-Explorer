@@ -49,13 +49,15 @@ Each video now has one folder: `artifacts/sample_1/`, `sample_2/`, `sample_3/`.
 `request.json` and `source.json` identify inputs/config; stage directories hold
 owned processing state; `logs/reconstruction.log` records progress and
 `logs/result.json` appears on terminal exit. The original session interruption cancelled all three coordinators before fitting.
-A second crash stopped those parallel restarts too. The sequential queue has now
-terminated with status CANCELLED: sample_1 failed after 2,132.705 s with two
-disconnected COLMAP models; sample_2 was cancelled (exit 130) after 190.653 s;
-sample_3 remained PENDING and was never started by that queue. Earlier sample_3
-attempts also ended in cancellation. Native process inspection confirms no current
-reconstruction workers. None has a fit result or published scene manifest.
-`artifacts/queue.json` and per-video logs retain these actual outcomes.
+The earlier sequential queue stopped after falsely rejecting sample_1 and
+cancelling sample_2; sample_3 remained pending. [Model selection investigation](validation/2026-10-13-model-selection.md)
+found a complete 63-frame model alongside a redundant four-frame subset.
+The worker now selects a unique strict superset, preserving genuine disconnected
+and ambiguous-model rejection. Retained-model recovery completed in a separate
+`pose-recovery/` job, and native replay passed: 63 observations/poses, one calibration.
+The new sequential recovery queue uses `request-recovery.json` per video:
+sample_1's normal 7k fit is active; sample_2/3 are pending. Scene publication and
+native viewing remain pending. No original saved stages or requests were changed.
 See [fresh reset evidence](validation/2026-10-13-fresh-video-reset.md).
 
 ```sh
@@ -73,12 +75,11 @@ artifacts remain ignored; [layout protocol](protocols/artifacts.md).
 
 ## Next executable work and blockers
 
-Next executable task: diagnose sample_1's two retained COLMAP components before
-another full solve; do not accept or merge disconnected models as a complete scene.
-The sequential queue is stopped, so sample_2/3 require an explicit resumed run;
-check locks/PIDs first and reuse saved stages. No native scene viewing can be
-verified until fitting/publication succeeds. After this run slice, resume checked
-retained metadata/current-storage Import review.
+Next executable task: inspect the active recovery queue, validate/view sample_1
+on successful publication, and record its terminal result and preservation audit.
+Then inspect sample_2/3, which run sequentially using the fixed selector. Do not
+launch duplicates or accept genuinely separate models as a completed scene.
+After this run slice resume checked retained metadata/current-storage Import review.
 
 Reference hardware, prescribed fixture/platform qualification and complete gates
 remain pending. Do not weaken thresholds or silently trim either full scene.
