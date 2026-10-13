@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
+#include <numbers>
 
 using namespace world_explorer;
 TEST_CASE("fly movement is normalized, instantaneous and independent of update frequency") {
@@ -49,4 +50,31 @@ TEST_CASE("camera axes and epoch-scoped bookmark are unambiguous") {
     REQUIRE(restore_bookmark(bookmark, {3}, {7}));
     REQUIRE_FALSE(restore_bookmark(bookmark, {3}, {8}));
     REQUIRE_FALSE(restore_bookmark(bookmark, {4}, {7}));
+}
+
+TEST_CASE("capture up reference survives fly movement fit and bookmarks") {
+    fly_camera camera;
+    camera.up_axis = {0, 0, 1};
+    CHECK(camera.forward() == vec3d{0, 1, 0});
+    CHECK(camera.right() == vec3d{1, 0, 0});
+    CHECK(camera.down() == vec3d{0, 0, -1});
+    const auto origin = camera.position;
+    fly_input input;
+    input.captured = true;
+    input.up = 1;
+    camera.update(input, 0.1);
+    CHECK(camera.position.z == Catch::Approx(origin.z + 0.2));
+    CHECK(camera.position.y == origin.y);
+    camera.yaw = std::numbers::pi / 2;
+    CHECK(camera.forward().x == Catch::Approx(1));
+    CHECK(dot(cross(camera.right(), camera.down()), camera.forward()) == Catch::Approx(1));
+    camera.fit({{-1, -1, -1}, {1, 1, 1}});
+    CHECK(camera.up_axis == vec3d{0, 0, 1});
+    CHECK(camera.forward() == vec3d{0, 1, 0});
+    CHECK(camera.position.y < 0);
+    camera_bookmark bookmark{{3}, {7}, camera};
+    REQUIRE(restore_bookmark(bookmark, {3}, {7}));
+    CHECK(restore_bookmark(bookmark, {3}, {7})->up_axis == camera.up_axis);
+    bookmark.camera.up_axis = {0, 0, 0};
+    CHECK_FALSE(restore_bookmark(bookmark, {3}, {7}));
 }

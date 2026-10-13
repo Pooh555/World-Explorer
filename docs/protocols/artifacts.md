@@ -82,3 +82,31 @@ Requests, cached stages, checkpoints and solver limits are not changed. This loc
 launcher uses Linux/POSIX signal and file-lock facilities; it does not qualify
 other platforms. Detaching it permits the launch command to exit, but cannot
 protect it from shutdown, process-tree termination or resource exhaustion.
+
+### Supervised laptop jobs
+
+Use `--service` with `tools/run_video_jobs.py` to run the queue as a transient
+Linux user service, `world-explorer-video-jobs.service`. It is independent of
+the chat/tool session, uses two CPU cores in aggregate, a 6 GiB soft reclaim
+threshold, 7 GiB hard memory cap and 1 GiB swap cap, and is not enabled at boot.
+Only one reconstruction runs at a time. The unit is collected on completion;
+per-video logs and `artifacts/queue.json` remain.
+
+```sh
+systemctl --user status world-explorer-video-jobs.service
+systemctl --user stop world-explorer-video-jobs.service
+journalctl --user -u world-explorer-video-jobs.service --no-pager
+```
+
+The queue records actual stop signals and labels exit-130 attempts CANCELLED.
+Previous terminal results move into `logs/history/attempt-NNN/`; they cannot be
+mistaken for the currently running attempt. Lock recovery reads the request's
+actual mutable worker directories, including custom pose paths, rather than
+assuming a folder named poses. Live or unprobeable lock PIDs block the queue.
+
+CPU SIFT matching processes one pair at a time because its dense descriptor
+workspaces can exhaust laptop memory when multiplied by matching workers. This
+changes concurrency, not frame selection, feature counts, image dimensions,
+matching recipe or pose acceptance. The current remaining-video requests use
+two extraction/mapping threads and fresh `pose-bounded/` jobs; checked retained
+inspection/decode data is adopted. No successful sample_1 fit is restarted.

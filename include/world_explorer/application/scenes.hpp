@@ -36,8 +36,8 @@ struct source_inspection_view {
     double vertical_fov_radians{};
     std::string frame_name;
 };
-// An explicit spectator reset toward a recorded source view, with world-up roll
-// removed. This is not a calibrated reference render or a reconstruction tracker.
+// An explicit spectator reset using a recorded capture up hint when available.
+// Gravity remains unknown. This is not a calibrated render or capture tracker.
 result<source_inspection_view> source_view(const scene_state& scene);
 bounds3d world_bounds(const scene_state& scene);
 } // namespace world_explorer

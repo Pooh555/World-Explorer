@@ -253,3 +253,19 @@ bits. Four-bit radix pass counts round upward to even pairs, preserving the
 original ping-pong output buffer and stable depth/tie ordering. A zero-only key
 needs no sorting. Positive float depth keys continue to use all eight passes.
 This changes neither reference budgets nor admitted contributors.
+
+## Source-view orientation
+
+New fit publications store source-inspection schema 2 with a checked capture-up
+reference. **Source view** / `--source-view` reproduces the recorded orientation
+instead of removing its roll against arbitrary world +Y. Fly keeps this reference
+after the reset; Space/Ctrl move along the chosen up direction, and Fit/bookmarks
+preserve it. Without an explicit source reset, default navigation still uses +Y
+world-up. Legacy schema 1 keeps the previous world-up reset. The UI distinguishes
+world-axis and capture-orientation references; gravity remains unmeasured.
+
+The [viewing-reference decision](../adr/009-capture-view-up.md) scopes this
+user-requested option. No Gaussian/SH/pose rotation, floor inference or collision
+activation occurs. Recompiling a completed fit with explicit `reuse_completed`
+updates viewing metadata through normal atomic scene publication, skipping
+optimization and preserving fitted assets.

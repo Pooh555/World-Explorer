@@ -19,6 +19,10 @@ struct fly_camera {
     double pitch{};
     double speed{2};
     double sensitivity{0.002};
+    // Presentation/navigation reference; this is not measured gravity.
+    vec3d up_axis{0, 1, 0};
+    vec3d reference_right() const;
+    vec3d reference_forward() const;
     vec3d forward() const;
     vec3d right() const;
     vec3d down() const;
