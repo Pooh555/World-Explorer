@@ -21,7 +21,11 @@ selected file; crash/power-loss qualification remains separate.
 
 One owned job publishes immutable snapshots under the UI-state mutex. `busy`
 clearing does not imply UI admission: a snapshot can still await consumption.
-`has_pending_work()` checks both under that mutex. Automatic screenshot, next
+`has_pending_work()` checks both under that mutex. Starting any load, worker or
+reconstruction checks the same busy/pending condition under the mutex; rejection
+preserves pending snapshot, status and start time. UI commands own the `jthread`
+handle. Cancel calls `request_cancel()` after releasing the state mutex because
+stop callbacks execute synchronously and may need that mutex. Automatic screenshot, next
 startup reconstruction and `--frames` exit respect this pending handoff; renderer
 visibility is separately gated by the update ticket. A frame limit is a minimum
 before completion, not permission to capture/exit before a selected scene is
@@ -43,6 +47,20 @@ location. Completion clears active progress and processing under the same mutex
 that publishes the pending snapshot. Late progress is ignored after completion.
 Completed reuse shows verification rather than an invented fit. UI rendering,
 Cancel, logs and the existing renderer visibility gate retain their own lifetimes.
+
+An optional viewer reconstruction observer runs synchronously on the owned job
+thread after each typed state update, outside the state mutex, borrowing progress
+and its stop token. Diagnostic observers must honor stop and use bounded waits;
+they do not change the coordinator or synthesize completion. Tests use exact stage
+boundaries to cover Cancel/reopen, post-publication stop and pending admission.
+
+`we_gpu_reconstruction_handoff <prior scene> <completed request> <new report directory>`
+exercises the same owned job and GUI Cancel command with native Vulkan readback.
+It requires explicit completed-fit reuse and existing completed poses/fit, uses
+one-million-splat/512 MiB renderer limits, and checks pause/old-pixel preservation,
+reopen/pending admission and full-scene visibility. A hidden 1280×720 diagnostic
+surface omits ImGui; this is not mouse-widget, HiDPI, latency, FPS or another
+platform's qualification. Reports/captures belong in ignored artifacts.
 
 Viewer preference/handoff unit tests build only with `WE_BUILD_VIEWER` and
 `BUILD_TESTING`. They require the viewer's SDL/ImGui dependencies but no GPU

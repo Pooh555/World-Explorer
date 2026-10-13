@@ -17,6 +17,14 @@ bool application_state::has_pending_work() {
     return busy || static_cast<bool>(loaded);
 }
 
+bool application_state::begin_job() {
+    std::lock_guard lock(mutex);
+    if (busy || loaded)
+        return false;
+    busy = true;
+    return true;
+}
+
 void application_state::append(std::string text) {
     std::lock_guard lock(mutex);
     constexpr std::size_t MAX_LOG = std::size_t{128} * 1024;
@@ -28,7 +36,7 @@ void application_state::append(std::string text) {
 }
 
 void application_state::load(std::filesystem::path path) {
-    if (busy.exchange(true))
+    if (!begin_job())
         return;
     started = std::chrono::steady_clock::now();
     {
@@ -57,7 +65,7 @@ void application_state::load(std::filesystem::path path) {
 
 void application_state::worker(worker_configuration configuration,
                                std::vector<std::string> arguments) {
-    if (busy.exchange(true))
+    if (!begin_job())
         return;
     processing = true;
     started = std::chrono::steady_clock::now();
@@ -87,8 +95,9 @@ void application_state::worker(worker_configuration configuration,
     });
 }
 
-void application_state::reconstruction(std::filesystem::path request) {
-    if (busy.exchange(true))
+void application_state::reconstruction(std::filesystem::path request,
+                                       reconstruction_observer observed) {
+    if (!begin_job())
         return;
     started = std::chrono::steady_clock::now();
     processing = true;
@@ -100,21 +109,24 @@ void application_state::reconstruction(std::filesystem::path request) {
         reconstruction_error.clear();
         log.clear();
     }
-    job = std::jthread([this, request = std::move(request)](const std::stop_token& stop) {
+    job = std::jthread([this, request = std::move(request),
+                        observed = std::move(observed)](const std::stop_token& stop) {
+        const auto notify = [&](const reconstruction_progress& value) {
+            update_reconstruction_progress(value);
+            if (observed)
+                observed(value, stop);
+        };
         try {
             const auto selected = read_reconstruction_job(request);
             const auto published =
-                selected
-                    ? reconstruct(
-                          *selected, stop, [this](std::string text) { append(std::move(text)); },
-                          [this](const reconstruction_progress& value) {
-                              update_reconstruction_progress(value);
-                          })
-                    : result<std::filesystem::path>{std::unexpected(selected.error())};
+                selected ? reconstruct(
+                               *selected, stop,
+                               [this](std::string text) { append(std::move(text)); }, notify)
+                         : result<std::filesystem::path>{std::unexpected(selected.error())};
             // Publication is a commit boundary. A subsequent stop still leaves
             // the bundle available; the UI may open it in a separate command.
             if (published)
-                update_reconstruction_progress({reconstruction_stage::LOADING_SCENE, {}, {}, 0});
+                notify({reconstruction_stage::LOADING_SCENE, {}, {}, 0});
             const auto scene = published
                                    ? load_bundle(*published, load_limits)
                                    : result<scene_snapshot>{std::unexpected(published.error())};
@@ -125,6 +137,8 @@ void application_state::reconstruction(std::filesystem::path request) {
         }
     });
 }
+
+void application_state::request_cancel() { job.request_stop(); }
 
 void application_state::update_reconstruction_progress(const reconstruction_progress& value) {
     std::string message;

@@ -1,6 +1,9 @@
+#include "../unit/reconstruction_fixture.hpp"
 #include "job_state.hpp"
+#include "reconstruction_gate.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 using namespace world_explorer;
 TEST_CASE("viewer completion waits for published snapshots after the loader clears busy") {
@@ -123,4 +126,112 @@ TEST_CASE("viewer owned reconstruction thread handles bad requests and resets pr
     CHECK(state.reconstruction_error != "previous failure");
     CHECK(state.status.find("step 1101") == std::string::npos);
     CHECK(state.status.find("Validating reconstruction request: Failed") != std::string::npos);
+}
+
+TEST_CASE("viewer owned job cancels at checked stages and reopens retained publication",
+          "[owned-job]") {
+    test::reconstruction_fixture fixture;
+    fixture.adopt_inspection();
+    REQUIRE(reconstruct(fixture.job, {}, {}));
+    const auto manifest = fixture.job.scene_output / "manifest.json";
+    const auto before = sha256_file(manifest, 65536).value();
+    const auto request = fixture.write_retained_request();
+    const auto stage = GENERATE(
+        reconstruction_stage::VALIDATING, reconstruction_stage::INSPECTING,
+        reconstruction_stage::POSES, reconstruction_stage::MAP, reconstruction_stage::VERIFYING_FIT,
+        reconstruction_stage::COMPILING, reconstruction_stage::LOADING_SCENE);
+    test::reconstruction_gate gate(stage); // Outlives the job, including failing assertions.
+    viewer::application_state state;
+    std::atomic<bool> stop_observed{};
+    state.reconstruction(request,
+                         [&](const reconstruction_progress& value, const std::stop_token& stop) {
+                             std::stop_callback observe_stop(stop, [&] {
+                                 // UI cancellation must permit stop callbacks to access the state
+                                 // mutex.
+                                 std::lock_guard lock(state.mutex);
+                                 stop_observed = true;
+                             });
+                             gate.observe(value, stop);
+                         });
+    REQUIRE(gate.wait_until_reached());
+    {
+        std::lock_guard lock(state.mutex);
+        REQUIRE(state.progress);
+        if (state.progress)
+            CHECK(state.progress->stage == stage);
+        CHECK(state.busy);
+        CHECK(state.processing);
+        CHECK_FALSE(state.loaded);
+    }
+    const auto started = state.started;
+    state.load(fixture.root / "missing-scene");
+    state.worker({}, {});
+    state.reconstruction(fixture.root / "missing-request");
+    CHECK(state.started == started);
+    state.request_cancel();
+    state.request_cancel(); // Repeated Cancel is harmless.
+    state.job.join();
+    CHECK(stop_observed);
+    CHECK_FALSE(gate.timed_out());
+    CHECK_FALSE(state.busy);
+    CHECK_FALSE(state.processing);
+    CHECK_FALSE(state.progress);
+    CHECK_FALSE(state.reconstructing);
+    CHECK(sha256_file(manifest, 65536).value() == before);
+    if (stage == reconstruction_stage::LOADING_SCENE) {
+        // Atomic publication cannot be undone by a later stop.
+        REQUIRE(state.loaded);
+        CHECK(state.reconstruction_error.empty());
+        CHECK(state.has_pending_work());
+        std::lock_guard lock(state.mutex);
+        state.loaded.reset(); // Model renderer admission before opening a new job.
+    } else {
+        CHECK_FALSE(state.loaded);
+        CHECK_FALSE(state.has_pending_work());
+        CHECK(state.status.starts_with(reconstruction_stage_name(stage)));
+        CHECK(state.status.find("Cancelled") != std::string::npos);
+        CHECK_FALSE(state.reconstruction_error.empty());
+    }
+    bool stale_stop = false;
+    state.reconstruction(request, [&](const reconstruction_progress&, const std::stop_token& stop) {
+        stale_stop = stale_stop || stop.stop_requested();
+    });
+    state.job.join();
+    CHECK_FALSE(stale_stop);
+    CHECK_FALSE(state.busy);
+    CHECK_FALSE(state.processing);
+    CHECK_FALSE(state.progress);
+    CHECK(state.reconstruction_error.empty());
+    REQUIRE(state.loaded);
+    CHECK(state.has_pending_work());
+    CHECK(sha256_file(manifest, 65536).value() == before);
+    CHECK(state.status.find("waiting for renderer admission") != std::string::npos);
+}
+
+TEST_CASE("viewer refuses new jobs until a completed snapshot is admitted", "[owned-job]") {
+    test::reconstruction_fixture fixture;
+    fixture.adopt_inspection();
+    const auto request = fixture.write_retained_request();
+    viewer::application_state state;
+    state.reconstruction(request);
+    state.job.join();
+    REQUIRE(state.loaded);
+    CHECK_FALSE(state.busy);
+    const auto pending = state.loaded;
+    const auto status = state.status;
+    const auto started = state.started;
+    SECTION("load cannot replace pending status") { state.load(fixture.root / "missing-scene"); }
+    SECTION("worker cannot replace pending status") { state.worker({}, {}); }
+    SECTION("reconstruction cannot replace pending status") {
+        state.reconstruction(fixture.root / "missing-request");
+    }
+    if (state.job.joinable())
+        state.job.join();
+    CHECK(state.loaded == pending);
+    CHECK(state.started == started);
+    CHECK(state.status == status);
+    CHECK(state.reconstruction_error.empty());
+    CHECK_FALSE(state.busy);
+    CHECK_FALSE(state.processing);
+    CHECK(state.has_pending_work());
 }
