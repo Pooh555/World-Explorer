@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Fresh three-video reset | [Full user-requested reset](2026-10-13-fresh-video-reset.md): old artifacts removed; three fresh local coordinator runs in simple per-video folders, terminal results pending |
 | Artifact organization | [Semantic local layout](2026-10-13-artifact-layout.md): deleted-video job removed, 5,517 retained files unchanged, both full scenes reopened, content-keyed request helper for future videos |
 | New local videos | [Local run observations](2026-10-13-new-videos.md): AVI/MP4 disconnected-model rejection (three/two models); existing renamed original preserved |
 | Import request review | [Actions/limits and checked-byte launch](2026-10-13-request-review.md): bounded read-only background summary, stale/changed request rejection, native 1024×640/default dialog and full reviewed handoff, 114 checks in both profiles |

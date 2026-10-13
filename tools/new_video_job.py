@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Create a local reconstruction request in the content-keyed artifact layout."""
+"""Create a local reconstruction request in the per-video artifact layout."""
 
 import argparse
 import hashlib
 import json
 import math
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -14,6 +13,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("video", type=Path, help="Existing video inside data/")
     parser.add_argument("--sample-fps", type=float, default=3.0)
+    parser.add_argument("--name", help="Artifact folder name (default: video filename stem)")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
@@ -28,9 +28,12 @@ def main():
         parser.error("sample-fps must be finite and in [0.1, 4]")
     with video.open("rb") as stream:
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
-    slug = re.sub(r"[^a-z0-9]+", "-", video.stem.lower()).strip("-")[:64] or "video"
-    run_id = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S%fZ-reconstruction")
-    directory = root / "artifacts/videos" / f"{slug}-{digest[:12]}" / "runs" / run_id
+    name = args.name or video.stem.lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", name):
+        parser.error("name must use 1–64 lowercase letters, digits, underscores or hyphens")
+    directory = root / "artifacts" / name
+    if directory.exists():
+        parser.error("artifact folder already exists; use --name for a separate attempt")
     worker = str(root / "workers/worker.py")
     request = {
         "schema_version": 2, "recipe": "local_gsplat_v1", "action": "start",
