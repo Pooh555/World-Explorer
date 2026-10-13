@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reinitialize mapping on a copied, completed feature/match database."""
 import argparse
+from contextlib import closing
 from pathlib import Path
 import sqlite3
 import re
@@ -29,7 +30,7 @@ def main():
     import pycolmap
     if pycolmap.__version__ != "4.2.1":
         raise RuntimeError("Official pycolmap 4.2.1 is required")
-    with sqlite3.connect(args.database.resolve().as_uri() + '?mode=ro', uri=True) as database:
+    with closing(sqlite3.connect(args.database.resolve().as_uri() + '?mode=ro', uri=True)) as database:
         if database.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
             raise ValueError("Invalid retained match database")
         names = dict(database.execute("SELECT name,image_id FROM images"))
@@ -43,7 +44,7 @@ def main():
         if first == second:
             raise ValueError("Initialization requires two distinct images")
         pair_id = min(first, second) * 2147483647 + max(first, second)
-        with sqlite3.connect(args.database.resolve().as_uri() + '?mode=ro', uri=True) as database:
+        with closing(sqlite3.connect(args.database.resolve().as_uri() + '?mode=ro', uri=True)) as database:
             bridge = database.execute("SELECT rows FROM two_view_geometries WHERE pair_id=?",
                                       (pair_id,)).fetchone()
         minimum = pycolmap.IncrementalMapperOptions().init_min_num_inliers
