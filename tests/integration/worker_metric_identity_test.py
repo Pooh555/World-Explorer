@@ -268,6 +268,17 @@ class MetricIdentityTests(unittest.TestCase):
         self.assertIs(fake.load, loader)
         self.assertEqual(len(calls), 1)
 
+    def test_tensor_loader_uses_the_hashed_snapshot_when_the_selected_path_changes(self):
+        selected = self.backbone.resolve()
+        original = selected.read_bytes()
+        def loader(snapshot, *args, **kwargs):
+            selected.write_bytes(b"replacement after hashing")
+            self.assertTrue(kwargs["weights_only"])
+            return snapshot.read()
+        fake = SimpleNamespace(load=loader)
+        with parity.checked_tensor_loading(fake, {selected: hashlib.sha256(original).hexdigest()}):
+            self.assertEqual(fake.load(selected), original)
+
     def cli(self, output, require=False):
         scripts = self.root / "tools"
         scripts.mkdir(exist_ok=True)

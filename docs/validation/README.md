@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Retained holdout evaluation | [Read-only real image pairs](2026-10-14-holdout-evaluation.md): all 13 RGB8 pairs score 17.5284 dB / 0.787073 SSIM / 0.382562 LPIPS; FP32 results stay separate; 13 image / 67 worker cases on three interpreters and 121 dev CTest, protected data unchanged; independent Q3 capture/rights remain blocked |
 | Offline CPU metrics | [Identity and parity](2026-10-14-metric-identity.md): explicitly authorized isolated 16-package CPU environment, fixed policy/implementation/linear-weight/backbone hashes, independent synthetic LPIPS/SSIM parity, 16 new / 53 worker tests across three interpreters and 121 dev CTest; original training and 2,393 protected files unchanged; corpus/rights remain unqualified |
 | Native input / live HiDPI | [Control, bookmark and resize checks](2026-10-14-native-input.md): 18 native control assertions, 2→1.5→1→2 compositor scaling, FOV/Import resize repairs, 121 GCC/Clang checks, zero Vulkan errors and 2,393 unchanged protected files; physical/reference latency and other platforms pending |
 | Native CI audit observer | [Canonical path repair](2026-10-13-native-audit-paths.md): supplied Windows 101/102 and macOS 102/103 share a zero-open test observation; prior SQLite cases pass; alias replay, 12 audit checks across three interpreters, 37 worker checks and local C++23 103/103 / C++26 119/119; hosted confirmation pending |
