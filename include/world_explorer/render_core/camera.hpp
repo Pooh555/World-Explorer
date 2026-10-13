@@ -1,6 +1,7 @@
 #ifndef WORLD_EXPLORER_RENDER_CORE_CAMERA_HPP
 #define WORLD_EXPLORER_RENDER_CORE_CAMERA_HPP
 #include "world_explorer/core/math.hpp"
+#include "world_explorer/render_core/timing.hpp"
 #include <cstdint>
 #include <optional>
 
@@ -38,6 +39,9 @@ struct renderer_diagnostics {
     std::uint32_t framebuffer_width{}, framebuffer_height{};
     std::uint32_t validation_errors{};
     double last_cpu_frame_ms{};
+    // One latest completed sample per frame slot; sequence identifies samples
+    // across delayed completion/resize. Empty when timing collection is disabled.
+    std::array<renderer_frame_timing, 2> completed_timings{};
 };
 } // namespace world_explorer
 

@@ -215,6 +215,14 @@ void vulkan_device::select_physical_device() {
                 capabilities_.device_name = properties_.deviceName;
                 capabilities_.device_version = properties_.apiVersion;
                 capabilities_.max_splats = options_.max_splats;
+                capabilities_.timestamp_valid_bits = families[index].timestampValidBits;
+                capabilities_.timestamp_period_ns = properties_.limits.timestampPeriod;
+                capabilities_.gpu_timestamps_supported =
+                    families[index].timestampValidBits > 0 &&
+                    families[index].timestampValidBits <= 64 &&
+                    properties_.limits.timestampComputeAndGraphics &&
+                    std::isfinite(capabilities_.timestamp_period_ns) &&
+                    capabilities_.timestamp_period_ns > 0;
                 capabilities_.portability_subset =
                     std::ranges::any_of(extensions, [](const auto& item) {
                         return std::strcmp(item.extensionName, "VK_KHR_portability_subset") == 0;

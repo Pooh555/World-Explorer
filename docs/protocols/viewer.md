@@ -132,3 +132,43 @@ per phase, verifying every measured draw submitted a render frame before calcula
 throughput. Window managers may choose restored window dimensions. Wayland must
 receive a committed visible buffer before fullscreen mapping. Reported throughput
 is GPU-completed render frames, not P2/P3 presented-FPS certification.
+
+## Optional stage timings
+
+`renderer_options.collect_timings` defaults off. It records CPU waits for frame
+reuse, count timelines, acquisition and presentation calls, plus completed GPU
+projection, eight-pass depth sorting, count/scan, tile indexing, composition and
+presentation-draw intervals. Tile indexing includes emission, stable radix sorting
+and range construction; presentation draw includes SDR/UI, not physical display.
+Repeated/rejected count regions and accepted batches accumulate in their owning
+render-frame sample. CPU wait and GPU intervals overlap and must not be added.
+
+GPU collection requires the selected queue's nonzero valid timestamp bits, a
+finite positive timestamp period, and graphics/compute timestamp support. Otherwise
+CPU samples remain available and GPU fields are explicitly unavailable. Each of
+two frame slots owns exactly twelve query slots, reused after existing completion
+waits. Stage-boundary `ALL_COMMANDS` timestamps can perturb scheduling;
+[writes](https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdWriteTimestamp2.html)
+and [64-bit reads](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetQueryPoolResults.html)
+use validated queue capabilities. No query read adds `WAIT_BIT` or an extra
+completion wait. Driver query-pool memory is outside the reported owned-buffer
+count; query count stays fixed at 24 regardless of partitioning.
+
+The renderer publishes one newest completed sample per frame slot, carrying its
+submitted frame sequence and framebuffer extent. Idle/resize drains submitted
+queries before slot reuse; paused/empty frames clear unused stages. Timestamp
+deltas mask unsupported bits and account for one counter wrap; intervals must be
+shorter than the device's counter range. Aborted draws do not publish samples.
+
+`we_gpu_viewer_regression <scene> <new report.json> --timings` retains all 24
+measured completed samples per phase after eight warmup frames, checks IDs/extents,
+and reports p50/p95/p99 plus raw samples. Unsupported GPU measurements are null,
+never a zero-time pass. `we_gpu_reference ... --timings` and
+`we_gpu_smoke <output.ppm> --timings` exercise bounded-query reuse and paused/empty
+lifetime behavior without introducing performance thresholds.
+
+Tile-key sorting uses the validated maximum global tile ID to skip unused high
+bits. Four-bit radix pass counts round upward to even pairs, preserving the
+original ping-pong output buffer and stable depth/tie ordering. A zero-only key
+needs no sorting. Positive float depth keys continue to use all eight passes.
+This changes neither reference budgets nor admitted contributors.

@@ -16,6 +16,8 @@ struct renderer_options {
     std::filesystem::path shader_directory;
     // Per emitted tile batch; larger frames split without dropping contributors.
     std::size_t max_tile_references{8000000};
+    // Opt-in diagnostics; fixed query pools, no extra completion waits.
+    bool collect_timings{};
 };
 // Adapter-only handles. Public scene/core APIs never carry graphics objects.
 struct vulkan_overlay_context {
@@ -29,6 +31,9 @@ struct renderer_capabilities {
     bool validation_enabled{}, portability_subset{};
     std::size_t max_splats{};
     bool fp32_compositing{};
+    bool gpu_timestamps_supported{};
+    std::uint32_t timestamp_valid_bits{};
+    double timestamp_period_ns{};
 };
 class vulkan_renderer {
   public:

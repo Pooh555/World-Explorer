@@ -1,6 +1,7 @@
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
+#include "world_explorer/render_core/radix.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <algorithm>
@@ -68,6 +69,10 @@ struct vulkan_renderer::implementation {
         gpu_buffer projected, keys_a, keys_b, histogram, captured, overlap_offsets, group_offsets,
             control, tile_ranges, references_a, references_b;
         std::array<VkDescriptorSet, 4> descriptors{};
+        VkQueryPool timing_queries{};
+        std::array<bool, GPU_TIMING_STAGE_COUNT> timing_pending{};
+        renderer_frame_timing timing;
+        bool timing_finished{};
     };
     std::array<frame, 2> frames;
     gpu_buffer scene_buffer;
@@ -102,6 +107,8 @@ struct vulkan_renderer::implementation {
             current.tile_ranges = {};
             current.references_a = {};
             current.references_b = {};
+            if (current.timing_queries)
+                vkDestroyQueryPool(device, current.timing_queries, nullptr);
             if (current.acquired)
                 vkDestroySemaphore(device, current.acquired, nullptr);
             if (current.pool)
@@ -259,6 +266,14 @@ struct vulkan_renderer::implementation {
     }
     void create_frames() {
         for (auto& current : frames) {
+            if (options.collect_timings && capabilities.gpu_timestamps_supported) {
+                auto queries =
+                    structure<VkQueryPoolCreateInfo>(VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO);
+                queries.queryType = VK_QUERY_TYPE_TIMESTAMP;
+                queries.queryCount = static_cast<std::uint32_t>(GPU_TIMING_STAGE_COUNT * 2);
+                check(vkCreateQueryPool(device, &queries, nullptr, &current.timing_queries),
+                      "create bounded frame timestamp queries");
+            }
             auto pool =
                 structure<VkCommandPoolCreateInfo>(VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO);
             pool.queueFamilyIndex = queue_family;
@@ -305,6 +320,48 @@ struct vulkan_renderer::implementation {
         wait.pValues = &value;
         check(vkWaitSemaphores(device, &wait, 5'000'000'000ULL),
               "wait GPU timeline (5 second timeout)");
+    }
+    static double elapsed_ms(std::chrono::steady_clock::time_point begin) {
+        return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin)
+            .count();
+    }
+    void begin_timing(frame& current, gpu_timing_stage stage) {
+        if (!current.timing_queries)
+            return;
+        const auto index = static_cast<std::uint32_t>(stage);
+        if (current.timing_pending[index])
+            throw std::logic_error("uncollected GPU timing pair reused");
+        vkCmdResetQueryPool(current.command, current.timing_queries, index * 2, 2);
+        vkCmdWriteTimestamp2(current.command, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                             current.timing_queries, index * 2);
+    }
+    void end_timing(frame& current, gpu_timing_stage stage) {
+        if (!current.timing_queries)
+            return;
+        const auto index = static_cast<std::uint32_t>(stage);
+        vkCmdWriteTimestamp2(current.command, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                             current.timing_queries, index * 2 + 1);
+        current.timing_pending[index] = true;
+    }
+    void collect_timing(frame& current) {
+        // The caller already completed this frame's submitted commands. Query
+        // reads never add WAIT_BIT or a new GPU/CPU synchronization point.
+        for (std::uint32_t index = 0; index < GPU_TIMING_STAGE_COUNT; ++index) {
+            if (!current.timing_pending[index])
+                continue;
+            std::array<std::uint64_t, 2> ticks{};
+            check(vkGetQueryPoolResults(device, current.timing_queries, index * 2, 2, sizeof(ticks),
+                                        ticks.data(), sizeof(std::uint64_t),
+                                        VK_QUERY_RESULT_64_BIT),
+                  "read completed GPU timestamp pair");
+            const auto duration =
+                timestamp_duration_ms(ticks[0], ticks[1], capabilities.timestamp_valid_bits,
+                                      capabilities.timestamp_period_ns);
+            if (!duration)
+                throw std::runtime_error(duration.error().message);
+            current.timing.gpu_ms[index] += *duration;
+            current.timing_pending[index] = false;
+        }
     }
     void descriptors(frame& current) {
         for (std::size_t pass = 0; pass < 4; ++pass) {
@@ -438,8 +495,19 @@ struct vulkan_renderer::implementation {
                            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(params), &params);
     }
-    void record_sort(frame& current, push_parameters& params, std::size_t descriptor) {
-        for (std::uint32_t pass = 0; pass < 8; ++pass) {
+    void record_sort(frame& current, push_parameters& params, bool tile_keys) {
+        const std::size_t descriptor = tile_keys ? 2 : 0;
+        std::uint32_t passes = 8;
+        if (tile_keys) {
+            const auto tile_count =
+                static_cast<std::uint64_t>((extent.width + 15) / 16) * ((extent.height + 15) / 16);
+            if (tile_count == 0 || tile_count - 1 > std::numeric_limits<std::uint32_t>::max())
+                throw std::runtime_error("tile sort keys exceed 32-bit range");
+            passes = tile_radix_passes(static_cast<std::uint32_t>(tile_count - 1));
+            if (options.collect_timings)
+                current.timing.tile_sort_passes = passes;
+        }
+        for (std::uint32_t pass = 0; pass < passes; ++pass) {
             params.count_shift[1] = pass * 4;
             bind_compute(current, params, descriptor + pass % 2);
             vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, histogram_pipeline);
@@ -458,13 +526,18 @@ struct vulkan_renderer::implementation {
         }
     }
     void record_projection(frame& current, push_parameters& params) {
+        begin_timing(current, gpu_timing_stage::PROJECTION);
         bind_compute(current, params);
         vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, project_pipeline);
         vkCmdDispatch(current.command, params.count_shift[2], 1, 1);
         compute_barrier(current.command);
-        record_sort(current, params, 0);
+        end_timing(current, gpu_timing_stage::PROJECTION);
+        begin_timing(current, gpu_timing_stage::DEPTH_SORT);
+        record_sort(current, params, false);
+        end_timing(current, gpu_timing_stage::DEPTH_SORT);
     }
     void record_count(frame& current, const push_parameters& params) {
+        begin_timing(current, gpu_timing_stage::COUNT_SCAN);
         compute_barrier(current.command);
         bind_compute(current, params);
         vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, tile_count_pipeline);
@@ -475,8 +548,18 @@ struct vulkan_renderer::implementation {
         memory_barrier(current.command, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
                        VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_HOST_BIT,
                        VK_ACCESS_2_HOST_READ_BIT);
+        end_timing(current, gpu_timing_stage::COUNT_SCAN);
     }
     void collect_completed(std::uint64_t completed) {
+        if (options.collect_timings)
+            for (std::size_t index = 0; index < frames.size(); ++index) {
+                auto& current = frames[index];
+                if (current.timing_finished && current.completion <= completed) {
+                    collect_timing(current);
+                    diagnostics.completed_timings[index] = current.timing;
+                    current.timing_finished = false;
+                }
+            }
         while (!retired.empty() && retired.front().timeline <= completed)
             retired.pop_front();
         sink.retire_completed(completed);
@@ -520,10 +603,18 @@ struct vulkan_renderer::implementation {
         check(vkQueueSubmit2(queue, 1, &submission, VK_NULL_HANDLE), "submit tile-count prepass");
         submitted_timeline = completion;
         current.completion = completion;
+        const auto wait_begin = options.collect_timings ? std::chrono::steady_clock::now()
+                                                        : std::chrono::steady_clock::time_point{};
         wait_timeline(completion);
+        if (options.collect_timings) {
+            current.timing.cpu_count_wait_ms += elapsed_ms(wait_begin);
+            ++current.timing.count_submissions;
+            collect_timing(current);
+        }
         collect_completed(completion);
     }
     void record_tiles(frame& current, push_parameters& params, std::uint32_t count) {
+        begin_timing(current, gpu_timing_stage::TILE_INDEX);
         vkCmdFillBuffer(current.command, current.tile_ranges.buffer, 0, current.tile_ranges.bytes,
                         0);
         memory_barrier(current.command, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
@@ -536,7 +627,7 @@ struct vulkan_renderer::implementation {
             compute_barrier(current.command);
             params.count_shift[0] = count;
             params.count_shift[2] = (count + 255) / 256;
-            record_sort(current, params, 2);
+            record_sort(current, params, true);
             bind_compute(current, params, 2);
             vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE,
                               tile_ranges_pipeline);
@@ -545,8 +636,10 @@ struct vulkan_renderer::implementation {
         } else {
             params.count_shift[0] = 0;
         }
+        end_timing(current, gpu_timing_stage::TILE_INDEX);
     }
     void record_composition(frame& current, push_parameters params, bool draw_appearance) {
+        begin_timing(current, gpu_timing_stage::COMPOSITION);
         if (!draw_appearance)
             params.count_shift[0] = 0;
         vkCmdBindDescriptorSets(current.command, VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -560,6 +653,9 @@ struct vulkan_renderer::implementation {
         memory_barrier(current.command, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
                        VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
                        VK_ACCESS_2_SHADER_READ_BIT);
+        end_timing(current, gpu_timing_stage::COMPOSITION);
+        if (options.collect_timings)
+            ++current.timing.tile_batches;
     }
     void copy_screenshot(VkCommandBuffer command, std::uint32_t image_index,
                          const gpu_buffer& target) {
@@ -676,20 +772,38 @@ struct vulkan_renderer::implementation {
         if (!checked_camera)
             throw std::runtime_error(checked_camera.error().message);
         auto& current = frames[frame_index];
+        const auto frame_wait_begin = options.collect_timings
+                                          ? std::chrono::steady_clock::now()
+                                          : std::chrono::steady_clock::time_point{};
         wait_timeline(current.completion);
+        const auto frame_wait_ms = options.collect_timings ? elapsed_ms(frame_wait_begin) : 0;
         std::uint64_t completed = 0;
         check(vkGetSemaphoreCounterValue(device, timeline, &completed),
               "query retirement timeline");
         collect_completed(completed);
         std::uint32_t image_index = 0;
+        const auto acquire_begin = options.collect_timings
+                                       ? std::chrono::steady_clock::now()
+                                       : std::chrono::steady_clock::time_point{};
         const auto acquired = vkAcquireNextImageKHR(device, swapchain, 5'000'000'000ULL,
                                                     current.acquired, VK_NULL_HANDLE, &image_index);
+        const auto acquire_ms = options.collect_timings ? elapsed_ms(acquire_begin) : 0;
         if (acquired == VK_ERROR_OUT_OF_DATE_KHR) {
             refresh_swapchain();
             return;
         }
         if (acquired != VK_SUBOPTIMAL_KHR)
             check(acquired, "acquire swapchain image");
+        if (options.collect_timings) {
+            current.timing = {};
+            current.timing.sequence = diagnostics.submitted_frames + 1;
+            current.timing.width = extent.width;
+            current.timing.height = extent.height;
+            current.timing.gpu_valid = current.timing_queries != VK_NULL_HANDLE;
+            current.timing.cpu_frame_wait_ms = frame_wait_ms;
+            current.timing.cpu_acquire_ms = acquire_ms;
+            current.timing_pending = {};
+        }
         check(vkResetCommandPool(device, current.pool, 0), "reset frame commands");
         auto command_begin =
             structure<VkCommandBufferBeginInfo>(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
@@ -827,6 +941,7 @@ struct vulkan_renderer::implementation {
         }
         diagnostics.tile_reference_count = total_references;
         diagnostics.scratch_bytes = scratch_allocation_bytes();
+        begin_timing(current, gpu_timing_stage::PRESENTATION);
         VkClearValue clear{};
         clear.color = {{0.045F, 0.051F, 0.063F, 1}};
         auto pass = structure<VkRenderPassBeginInfo>(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
@@ -854,6 +969,7 @@ struct vulkan_renderer::implementation {
         if (overlay)
             overlay(reinterpret_cast<std::uintptr_t>(current.command));
         vkCmdEndRenderPass(current.command);
+        end_timing(current, gpu_timing_stage::PRESENTATION);
         gpu_buffer screenshot;
         if (screenshot_path) {
             screenshot = allocate(static_cast<std::size_t>(extent.width) * extent.height * 4,
@@ -895,13 +1011,19 @@ struct vulkan_renderer::implementation {
         presentation.swapchainCount = 1;
         presentation.pSwapchains = &swapchain;
         presentation.pImageIndices = &image_index;
+        const auto present_begin = options.collect_timings
+                                       ? std::chrono::steady_clock::now()
+                                       : std::chrono::steady_clock::time_point{};
         const auto presented = vkQueuePresentKHR(queue, &presentation);
+        if (options.collect_timings)
+            current.timing.cpu_present_ms = elapsed_ms(present_begin);
         if (screenshot_path) {
             wait_timeline(completion);
             write_screenshot(screenshot);
         }
         frame_index = (frame_index + 1) % frames.size();
         ++diagnostics.submitted_frames;
+        current.timing_finished = options.collect_timings;
         diagnostics.resident_splat_count = splat_count;
         diagnostics.allocated_bytes = live_buffer_bytes();
         diagnostics.staging_bytes = 0;
@@ -968,7 +1090,12 @@ result<void> vulkan_renderer::wait_for_idle() {
     if (status != VK_SUCCESS)
         return fail(error_code::BACKEND_FAILURE,
                     "Vulkan idle wait failed (device lost or driver failure)");
-    return {};
+    try {
+        impl_->collect_completed(impl_->submitted_timeline);
+        return {};
+    } catch (const std::exception& exception) {
+        return fail(error_code::BACKEND_FAILURE, exception.what());
+    }
 }
 result<void> vulkan_renderer::request_screenshot(std::filesystem::path path) {
     if (!impl_->screenshot_supported)
