@@ -127,14 +127,23 @@ pass each on Python 3.10/3.12/3.14; **121/121** dev CTest. Original 37-package
 training inventories and **2,393 protected files** are unchanged. Dataset regions,
 real corpus and rights/release qualification remain pending; no Q gate pass.
 
-Next executable task: add a read-only image-pair evaluator using the pinned CPU
-receipt and explicit dataset crop/mask/resolution. Inspect
-`artifacts/sample_1/fit/input_manifest.json`, `result.json` and `references/`;
-match the 13 temporal-holdout PNGs to checksum-verified retained undistorted source
-images with the recorded bicubic size. Record quantized-render development scope
-separately from the fitter's FP32 metrics; keep independent inspection-path Q3
-blocked. Write only a new ignored evaluation report directory. Do not alter fits,
-recipes, checkpoints or any protected capture, and do not rerun reconstruction.
+[Read-only holdout evaluation](validation/2026-10-14-holdout-evaluation.md) now
+scores **13/13** retained sample_1 PNG pairs: mean **17.5284 dB / 0.787073 SSIM /
+0.382562 LPIPS**, below Q3's numeric goals. These clamped/rounded RGB8 renders are
+separate from the unchanged fitter FP32 scores; no independent inspection path or
+observed mask is available. All frames, fit/source/metric hashes and explicit
+crop/resize are checked before scoring and publication. **13 image checks / 67
+worker checks** pass on three interpreters; **121/121** dev CTest, independent
+CPU parity and synthetic numerical checks pass. **2,393 protected files** remain
+unchanged; no fit/recipe/checkpoint/environment changes or reconstruction rerun.
+
+Next executable task: M1/E1 scoped C++ contract coverage. Inspect
+`CMakeLists.txt`, `CMakePresets.json` and specification §3/E1; add an isolated
+Clang CPU coverage preset with target-scoped instrumentation and the unchanged
+C++26 mode. Run existing contract tests, record actual line/branch coverage and
+separate package/update-validation coverage with reviewed vendor/generated/platform
+exclusions. Preserve working profiles and keep all thresholds unchanged; use
+measured uncovered error/replay paths to choose regressions.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.

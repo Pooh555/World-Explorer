@@ -9,11 +9,13 @@ import json
 import os
 from pathlib import Path
 import socket
+import stat
 import sys
 import sysconfig
+import tempfile
 
 from audit_metric_environment import POLICY, metric_manifest
-from audit_worker_environment import MAX_METADATA_BYTES, bounded_read, canonical_bytes, file_digest, publish_receipt
+from audit_worker_environment import MAX_FILE_BYTES, MAX_METADATA_BYTES, bounded_read, canonical_bytes, file_digest, publish_receipt
 
 
 def unique_object(pairs):
@@ -77,10 +79,27 @@ def checked_tensor_loading(torch, allowed):
 
     def load(path, *args, **kwargs):
         selected = Path(path).resolve(strict=True)
-        if selected not in allowed or file_digest(selected)[0] != allowed[selected]:
+        if selected not in allowed:
             raise ValueError("Unselected or changed metric checkpoint")
-        kwargs["weights_only"] = True
-        return original(selected, *args, **kwargs)
+        info = selected.stat()
+        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_FILE_BYTES:
+            raise ValueError("Metric checkpoint is not regular or exceeds byte budget")
+        # Hash and load one bounded snapshot. Reopening a checked path could load
+        # different bytes after a concurrent edit or replacement.
+        with selected.open("rb") as stream, tempfile.SpooledTemporaryFile(max_size=8 * 1024**2) as snapshot:
+            digest = hashlib.sha256()
+            total = 0
+            while block := stream.read(1024**2):
+                total += len(block)
+                if total > MAX_FILE_BYTES:
+                    raise ValueError("Metric checkpoint exceeds byte budget")
+                digest.update(block)
+                snapshot.write(block)
+            if digest.hexdigest() != allowed[selected]:
+                raise ValueError("Unselected or changed metric checkpoint")
+            snapshot.seek(0)
+            kwargs["weights_only"] = True
+            return original(snapshot, *args, **kwargs)
 
     torch.load = load
     try:
@@ -89,7 +108,7 @@ def checked_tensor_loading(torch, allowed):
         torch.load = original
 
 
-def run_parity(report, sites, ssim_path, weights):
+def load_cpu_metrics(report, sites, ssim_path, weights):
     # Avoid the library's optional slow-doctest download probe. Normal metric
     # evaluation remains inside our network guard and uses one explicit cache.
     os.environ["SKIP_SLOW_DOCTEST"] = ""
@@ -110,6 +129,19 @@ def run_parity(report, sites, ssim_path, weights):
         from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
         metric = LearnedPerceptualImagePatchSimilarity(net_type="alex", reduction="none", normalize=True)
         metric.eval()
+    ssim_bytes = bounded_read(ssim_path)
+    if hashlib.sha256(ssim_bytes).hexdigest() != report["identity"]["ssim_implementation"]["sha256"]:
+        raise ValueError("SSIM source changed before loading")
+    ssim = ModuleType("checked_ssim")
+    # Execute the exact checked source bytes rather than reopening the path.
+    exec(compile(ssim_bytes, str(ssim_path), "exec"), ssim.__dict__)
+    return torch, metric, ssim, allowed
+
+
+def run_parity(report, sites, ssim_path, weights):
+    torch, metric, ssim, allowed = load_cpu_metrics(report, sites, ssim_path, weights)
+    with checked_tensor_loading(torch, allowed):
+        import torchvision
         # Independent feature traversal and weighted distance, using the same
         # checked tensors without calling TorchMetrics' LPIPS helpers.
         backbone = torch.load(weights, map_location="cpu")
@@ -117,13 +149,8 @@ def run_parity(report, sites, ssim_path, weights):
         features.load_state_dict({key.removeprefix("features."): value for key, value in backbone.items()
                                   if key.startswith("features.")}, strict=True)
         del backbone
+        linear_path = next(path for path in allowed if path != weights)
         linear = torch.load(linear_path, map_location="cpu")
-    ssim_bytes = bounded_read(ssim_path)
-    if hashlib.sha256(ssim_bytes).hexdigest() != report["identity"]["ssim_implementation"]["sha256"]:
-        raise ValueError("SSIM source changed before loading")
-    ssim = ModuleType("checked_ssim")
-    # Execute the exact checked source bytes rather than reopening the path.
-    exec(compile(ssim_bytes, str(ssim_path), "exec"), ssim.__dict__)
     generator = torch.Generator().manual_seed(20261014)
     left = torch.rand((4, 3, 80, 96), generator=generator)
     right = torch.rand(left.shape, generator=generator)

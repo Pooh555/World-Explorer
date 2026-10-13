@@ -79,3 +79,22 @@ Real dataset crop/mask/resolution, corpus and rights remain separate.
 The [isolated profile](../../workers/metrics/README.md) and
 [compact CPU receipt](../../workers/identity/metric-evaluation-cpu-20261014.json)
 record current supported scope without altering training recipes/checkpoints.
+
+## Development image-pair admission
+
+The [image-pair tools](../../workers/metrics/README.md#retained-image-pair-evaluation)
+pin a completed fit's complete contiguous temporal holdout, encoded image hashes,
+RGB8 domain, dimensions, recorded bicubic target resize, common crop and explicit
+absence of an observed-region mask. They reject partial/reordered/duplicate or
+training selections, changed fit/source images and unsupported domains before
+scoring. Every selected input is rechecked before publishing a new immutable
+report. No fit, optimizer checkpoint, calibration, pose or scene is modified.
+
+The shared metric loader now hashes and loads one bounded learned-weight
+snapshot, using an 8-MiB memory spool that spills larger files to an automatically
+closed temporary file. Path replacement after hashing cannot supply different
+bytes to tensor loading. The selected-file whitelist, regular-file/4-GiB limit,
+`weights_only=True` and offline network guard remain active. Synthetic mutation,
+image admission, numerical and real retained evaluations have separate
+[evidence](../validation/2026-10-14-holdout-evaluation.md). Original fit FP32
+metrics and previous receipts retain their original identities/scope.
