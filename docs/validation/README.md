@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Native input / live HiDPI | [Control, bookmark and resize checks](2026-10-14-native-input.md): 18 native control assertions, 2→1.5→1→2 compositor scaling, FOV/Import resize repairs, 121 GCC/Clang checks, zero Vulkan errors and 2,393 unchanged protected files; physical/reference latency and other platforms pending |
 | Native CI audit observer | [Canonical path repair](2026-10-13-native-audit-paths.md): supplied Windows 101/102 and macOS 102/103 share a zero-open test observation; prior SQLite cases pass; alias replay, 12 audit checks across three interpreters, 37 worker checks and local C++23 103/103 / C++26 119/119; hosted confirmation pending |
 | Installed worker identities | [Offline version/file/notice receipts](2026-10-13-worker-identity.md): 37 training / 3 pose distributions checked, 76 notice files identified, archive/metric/rights gaps explicit, 11 new tests across three interpreters and 119 CTest checks in both existing profiles; preceding 120-case reporting error corrected |
 | Checked Import metadata/storage | [Retained preflight and current space](2026-10-13-import-metadata.md): bounded read-only source/metadata validation, pending automatic inspection, per-output storage snapshots, 119 GCC/Clang checks, native dialogs/full Cancel/reopen and 2,393 unchanged files |

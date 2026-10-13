@@ -5,6 +5,28 @@ specification §4.8: W/S forward/back, A/D left/right, Space/Left Ctrl up/down,
 Left Shift accelerates. Wheel scales speed; Escape releases capture. The controls
 overlay names the active SDL scancodes, including remaps.
 
+Bookmarks are session-local and restore the saved fly pose, viewing up, speed and
+vertical FOV together, after scene/epoch validation. Fit and Source view can
+change the current FOV without changing the saved view.
+
+UI layout uses SDL display scale divided by window pixel density, recalculated
+before each ImGui frame. Font raster sizes are physical pixels: one immutable
+atlas contains 13 sizes (1–4×, quarter steps); the closest size at or above the
+requested scale is selected with a compensating logical font scale. Nonfinite,
+nonpositive or >4 scale/density fails explicitly. Theme changes start from an
+unscaled style. Import stays centered and its size is constrained to the current
+viewport, including resizing while it is open. This implementation does not
+qualify every native platform or physical display.
+
+`--input-trace NEW.jsonl` explicitly enables native diagnostic observations:
+at most 4,096 frame rows of camera/UI/focus/remap/scale state and widget rectangles.
+The parent must exist and the trace path must be new. Write failure fails the
+viewer explicitly. F12 (outside key remapping) requests at most 16 viewer-only
+PPM readbacks beside the trace, named `<stem>-<frame>.ppm`. It does not capture
+other applications or inject events. Use a dedicated ignored artifact directory
+and isolated `--settings`; traces/readbacks are local diagnostic data. Per-frame
+JSON flushing/readbacks alter timing, so these runs cannot certify N1 latency.
+
 Synthetic labels follow the active snapshot's [scene provenance](scene.md), not
 the launch option. Toolbar and ready status identify synthetic scenes even with
 side panels hidden; imported/replaced scenes and terminal diagnostics use the same

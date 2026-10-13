@@ -1,6 +1,7 @@
 #include "preferences.hpp"
 #include <SDL3/SDL_scancode.h>
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <imgui.h>
 #include <nlohmann/json.hpp>
@@ -77,6 +78,7 @@ result<void> save_preferences(const std::filesystem::path& path, const preferenc
     }
 }
 void apply_theme(float scale) {
+    ImGui::GetStyle() = ImGuiStyle{};
     ImGui::StyleColorsDark();
     auto& style = ImGui::GetStyle();
     style.WindowPadding = {16, 16};
@@ -90,6 +92,16 @@ void apply_theme(float scale) {
     style.Colors[ImGuiCol_ButtonActive] = {0.13F, 0.47F, 0.55F, 1};
     style.Colors[ImGuiCol_CheckMark] = {0.3F, 0.8F, 0.87F, 1};
     style.ScaleAllSizes(scale);
+}
+
+result<ui_scaling> display_scaling(float display_scale, float pixel_density) {
+    if (!std::isfinite(display_scale) || !std::isfinite(pixel_density) || display_scale <= 0 ||
+        display_scale > 4 || pixel_density <= 0 || pixel_density > 4)
+        return world_explorer::fail(world_explorer::error_code::UNSUPPORTED_OPERATION,
+                                    "Unsupported window display scale or pixel density");
+    const auto atlas_scale = std::max(1.F, std::ceil(display_scale * 4) / 4);
+    return ui_scaling{display_scale / pixel_density, display_scale / (pixel_density * atlas_scale),
+                      static_cast<std::size_t>((atlas_scale - 1) * 4)};
 }
 
 } // namespace world_explorer::viewer
