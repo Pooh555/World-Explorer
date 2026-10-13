@@ -7,7 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
-| Saved pose continuation | [Complete matching and geometry recovery](2026-10-13-pose-continuation.md): bounded sample_2/3 solves exit normally with disconnected geometry; seed-pair initialization fails, copied model continuation active; 24 worker checks |
+| Saved pose continuation | [Complete matching and geometry recovery](2026-10-13-pose-continuation.md): bounded sample_2/3 solves exit normally with disconnected geometry; copied model recovery cannot join sample_2, only 57/64 images connected (58 required); layout repair and 24 worker checks |
 | Laptop service / viewing up | [Bounded supervision and capture orientation](2026-10-13-service-orientation.md): sample_1 validated/viewed with preserved fit/assets; source-reset tilt fixed; 116 GCC/Clang checks and 18 worker checks; remaining bounded service active |
 | COLMAP model selection | [Superset repair and retained recovery](2026-10-13-model-selection.md): full 63-frame model was falsely rejected beside a redundant four-frame attempt; 15 worker / 114 CPU checks pass, recovered pose replay passes; fit pending |
 | Fresh three-video reset | [Full user-requested reset](2026-10-13-fresh-video-reset.md): old artifacts removed; three fresh local coordinator runs in simple per-video folders, terminal results pending |

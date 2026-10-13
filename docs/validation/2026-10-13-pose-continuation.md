@@ -1,7 +1,7 @@
 # Retained pose continuation — 2026-10-13, Asia/Hong_Kong
 
-Scope/status: sample_2 investigation after the bounded matching repair. Parent
-`6531e23`; M1 IN_PROGRESS, local Linux development host. Cwd: repository root.
+Scope/status: sample_2 investigation after the bounded matching repair. Parents
+`6531e23` / `48c89e0`; M1 IN_PROGRESS, local Linux development host. Cwd: repository root.
 No frame, feature, resolution, registration or triangulation thresholds changed.
 Sample_1's completed fit and orientation correction remain preserved; see
 [native orientation evidence](2026-10-13-service-orientation.md).
@@ -24,7 +24,12 @@ Cross-model pairs have 965 (31/32), 120 (2/42), 99 (3/42) and 79 (1/42) inliers.
 The first three are classified PLANAR_OR_PANORAMIC by pinned pycolmap 4.2.1;
 matches alone therefore do not establish a usable 3D bridge. Four unregistered
 frames have fewer than the mapper's default 30 absolute-pose inliers available
-as keypoints; the close white-panel sequence has sparse visual texture.
+as keypoints; the close white-panel sequence has sparse visual texture. The
+mapper's unchanged minimum of 15 verified matches leaves **57 connected images**,
+independently reported by its database cache. Images 49–54 and 59 are isolated.
+Since 90% of 64 requires **58** registered images, this saved match graph cannot
+pass even if every connected image registers. Coverage/bridge analysis is saved
+under `logs/service-recovery/`.
 
 ## Actual recovery and safeguards
 
@@ -43,12 +48,27 @@ Input decode completion, database hash, model inventories and original paths are
 recorded locally; originals are checked after successful recovery. Cancellation
 uses the existing worker cancellation handling.
 
-Actual continuation uses retained `sparse/2` (21 frames), output
+Actual continuation used retained `sparse/2` (21 frames), output
 `artifacts/sample_2/pose-continued/`. Exact service argv is
 `logs/continued-recovery-command.json`; its global queue flock excludes concurrent
 jobs. Transient unit `world-explorer-pose-recovery.service` has the same two-core,
-6 GiB soft / 7 GiB hard / 1 GiB swap bounds. Early observed peak was **826,994,688
-bytes**; this partial observation does not qualify worst-case memory.
+6 GiB soft / 7 GiB hard / 1 GiB swap bounds. Mapping took **8.964 minutes**,
+retaining separate 21/31-frame models in the backend log rather than joining
+them. The service exited 1 after **9 min 52.753 s**, reported peak **826.8 MiB**.
+Both services are now inactive/dead/MainPID=0. This is not performance qualification.
+
+Continuation exposed a helper layout bug: COLMAP writes resumed models at the
+output root, while worker admission expects numbered candidate directories.
+The helper now explicitly serializes **all returned models** into that layout;
+its temporary backend output is cleaned after serialization. The actual saved
+21-frame root model was serialized using the corrected writer to
+`mapping/normalized-sparse/0`, then passed through `worker.Job.poses` against the
+verified 64-frame decode. It exported/read normally and was correctly rejected
+as **POSE_DISCONNECTED / less than 90% registered**. The standalone diagnostic
+command exited 0 because that expected rejection was asserted; it is not a
+reconstruction pass. `logs/coverage-check/expected-rejection.json` records the
+outcome. The lost second returned model was not fabricated; the original
+31-frame model remains in the original failed stage.
 
 ## Checks / remaining
 
@@ -56,12 +76,23 @@ bytes**; this partial observation does not qualify worst-case memory.
 exit 0, **24/24**. Six new synthetic admission checks cover retained database
 preservation, nonsequential image IDs, unchanged mapper options, insufficient /
 unknown / repeated seeds, missing decoded images, continuation and empty mapping.
+The writer fixture verifies both returned candidates survive normalization;
+database filenames containing spaces/# exercise proper read-only URI encoding.
 These checks do not certify reconstruction quality. Raw test log:
 `artifacts/sample_2/logs/recovery-tests.log`; bridge analysis, mapper and service
 logs remain inside the same video folder.
 
-Continuation is running at this checkpoint; full pose coverage, fitting and scene
-validation remain pending. Sample_3's failed stage remains retained during this
-single recovery.
+Original database SHA-256 remains identical after recovery. No full sample_2
+scene can be admitted from these matches; no fit was launched. Sample_3's failed
+stage remains retained, and neither video is repeatedly retried unchanged.
+Better overlapping textured footage or a separately qualified solver/calibration
+approach is required to revisit their pose failures.
+Final `build/dev/we_process validate artifacts/sample_1/scene.wexplore` exited 0,
+scene 149348248299280656 / revision 1 / one chunk; raw log is
+`artifacts/sample_1/logs/orientation/final-validate.log`. An initial probe with an
+unsupported `--scene` argument failed before validation; the documented
+positional command above corrected it. Final documentation/diff checks passed
+(220 local targets in 68 files). No native C++ changed in this continuation;
+the prior 116/116 profiles retain their original scope.
 Physical gravity, geometry/walking, reference performance and full Q/P/N/E gates
 remain unqualified. No claim that either incomplete video has a usable scene.

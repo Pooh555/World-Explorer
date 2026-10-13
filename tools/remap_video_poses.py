@@ -4,6 +4,16 @@ import argparse
 from pathlib import Path
 import sqlite3
 import re
+import tempfile
+
+
+def write_models(models, output):
+    if not models:
+        raise ValueError("COLMAP accepted no model from the requested initialization geometry")
+    for index, model in enumerate(models.values()):
+        destination = output / str(index)
+        destination.mkdir()
+        model.write(destination)
 
 
 def main():
@@ -41,10 +51,12 @@ def main():
             raise ValueError("Seed pair does not meet the mapper's existing verified-inlier minimum")
         options |= {"init_image_id1": first, "init_image_id2": second}
     args.output.mkdir(exist_ok=False)
-    models = pycolmap.incremental_mapping(args.database, args.images, args.output,
-        options=options, input_path=args.initial_model or "")
-    if not models:
-        raise ValueError("COLMAP rejected the seed pair's initialization geometry")
+    # COLMAP writes resumed models at the output root instead of numbered
+    # directories. Publish the returned models in our consistent candidate layout.
+    with tempfile.TemporaryDirectory(prefix=".mapping-", dir=args.output.parent) as temporary:
+        models = pycolmap.incremental_mapping(args.database, args.images, temporary,
+            options=options, input_path=args.initial_model or "")
+        write_models(models, args.output)
 
 
 if __name__ == "__main__":
