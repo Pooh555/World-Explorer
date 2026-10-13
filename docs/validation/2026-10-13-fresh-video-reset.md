@@ -50,3 +50,27 @@ fresh scene is yet claimed as verified. `python3 tools/check_docs.py` passed (20
 `git diff --check` passed. Five helper boundary checks rejected existing output,
 NaN sampling, a traversal name, a source outside data, and a missing source
 (exit 2). Request creation for all three real sources passed.
+
+## Interruption recovery
+
+The user reported a crashed/cut-off session. Native process inspection confirmed
+all three original coordinators/workers were gone. Their logs recorded CANCEL;
+completed inspection and selected-image decode stages remained available. No
+Gaussian fitting or scene publication had occurred.
+
+Restarted the same checked requests with detached supervisors (`start_new_session`,
+stdin disconnected, stdout/stderr local files, SIGHUP ignored). The exact supervisor
+for each video is `logs/resume-supervisor.py`; actual command/PID/attempt identity
+is `logs/resume-command.json`. Reconstruction appends to the original processing
+log. Successful publication is followed by normal CLI bundle validation; terminal
+status is atomically written to `logs/result.json`. These processes survive the
+launch command exiting; native process checks confirmed that behavior.
+
+Sample 2's first restart failed admission because `poses/job.lock` retained PID
+487794. Native `ps -p 487794 -o pid=,comm=` confirmed no such process (exit 1, empty
+output); removed only that stale lock, retained the failure in
+`logs/lock-recovery-result.json`, and relaunched its same request. Samples 1/3
+required no lock deletion. Cache events confirm the completed inspection and
+selected-image decode stages were reused. All three resumed runs are active at
+this checkpoint; completion/viewing remains pending. No new deletion/reset,
+worker changes, solver threshold changes or implicit downloads occurred.
