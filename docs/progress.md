@@ -109,9 +109,10 @@ storage fails; metadata inspection still applies the decoded-storage estimate.
 
 Other native devices/platforms, corpus/reference performance, geometry/collision,
 coverage/fuzzing and full gates remain pending; [requirements](requirements.md)
-tracks scope. Latest Windows CI stops before CMake on Chocolatey FFmpeg HTTP 504;
-[pinned 7.1.1 archive/retry/cache repair](validation/2026-10-13-windows-ffmpeg.md)
-passes local workflow/archive/PowerShell checks, hosted rerun pending. Earlier
+tracks scope. Latest supplied Windows CI builds and passes 100/101 CTest cases;
+only recovery database cleanup fails with WinError 32. [Explicit SQLite closure
+repair](validation/2026-10-13-windows-sqlite.md) passes local C++23 102/102 and
+Python 3.12/3.14 25/25; Windows hosted rerun remains pending. Earlier
 macOS CPU pass and Windows 77/78 (worker only) remain historical;
 [flush repair](validation/2026-10-12-windows-flush.md) records local C++23 79/79 and
 Python 3.12/3.14 9/9. Native viewer/release qualification is separate. Sandbox ICD

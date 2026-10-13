@@ -1,5 +1,6 @@
 """Synthetic recovery admission tests; no reconstruction quality claims."""
 import hashlib
+from contextlib import closing
 import importlib.util
 from pathlib import Path
 import sqlite3
@@ -25,7 +26,7 @@ class PoseRecoveryTests(unittest.TestCase):
         for name in ("000001.png", "000002.png"):
             (self.images / name).write_bytes(b"synthetic admission fixture")
         self.database = self.root / "database #saved.db"
-        with sqlite3.connect(self.database) as database:
+        with closing(sqlite3.connect(self.database)) as database, database:
             database.execute("CREATE TABLE images(name TEXT,image_id INTEGER)")
             database.executemany("INSERT INTO images VALUES(?,?)",
                                  [("000001.png", 7), ("000002.png", 2)])
@@ -46,8 +47,28 @@ class PoseRecoveryTests(unittest.TestCase):
     def run_helper(self, *initialization):
         argv = [str(path), "--database", str(self.database), "--images", str(self.images),
                 "--output", str(self.root / "sparse"), *initialization]
-        with patch.object(sys, "argv", argv), patch.dict(sys.modules, pycolmap=self.backend):
-            remap.main()
+        connections = []
+        connect = sqlite3.connect
+
+        def tracked_connect(*args, **kwargs):
+            connection = connect(*args, **kwargs)
+            connections.append(connection)
+            return connection
+
+        with (patch.object(sys, "argv", argv), patch.dict(sys.modules, pycolmap=self.backend),
+              patch.object(remap.sqlite3, "connect", tracked_connect)):
+            try:
+                remap.main()
+            finally:
+                # Retain references so garbage collection cannot hide a leaked
+                # handle on POSIX, where deleting an open database is permitted.
+                try:
+                    for connection in connections:
+                        with self.assertRaises(sqlite3.ProgrammingError):
+                            connection.execute("SELECT 1")
+                finally:
+                    for connection in connections:
+                        connection.close()
 
     def test_verified_seed_preserves_database_and_mapper_thresholds(self):
         before = hashlib.sha256(self.database.read_bytes()).digest()
@@ -59,7 +80,7 @@ class PoseRecoveryTests(unittest.TestCase):
             "input_path": ""})
 
     def test_insufficient_verified_matches_never_launch_mapper(self):
-        with sqlite3.connect(self.database) as database:
+        with closing(sqlite3.connect(self.database)) as database, database:
             database.execute("UPDATE two_view_geometries SET rows=99")
         with self.assertRaisesRegex(ValueError, "verified-inlier minimum"):
             self.run_helper("--seed-images", "000001.png", "000002.png")
@@ -88,6 +109,13 @@ class PoseRecoveryTests(unittest.TestCase):
         self.backend.incremental_mapping = lambda *args, **kwargs: {}
         with self.assertRaisesRegex(ValueError, "initialization geometry"):
             self.run_helper("--seed-images", "000001.png", "000002.png")
+
+    def test_failed_database_query_closes_connection(self):
+        with closing(sqlite3.connect(self.database)) as database, database:
+            database.execute("DROP TABLE two_view_geometries")
+        with self.assertRaises(sqlite3.OperationalError):
+            self.run_helper("--seed-images", "000001.png", "000002.png")
+        self.assertFalse(self.calls)
 
 
 if __name__ == "__main__":
