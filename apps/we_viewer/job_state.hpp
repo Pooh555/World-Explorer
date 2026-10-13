@@ -1,6 +1,7 @@
 #ifndef WORLD_EXPLORER_VIEWER_JOB_STATE_HPP
 #define WORLD_EXPLORER_VIEWER_JOB_STATE_HPP
 
+#include "request_summary.hpp"
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/reconstruction_progress.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
@@ -28,6 +29,9 @@ struct application_state {
     std::string status{"Open a scene, or import a completed camera video."};
     std::string reconstruction_error;
     scene_snapshot loaded;
+    std::shared_ptr<const request_summary> reviewed_request;
+    std::string review_error;
+    bool review_invalidated{};
     std::optional<reconstruction_progress> progress;
     bool reconstructing{};
     std::atomic<bool> busy{};
@@ -41,7 +45,11 @@ struct application_state {
     void append(std::string text);
     void load(std::filesystem::path path);
     void worker(worker_configuration configuration, std::vector<std::string> arguments);
-    void reconstruction(std::filesystem::path request, reconstruction_observer observed = {});
+    void review_request(std::filesystem::path request);
+    void clear_request_review();
+    void run_reviewed_request();
+    void reconstruction(std::filesystem::path request, reconstruction_observer observed = {},
+                        std::string expected_request_sha256 = {});
     // Called by the UI owner; stop callbacks run without the state mutex held.
     void request_cancel();
     void update_reconstruction_progress(const reconstruction_progress& value);

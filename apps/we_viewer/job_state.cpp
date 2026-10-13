@@ -95,8 +95,59 @@ void application_state::worker(worker_configuration configuration,
     });
 }
 
+void application_state::clear_request_review() {
+    std::lock_guard lock(mutex);
+    reviewed_request.reset();
+    review_error.clear();
+    review_invalidated = true;
+}
+
+void application_state::review_request(std::filesystem::path request) {
+    if (!begin_job())
+        return;
+    started = std::chrono::steady_clock::now();
+    {
+        std::lock_guard lock(mutex);
+        reviewed_request.reset();
+        review_error.clear();
+        review_invalidated = false;
+        status = "Checking reconstruction request. Scene viewing remains available.";
+    }
+    job = std::jthread([this, request = std::move(request)](const std::stop_token& stop) {
+        try {
+            auto summary = review_reconstruction_request(request, stop);
+            std::lock_guard lock(mutex);
+            if (review_invalidated)
+                status = "Request selection changed. Review the selected request before running.";
+            else if (summary) {
+                reviewed_request = std::make_shared<const request_summary>(std::move(*summary));
+                status = "Request checked. Review actions and limits in Import video.";
+            } else {
+                review_error = summary.error().message.substr(0, 2048);
+                status = "Request review failed. Current scene retained.";
+            }
+        } catch (const std::exception& error) {
+            std::lock_guard lock(mutex);
+            review_error = std::string(error.what()).substr(0, 2048);
+            status = "Request review failed. Current scene retained.";
+        }
+        busy = false;
+    });
+}
+
+void application_state::run_reviewed_request() {
+    std::shared_ptr<const request_summary> selected;
+    {
+        std::lock_guard lock(mutex);
+        selected = reviewed_request;
+    }
+    if (selected)
+        reconstruction(selected->request, {}, selected->request_sha256);
+}
+
 void application_state::reconstruction(std::filesystem::path request,
-                                       reconstruction_observer observed) {
+                                       reconstruction_observer observed,
+                                       std::string expected_request_sha256) {
     if (!begin_job())
         return;
     started = std::chrono::steady_clock::now();
@@ -109,15 +160,31 @@ void application_state::reconstruction(std::filesystem::path request,
         reconstruction_error.clear();
         log.clear();
     }
-    job = std::jthread([this, request = std::move(request),
-                        observed = std::move(observed)](const std::stop_token& stop) {
+    job = std::jthread([this, request = std::move(request), observed = std::move(observed),
+                        expected_request_sha256 =
+                            std::move(expected_request_sha256)](const std::stop_token& stop) {
         const auto notify = [&](const reconstruction_progress& value) {
             update_reconstruction_progress(value);
             if (observed)
                 observed(value, stop);
         };
         try {
-            const auto selected = read_reconstruction_job(request);
+            const auto selected = [&]() -> result<reconstruction_job> {
+                if (!expected_request_sha256.empty()) {
+                    std::error_code path_error;
+                    const auto current_path = std::filesystem::canonical(request, path_error);
+                    if (path_error || current_path != request)
+                        return fail(error_code::INVALID_DATA,
+                                    "Reviewed request path changed. Review again.");
+                }
+                return read_reconstruction_job(request, expected_request_sha256);
+            }();
+            if (!selected && !expected_request_sha256.empty()) {
+                std::lock_guard lock(mutex);
+                reviewed_request.reset();
+                review_error = "Request could not be rechecked. Review again before running. " +
+                               selected.error().message.substr(0, 2048);
+            }
             const auto published =
                 selected ? reconstruct(
                                *selected, stop,

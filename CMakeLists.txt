@@ -191,7 +191,7 @@ if(WE_BUILD_VIEWER)
   add_custom_target(we_shaders DEPENDS ${WE_SHADER_OUTPUTS})
 
   add_executable(we_viewer apps/we_viewer/main.cpp apps/we_viewer/job_state.cpp
-    apps/we_viewer/preferences.cpp)
+    apps/we_viewer/preferences.cpp apps/we_viewer/request_summary.cpp)
   we_target(we_viewer)
   target_link_libraries(we_viewer PRIVATE application render_vulkan we_imgui nlohmann_json::nlohmann_json)
   target_compile_definitions(we_viewer PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders" WE_WORKER_SCRIPT="${PROJECT_SOURCE_DIR}/workers/worker.py")
@@ -222,7 +222,7 @@ if(WE_BUILD_VIEWER)
   add_dependencies(we_gpu_viewer_regression we_shaders)
 
   add_executable(we_gpu_reconstruction_handoff tests/gpu/reconstruction_handoff.cpp
-    apps/we_viewer/job_state.cpp)
+    apps/we_viewer/job_state.cpp apps/we_viewer/request_summary.cpp)
   we_target(we_gpu_reconstruction_handoff)
   target_include_directories(we_gpu_reconstruction_handoff PRIVATE "${PROJECT_SOURCE_DIR}/apps/we_viewer")
   target_link_libraries(we_gpu_reconstruction_handoff PRIVATE application render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
@@ -256,7 +256,8 @@ if(BUILD_TESTING)
 
   if(WE_BUILD_VIEWER)
     add_executable(we_viewer_tests tests/ui/preferences_tests.cpp tests/ui/job_state_tests.cpp
-      apps/we_viewer/preferences.cpp apps/we_viewer/job_state.cpp)
+      tests/ui/request_summary_tests.cpp apps/we_viewer/preferences.cpp apps/we_viewer/job_state.cpp
+      apps/we_viewer/request_summary.cpp)
     we_target(we_viewer_tests)
     target_compile_definitions(we_viewer_tests PRIVATE WE_TEST_PYTHON="${Python3_EXECUTABLE}"
       WE_TEST_PROTOCOL_MODULE="${PROJECT_SOURCE_DIR}/workers")
