@@ -47,3 +47,35 @@ LPIPS linear weights, AlexNet weights, rights and evaluation parity need separat
 qualification. Full raw receipts stay ignored; the compact
 [local development summary](../../workers/identity/local-development-20261013.json)
 records hashes/version tuples without host paths or media.
+
+## Metric policy and selected local bytes
+
+[Metric audit](../../tools/audit_metric_environment.py) reuses the installed audit
+and freezes specification §3.3's RGB, PSNR aggregation, SSIM window/constants,
+TorchMetrics AlexNet/normalize/reduction/resize and evaluation-region/exposure
+policy. It records package/inventory hashes, RECORD-checked LPIPS and backbone
+implementation files, bundled learned linear weights, explicit SSIM source and
+explicitly selected AlexNet bytes. It never imports backend code or loads a
+checkpoint. Selected implementation files and requirements are rechecked after
+the installed scan; changing inputs abort. No personal cache discovery occurs.
+
+Required dependencies must be installed, exactly pinned and RECORD-verified;
+unlisted distributions, legacy metadata and any unverified package block identity
+readiness. Missing inputs publish `BLOCKED` with specific reasons. Complete bytes
+publish `IMPLEMENTED_UNVERIFIED`: hashes alone cannot establish model architecture,
+rights, numerical parity or dataset validity. `metric_qualified` always remains
+false. `--require-identities` returns 3 after publishing a blocked receipt; ordinary
+receipt creation returns 0, input/publication errors return 2. Publication uses the
+same 16-MiB bound and atomic no-replacement operation as worker receipts.
+
+[CPU parity check](../../tools/check_metric_parity.py) requires a complete receipt,
+checks its schema/policy/digest and current environment before backend imports,
+and restricts tensor-only checkpoint loading to the two checksum-selected files.
+Network connections are disabled. The explicit cache is selected with no fallback.
+Independent feature traversal and linear-weight distances validate LPIPS; a 2D
+Gaussian double-precision reference validates SSIM. Synthetic per-image and
+normalization checks retain their own tolerances and do not replace Q thresholds.
+Real dataset crop/mask/resolution, corpus and rights remain separate.
+The [isolated profile](../../workers/metrics/README.md) and
+[compact CPU receipt](../../workers/identity/metric-evaluation-cpu-20261014.json)
+record current supported scope without altering training recipes/checkpoints.

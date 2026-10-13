@@ -1,0 +1,87 @@
+{
+  "auditor_sha256": "75678299e63ff34951d45481dac3a8efc362596745d230ea583ecaa9707cdfca",
+  "date": "2026-10-14",
+  "identity_blockers": [
+    "NOT_INSTALLED:torchmetrics",
+    "NOT_INSTALLED:lightning-utilities",
+    "ALEXNET_BYTES_NOT_SELECTED"
+  ],
+  "identity_ready": false,
+  "identity_sha256": "e268b7b07e3cf309440051b19208132ef0d23de3f45d545395d557404cf93e90",
+  "implementation_files": {
+    "torch/hub.py": {
+      "bytes": 32768,
+      "sha256": "75b22476aaea97fc9c820cc48e3149337764e80c8d1a0c72fb674465448ed5a2"
+    },
+    "torch/serialization.py": {
+      "bytes": 65914,
+      "sha256": "3ed9595a166da631024608d46d3a85b714b18aec6772a2db8b4c5e12541c432e"
+    },
+    "torchvision/_internally_replaced_utils.py": {
+      "bytes": 1389,
+      "sha256": "ebbcd25073a7e89c1d9cc5107211e0a4d2c2b56410f5d245a55fce527f106ffc"
+    },
+    "torchvision/models/_api.py": {
+      "bytes": 10054,
+      "sha256": "b882099f15f5cd830da5dbc9d21692ab5e7f5e547542d78564161501db4485e8"
+    },
+    "torchvision/models/alexnet.py": {
+      "bytes": 4488,
+      "sha256": "76f0592d51fad133931c234d9168344c52edb89e46861ff15cdef7af7572ab9f"
+    }
+  },
+  "installed_auditor_sha256": "7a86651196d40950c75cda8ef4ae5ced5ca6c8fcb7e702e6ab7561b317a47385",
+  "installed_training_inventories_unchanged": true,
+  "metric_qualified": false,
+  "parent_commit": "d63bfa0",
+  "platform": "linux",
+  "policy": {
+    "channels": "RGB",
+    "color_domain": "display-encoded RGB [0,1]",
+    "evaluation_region": "predetermined common valid crop/mask; report excluded area",
+    "lpips": {
+      "implementation": "TorchMetrics",
+      "net_type": "alex",
+      "normalize": true,
+      "reduction": "none",
+      "resize": null
+    },
+    "psnr": {
+      "aggregation": "per-image then equal-weight per-scene means",
+      "data_range": 1
+    },
+    "resolution": "declared by the dataset; no implicit resize",
+    "specification": "technical_plan.md section 3.3; Q2/Q3/Q6",
+    "ssim": {
+      "data_range": 1,
+      "k1": 0.01,
+      "k2": 0.03,
+      "sigma": 1.5,
+      "window": 11,
+      "window_reduction": "valid-window mean"
+    },
+    "test_color_correction": false,
+    "test_exposure_fitting": false
+  },
+  "policy_sha256": "04cafee9d4e0a5452d6e5e11d9bc0ac309270f07380088ce4f9c56e1d842f853",
+  "python_version": "3.10.22",
+  "receipt_sha256": "abeb9851c813849cc2a020fb96471dd7cde486f910f7103b50b9b4277ee8c336",
+  "remaining": [
+    "Explicitly provisioned/pinned TorchMetrics and lightning-utilities",
+    "Bundled learned AlexNet LPIPS linear weights",
+    "Explicit local pretrained AlexNet bytes and provenance/rights review",
+    "Offline metric parity and dataset-specific crop/resolution identity"
+  ],
+  "requirements": "workers/gsplat/local-environment.txt",
+  "requirements_sha256": "72710b2ac119a08a24f170e20b1695cafc9070587eae094ce6c9845882346aa3",
+  "schema_version": 1,
+  "scope": "offline metric identity receipt; not evaluation clearance",
+  "selected_alexnet_bytes": null,
+  "ssim_implementation": {
+    "bytes": 1637,
+    "scope": "selected source bytes; policy conformance requires parity checks",
+    "sha256": "b6df8b0e28fcd8ef0d3b9fd677251c51fabc09dad8ba5e8d78aa7182ffc1b086"
+  },
+  "status": "BLOCKED",
+  "timezone": "Asia/Hong_Kong"
+}

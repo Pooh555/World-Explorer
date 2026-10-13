@@ -102,8 +102,9 @@ Vulkan errors; **2,393 protected files** unchanged. No solve/fit rerun or gate c
 The [worker identity audit](validation/2026-10-13-worker-identity.md) now checks
 37 training / 3 pose distributions and 76 notice files against installed bytes.
 Its [compact receipt](../workers/identity/local-development-20261013.json) retains
-exact versions/hashes; wheel archives, Triton notice, transitive rights and
-TorchMetrics/AlexNet/learned LPIPS weight locks remain pending. No environment,
+exact versions/hashes; training wheel archives, Triton notice and transitive rights
+remain pending. Its initial metric absence is addressed by the separate CPU profile
+below. No training environment,
 recipe or checkpoint changes. Eleven new Python tests pass on 3.10/3.12/3.14;
 **119/119 CTest in each existing profile**. The preceding 120-case report counted
 the worker suite twice; retained logs and current references are corrected.
@@ -116,13 +117,24 @@ format/tidy/docs and **2,393 unchanged protected files**. Temporary headless
 scaling is not a physical-display or other-platform pass. Human/reference latency
 and event-to-state timing remain unqualified; no solve/fit rerun.
 
-Next executable task: M1 offline metric identity manifest. Inspect
-`workers/identity/local-development-20261013.json`,
-`docs/protocols/worker_identity.md` and the installed TorchMetrics LPIPS source;
-bind implementation and bundled LPIPS linear-weight hashes to the specification's
-AlexNet/normalize policy. The explicit AlexNet cache path was absent: do not
-search personal caches or download weights implicitly. Keep qualification blocked
-until authorized local backbone bytes and metric parity evidence are available.
+[Offline metric identity/parity](validation/2026-10-14-metric-identity.md): the
+user authorized separate `.venv-metrics` provisioning and official AlexNet weights.
+TorchMetrics **1.8.2**, CPU torch **2.4.1**, torchvision **0.19.1**, all 16 packages,
+implementation/SSIM/linear-weight/backbone bytes and policy are locked in the
+[CPU receipt](../workers/identity/metric-evaluation-cpu-20261014.json). Independent
+synthetic LPIPS and SSIM parity pass offline. **16 new checks / 53 worker checks**
+pass each on Python 3.10/3.12/3.14; **121/121** dev CTest. Original 37-package
+training inventories and **2,393 protected files** are unchanged. Dataset regions,
+real corpus and rights/release qualification remain pending; no Q gate pass.
+
+Next executable task: add a read-only image-pair evaluator using the pinned CPU
+receipt and explicit dataset crop/mask/resolution. Inspect
+`artifacts/sample_1/fit/input_manifest.json`, `result.json` and `references/`;
+match the 13 temporal-holdout PNGs to checksum-verified retained undistorted source
+images with the recorded bicubic size. Record quantized-render development scope
+separately from the fitter's FP32 metrics; keep independent inspection-path Q3
+blocked. Write only a new ignored evaluation report directory. Do not alter fits,
+recipes, checkpoints or any protected capture, and do not rerun reconstruction.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
