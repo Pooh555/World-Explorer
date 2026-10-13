@@ -74,3 +74,34 @@ required no lock deletion. Cache events confirm the completed inspection and
 selected-image decode stages were reused. All three resumed runs are active at
 this checkpoint; completion/viewing remains pending. No new deletion/reset,
 worker changes, solver threshold changes or implicit downloads occurred.
+
+## Sequential launch after another crash
+
+The user requested sequential processing after another crash. Native process
+inspection confirmed no prior coordinators/workers remained. All three logs showed
+CANCEL and no fitting/published scene. A stale sample-2 pose lock remained; it is
+handled only when its job reaches the queue and the recorded PID is proven absent.
+
+Added `tools/run_video_jobs.py`: a local Linux/POSIX queue with an exclusive
+kernel file lock, synchronous coordinator wait, successful bundle validation,
+atomic status/results and per-video appended logs. Five earlier request-helper
+checks remain unchanged. A separate **synthetic launcher fixture**, outside real
+artifacts, exercised two mock processes with a filesystem overlap detector:
+first failed, second succeeded, exact start/end order showed no overlap, the
+missing-PID stale lock was recovered, and validation status was recorded. This
+checks scheduling only, not reconstruction. Python compile/help checks passed.
+
+Actual detached argv: `python3 tools/run_video_jobs.py --recover-stale-locks
+artifacts/sample_1/request.json artifacts/sample_2/request.json
+artifacts/sample_3/request.json`, launched through an argument array with local
+`artifacts/queue.log` output. Supervisor PID 501577; native `ps` confirmed exactly
+one coordinator, PID 501578 for sample_1, after the launch command exited.
+`artifacts/queue.json` recorded sample_1 RUNNING, sample_2/sample_3 PENDING. Cache
+events confirm retained metadata/decode reuse. No change to source data, recipes,
+CPU threads or quality thresholds.
+
+Completion remains pending. Serial scheduling reduces overlapping resource demand;
+the observed crashes do not establish an OOM cause. Detachment cannot protect
+against system shutdown or externally terminated process trees. Current next
+step is inspect the running queue and terminal outputs before any additional
+launch, then open successfully validated full scenes.
