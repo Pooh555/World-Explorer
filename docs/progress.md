@@ -69,10 +69,12 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 [New local runs](validation/2026-10-13-new-videos.md): renamed `sample_1.mp4`
 is identical to the original; completed outputs were preserved. `sample_2.avi`
 failed with three disconnected COLMAP models (exit 2); its failed solve is retained.
-`sample_3.mp4` is running in `artifacts/new-videos-20261013-sample_3`: 92 decoded
-frames, native RGB journal complete, poses started. Check `run.log` and
-`run-result.json` before retrying; do not start a duplicate or rerun completed fits.
-On success validate/open `scene.wexplore` with `--source-view --max-splats 2000000`.
+`sample_3.mp4` also failed with two disconnected models (exit 2, 241.313 s).
+Both processes have terminated without fitting or scene publication. Their
+requests, decoded frames and failed models/logs are retained in
+`artifacts/new-videos-20261013-sample_2` and `artifacts/new-videos-20261013-sample_3`.
+Before another attempt inspect model/frame coverage and capture continuity;
+choose coherent segments or recapture instead of merging disconnected models.
 No new reconstruction gate or viewer pass is claimed.
 
 ## Next executable work and blockers

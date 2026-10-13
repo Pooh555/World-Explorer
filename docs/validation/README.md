@@ -7,7 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
-| New local videos | [Local run observations](2026-10-13-new-videos.md): AVI disconnected-model rejection; MP4 owned solve running at handoff; existing renamed original preserved |
+| New local videos | [Local run observations](2026-10-13-new-videos.md): AVI/MP4 disconnected-model rejection (three/two models); existing renamed original preserved |
 | Import request review | [Actions/limits and checked-byte launch](2026-10-13-request-review.md): bounded read-only background summary, stale/changed request rejection, native 1024×640/default dialog and full reviewed handoff, 114 checks in both profiles |
 | Owned viewer Cancel/reopen | [Stage-boundary cancellation](2026-10-13-viewer-cancel.md): pending job-admission repair, synchronous stop-callback access, seven owned-thread boundaries, native old-pixel preservation/full reopened visibility and 107 checks in both profiles |
 | Reconstruction processing status | [Typed stage/step events](2026-10-13-progress-status.md): bounded checked telemetry, terminal/handoff regressions, 105 checks in both profiles, native completed reuse and 670 unchanged protected files |
