@@ -105,3 +105,22 @@ the observed crashes do not establish an OOM cause. Detachment cannot protect
 against system shutdown or externally terminated process trees. Current next
 step is inspect the running queue and terminal outputs before any additional
 launch, then open successfully validated full scenes.
+
+## Terminal verification requested by user
+
+Read `artifacts/queue.json`, each processing/terminal log, and searched all three
+video directories for published `manifest.json` and fit `result.json`. Queue status
+is CANCELLED. Sample 1 exited 2 after 2,132.705 s: POSE_DISCONNECTED, two models;
+no fitting/publication. Sample 2 exited 130 after 190.653 s during pose solving;
+its log records accepted CANCEL. Sample 3 remained PENDING in this sequential
+queue; earlier parallel attempts record cancellation. All three have **no scene
+manifest and no fit result**. Native `ps -C we_process -C python -C python3`
+confirmed no reconstruction workers remain. The observed cancellations do not
+establish an OOM or native crash cause. No restart was initiated during this
+read-only verification.
+
+Once a full reconstruction succeeds, each view command is
+`build/dev/we_viewer --scene artifacts/sample_N/scene.wexplore --source-view
+--max-splats 2000000`. These are future commands, not verified current scene
+opens; all scene paths are currently absent. Old completed scenes were removed
+under the user's explicit reset instruction.
