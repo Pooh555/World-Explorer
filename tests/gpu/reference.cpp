@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <span>
 #include <stdexcept>
 
 using namespace world_explorer;
@@ -263,6 +264,11 @@ camera_view fit_camera(const json& frame) {
 } // namespace
 int main(int argc, char** argv) {
     try {
+        const std::span<char*> arguments(argv, static_cast<std::size_t>(argc));
+        const bool timings =
+            arguments.size() > 2 && std::string_view(arguments.back()) == "--timings";
+        if (timings)
+            --argc;
         const bool real = argc == 5 && std::string_view(argv[2]) == "--real";
         require(real || argc == 2 ||
                     (argc == 3 && (std::string_view(argv[2]) == "--compositing" ||
@@ -271,7 +277,8 @@ int main(int argc, char** argv) {
                                    std::string_view(argv[2]) == "--batches-bounded")),
                 "usage: we_gpu_reference <new output directory> "
                 "[--compositing|--termination|--batches|--batches-bounded] or "
-                "we_gpu_reference <new output directory> --real <scene bundle> <completed fit>");
+                "we_gpu_reference <new output directory> --real <scene bundle> <completed fit>; "
+                "append --timings for completed GPU/CPU timing checks");
         const bool compositing = argc == 3;
         const bool termination = compositing && std::string_view(argv[2]) == "--termination";
         const bool bounded = compositing && std::string_view(argv[2]) == "--batches-bounded";
@@ -359,6 +366,7 @@ int main(int argc, char** argv) {
             SDL_DestroyWindow);
         require(window != nullptr, SDL_GetError());
         renderer_options options;
+        options.collect_timings = timings;
         options.max_splats = real ? 1000000 : 250000;
         if (bounded)
             options.max_tile_references = 2048;
@@ -452,6 +460,16 @@ int main(int argc, char** argv) {
         require(renderer->wait_for_idle().has_value(), "GPU completion failed");
         const auto stats = renderer->diagnostics();
         require(stats.validation_errors == 0, "Vulkan validation errors");
+        if (timings)
+            for (const auto& sample : stats.completed_timings) {
+                require(sample.sequence > 0 && sample.sequence <= stats.submitted_frames &&
+                            sample.gpu_valid == renderer->capabilities().gpu_timestamps_supported,
+                        "completed timing sample missing or unsupported");
+                require(sample.count_submissions > 0 && sample.tile_batches > 0,
+                        "appearance timing did not retain count/batch work");
+                if (bounded)
+                    require(sample.tile_batches > 1, "bounded timing did not exercise query reuse");
+            }
         if (real) {
             std::size_t expected_count = 0;
             for (const auto& [id, chunk] : scene->chunks) {
@@ -484,6 +502,10 @@ int main(int argc, char** argv) {
         write_json(output / "fixture.json", diagnostic);
         write_json(output / "native.json",
                    {{"device", renderer->capabilities().device_name},
+                    {"timing_collection", timings},
+                    {"gpu_timestamps_supported", renderer->capabilities().gpu_timestamps_supported},
+                    {"timestamp_valid_bits", renderer->capabilities().timestamp_valid_bits},
+                    {"timestamp_period_ns", renderer->capabilities().timestamp_period_ns},
                     {"fp32_compositing", renderer->capabilities().fp32_compositing},
                     {"framebuffer_bytes", stats.framebuffer_bytes},
                     {"allocated_bytes", stats.allocated_bytes},

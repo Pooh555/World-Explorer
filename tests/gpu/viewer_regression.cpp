@@ -5,6 +5,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <nlohmann/json.hpp>
 
 using namespace world_explorer;
@@ -15,28 +16,74 @@ void require(bool value, const std::string& message) {
         throw std::runtime_error(message);
 }
 double percentile(std::vector<double> values, double fraction) {
+    require(!values.empty(), "cannot summarize absent timing samples");
     std::ranges::sort(values);
     return values[static_cast<std::size_t>(fraction * static_cast<double>(values.size() - 1))];
 }
+json timing_summary(const std::map<std::uint64_t, renderer_frame_timing>& samples) {
+    json output{{"samples", json::array()}, {"metrics", json::object()}};
+    std::map<std::string, std::vector<double>> metrics;
+    constexpr std::array<const char*, GPU_TIMING_STAGE_COUNT> STAGES{
+        "projection", "depth_sort", "count_scan", "tile_index", "composition", "presentation_draw"};
+    for (const auto& [sequence, sample] : samples) {
+        json row{{"sequence", sequence},
+                 {"tile_sort_passes", sample.tile_sort_passes},
+                 {"width", sample.width},
+                 {"height", sample.height},
+                 {"gpu_valid", sample.gpu_valid},
+                 {"count_submissions", sample.count_submissions},
+                 {"tile_batches", sample.tile_batches},
+                 {"cpu_frame_wait_ms", sample.cpu_frame_wait_ms},
+                 {"cpu_count_wait_ms", sample.cpu_count_wait_ms},
+                 {"cpu_acquire_ms", sample.cpu_acquire_ms},
+                 {"cpu_present_ms", sample.cpu_present_ms},
+                 {"gpu_ms", nullptr}};
+        for (const auto* metric :
+             {"cpu_frame_wait_ms", "cpu_count_wait_ms", "cpu_acquire_ms", "cpu_present_ms"})
+            metrics[metric].push_back(row.at(metric).get<double>());
+        if (sample.gpu_valid) {
+            row["gpu_ms"] = json::object();
+            double total = 0;
+            for (std::size_t index = 0; index < STAGES.size(); ++index) {
+                row["gpu_ms"][STAGES[index]] = sample.gpu_ms[index];
+                metrics["gpu_" + std::string(STAGES[index]) + "_ms"].push_back(
+                    sample.gpu_ms[index]);
+                total += sample.gpu_ms[index];
+            }
+            metrics["gpu_measured_stages_ms"].push_back(total);
+        }
+        metrics["count_submissions"].push_back(static_cast<double>(sample.count_submissions));
+        metrics["tile_batches"].push_back(static_cast<double>(sample.tile_batches));
+        output["samples"].push_back(std::move(row));
+    }
+    for (const auto& [name, values] : metrics)
+        output["metrics"][name] = {{"p50", percentile(values, 0.5)},
+                                   {"p95", percentile(values, 0.95)},
+                                   {"p99", percentile(values, 0.99)}};
+    return output;
+}
 } // namespace
 int main(int argc, char** argv) try {
-    if (argc != 3 || std::filesystem::exists(argv[2])) {
-        std::cerr << "usage: we_gpu_viewer_regression <scene directory> <new report.json>\n";
+    const bool timings = argc == 4 && std::string_view(argv[3]) == "--timings";
+    if ((argc != 3 && !timings) || std::filesystem::exists(argv[2])) {
+        std::cerr
+            << "usage: we_gpu_viewer_regression <scene directory> <new report.json> [--timings]\n";
         return 2;
     }
     json report{{"scope", "local real-scene regression; not P2/P3 certification"},
                 {"present_mode", "FIFO"},
                 {"warmup_frames", 8},
                 {"measured_frames", 24},
+                {"timing_collection", timings},
                 {"cases", json::array()}};
     try {
-        require(argc == 3, "usage: we_gpu_viewer_regression <scene directory> <new report.json>");
         require(!std::filesystem::exists(argv[2]), "report already exists");
         const auto scene = load_bundle(argv[1]);
         require(scene.has_value(), scene ? "" : scene.error().message);
         const auto inspection = source_view(**scene);
         require(inspection.has_value(), inspection ? "" : inspection.error().message);
-        require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
+        const bool initialized = SDL_Init(SDL_INIT_VIDEO);
+        require(initialized, SDL_GetError());
         struct sdl_guard {
             ~sdl_guard() { SDL_Quit(); }
         } sdl;
@@ -47,12 +94,19 @@ int main(int argc, char** argv) try {
         require(window != nullptr, SDL_GetError());
         renderer_options options;
         options.max_splats = 1000000;
+        options.collect_timings = timings;
         options.shader_directory = WE_SHADER_DIRECTORY;
         auto created = vulkan_renderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().message);
         auto renderer = std::move(*created);
         require(renderer->capabilities().validation_enabled, "validation required");
         report["device"] = renderer->capabilities().device_name;
+        report["gpu_timestamps_supported"] = renderer->capabilities().gpu_timestamps_supported;
+        report["timestamp_valid_bits"] = renderer->capabilities().timestamp_valid_bits;
+        report["timestamp_period_ns"] = renderer->capabilities().timestamp_period_ns;
+        report["timestamp_queries"] = timings && renderer->capabilities().gpu_timestamps_supported
+                                          ? GPU_TIMING_STAGE_COUNT * 4
+                                          : 0;
         report["max_splats"] = options.max_splats;
         report["residency_bytes"] = options.residency_bytes;
         report["scene_content_sha256"] = scene_content_hash(**scene);
@@ -118,9 +172,26 @@ int main(int argc, char** argv) try {
                     require((SDL_GetWindowFlags(window.get()) & SDL_WINDOW_FULLSCREEN) != 0,
                             "native fullscreen flag absent");
                 std::vector<double> times;
+                std::map<std::uint64_t, renderer_frame_timing> timing_samples;
                 std::size_t peak_owned = 0;
                 std::uint64_t measured_start_frames = 0;
                 auto measured_begin = std::chrono::steady_clock::now();
+                const auto collect_samples = [&](const renderer_diagnostics& stats) {
+                    if (!timings)
+                        return;
+                    for (const auto& sample : stats.completed_timings)
+                        if (sample.sequence > measured_start_frames &&
+                            sample.sequence <= measured_start_frames + 24) {
+                            require(sample.width == static_cast<std::uint32_t>(actual_width) &&
+                                        sample.height == static_cast<std::uint32_t>(actual_height),
+                                    "timing sample belongs to another framebuffer extent");
+                            require(
+                                sample.gpu_valid ==
+                                    renderer->capabilities().gpu_timestamps_supported,
+                                "GPU timestamp availability differs from reported capabilities");
+                            timing_samples.try_emplace(sample.sequence, sample);
+                        }
+                };
                 for (int frame = 0; frame < 32; ++frame) {
                     SDL_PumpEvents();
                     camera.position = spectator.position;
@@ -141,6 +212,8 @@ int main(int argc, char** argv) try {
                     // Deterministic small yaw motion exercises rebuilding the index.
                     spectator.yaw += frame % 2 ? -0.004 : 0.004;
                     const auto stats = renderer->diagnostics();
+                    if (frame >= 8)
+                        collect_samples(stats);
                     peak_owned = std::max(peak_owned, stats.allocated_bytes);
                     require(stats.allocated_bytes <= options.residency_bytes,
                             "owned allocation budget exceeded");
@@ -150,8 +223,14 @@ int main(int argc, char** argv) try {
                     std::chrono::duration<double>(std::chrono::steady_clock::now() - measured_begin)
                         .count();
                 const auto stats = renderer->diagnostics();
+                collect_samples(stats);
                 const auto measured_frames = stats.submitted_frames - measured_start_frames;
                 require(measured_frames == 24, "measured draws did not all submit render frames");
+                if (timings) {
+                    require(timing_samples.size() == measured_frames,
+                            "completed GPU/CPU timing samples were lost");
+                    record["timings"] = timing_summary(timing_samples);
+                }
                 require(stats.validation_errors == 0, "Vulkan validation failure");
                 require(SDL_GetWindowSizeInPixels(window.get(), &actual_width, &actual_height),
                         SDL_GetError());
@@ -197,7 +276,7 @@ int main(int argc, char** argv) try {
         report["passed"] = false;
         report["error"] = exception.what();
     }
-    if (argc == 3) {
+    if (argc == 3 || timings) {
         std::ofstream stream(argv[2]);
         stream << report.dump(2) << '\n';
         if (!stream)

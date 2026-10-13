@@ -4,6 +4,7 @@
 #include <SDL3/SDL.h>
 #include <fstream>
 #include <iostream>
+#include <set>
 
 using namespace world_explorer;
 namespace {
@@ -35,6 +36,8 @@ scene_snapshot overlap_fixture() {
 } // namespace
 int main(int argc, char** argv) {
     try {
+        const bool timings = argc == 3 && std::string_view(argv[2]) == "--timings";
+        require(argc <= 2 || timings, "usage: we_gpu_smoke [output.ppm] [--timings]");
         const auto output = argc > 1
                                 ? std::filesystem::path(argv[1])
                                 : std::filesystem::temp_directory_path() / "world_explorer_gpu.ppm";
@@ -48,6 +51,7 @@ int main(int argc, char** argv) {
             SDL_DestroyWindow);
         require(window != nullptr, SDL_GetError());
         renderer_options options;
+        options.collect_timings = timings;
         options.max_splats = 1024;
         options.shader_directory = WE_SHADER_DIRECTORY;
         auto constrained = options;
@@ -83,6 +87,7 @@ int main(int argc, char** argv) {
         require(renderer->updates().enqueue(batch).has_value(), "initial scene admission failed");
         camera_view camera;
         camera.position = {0, 0, 4};
+        std::set<std::uint64_t> paused_samples;
         for (int frame = 0; frame < 11; ++frame) {
             SDL_PumpEvents();
             if (frame == 9)
@@ -93,7 +98,26 @@ int main(int argc, char** argv) {
             if (paused)
                 require(renderer->diagnostics().resident_splat_count == 2,
                         "Paused appearance lost resident scene assets");
+            if (timings) {
+                const auto stats = renderer->diagnostics();
+                require(stats.submitted_frames == static_cast<std::uint64_t>(frame) + 1,
+                        "timed smoke draw did not submit its frame");
+                for (const auto& sample : stats.completed_timings)
+                    if (sample.sequence >= 5 && sample.sequence <= 7) {
+                        require(sample.count_submissions == 0 && sample.tile_batches == 1 &&
+                                    sample.gpu_ms[static_cast<std::size_t>(
+                                        gpu_timing_stage::PROJECTION)] == 0 &&
+                                    sample.gpu_ms[static_cast<std::size_t>(
+                                        gpu_timing_stage::DEPTH_SORT)] == 0 &&
+                                    sample.gpu_ms[static_cast<std::size_t>(
+                                        gpu_timing_stage::COUNT_SCAN)] == 0,
+                                "paused timing retained stale appearance work");
+                        paused_samples.insert(sample.sequence);
+                    }
+            }
         }
+        require(!timings || paused_samples.size() == 3,
+                "paused completed timing samples were lost");
         std::ifstream image(output, std::ios::binary);
         std::string magic;
         unsigned width{}, height{}, maximum{};
@@ -149,6 +173,13 @@ int main(int argc, char** argv) {
         require(resized && restored, "native framebuffer resize/restore was not observed");
         require(renderer->wait_for_idle().has_value(), "final GPU completion failed");
         const auto stats = renderer->diagnostics();
+        if (timings)
+            for (const auto& sample : stats.completed_timings)
+                require(sample.sequence > 0 && sample.count_submissions == 0 &&
+                            sample.tile_batches == 1 && sample.width == stats.framebuffer_width &&
+                            sample.height == stats.framebuffer_height &&
+                            sample.gpu_valid == renderer->capabilities().gpu_timestamps_supported,
+                        "empty/resize timing was missing or retained stale counts");
         require(stats.allocated_bytes <= options.residency_bytes &&
                     stats.allocated_bytes >= stats.framebuffer_bytes + stats.scratch_bytes,
                 "owned allocation accounting escaped its budget");

@@ -13,44 +13,32 @@ Current contracts: [capture](protocols/capture.md), [poses](protocols/poses.md),
 [jobs](protocols/jobs.md). [Historical evidence](validation/README.md) retains
 implementation sequence, failures, identities, timings and profile differences.
 
-Earlier [fit-calibration admission](validation/2026-10-12-fit-calibration.md) checks
-undistorted cameras, resize/intrinsics and independent map/journal dependencies
-before publication. Four-profile evidence (including sanitizers) preserves **84
-protected files** and identical original splat bytes.
-Earlier [stage-chain evidence](validation/2026-10-12-stage-chain.md) covers synthetic
-complete chaining and real 63/628-frame decode/cache/pre-solver cancellation;
-**full real fresh solve/fit chaining remains unverified**.
+Historical [fit admission](validation/2026-10-12-fit-calibration.md),
+[stage chaining](validation/2026-10-12-stage-chain.md),
+[controls/handoff](validation/2026-10-12-viewer-controls.md),
+[camera calibration](validation/2026-10-12-render-reference.md) and
+[synthetic provenance](validation/2026-10-12-synthetic-labels.md) retain their
+original checks and limits. Full real fresh solve/fit chaining remains unverified.
 
-Earlier [viewer controls/handoff checks](validation/2026-10-12-viewer-controls.md)
-cover specified defaults, saved remaps, malformed keys, active overlays and
-one-frame-minimum startup. Automatic exit waits for queued snapshot admission.
+[Indexed tiles/residency](validation/2026-10-13-viewer-regression.md) fixes full
+304,867-splat 4K/readback/fullscreen/restoration under the unchanged 512 MiB budget.
+[Calibrated comparison](validation/2026-10-13-real-reference.md) checks three
+original fit views at 1280×688 with shared floating-origin inputs. Absolute-world
+float32/all-camera parity and Q6 packing remain unverified.
 
-Earlier [fixed-camera](validation/2026-10-12-render-reference.md) and
-[provenance](validation/2026-10-12-synthetic-labels.md) checks establish calibration,
-roll, covariance margins and imported synthetic labels, including hidden panels.
-
-Earlier [viewer regression repair](validation/2026-10-13-viewer-regression.md)
-replaces per-tile global scans with budgeted GPU count/scan/emission/stable tile
-sorting and ranges. Scratch grows by resident count; direct FP32-to-SDR presentation
-removes duplicate swapchain attachments. Full 304,867-splat 4K screenshot,
-native fullscreen and restoration fit the unchanged 512 MiB budget with zero
-Vulkan errors. Short 720p throughput improves from ~6 to ~60 completed render
-frames/s; fullscreen/4K remain slower. **91/91 GCC C++26 and Clang C++23 CPU/worker
-checks**, native lifetime/budget/overflow checks, and **32 fixed reference views**
-pass (maximum one color level). Forced small-budget partitioning is byte-identical.
-Host count waits remain; no P2/P3, Q6 or reconstruction gate is certified.
-
-Latest [full retained calibrated comparison](validation/2026-10-13-real-reference.md)
-checks all **304,867 splats** at original fit resolution **1280×688**, using first,
-middle and last saved fit cameras. Explicit bounded real input, fit/PLY identities,
-exact affine inversion and shared floating-origin representation preserve the
-original assets. Native projection now follows pinned affine/quaternion/covariance
-operations. All three real and 32 unchanged synthetic views pass, maximum one
-color level; GCC/Clang real captures match byte-for-byte. **91/91 CPU/worker checks
-per profile**, nine reference-admission checks, four native rejection probes and
-native lifecycle/budget smoke pass. **329 protected files are unchanged.** Initial
-single-pixel cutoff failure remains recorded; absolute-world float32 arithmetic
-and all-camera/Q6 parity are unverified.
+Latest [stage profiling and sort reduction](validation/2026-10-13-stage-timing.md)
+adds opt-in bounded GPU timestamps and frame-ID/extent-checked CPU/GPU samples.
+Measured tile IDs need four radix passes rather than eight; stable output and all
+contributors are preserved. Across three short local repetitions, unprofiled median
+completed render throughput rises **36.64→45.80 frames/s at 4K** and
+**49.67→64.12 at fullscreen**; 720p stays ~59.4. Tile-index GPU p50 falls
+**10.39→6.01 ms at 4K**. These are not presented FPS or P2/P3 certification.
+**93/93 GCC C++26 and Clang C++23 CPU/worker checks**, native timing/lifecycle/budget
+smoke and 35 real/synthetic comparisons pass; maximum one color level.
+All reference captures and twelve quiet-run 4K screenshots are byte-identical;
+**329 protected files are unchanged**. Host count waits remain; query driver memory
+is outside reported owned-buffer allocations. Native timestamp fallback on an
+unsupported device, other platforms and full gates remain unqualified.
 
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
@@ -83,16 +71,16 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 
 ## Next executable work and blockers
 
-Next executable task: instrument CPU count-timeline waits and supported GPU
-timestamp measurements for projection/count, reference sorting and compositing.
-Then run `build/dev/we_gpu_viewer_regression artifacts/sample2.wexplore artifacts/validation/count-waits-20261013/baseline.json` (create the ignored parent
-directory first) using the full scene and unchanged budgets. Separate count waits
-from GPU work before selecting another optimization. `--source-view` remains an
-upright spectator reset; calibrated comparison uses the diagnostic command in
-[latest evidence](validation/2026-10-13-real-reference.md). Retain both
-`--termination` and `--batches-bounded` cases; for each run
-`build/dev/we_gpu_reference artifacts/validation/<new-output> <mode>`
-and `.venv-train/bin/python tests/gpu/compare_reference.py artifacts/validation/<new-output>`.
+Next executable task: reuse previously accepted tile rectangles as candidate
+count plans for the same extent. Recount every candidate under current reference/
+residency limits before emission; split on overflow and preserve the existing
+single-tile rejection. The 4K profile still counts eleven regions for six accepted
+batches. Compare using `build/dev/we_gpu_viewer_regression artifacts/sample2.wexplore artifacts/validation/tile-plans-20261013/baseline.json --timings`
+(create the ignored parent directory first), full scene and unchanged budgets.
+Retain `--termination` and `--batches-bounded` reference cases and pinned
+`tests/gpu/compare_reference.py` comparisons. Diagnostic commands and exact scope
+are in [latest evidence](validation/2026-10-13-stage-timing.md). `--source-view`
+remains an upright spectator reset, independent of capture poses.
 
 Reference-hardware/native-platform qualification and the real owned fresh RGB/
 solver/fit chain remain pending. Do not weaken gates, silently trim the retained
