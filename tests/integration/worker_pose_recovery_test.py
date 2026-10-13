@@ -39,7 +39,9 @@ class PoseRecoveryTests(unittest.TestCase):
 
     def map(self, *args, **kwargs):
         self.calls.append((args, kwargs))
-        return {0: object()}
+        def write(destination):
+            (destination / "images.bin").write_bytes(b"synthetic model marker")
+        return {0: SimpleNamespace(write=write), 1: SimpleNamespace(write=write)}
 
     def run_helper(self, *initialization):
         argv = [str(path), "--database", str(self.database), "--images", str(self.images),
@@ -51,6 +53,7 @@ class PoseRecoveryTests(unittest.TestCase):
         before = hashlib.sha256(self.database.read_bytes()).digest()
         self.run_helper("--seed-images", "000001.png", "000002.png")
         self.assertEqual(hashlib.sha256(self.database.read_bytes()).digest(), before)
+        self.assertEqual({p.name for p in (self.root / "sparse").iterdir()}, {"0", "1"})
         self.assertEqual(self.calls[0][1], {"options": {
             "num_threads": 2, "random_seed": 42, "init_image_id1": 7, "init_image_id2": 2},
             "input_path": ""})

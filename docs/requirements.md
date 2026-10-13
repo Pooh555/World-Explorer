@@ -52,5 +52,6 @@ all fitted sample_1 assets while correcting explicit source-view presentation up
 use independent, bounded sequential supervision and single-pair CPU matching;
 the bounded solves completed with disconnected-model rejection. [Retained
 continuation](validation/2026-10-13-pose-continuation.md) reuses saved matches;
-24 worker checks pass, real recovery remains pending. Canonical world axes and unknown gravity/scale
+24 worker checks pass. Real recovery could not join sample_2 models; 57 connected
+frames are below its required 58, and no fit/scene was published. Canonical world axes and unknown gravity/scale
 remain explicit; no Q/P/N/E gate is newly certified.
