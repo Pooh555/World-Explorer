@@ -33,6 +33,13 @@ Each gate requires the measurement scope prescribed by the specification. A loca
 synthetic smoke test does not satisfy quality, performance, capture completion or
 another operating system's native qualification.
 
+Local artifacts were [organized and checked](validation/2026-10-13-artifact-layout.md)
+after user-authorized deletion of two source videos: completed scenes/checkpoints
+remain preserved and both full scenes reopen locally. Historical job records keep
+their original absolute paths; use the migration map to locate archived evidence.
+Future videos use the [content-keyed request layout](protocols/artifacts.md).
+These maintenance checks do not change any gate status.
+
 Evidence is indexed by implementation slice in the [validation index](validation/README.md);
 reports retain exact commands, identities, counts, failures and native scope.
 Current real-chain correctness and development timing are scoped in [fresh chaining](validation/2026-10-13-fresh-chain.md); renderer measurements are scoped in [tile-plan reuse](validation/2026-10-13-tile-plans.md) and [stage profiling](validation/2026-10-13-stage-timing.md); earlier camera/fullscreen evidence retains its original measurement scope;

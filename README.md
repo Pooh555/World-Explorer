@@ -43,6 +43,14 @@ build/dev/we_process reconstruct --request artifacts/reconstruction.json
 build/dev/we_viewer --reconstruction-request artifacts/reconstruction.json --max-splats 500000
 ```
 
+For a new video anywhere in `data/`, run
+`python3 tools/new_video_job.py data/local/room.mp4`. This creates and prints a
+request under `artifacts/videos/<name>-<content-hash>/runs/<UTC-timestamp>-reconstruction/`
+without starting processing. Use that printed path with the commands above, or
+open it with `build/dev/we_viewer --review-request REQUEST_PATH`.
+See the [artifact layout](docs/protocols/artifacts.md) for limits, retained scenes
+and historical path mappings. All of `data/` and `artifacts/` is ignored by Git.
+
 See the [job schema](docs/protocols/jobs.md) for fresh fitting, checkpoint resume
 and explicit completed-fit reuse. Schema 2 can run automatic local metadata
 inspection in an owned job or adopt a checksummed retained inspection, then check
@@ -54,10 +62,11 @@ does not certify quality.
 ## View a scene
 
 ```sh
-build/dev/we_process fixture artifacts/diagnostic.wexplore
-build/dev/we_process validate artifacts/diagnostic.wexplore
-build/dev/we_viewer --scene artifacts/diagnostic.wexplore
-build/dev/we_gpu_smoke artifacts/overlap.ppm
+mkdir -p artifacts/diagnostics/gaussian-fixture artifacts/diagnostics/gpu-overlap
+build/dev/we_process fixture artifacts/diagnostics/gaussian-fixture/scene.wexplore
+build/dev/we_process validate artifacts/diagnostics/gaussian-fixture/scene.wexplore
+build/dev/we_viewer --scene artifacts/diagnostics/gaussian-fixture/scene.wexplore
+build/dev/we_gpu_smoke artifacts/diagnostics/gpu-overlap/readback.ppm
 ```
 
 The fixture is synthetic and tests rendering only. For a real scene, `compile`
