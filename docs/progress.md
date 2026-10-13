@@ -47,35 +47,31 @@ unavailable. Independent solutions cannot reuse each other's fits.
 Run from repository root; all media/jobs/screenshots stay local and ignored.
 
 ```sh
-build/dev/we_viewer --scene artifacts/sample2-fresh-chain-20261013/scene.wexplore --source-view --max-splats 1000000
-build/dev/we_process reconstruct --request artifacts/sample2-fresh-chain-20261013/adopt.json
+build/dev/we_viewer --scene artifacts/videos/sample-1-51263d9991dc/runs/2026-10-13-fresh-reconstruction/scene.wexplore --source-view --max-splats 1000000
+build/dev/we_process validate artifacts/videos/sample-1-51263d9991dc/runs/2026-10-13-fresh-reconstruction/scene.wexplore
 ```
 
-The reconstruction command adopts checked retained metadata and completed
-poses/fit without optimization; the fresh adopted result is independent of the
-original retained scene. Worker source changed in the flush repair: older
-owned automatic requests/probes require compatible worker identities or separate
-fresh jobs; do not rewrite owners/cache/checkpoints. Additional replay/export/map/
-preparation/adoption commands are indexed in [validation](validation/README.md).
+Standalone scenes remain usable after [artifact organization](protocols/artifacts.md).
+Historical job records/checkpoints are retained byte-for-byte; their absolute paths
+were not rewritten. Archived requests are not ready-to-run commands. Resolve old
+evidence locations through `artifacts/maintenance/2026-10-13-layout/migration.json`.
+For new inputs use `python3 tools/new_video_job.py data/local/VIDEO.mp4`; review
+the printed request before starting a fresh, disjoint run.
 
-Private source: `data/local/sample.mp4`, 20.948333 s, 3840×2160 H.264/30 FPS;
+Private source: `data/local/sample_1.mp4`, 20.948333 s, 3840×2160 H.264/30 FPS;
 SHA-256 `51263d9991dcbc2136d0809ecba1a8ba1b261896f3b222b7afba19784a153ef6`.
-`artifacts/sample2-job/decode.json` still selects the old capture's 92-frame stage.
+`artifacts/videos/sample-1-51263d9991dc/runs/2026-10-11-original-poses/decode.json` still selects the old capture's 92-frame stage.
 Do not rewrite it or rerun successful original COLMAP/gsplat. For retained replay,
-explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7dcab6451304305b9987c5e1da3e8ab1f5eaa9c6b`.
+explicitly select `artifacts/videos/sample-1-51263d9991dc/runs/2026-10-11-original-poses/stages/decode-36c925841001fd1027759ac7dcab6451304305b9987c5e1da3e8ab1f5eaa9c6b`.
 
-## User-requested video runs
+## Local artifacts
 
-[New local runs](validation/2026-10-13-new-videos.md): renamed `sample_1.mp4`
-is identical to the original; completed outputs were preserved. `sample_2.avi`
-failed with three disconnected COLMAP models (exit 2); its failed solve is retained.
-`sample_3.mp4` also failed with two disconnected models (exit 2, 241.313 s).
-Both processes have terminated without fitting or scene publication. Their
-requests, decoded frames and failed models/logs are retained in
-`artifacts/new-videos-20261013-sample_2` and `artifacts/new-videos-20261013-sample_3`.
-Before another attempt inspect model/frame coverage and capture continuity;
-choose coherent segments or recapture instead of merging disconnected models.
-No new reconstruction gate or viewer pass is claimed.
+[New video runs](validation/2026-10-13-new-videos.md) both failed with disconnected
+models before fitting. The user deleted those source videos and authorized cleanup;
+their failed generated jobs have been removed. The retained original is
+`data/local/sample_1.mp4`. Both completed scenes and all historical checkpoints,
+immutable records and verification evidence remain preserved in the semantic layout.
+See [cleanup evidence](validation/2026-10-13-artifact-layout.md).
 
 ## Next executable work and blockers
 
@@ -86,8 +82,9 @@ source identity and storage checks; keep configuration-only and checked-metadata
 states explicit. Automatic inspection requests still require running inspection;
 do not start workers or decode during review. Cover cancelled/mismatched metadata
 and inadequate storage while keeping appearance active and launch revalidation.
-Exercise `artifacts/sample2-fresh-chain-20261013/adopt.json` with fresh ignored
-settings/readbacks. Preserve successful jobs/owners/checkpoints and stale decode.
+Use retained metadata in the relocated fresh run; create an explicit relocation
+fixture rather than executing an archived request containing old absolute paths.
+Preserve successful jobs/owners/checkpoints and stale decode.
 
 Reference hardware, prescribed fixture/platform qualification and complete gates
 remain pending. Do not weaken thresholds or silently trim either full scene.

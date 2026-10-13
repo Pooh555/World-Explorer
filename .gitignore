@@ -6,7 +6,7 @@ __pycache__/
 *.pyc
 /artifacts/
 /sample.mp4
-/data/local/
+/data/
 *.wexplore/
 imgui.ini
 .DS_Store
