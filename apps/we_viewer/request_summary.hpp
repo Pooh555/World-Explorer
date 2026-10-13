@@ -17,7 +17,8 @@ struct request_summary {
     std::vector<request_summary_row> rows;
     std::vector<request_summary_row> advanced;
 };
-// Read-only; invokes the shared schema reader, never a worker or video decoder.
+// Read-only; shared schema reader, checked retained metadata/source and current
+// output storage. Automatic inspection remains pending; never a worker or decoder.
 // Canonical path and exact parsed-byte digest bind the subsequent GUI launch.
 result<request_summary> review_reconstruction_request(const std::filesystem::path& path,
                                                       const std::stop_token& stop = {});

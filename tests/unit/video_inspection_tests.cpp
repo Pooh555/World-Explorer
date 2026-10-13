@@ -6,6 +6,38 @@
 
 using namespace world_explorer;
 
+TEST_CASE("storage inspection reports existing volumes without creating future outputs",
+          "[inspection][storage]") {
+    test::inspection_fixture fixture;
+    const auto output = fixture.root / "future" / "nested" / "scene.wexplore";
+    const auto report = inspect_output_storage({output}, 1);
+    REQUIRE(report);
+    REQUIRE(report->size() == 1);
+    CHECK(report->front().output == std::filesystem::weakly_canonical(output));
+    CHECK(report->front().existing_directory == std::filesystem::canonical(fixture.root));
+    CHECK(report->front().available_bytes >= 1);
+    CHECK_FALSE(std::filesystem::exists(fixture.root / "future"));
+    CHECK_FALSE(inspect_output_storage({output}, 0));
+    CHECK_FALSE(inspect_output_storage({output}, UINT64_MAX));
+    CHECK_FALSE(inspect_output_storage({}, 1));
+    CHECK_FALSE(inspect_output_storage({output, output, output, output, output}, 1));
+    CHECK_FALSE(inspect_output_storage({fixture.request.video / "nested"}, 1));
+    const auto constrained_volume = std::filesystem::is_directory("/dev/shm")
+                                        ? std::filesystem::path{"/dev/shm"}
+                                        : fixture.root;
+    const auto available = std::filesystem::space(constrained_volume).available;
+    if (available < 32ULL * 1024 * 1024 * 1024) {
+        const auto insufficient = inspect_output_storage({constrained_volume}, available + 1);
+        REQUIRE_FALSE(insufficient);
+        CHECK(insufficient.error().code == error_code::RESOURCE_EXHAUSTED);
+    }
+    std::stop_source cancellation;
+    cancellation.request_stop();
+    const auto cancelled = inspect_output_storage({output}, 1, cancellation.get_token());
+    REQUIRE_FALSE(cancelled);
+    CHECK(cancelled.error().code == error_code::CANCELLED);
+}
+
 TEST_CASE("automatic inspection gates capabilities and binds returned immutable metadata",
           "[inspection]") {
     test::inspection_fixture fixture;
@@ -16,6 +48,8 @@ TEST_CASE("automatic inspection gates capabilities and binds returned immutable 
     INFO((first ? "inspected" : first.error().message));
     REQUIRE(first);
     CHECK(first->report.width == 2);
+    CHECK(first->report.codec_name == "synthetic_diagnostic");
+    CHECK(first->report.storage.size() == fixture.request.outputs.size());
     CHECK(first->report.source_sha256 == sha256_file(fixture.request.video, 4096).value());
     CHECK(log.find("Worker accepted START") != std::string::npos);
     const auto directory = fixture.request.configuration.job_directory;

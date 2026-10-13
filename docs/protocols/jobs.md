@@ -296,6 +296,8 @@ SHA-256 against the exact bounded JSON bytes it parses. Malformed digests fail
 before parsing; a mismatch fails before any worker or output publication. An empty
 digest preserves existing CLI/startup behavior. Schema versions, path-overlap
 protections, limits, recipes and immutable worker ownership are unchanged.
-The [viewer request review](viewer.md) pins a canonical request path and digest;
-this validates configuration, not media/stages, free storage or backend capability.
-Those checks still run in the shared reconstruction coordinator.
+The [viewer request review](viewer.md) pins a canonical request path and digest,
+checks explicitly selected retained metadata/source identity through shared
+preflight and reports current output storage. Automatic inspection stays pending.
+The shared coordinator rechecks inputs/storage and gates backend capability at
+execution; review never starts workers or substitutes a cached stage.

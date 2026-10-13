@@ -93,8 +93,18 @@ artifacts remain ignored; [layout protocol](protocols/artifacts.md).
 
 ## Next executable work and blockers
 
-Next executable task: resume checked retained metadata/current-storage Import
-review for M1. For these videos, use the working sample_1 view below; preserve
+Latest [checked Import metadata/storage](validation/2026-10-13-import-metadata.md)
+uses shared retained preflight and per-output current-space snapshots; automatic
+inspection keeps metadata pending. **120/120 GCC C++26 / Clang C++23 checks**,
+native default/compact dialogs and full 295,952-splat Cancel/reopen pass with zero
+Vulkan errors; **2,393 protected files** unchanged. No solve/fit rerun or gate change.
+
+Next executable task: M1 recipe/metric identity audit. Compare
+`workers/gsplat/local-environment.txt`, `workers/pose-requirements.txt` and
+`third_party/README.md` with the installed isolated environments and pinned
+`.deps/gsplat`; record installed distribution hashes/notices and locally available
+metric/backbone identities. Keep absent rights/backbone bytes blocked; no implicit
+downloads. For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
 Do not launch duplicates or rerun sample_1's completed fit. Current sample_1 view:

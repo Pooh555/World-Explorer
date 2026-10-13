@@ -48,6 +48,10 @@ For a new video anywhere in `data/`, run
 request under `artifacts/<video-name>/`
 without starting processing. Use that printed path with the commands above, or
 open it with `build/dev/we_viewer --review-request REQUEST_PATH`.
+Import shows the requested actions/limits and current output free space. An
+explicitly selected completed inspection also shows checked video metadata;
+automatic inspection remains pending until Run. Reviewing keeps scene viewing
+active and does not start reconstruction.
 See the [artifact layout](docs/protocols/artifacts.md) for limits, retained scenes
 and repeat-attempt naming. All of `data/` and `artifacts/` is ignored by Git.
 

@@ -525,8 +525,9 @@ int viewer_main(int argc, char** argv) {
                     }
                 };
                 rows(summary->rows, "Request summary");
-                ImGui::TextWrapped("Request checks passed. Source, stages, storage and backend "
-                                   "capabilities are checked when running. ETA unknown.");
+                ImGui::TextWrapped("Review checks passed. Current storage is a snapshot, not a "
+                                   "reservation. Inputs, storage and backend capabilities are "
+                                   "checked when running. ETA unknown.");
                 if (ImGui::CollapsingHeader("Advanced request details"))
                     rows(summary->advanced, "Backend details");
             } else if (review_error.empty())
