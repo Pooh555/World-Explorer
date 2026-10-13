@@ -83,9 +83,9 @@ result<void> validate_job(const reconstruction_job& job) {
             return fail(error_code::INVALID_ARGUMENT, "Invalid explicit fresh pose action");
         auto plan = std::filesystem::weakly_canonical(job.pose_job);
         plan += ".plan";
-        std::vector<std::filesystem::path> read_only{job.video,         job.request_file,
-                                                     job.gsplat_source, job.fitting_worker.script,
-                                                     job.checkpoint,    config.worker.script};
+        std::vector<std::filesystem::path> read_only{job.video, job.request_file, job.gsplat_source,
+                                                     job.fitting_worker.script,
+                                                     config.worker.script};
         if (std::filesystem::path(config.worker.python).has_parent_path())
             read_only.emplace_back(config.worker.python);
         if (std::filesystem::path(config.pose_python).has_parent_path())
@@ -125,6 +125,9 @@ result<void> validate_job(const reconstruction_job& job) {
         if (job.automatic_decode)
             writable.push_back(
                 std::filesystem::weakly_canonical(job.automatic_decode->job_directory));
+        const auto checkpoint = job.checkpoint.empty()
+                                    ? std::filesystem::path{}
+                                    : std::filesystem::weakly_canonical(job.checkpoint);
         for (std::size_t index = 0; index < writable.size(); ++index) {
             for (std::size_t other = index + 1; other < writable.size(); ++other)
                 if (video_detail::overlaps(writable[index], writable[other]))
@@ -136,6 +139,13 @@ result<void> validate_job(const reconstruction_job& job) {
                                            std::filesystem::weakly_canonical(input)))
                     return fail(error_code::INVALID_ARGUMENT,
                                 "Fresh reconstruction output overlaps a protected input");
+            // Resume reads and later replaces the worker's canonical checkpoint.
+            // All other fit files and other writable destinations stay protected.
+            if (!checkpoint.empty() && video_detail::overlaps(writable[index], checkpoint) &&
+                !(job.action == fit_action::RESUME && writable[index] == fit &&
+                  checkpoint == fit / "checkpoint.pt"))
+                return fail(error_code::INVALID_ARGUMENT,
+                            "Fresh reconstruction output overlaps a protected input");
         }
     }
     if (!job.request_file.empty())

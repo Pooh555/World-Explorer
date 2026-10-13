@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Fresh real owned chain | [Checkpoint resume repair](2026-10-13-fresh-chain.md): 63 real native RGB frames/poses → 7k fit → 297,489 splats → viewer; cancellation/resume/reuse, protected overlap tests, 99 checks in both profiles |
 | Recounted tile plans | [Geometry cache](2026-10-13-tile-plans.md): current-frame admission, bounded coverage/cache failures, native density/resize/overflow parity, unchanged 35 references; 97 checks in both profiles |
 | GPU stage timings / tile sort | [Bounded timing and radix passes](2026-10-13-stage-timing.md): completed CPU/GPU samples, three paired local repetitions before/after, stable full-scene output and unchanged budgets |
 | Full retained calibrated scene | [Real camera comparison](2026-10-13-real-reference.md): all 304,867 splats, three original fit views; affine/shared-origin diagnostics, 35 real/synthetic comparisons, protected assets and native scope |

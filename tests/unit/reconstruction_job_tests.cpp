@@ -980,3 +980,112 @@ TEST_CASE("invalid training calibration fails before durable map or scene public
     CHECK_FALSE(std::filesystem::exists(map));
     CHECK_FALSE(std::filesystem::exists(fixture.job.scene_output));
 }
+
+TEST_CASE("fresh chaining resumes its own canonical fit checkpoint without repeating poses",
+          "[stage-chain]") {
+    job_fixture fixture;
+    fixture.fresh("valid", GENERATE(false, true));
+    const auto template_fit = fixture.job.fit_directory;
+    fixture.job.fit_directory = fixture.root / "resumed fit";
+    fixture.job.action = fit_action::RESUME;
+    fixture.job.completed_fit_identity.clear();
+    fixture.job.gsplat_source = fixture.root / "backend source";
+    fixture.job.fitting_worker = {fixture.root / "fit worker.py", WE_TEST_PYTHON, false};
+    const auto owned = GENERATE(false, true);
+    fixture.job.checkpoint = owned ? fixture.job.fit_directory / "checkpoint.pt"
+                                   : fixture.root / "external checkpoint.pt";
+    std::filesystem::create_directories(fixture.job.checkpoint.parent_path());
+    std::ofstream(fixture.job.checkpoint) << "synthetic full-checkpoint marker";
+    const auto checkpoint_hash = sha256_file(fixture.job.checkpoint, 1024).value();
+    std::ofstream script(fixture.job.fitting_worker.script);
+    script << "import argparse,shutil\nfrom pathlib import Path\np=argparse.ArgumentParser()\n"
+              "for key in "
+              "('source','data','video','output','steps','max-image-dimension','max-splats'):\n"
+              " p.add_argument('--'+key,required=True)\np.add_argument('--resume',required=True)\n"
+              "args=p.parse_args()\n"
+           << "assert Path(args.resume).samefile("
+           << nlohmann::json(test::path_utf8(fixture.job.checkpoint)).dump() << ")\n"
+           << "shutil.copytree(" << nlohmann::json(test::path_utf8(template_fit)).dump()
+           << ",args.output,dirs_exist_ok=True)\n"
+              "print('synthetic checkpoint forwarding; no optimizer')\n";
+    script.close();
+    std::string log;
+    const auto resumed =
+        reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; });
+    INFO(log);
+    INFO((resumed ? "resumed" : resumed.error().message));
+    REQUIRE(resumed);
+    CHECK(sha256_file(fixture.job.checkpoint, 1024).value() == checkpoint_hash);
+    const auto pose_invocations =
+        sha256_file(fixture.job.pose_job / "capabilities.json", 65536).value();
+    const auto scene_hash = sha256_file(fixture.job.scene_output / "manifest.json", 65536).value();
+    fixture.job.action = fit_action::REUSE_COMPLETED;
+    fixture.job.checkpoint.clear();
+    fixture.job.completed_fit_identity = fixture.identity;
+    log.clear();
+    REQUIRE(reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; }));
+    CHECK(log.find("solver skipped") != std::string::npos);
+    CHECK(log.find("optimization skipped") != std::string::npos);
+    CHECK(sha256_file(fixture.job.pose_job / "capabilities.json", 65536).value() ==
+          pose_invocations);
+    CHECK(sha256_file(fixture.job.scene_output / "manifest.json", 65536).value() == scene_hash);
+}
+
+TEST_CASE("fresh checkpoint exception preserves other protected inputs and destinations",
+          "[stage-chain]") {
+    job_fixture fixture;
+    REQUIRE(reconstruct(fixture.job, {}, {}));
+    const auto published = sha256_file(fixture.job.scene_output / "manifest.json", 65536).value();
+    fixture.fresh("valid", true);
+    fixture.job.fit_directory = fixture.root / "fresh fit";
+    fixture.job.action = fit_action::RESUME;
+    fixture.job.completed_fit_identity.clear();
+    fixture.job.gsplat_source = fixture.root / "backend source";
+    fixture.job.fitting_worker = {fixture.root / "fit worker.py", WE_TEST_PYTHON, false};
+    fixture.job.checkpoint = fixture.job.fit_directory / "checkpoint.pt";
+    SECTION("fit metadata stays protected") {
+        fixture.job.checkpoint = fixture.job.fit_directory / "input_manifest.json";
+    }
+    SECTION("pose output stays protected") {
+        fixture.job.checkpoint = fixture.job.pose_job / "checkpoint.pt";
+    }
+    SECTION("pose intent stays protected") {
+        auto plan = fixture.job.pose_job;
+        plan += ".plan";
+        fixture.job.checkpoint = plan / "checkpoint.pt";
+    }
+    SECTION("map stays protected") {
+        fixture.job.map_directory = fixture.root / "map";
+        fixture.job.checkpoint = fixture.job.map_directory / "checkpoint.pt";
+    }
+    SECTION("scene stays protected") {
+        fixture.job.checkpoint = fixture.job.scene_output / "manifest.json";
+    }
+    SECTION("decoder stays protected") {
+        REQUIRE(fixture.job.automatic_decode);
+        if (fixture.job.automatic_decode)
+            fixture.job.checkpoint = fixture.job.automatic_decode->job_directory / "checkpoint.pt";
+    }
+    SECTION("request alias stays protected") { fixture.job.request_file = fixture.job.checkpoint; }
+    SECTION("worker alias stays protected") {
+        fixture.job.fitting_worker.script = fixture.job.checkpoint;
+    }
+    SECTION("backend alias stays protected") { fixture.job.gsplat_source = fixture.job.checkpoint; }
+    SECTION("executable alias stays protected") {
+        fixture.job.fitting_worker.python = test::path_utf8(fixture.job.checkpoint);
+    }
+    SECTION("start may not replace a checkpoint") { fixture.job.action = fit_action::START; }
+    if (!std::filesystem::exists(fixture.job.checkpoint)) {
+        std::filesystem::create_directories(fixture.job.checkpoint.parent_path());
+        std::ofstream(fixture.job.checkpoint) << "synthetic protected input";
+    }
+    const auto checkpoint_hash = sha256_file(fixture.job.checkpoint, 65536).value();
+    std::string log;
+    const auto rejected =
+        reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; });
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == error_code::INVALID_ARGUMENT);
+    CHECK(log.find("Worker accepted START") == std::string::npos);
+    CHECK(sha256_file(fixture.job.checkpoint, 65536).value() == checkpoint_hash);
+    CHECK(sha256_file(fixture.job.scene_output / "manifest.json", 65536).value() == published);
+}
