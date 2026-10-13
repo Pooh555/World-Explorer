@@ -158,7 +158,7 @@ we_target(we_process)
 target_link_libraries(we_process PRIVATE application)
 target_compile_definitions(we_process PRIVATE WE_WORKER_SCRIPT="${PROJECT_SOURCE_DIR}/workers/worker.py")
 
-add_library(render_core src/render_core/update_sink.cpp src/render_core/camera.cpp)
+add_library(render_core src/render_core/update_sink.cpp src/render_core/camera.cpp src/render_core/tile_plan.cpp)
 we_target(render_core)
 target_link_libraries(render_core PUBLIC scene_store)
 
@@ -207,6 +207,12 @@ if(WE_BUILD_VIEWER)
   target_link_libraries(we_gpu_reference PRIVATE render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
   target_compile_definitions(we_gpu_reference PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
   add_dependencies(we_gpu_reference we_shaders)
+
+  add_executable(we_gpu_tile_plans tests/gpu/tile_plans.cpp)
+  we_target(we_gpu_tile_plans)
+  target_link_libraries(we_gpu_tile_plans PRIVATE render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_gpu_tile_plans PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
+  add_dependencies(we_gpu_tile_plans we_shaders)
 
   add_executable(we_gpu_viewer_regression tests/gpu/viewer_regression.cpp)
   we_target(we_gpu_viewer_regression)

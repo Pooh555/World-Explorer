@@ -18,6 +18,7 @@ struct renderer_options {
     std::size_t max_tile_references{8000000};
     // Opt-in diagnostics; fixed query pools, no extra completion waits.
     bool collect_timings{};
+    bool reuse_tile_plans{true};
 };
 // Adapter-only handles. Public scene/core APIs never carry graphics objects.
 struct vulkan_overlay_context {

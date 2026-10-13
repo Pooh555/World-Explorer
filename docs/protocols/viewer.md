@@ -107,6 +107,26 @@ that cannot fit fails explicitly before emission. Whole-frame diagnostic
 this does not broaden the P2 workload envelope. Host count waits remain a measured
 synchronization cost, not a fully asynchronous P6 implementation.
 
+`renderer_options.reuse_tile_plans` defaults on. The renderer caches only the last
+successfully submitted frame's disjoint rectangle partition, up to 128 regions.
+Every candidate is counted again on the GPU and admitted under current reference,
+allocation, dispatch and residency limits before emission. Camera/scene changes
+can split candidates further; counts, GPU addresses and allocation decisions are
+never cached. A failed/incomplete frame preserves the previous complete partition.
+Swapchain refresh resets the plan, including pixel resizes within the same tile grid.
+Pause/empty frames do not count or replace it. Excessive fragmentation discards the
+whole cache after completing all work, rather than truncating coverage. Fixed CPU
+metadata holds 128 cached, 128 accepted and 192 pending rectangles; split depth is
+bounded by uint32 dimensions. Sparse transitions retain the old partition until
+resize/reset; automatic merging is not implemented and can cause extra counts.
+
+`we_gpu_viewer_regression ... --fresh-tile-plan` disables candidate reuse for paired
+comparisons in the same executable; it can combine with `--timings`. Completed
+samples include `reused_tile_regions`, distinct from current count submissions and
+accepted batches. `we_gpu_tile_plans <new output directory>` checks labeled
+synthetic density changes, camera movement, pause/empty, resize, per-tile overflow
+and fresh/cached screenshot equality; it requires native validation and timestamps.
+
 Two in-flight frames own FP32 pixel buffers. Projection/key/scan scratch grows to
 resident count, not configured maximum splats. Completed frame ownership gates
 scratch reuse; device-idle resize retires pixels, ranges and reference pools before

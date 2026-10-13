@@ -26,19 +26,19 @@ original checks and limits. Full real fresh solve/fit chaining remains unverifie
 original fit views at 1280×688 with shared floating-origin inputs. Absolute-world
 float32/all-camera parity and Q6 packing remain unverified.
 
-Latest [stage profiling and sort reduction](validation/2026-10-13-stage-timing.md)
-adds opt-in bounded GPU timestamps and frame-ID/extent-checked CPU/GPU samples.
-Measured tile IDs need four radix passes rather than eight; stable output and all
-contributors are preserved. Across three short local repetitions, unprofiled median
-completed render throughput rises **36.64→45.80 frames/s at 4K** and
-**49.67→64.12 at fullscreen**; 720p stays ~59.4. Tile-index GPU p50 falls
-**10.39→6.01 ms at 4K**. These are not presented FPS or P2/P3 certification.
-**93/93 GCC C++26 and Clang C++23 CPU/worker checks**, native timing/lifecycle/budget
-smoke and 35 real/synthetic comparisons pass; maximum one color level.
-All reference captures and twelve quiet-run 4K screenshots are byte-identical;
-**329 protected files are unchanged**. Host count waits remain; query driver memory
-is outside reported owned-buffer allocations. Native timestamp fallback on an
-unsupported device, other platforms and full gates remain unqualified.
+Latest [recounted tile plans](validation/2026-10-13-tile-plans.md) reuse bounded
+rectangle geometry and repeat GPU count/admission on every frame. Full-scene 4K
+counts fall **11→6** for six batches; fullscreen **3→2** for two. Three short paired
+runs give 4K completed throughput **32.69→34.03 frames/s**, fullscreen
+**49.75→49.51**; no general FPS gain or P2/P3 certification. Earlier
+[stage profiling/sort reduction](validation/2026-10-13-stage-timing.md) retains its
+original measurement scope. Sparse transitions retain old fragmentation; automatic
+merging remains pending. **97/97 GCC C++26 and Clang C++23 checks**, native
+cache/density/resize/overflow parity and 35 real/synthetic comparisons pass.
+All reference captures and twelve 4K trial screenshots are byte-identical;
+**329 protected files are unchanged**. Owned-buffer maxima/budgets are unchanged;
+fixed CPU metadata/query driver memory is outside that metric. Host count waits,
+other native platforms and full gates remain unqualified.
 
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
@@ -71,16 +71,17 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 
 ## Next executable work and blockers
 
-Next executable task: reuse previously accepted tile rectangles as candidate
-count plans for the same extent. Recount every candidate under current reference/
-residency limits before emission; split on overflow and preserve the existing
-single-tile rejection. The 4K profile still counts eleven regions for six accepted
-batches. Compare using `build/dev/we_gpu_viewer_regression artifacts/sample2.wexplore artifacts/validation/tile-plans-20261013/baseline.json --timings`
-(create the ignored parent directory first), full scene and unchanged budgets.
-Retain `--termination` and `--batches-bounded` reference cases and pinned
-`tests/gpu/compare_reference.py` comparisons. Diagnostic commands and exact scope
-are in [latest evidence](validation/2026-10-13-stage-timing.md). `--source-view`
-remains an upright spectator reset, independent of capture poses.
+Next executable task: prepare a schema-2 **fresh solve/start** request in a new
+ignored `artifacts/sample2-fresh-chain-20261013` directory, using current worker
+identities and disjoint inspection/decode/pose/map/fit/scene outputs. Follow
+[job schema/ownership](protocols/jobs.md) and
+[earlier real pre-solver cancellation evidence](validation/2026-10-12-stage-chain.md).
+Check local storage/resources, then execute the request with
+`build/dev/we_process reconstruct --request artifacts/sample2-fresh-chain-20261013/request.json`
+only after creating/validating it. Verify native RGB admission → actual solver →
+fit → checked scene publication and compatible restart; synthetic/adoption evidence
+cannot complete this gate. Preserve all existing owner/cache/checkpoint bytes and
+successful original jobs. `--source-view` remains an independent spectator reset.
 
 Reference-hardware/native-platform qualification and the real owned fresh RGB/
 solver/fit chain remain pending. Do not weaken gates, silently trim the retained
