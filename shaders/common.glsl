@@ -21,7 +21,7 @@ layout(std430,binding=7) buffer group_offsets_buffer { uint group_offsets[]; };
 layout(std430,binding=8) buffer control_buffer { uint control[]; };
 layout(std430,binding=9) buffer tile_ranges_buffer { uvec2 tile_ranges[]; };
 layout(push_constant) uniform parameters {
-    vec4 right;
+    vec4 right; // xyz optical basis row, w camera-from-rebased-world translation
     vec4 down;
     vec4 forward;
     vec4 camera_position;

@@ -412,10 +412,16 @@ struct vulkan_renderer::implementation {
     }
     push_parameters parameters(const camera_view& camera,
                                const std::array<float, 4>& intrinsics) const {
-        return {floats(camera.right),
-                floats(camera.down),
-                floats(camera.forward),
-                floats(camera.position - scene_origin),
+        const auto position = camera.position - scene_origin;
+        const auto affine_row = [&](vec3d basis) {
+            auto row = floats(basis);
+            row[3] = static_cast<float>(-dot(basis, position));
+            return row;
+        };
+        return {affine_row(camera.right),
+                affine_row(camera.down),
+                affine_row(camera.forward),
+                floats(position),
                 intrinsics,
                 {static_cast<float>(extent.width), static_cast<float>(extent.height),
                  camera.near_plane, camera.far_plane},

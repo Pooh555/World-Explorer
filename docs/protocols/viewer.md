@@ -61,6 +61,30 @@ Fixed diagnostic tolerances (PSNR ≥45 dB,
 maximum eight 8-bit levels) compare quantized SDR output; they do not
 replace Q/P gates. Commands/results and untested cases belong in validation evidence.
 
+`we_gpu_reference <new output> --real <scene bundle> <completed fit directory>`
+loads the complete checked scene, requires matching fit/capture/PLY identities and
+verifies the original PLY checksum. It captures first/middle/last saved fit cameras
+with original resized intrinsics, dimensions and roll. The saved float32 affine
+rotation is inverted directly when deriving position, rather than assuming its
+transpose is an exact inverse. This diagnostic does not drive spectator navigation.
+
+Real diagnostic schema 2 requires explicit `--real` in `compare_reference.py`.
+It bounds JSON to 4 MiB, frames to 120, dimensions to 4096 per axis, chunks to 1024
+and the full scene to one million splats. Each separately hashed binary chunk
+contains 60 little-endian float32 values per splat: mean3, scale3, wxyz4, opacity,
+coefficient-major RGB SH48, degree. Exact size/count, contained paths, finite values,
+transforms, complete fit configuration identity and original camera correspondence
+are checked before reference rendering. Real and synthetic labels remain separate;
+no splats are trimmed to fit the synthetic profile.
+
+Scene upload already rebases world means around the admission camera in double
+precision before float32 conversion. The real diagnostic records that origin;
+both renderers consume the same rebased float32 payload and equivalent camera
+transform. Projection evaluates affine basis rows plus translation; quaternion
+normalization and world covariance followed by camera covariance transformation
+follow the pinned trainer. Floating-point behavior at the exclusive cutoff remains
+sensitive; three passing captured views do not certify all cameras or Q6 packing.
+
 Splat keys sort positive finite center depths front-to-back, stably retaining input
 order for ties. GPU overlap count/exclusive scan precedes reference emission.
 Emission follows depth order; stable 32-bit tile sorting therefore preserves the
