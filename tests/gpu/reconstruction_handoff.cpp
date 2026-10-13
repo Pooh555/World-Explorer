@@ -98,6 +98,15 @@ int main(int argc, char** argv) try {
     test::reconstruction_gate gate(reconstruction_stage::POSES);
     viewer::application_state state; // Cancels/joins before the observed gate is destroyed.
     state.load_limits.scene.max_splats = options.max_splats;
+    state.review_request(argv[2]);
+    const auto review_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    while (state.busy) {
+        require(!state.processing, "request review must keep appearance active");
+        draw();
+        require(std::chrono::steady_clock::now() < review_deadline, "review deadline exceeded");
+    }
+    state.job.join();
+    require(state.reviewed_request && !state.loaded, "read-only review must not publish a scene");
     state.reconstruction(argv[2],
                          [&](const reconstruction_progress& progress, const std::stop_token& stop) {
                              gate.observe(progress, stop);
@@ -131,6 +140,8 @@ int main(int argc, char** argv) try {
     require(state.status.starts_with(reconstruction_stage_name(reconstruction_stage::POSES)) &&
                 state.status.find("Cancelled") != std::string::npos,
             "cancellation must identify the actual stage");
+    require(state.reviewed_request != nullptr, "review must survive cancellation");
+    report["reviewed_request_sha256"] = state.reviewed_request->request_sha256;
     report["cancelled_status"] = state.status;
     capture("cancelled.ppm");
     const auto cancelled_hash =
@@ -138,7 +149,7 @@ int main(int argc, char** argv) try {
     require(cancelled_hash.has_value(), cancelled_hash ? "" : cancelled_hash.error().message);
     require(*prior_hash == *cancelled_hash, "Cancel must preserve previous visible pixels");
     report["previous_pixels_sha256"] = *prior_hash;
-    state.reconstruction(argv[2]);
+    state.run_reviewed_request();
     const auto reopen_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(180);
     while (state.busy) {
         draw(!state.processing.load());

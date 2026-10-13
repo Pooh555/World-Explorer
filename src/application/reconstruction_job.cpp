@@ -209,9 +209,12 @@ result<void> validate_job(const reconstruction_job& job) {
 }
 } // namespace
 
-result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& request) {
+result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& request,
+                                                   const std::string& expected_sha256) {
     try {
-        const auto parsed = job_detail::read_json(request, std::size_t{64} * 1024);
+        if (!expected_sha256.empty() && !job_detail::valid_digest(expected_sha256))
+            return fail(error_code::INVALID_ARGUMENT, "Invalid reviewed request digest");
+        const auto parsed = job_detail::read_json(request, std::size_t{64} * 1024, expected_sha256);
         if (!parsed)
             return std::unexpected(parsed.error());
         const auto& value = *parsed;

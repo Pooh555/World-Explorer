@@ -52,7 +52,9 @@ struct reconstruction_job {
 };
 
 // Strict, bounded schema; relative paths resolve against the request's directory.
-result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& request);
+// An optional digest binds the exact bytes parsed, for reviewed-request launch.
+result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& request,
+                                                   const std::string& expected_sha256 = {});
 // One synchronous command, called off the UI thread. Logs run on the calling
 // thread, including checked progress callbacks. Cancellation before manifest publication retains
 // the previous scene; the final atomic publication is a commit boundary. Concurrent worker

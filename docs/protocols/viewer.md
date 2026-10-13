@@ -66,6 +66,33 @@ Viewer preference/handoff unit tests build only with `WE_BUILD_VIEWER` and
 `BUILD_TESTING`. They require the viewer's SDL/ImGui dependencies but no GPU
 execution. CPU-only presets retain their independent contract tests.
 
+## Import request review
+
+The Import dialog runs `Review request` on the same owned background-job thread,
+using the shared strict reader. Appearance stays active; no worker, video decoder,
+source-media hash, inventory admission or reconstruction runs during review.
+One immutable presentation value holds at most 32 rows / 128 KiB text. Error
+bodies are limited to 2,048 bytes. It shows selected fresh/retained pose action,
+start/resume/reuse, source/scene output, frame-selection/CPU/storage caps when
+specified, and fit steps/image/splat limits. Completed reuse marks fit values as
+compatibility requirements, not work to be performed or final scene size. Legacy
+requests expose absent inspection without inventing frame/storage values.
+Backend paths and separate manual worker commands remain advanced controls.
+
+`Run reviewed request` rereads the canonical path with the reviewed digest on the
+job thread. Editing the field invalidates eligibility, including an in-flight
+review. Changed/deleted/retargeted files or failed rechecks clear the summary and
+require another review before running. Input/stage/backend checks remain in the
+coordinator; their failure never silently changes recipe or reuses another fit.
+A scrollable details area keeps Run/Close outside its content viewport.
+
+`we_viewer --review-request FILE` opens and reviews Import without launching the
+job. It cannot combine with startup `--reconstruction-request`; frame exit and
+readback wait for the selected review and initial scene visibility. Automated
+review failure exits explicitly. `--reconstruction-request` keeps its established
+startup execution path. Current native sizes/input limits are in validation,
+not broader platform/HiDPI qualification.
+
 ## Fixed-camera rendering
 
 `camera_view` accepts optional `calibrated_projection` with canonical integer-center

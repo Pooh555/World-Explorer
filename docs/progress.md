@@ -27,12 +27,14 @@ not P1 certification; temporal holdout quality remains unqualified.
 [Typed processing status](validation/2026-10-13-progress-status.md) keeps actual
 backend timing/steps separate from unknown ETA and terminal/handoff state.
 
-Latest [owned-thread Cancel/reopen](validation/2026-10-13-viewer-cancel.md):
-**107/107 GCC C++26 / Clang C++23 checks**, seven cancellation boundaries, pending
-job-admission repair and synchronous stop-callback access pass. Native original
-pixels survive Cancel exactly; the full 297,489-splat result becomes visible with
-zero Vulkan errors. **670 protected files** remain unchanged; no solver/optimizer
-rerun. Synthetic tests and native development diagnostics do not certify full gates.
+[Owned-thread Cancel/reopen](validation/2026-10-13-viewer-cancel.md) checks seven
+boundaries, pending-admission repair and exact prior-pixel preservation.
+Latest [Import request review](validation/2026-10-13-request-review.md): bounded
+background summary of actual actions/limits, checksum-pinned launch, stale review
+invalidation and no preview worker execution. **114/114 GCC C++26 / Clang C++23
+checks**; native 1428×868/1024×640 dialogs and reviewed 297,489-splat handoff pass
+with zero Vulkan errors. **670 protected files** are unchanged; no solver/optimizer
+rerun. Synthetic tests/native diagnostics do not certify full gates.
 
 The original **304,867-splat** result, its step-4,323 cancellation/resume, all
 successful jobs and decode pointer remain preserved. RTX 4060 Laptop/driver
@@ -64,15 +66,15 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 
 ## Next executable work and blockers
 
-Next executable task: add a checked reconstruction-request summary to the Import
-dialog before launch. Reuse `read_reconstruction_job()` and a bounded presentation
-model to show selected action (fresh solve/retained adoption, start/resume/reuse),
-source/output locations and actual frame/image/splat/step/storage limits. Existing
-text only describes retained continuation despite supporting fresh solve. Test
-invalid requests and action/limit display; keep backend paths advanced and do not
-launch inspection/solvers from preview. Exercise the completed `reuse.json` or
-worker-independent `adopt.json` with fresh ignored settings/readback paths.
-Preserve all successful jobs, owners, checkpoints and the stale decode pointer.
+Next executable task: extend Import review with optional checked retained video
+metadata/current-storage results. When `inspection.action = adopt_completed`, use
+`preflight_video()` on the background thread to show actual duration/dimensions,
+source identity and storage checks; keep configuration-only and checked-metadata
+states explicit. Automatic inspection requests still require running inspection;
+do not start workers or decode during review. Cover cancelled/mismatched metadata
+and inadequate storage while keeping appearance active and launch revalidation.
+Exercise `artifacts/sample2-fresh-chain-20261013/adopt.json` with fresh ignored
+settings/readbacks. Preserve successful jobs/owners/checkpoints and stale decode.
 
 Reference hardware, prescribed fixture/platform qualification and complete gates
 remain pending. Do not weaken thresholds or silently trim either full scene.

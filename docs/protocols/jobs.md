@@ -288,3 +288,14 @@ processes provide logs only. Wire format and worker/owner identities are unchang
 The application checks stage correspondence, finite nonnegative event duration and
 bounded optional fitting-step metadata before exposing UI values. The viewer's
 [status and terminal handoff contract](viewer.md) owns presentation/lifetime.
+
+## Reviewed request bytes
+
+`read_reconstruction_job(request, expected_sha256)` optionally checks a lowercase
+SHA-256 against the exact bounded JSON bytes it parses. Malformed digests fail
+before parsing; a mismatch fails before any worker or output publication. An empty
+digest preserves existing CLI/startup behavior. Schema versions, path-overlap
+protections, limits, recipes and immutable worker ownership are unchanged.
+The [viewer request review](viewer.md) pins a canonical request path and digest;
+this validates configuration, not media/stages, free storage or backend capability.
+Those checks still run in the shared reconstruction coordinator.

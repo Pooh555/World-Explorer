@@ -1104,3 +1104,26 @@ TEST_CASE("fresh coordinator forwards checked inspection decode and pose progres
                                                               reconstruction_stage::DECODING,
                                                               reconstruction_stage::POSES});
 }
+
+TEST_CASE("reconstruction reader binds exact reviewed bytes before accepting a request",
+          "[review]") {
+    job_fixture fixture;
+    fixture.adopt_inspection();
+    const auto request = fixture.write_retained_request();
+    const auto digest = sha256_file(request, 65536).value();
+    REQUIRE(read_reconstruction_job(request, digest));
+    SECTION("invalid digest") {
+        const auto invalid = read_reconstruction_job(request, "bad");
+        REQUIRE_FALSE(invalid);
+        CHECK(invalid.error().code == error_code::INVALID_ARGUMENT);
+    }
+    SECTION("different checked bytes") {
+        std::ofstream(request, std::ios::app) << '\n'; // Same JSON, changed reviewed content.
+        const auto changed = read_reconstruction_job(request, digest);
+        REQUIRE_FALSE(changed);
+        CHECK(changed.error().code == error_code::INVALID_DATA);
+        CHECK(changed.error().message.find("checksum") != std::string::npos);
+        CHECK(read_reconstruction_job(request)); // Legacy unpinned calls remain supported.
+    }
+    CHECK_FALSE(std::filesystem::exists(fixture.job.scene_output));
+}

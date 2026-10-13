@@ -39,8 +39,8 @@ template <class handle_type> handle_type native(std::uintptr_t value) {
         return static_cast<handle_type>(value);
 }
 int viewer_main(int argc, char** argv) {
-    std::filesystem::path scene_path, reconstruction_request, screenshot, settings_path,
-        shader_path = WE_SHADER_DIRECTORY;
+    std::filesystem::path scene_path, reconstruction_request, review_request, screenshot,
+        settings_path, shader_path = WE_SHADER_DIRECTORY;
     worker_configuration worker{WE_WORKER_SCRIPT};
     std::size_t max_splats = 250000;
     std::size_t residency_mib = 512;
@@ -56,7 +56,8 @@ int viewer_main(int argc, char** argv) {
                    "          [--worker-python EXE] [--worker-script FILE] [--no-validation]\n"
                    "          [--max-splats N] [--residency-mib N]\n";
             std::cout << "          [--source-view] (explicit upright spectator reset)\n";
-            std::cout << "          [--reconstruction-request JOB.json]\n";
+            std::cout
+                << "          [--reconstruction-request JOB.json] [--review-request JOB.json]\n";
             return 0;
         }
         if (option == "--diagnostic-fixture")
@@ -71,6 +72,8 @@ int viewer_main(int argc, char** argv) {
                 scene_path = value;
             else if (option == "--reconstruction-request")
                 reconstruction_request = value;
+            else if (option == "--review-request")
+                review_request = value;
             else if (option == "--screenshot")
                 screenshot = value;
             else if (option == "--settings")
@@ -95,6 +98,9 @@ int viewer_main(int argc, char** argv) {
     if (!SDL_Init(SDL_INIT_VIDEO))
         throw std::runtime_error(SDL_GetError());
     const bool require_reconstruction_success = !reconstruction_request.empty();
+    const bool require_review_success = !review_request.empty();
+    if (require_review_success && require_reconstruction_success)
+        throw std::runtime_error("Choose either startup review or startup reconstruction");
     struct sdl_owner {
         ~sdl_owner() { SDL_Quit(); }
     } sdl;
@@ -228,6 +234,15 @@ int viewer_main(int argc, char** argv) {
         previous = now;
         if (!reconstruction_request.empty() && !state.has_pending_work() && !pending_ticket) {
             state.reconstruction(std::exchange(reconstruction_request, {}));
+        }
+        if (!review_request.empty() && !state.has_pending_work() && !pending_ticket) {
+            const auto selected = review_request.string();
+            if (selected.size() >= request_path.size())
+                throw std::runtime_error("Request path exceeds Import field capacity");
+            std::snprintf(request_path.data(), request_path.size(), "%s", selected.c_str());
+            state.review_request(std::exchange(review_request, {}));
+            show_import = true;
+            release_mouse();
         }
         movement.captured = captured;
         movement.focused = (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
@@ -457,57 +472,100 @@ int viewer_main(int argc, char** argv) {
         }
         if (show_import)
             ImGui::OpenPopup("Import video");
-        if (ImGui::BeginPopupModal("Import video", &show_import,
-                                   ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextWrapped("Local processing only. Source video is retained. Inspect metadata "
-                               "before reconstruction.");
-            ImGui::SetNextItemWidth(560 * scale);
-            ImGui::InputText("Video", source.data(), source.size());
-            ImGui::SetNextItemWidth(560 * scale);
-            ImGui::InputText("Job directory", output.data(), output.size());
-            ImGui::TextWrapped(
-                "Choose an explicit reconstruction recipe in a job request. "
-                "The local gsplat recipe is for development; quality is unqualified.");
+        ImGui::SetNextWindowSize({std::min(820 * scale, display.x - 32 * scale),
+                                  std::min(680 * scale, display.y - 32 * scale)},
+                                 ImGuiCond_Appearing);
+        if (ImGui::BeginPopupModal("Import video", &show_import)) {
+            ImGui::TextWrapped("Review a local reconstruction request before running. "
+                               "This development recipe has unqualified quality.");
+            ImGui::TextUnformatted("Reconstruction request");
             ImGui::BeginDisabled(state.busy);
-            if (ImGui::Button("Inspect video"))
-                state.worker(worker,
-                             {"inspect", "--source", source.data(), "--job-dir", output.data()});
-            ImGui::SameLine();
-            if (ImGui::Button("Run configured pose job")) {
-                if (pose_request_path[0])
-                    state.worker(worker, {"run", "--request", pose_request_path.data()});
-                else {
-                    std::lock_guard lock(state.mutex);
-                    state.status = "Select a job request JSON with backend paths and resource "
-                                   "limits under Advanced.";
-                }
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::InputText("##Reconstruction request", request_path.data(),
+                                 request_path.size()))
+                state.clear_request_review();
+            ImGui::BeginDisabled(!request_path[0]);
+            if (ImGui::Button("Review request"))
+                state.review_request(request_path.data());
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
+            std::shared_ptr<const viewer::request_summary> summary;
+            std::string review_error;
+            {
+                std::lock_guard lock(state.mutex);
+                summary = state.reviewed_request;
+                review_error = state.review_error;
             }
-            ImGui::EndDisabled();
-            ImGui::SetNextItemWidth(560 * scale);
-            ImGui::InputText("Reconstruction request JSON", request_path.data(),
-                             request_path.size());
-            ImGui::BeginDisabled(state.busy || !request_path[0]);
-            if (ImGui::Button("Continue poses, fit and open scene"))
-                state.reconstruction(request_path.data());
-            ImGui::EndDisabled();
-            ImGui::TextWrapped("Continues completed poses. Start, checkpoint resume and completed "
-                               "fit reuse are explicit actions in the request. Scene rendering "
-                               "pauses during processing; the previous scene is retained.");
-            if (ImGui::CollapsingHeader("Advanced")) {
-                ImGui::SetNextItemWidth(560 * scale);
-                ImGui::InputText("Pose-worker request JSON", pose_request_path.data(),
+            ImGui::BeginChild(
+                "Request details",
+                {0, std::max(120 * scale, ImGui::GetContentRegionAvail().y - 88 * scale)},
+                ImGuiChildFlags_Borders);
+            if (!review_error.empty())
+                ImGui::TextWrapped("Cannot run: %s", review_error.c_str());
+            if (summary) {
+                const auto rows = [&](const std::vector<viewer::request_summary_row>& values,
+                                      const char* table) {
+                    if (ImGui::BeginTable(table, 2, ImGuiTableFlags_SizingStretchSame)) {
+                        ImGui::TableSetupColumn("Field", ImGuiTableColumnFlags_WidthFixed,
+                                                170 * scale);
+                        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+                        for (const auto& row : values) {
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn();
+                            ImGui::TextWrapped("%s", row.label.c_str());
+                            ImGui::TableNextColumn();
+                            ImGui::TextWrapped("%s", row.value.c_str());
+                        }
+                        ImGui::EndTable();
+                    }
+                };
+                rows(summary->rows, "Request summary");
+                ImGui::TextWrapped("Request checks passed. Source, stages, storage and backend "
+                                   "capabilities are checked when running. ETA unknown.");
+                if (ImGui::CollapsingHeader("Advanced request details"))
+                    rows(summary->advanced, "Backend details");
+            } else if (review_error.empty())
+                ImGui::TextWrapped("Select a request and choose Review request to see its "
+                                   "actions and limits. Reviewing keeps scene viewing available.");
+            if (ImGui::CollapsingHeader("Advanced local worker commands")) {
+                ImGui::SetNextItemWidth(-1);
+                ImGui::InputText("Video", source.data(), source.size());
+                ImGui::SetNextItemWidth(-1);
+                ImGui::InputText("Inspection output", output.data(), output.size());
+                ImGui::TextWrapped(
+                    "These fields apply to the separate worker commands below. "
+                    "The reviewed request selects the reconstruction source and output.");
+                ImGui::BeginDisabled(state.has_pending_work() || pending_ticket.has_value());
+                if (ImGui::Button("Inspect video"))
+                    state.worker(
+                        worker, {"inspect", "--source", source.data(), "--job-dir", output.data()});
+                ImGui::SetNextItemWidth(-1);
+                ImGui::InputText("Pose-worker request", pose_request_path.data(),
                                  pose_request_path.size());
-                ImGui::TextWrapped("The pose-worker request prepares poses. Continue uses the "
-                                   "reconstruction job schema; see docs/protocols/jobs.md.");
-                ImGui::TextWrapped("This development build runs the same versioned job request as "
-                                   "we_process. Full preflight controls remain in progress.");
+                ImGui::BeginDisabled(!pose_request_path[0]);
+                if (ImGui::Button("Run configured pose job"))
+                    state.worker(worker, {"run", "--request", pose_request_path.data()});
+                ImGui::EndDisabled();
                 if (ImGui::Button("Check worker capabilities"))
                     state.worker(worker, {"capabilities"});
+                ImGui::EndDisabled();
             }
+            ImGui::EndChild();
+            ImGui::BeginDisabled(!summary || state.has_pending_work() ||
+                                 pending_ticket.has_value());
+            if (ImGui::Button("Run reviewed request")) {
+                state.run_reviewed_request();
+                show_import = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
             if (ImGui::Button("Close")) {
                 show_import = false;
                 ImGui::CloseCurrentPopup();
             }
+            ImGui::TextWrapped("Running pauses scene rendering and retains the previous scene. "
+                               "Changed requests require another review.");
             ImGui::EndPopup();
         }
         if (show_settings)
@@ -539,13 +597,18 @@ int viewer_main(int argc, char** argv) {
         }
         ImGui::Render();
         if (!screenshot.empty() && !screenshot_requested && frames >= 8 &&
-            !state.has_pending_work() && reconstruction_request.empty() &&
+            !state.has_pending_work() && reconstruction_request.empty() && review_request.empty() &&
             (!(require_reconstruction_success || !scene_path.empty()) ||
              (current && !pending_ticket))) {
             if (require_reconstruction_success) {
                 std::lock_guard lock(state.mutex);
                 if (!state.reconstruction_error.empty())
                     throw std::runtime_error(state.reconstruction_error);
+            }
+            if (require_review_success) {
+                std::lock_guard lock(state.mutex);
+                if (!state.reviewed_request)
+                    throw std::runtime_error(state.review_error);
             }
             const auto requested = renderer->request_screenshot(screenshot);
             if (!requested)
@@ -568,11 +631,17 @@ int viewer_main(int argc, char** argv) {
             }
         }
         ++frames;
-        if (frame_limit && frames >= frame_limit && !state.has_pending_work() && !pending_ticket) {
+        if (frame_limit && frames >= frame_limit && !state.has_pending_work() && !pending_ticket &&
+            reconstruction_request.empty() && review_request.empty()) {
             if (require_reconstruction_success) {
                 std::lock_guard lock(state.mutex);
                 if (!state.reconstruction_error.empty())
                     throw std::runtime_error(state.reconstruction_error);
+            }
+            if (require_review_success) {
+                std::lock_guard lock(state.mutex);
+                if (!state.reviewed_request)
+                    throw std::runtime_error(state.review_error);
             }
             if (!scene_path.empty() && !current) {
                 std::lock_guard lock(state.mutex);
