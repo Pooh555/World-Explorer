@@ -467,22 +467,34 @@ class Job:
                 "resize": "none", "crop": "none", "lens_change_detection": "dimension_metadata_only",
                 "diagnostics_pending": ["blur/exposure/motion/cut selection requires M3 qualification"]}
 
-    def poses(self, directory: Path, decode_directory: Path, decoded: dict) -> dict:
+    def poses(self, directory: Path, decode_directory: Path, decoded: dict,
+              *, retained_sparse: Path | None = None) -> dict:
         images = str(decode_directory / "images")
         sparse = directory / "sparse"
         threads = str(self.limits["cpu_threads"])
         pose_python = self.request.get("pose_python", sys.executable)
-        self.command([pose_python, str(ROOT / "colmap" / "solve.py"), "--images", images,
-                      "--output", str(directory), "--threads", threads,
-                      "--recipe", self.request.get("pose_recipe", "sequential")], directory)
+        if retained_sparse is None:
+            self.command([pose_python, str(ROOT / "colmap" / "solve.py"), "--images", images,
+                          "--output", str(directory), "--threads", threads,
+                          "--recipe", self.request.get("pose_recipe", "sequential")], directory)
+        else:
+            shutil.copytree(retained_sparse, sparse)
         models = [p for p in sorted(sparse.iterdir()) if p.is_dir() and (p / "cameras.bin").exists()]
         if not models:
             raise WorkerError("INSUFFICIENT_PARALLAX", "COLMAP produced no registered model; recapture with overlapping lateral motion")
-        if len(models) != 1:
-            raise WorkerError("POSE_DISCONNECTED", f"COLMAP produced {len(models)} disconnected models; split or recapture the sequence")
+        selection_path = directory / "model_selection.json"
+        self.command([pose_python, str(ROOT / "colmap" / "inspect_models.py"),
+                      "--sparse", str(sparse), "--frames", str(decode_directory / "result.json"),
+                      "--output", str(selection_path)], directory)
+        selection = read_json(selection_path, MAX_MESSAGE_BYTES)
+        if selection["selected_model"] is None:
+            raise WorkerError("POSE_DISCONNECTED", "No single COLMAP model covers the other candidates' registered frames; recovery is required")
+        model = next((path for path in models if path.name == selection["selected_model"]), None)
+        if model is None:
+            raise WorkerError("CORRUPT_ASSET", "Selected model is outside the solve inventory")
         canonical = directory / "canonical_poses.json"
         self.command([self.request.get("pose_python", sys.executable), str(ROOT / "colmap" / "export_poses.py"),
-                      "--model", str(models[0]), "--frames", str(decode_directory / "result.json"),
+                      "--model", str(model), "--frames", str(decode_directory / "result.json"),
                       "--output", str(canonical)], directory)
         pose_info = read_json(canonical, 16 * MAX_MESSAGE_BYTES)
         if pose_info["registered_frames"] / len(decoded["frames"]) < 0.9:
@@ -490,9 +502,9 @@ class Job:
         dense = directory / "training"
         self.command([pose_python, str(ROOT / "colmap" / "solve.py"), "--images", images,
                       "--output", str(dense), "--threads", threads,
-                      "--undistort-model", str(models[0])], directory)
+                      "--undistort-model", str(model)], directory)
         # The pinned trainer parser accepts sparse/0 or sparse; preserve COLMAP output unchanged.
-        return {"model": str(models[0].relative_to(directory)), "training": "training",
+        return {"model": str(model.relative_to(directory)), "training": "training",
                 "canonical_poses": "canonical_poses.json", "registered_frames": pose_info["registered_frames"],
                 "scale_status": "ARBITRARY", "geometry": "UNAVAILABLE"}
 

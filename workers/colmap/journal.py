@@ -6,7 +6,7 @@ import re
 from fractions import Fraction
 
 
-def run(worker, request):
+def run(worker, request, *, retained_sparse=None):
     def reject(message, code="BAD_INPUT"):
         raise worker.WorkerError(code, message, stage="journal")
 
@@ -111,6 +111,11 @@ def run(worker, request):
 
     job = worker.Job(request | {"limits": limits}, journal_identity={
         "sha256": source_hash, "journal_sha256": request["journal_sha256"]})
+    retained_inventory = None
+    if retained_sparse is not None:
+        retained_inventory = worker.file_inventory(retained_sparse, limits["max_output_bytes"])
+        job.recipe_identity = worker.canonical_hash({"recipe": job.recipe_identity,
+                                                     "retained_sparse": retained_inventory})
 
     def decode(output):
         (output / "images").mkdir()
@@ -142,7 +147,17 @@ def run(worker, request):
         with job.lock():
             worker.atomic_json(directory / "capabilities.json", job.backend)
             decoded_path, decoded = job.stage_run("decode", {"journal_sha256": request["journal_sha256"]}, decode)
-            posed_path, _ = job.stage_run("poses", decoded, lambda output: job.poses(output, decoded_path, decoded))
+            def solve(output):
+                if retained_sparse is not None and worker.file_inventory(
+                        retained_sparse, limits["max_output_bytes"]) != retained_inventory:
+                    reject("Retained sparse assets changed", "CORRUPT_ASSET")
+                result = job.poses(output, decoded_path, decoded, retained_sparse=retained_sparse)
+                if retained_sparse is not None and (
+                        worker.file_inventory(output / "sparse", limits["max_output_bytes"]) != retained_inventory
+                        or worker.file_inventory(retained_sparse, limits["max_output_bytes"]) != retained_inventory):
+                    reject("Retained/copied sparse inventory changed", "CORRUPT_ASSET")
+                return result
+            posed_path, _ = job.stage_run("poses", decoded, solve)
             result = {"schema_version": 1, "status": "complete", "stage": "poses", "output": str(posed_path),
                       "source_sha256": source_hash, "journal_sha256": request["journal_sha256"], "scene_compilation": "required"}
             worker.atomic_json(directory / "result.json", result)

@@ -103,6 +103,20 @@ successful pose job. Error codes remain explicit; a failed finish returns the sa
 failure on retry without launching another process. Request-stop interrupts and
 reaps the process tree from another thread.
 
+COLMAP can retain a small initial model as well as a later complete model.
+The worker inspects frame identities and selects a unique model containing every
+other candidate's registered frames as strict subsets. It never merges poses,
+accepts separate coverage, or lowers the existing 90% registration requirement.
+Selection metadata is an immutable pose-stage asset.
+
+For a retained failed solve, `tools/recover_video_poses.py --request BATCH_REQUEST
+--failed-stage FAILED_POSE_STAGE --output NEW_POSE_JOB` verifies the original
+committed decode and its recorded solver input, copies the native RGB journal
+into a disjoint job, and uses the normal journal validation/export/undistortion
+and transactional completion. Retained sparse inventories enter the recipe hash
+and are checked before and after use. The original job remains unchanged; recovery
+does not repeat feature extraction/matching/mapping or forge a completed result.
+
 Before completion, drain emits INITIALIZING once. After successful checked import,
 it emits submap creation, identity alignment, final registered poses in capture
 order, FINISHED and one terminal event. Drain bounds allocations by the finite
