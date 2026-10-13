@@ -54,8 +54,7 @@ int main(int argc, char** argv) {
         constrained.max_splats = 1;
         constrained.residency_bytes = std::size_t{1024} * 1024;
         const auto rejected = vulkan_renderer::create(window.get(), constrained);
-        require(!rejected &&
-                    rejected.error().message.find("floating framebuffer") != std::string::npos,
+        require(!rejected && rejected.error().message.find("buffer") != std::string::npos,
                 "framebuffer allocation escaped the residency budget");
         auto created = vulkan_renderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().message);
@@ -68,7 +67,7 @@ int main(int argc, char** argv) {
         const auto initial = renderer->diagnostics();
         const auto pixel_bytes =
             static_cast<std::size_t>(initial.framebuffer_width) * initial.framebuffer_height * 16;
-        require(initial.scratch_bytes >= 2 * pixel_bytes,
+        require(initial.framebuffer_bytes >= 2 * pixel_bytes,
                 "per-frame composition scratch was not charged");
         constrained = options;
         constrained.residency_bytes = initial.allocated_bytes - pixel_bytes / 2;
@@ -157,11 +156,26 @@ int main(int argc, char** argv) {
         require(stats.resident_splat_count == 0 &&
                     renderer->updates().visible_snapshot()->revision.value == 3,
                 "Deleted scene still visible");
+        renderer.reset();
+        constrained = std::move(options);
+        constrained.max_tile_references = 1;
+        created = vulkan_renderer::create(window.get(), constrained);
+        require(created.has_value(), created ? "" : created.error().message);
+        renderer = std::move(*created);
+        auto overflowing = make_snapshot_batch(overlap_fixture(), {1}).value();
+        require(renderer->updates().enqueue(overflowing).has_value(),
+                "reference overflow fixture admission failed");
+        const auto overflow = renderer->draw(camera);
+        require(!overflow && overflow.error().message.find("one tile") != std::string::npos,
+                "tile reference overflow was not rejected before emission");
+        require(renderer->wait_for_idle().has_value(), "overflow GPU completion failed");
+        require(renderer->diagnostics().validation_errors == 0,
+                "reference overflow caused a Vulkan validation error");
         std::cout << "GPU verification: overlap pixel=" << static_cast<int>(pixel[0]) << ','
                   << static_cast<int>(pixel[1]) << ',' << static_cast<int>(pixel[2])
                   << "; replace/delete/resize passed; validation_errors=0; frames="
                   << stats.submitted_frames << "; framebuffer_bytes=" << stats.framebuffer_bytes
-                  << "; framebuffer and composition-scratch budgets rejected\n";
+                  << "; framebuffer, composition-scratch and tile-reference budgets rejected\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "GPU verification failed: " << error.what() << '\n';

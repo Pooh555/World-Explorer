@@ -1,0 +1,11 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=256) in;
+void main() {
+    uint id=gl_GlobalInvocationID.x;
+    if(id>=params.count_shift.x) return;
+    uint tile=keys_in[id].x;
+    if(id==0 || keys_in[id-1].x!=tile) tile_ranges[tile].x=id;
+    if(id+1==params.count_shift.x || keys_in[id+1].x!=tile) tile_ranges[tile].y=id+1;
+}

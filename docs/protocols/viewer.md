@@ -51,8 +51,9 @@ pinned classic gsplat covariance filter and `0.3 * tan_fov` derivative margin;
 1280×720 captures and their exact input JSON through normal update admission.
 `--compositing` selects a separate saturation/overlap fixture with seven views,
 including orbit/close-up; `--termination` selects a separate near-opaque exclusive
-cutoff fixture; `--batches` selects 1,027 splats to exercise compaction/shared-memory
-reuse across batch boundaries. Defaults and existing fixtures remain unchanged.
+cutoff fixture; `--batches` selects 1,027 splats to exercise shared-memory reuse across batch
+boundaries. `--batches-bounded` uses the identical fixture/views with a 2,048-reference
+per-batch cap to force partitioning; default fixtures and tolerances remain unchanged.
 `tests/gpu/compare_reference.py` requires the pinned local training environment and
 native CUDA; it never downloads/trains. Diagnostic JSON input is bounded to 4 MiB.
 It preserves float reference images, PNGs, error heatmaps and per-view metrics.
@@ -61,25 +62,49 @@ maximum eight 8-bit levels) compare quantized SDR output; they do not
 replace Q/P gates. Commands/results and untested cases belong in validation evidence.
 
 Splat keys sort positive finite center depths front-to-back, stably retaining input
-order for ties. A 16×16 compute workgroup scans these keys in fixed 256-splat
-batches, compacts tile overlaps stably into shared memory, and composites each
-pixel in FP32. Tile bounds, half-integer samples, alpha clamp 0.999, minimum alpha
-1/255 and exclusive `next_T <= 1e-4` termination follow the pinned gsplat recipe.
-Termination skips that contributor and retains the preceding transmittance for
-background composition. Out-of-frame lanes participate in all shared barriers;
-a group stops only after every in-frame pixel terminates. No overlap list,
-unbounded per-splat dispatch loop or silently dropped contributor is used.
+order for ties. GPU overlap count/exclusive scan precedes reference emission.
+Emission follows depth order; stable 32-bit tile sorting therefore preserves the
+logical `(tile, depth, original order)` ordering using two-word `(tile, splat)`
+references. GPU tile ranges restrict each 16×16 workgroup to its contributors,
+read in fixed 256-splat shared batches and accumulated per pixel in FP32.
+Tile bounds, half-integer samples, alpha clamp 0.999, minimum alpha 1/255 and
+exclusive `next_T <= 1e-4` termination follow the pinned gsplat recipe. Termination
+skips that contributor and retains preceding transmittance for background.
+Out-of-frame lanes participate in shared barriers; the group stops only when all
+in-frame pixels terminate. Center-depth ordering remains approximate for extended/
+intersecting Gaussians; diagnostic comparisons do not certify full renderer parity.
 
-Each in-flight frame owns a budgeted FP32 pixel buffer; dimensions, storage range,
-dispatch limits and shared-memory capacity are checked. Timeline completion gates
-reuse; device-idle resize retires old pixel scratch before replacement. Actual
-Vulkan allocation requirements count toward residency. A fullscreen triangle
-copies completed captured-domain colors into the FP32 attachment in subpass 0;
-subpass 1 clamps once to SDR, then draws UI. No FP32 attachment blending support
-is needed. `vulkan_overlay_context.subpass` remains 1. Compute-write/fragment-read,
-input-read/store and per-image reuse have explicit dependencies.
+`renderer_options.max_tile_references` bounds each emitted batch (default/maximum
+8 million). Saturating counts are read after timeline completion, before admission,
+allocation or emission. Oversized work splits recursively into disjoint tile
+rectangles. Every full-resolution pixel and contributor is retained; a single tile
+that cannot fit fails explicitly before emission. Whole-frame diagnostic
+`tile_reference_count` sums accepted rectangles and may exceed the per-batch cap;
+this does not broaden the P2 workload envelope. Host count waits remain a measured
+synchronization cost, not a fully asynchronous P6 implementation.
 
-This bounded development path still scans the global sorted list per active tile.
-The specification's overlap count/exclusive scan/reference index and qualified
-performance are pending. Center-depth ordering remains an approximation for
-extended/intersecting Gaussians; these diagnostic passes do not certify full parity.
+Two in-flight frames own FP32 pixel buffers. Projection/key/scan scratch grows to
+resident count, not configured maximum splats. Completed frame ownership gates
+scratch reuse; device-idle resize retires pixels, ranges and reference pools before
+replacement. Actual Vulkan allocation requirements count toward residency; the
+reference admission calculation shares remaining capacity between frames and
+reserves one SDR screenshot readback allocation. `framebuffer_bytes` counts owned
+pixel buffers, `scratch_bytes` excludes pixels, and `allocated_bytes` includes
+tracked live/retired/staging buffers; these are not total process/device VRAM.
+Dimensions, storage/dispatch/shared-memory limits, 128-byte push constants and ten
+storage-buffer descriptors per stage/set are checked explicitly.
+
+A fullscreen triangle reads completed FP32 pixels directly from storage, clamps
+RGB once to the SDR swapchain and then draws UI in the same subpass.
+`vulkan_overlay_context.subpass` is 0. No extra FP32 swapchain attachments or
+input-attachment pass remain. Compute-write/fragment-read and acquired-image
+color-output dependencies are explicit; timeline completion gates frame reuse.
+
+`we_gpu_viewer_regression <scene directory> <new report.json>` checks the full
+scene at 1280×720, hidden 3840×2160 with screenshot readback, actual native
+fullscreen, and restoration. It requires validation, checks fullscreen flags and
+renderer/actual pixel extents, and records eight warmup plus 24 measured frames
+per phase, verifying every measured draw submitted a render frame before calculating
+throughput. Window managers may choose restored window dimensions. Wayland must
+receive a committed visible buffer before fullscreen mapping. Reported throughput
+is GPU-completed render frames, not P2/P3 presented-FPS certification.

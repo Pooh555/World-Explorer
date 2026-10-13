@@ -16,11 +16,15 @@ struct descriptor_resources {
     VkDescriptorPool overlay_pool{};
     VkPipelineLayout pipeline_layout{};
 };
+struct buffer_allocation_request {
+    VkDeviceSize bytes;
+    VkBufferUsageFlags usage;
+};
 
 class vulkan_device {
   public:
     vulkan_device(SDL_Window* window, const renderer_options& options,
-                  renderer_capabilities& capabilities, renderer_diagnostics& diagnostics,
+                  renderer_capabilities& capabilities,
                   std::atomic<std::uint32_t>& validation_errors);
     ~vulkan_device();
     vulkan_device(const vulkan_device&) = delete;
@@ -29,7 +33,7 @@ class vulkan_device {
     void initialize();
     detail::gpu_buffer allocate(VkDeviceSize bytes, VkBufferUsageFlags usage, bool host_visible,
                                 std::size_t budget);
-    detail::gpu_image allocate_color_image(VkExtent2D extent, VkFormat format, std::size_t budget);
+    VkDeviceSize buffer_allocation_bytes(buffer_allocation_request request) const;
     VkShaderModule load_shader_module(const std::filesystem::path& shader_directory,
                                       const char* name) const;
     VkPipeline create_compute_pipeline(const char* name, VkPipelineLayout pipeline_layout,
@@ -58,7 +62,6 @@ class vulkan_device {
     SDL_Window* window_{};
     renderer_options options_;
     renderer_capabilities& capabilities_;
-    renderer_diagnostics& diagnostics_;
     std::atomic<std::uint32_t>& validation_errors_;
 
     VkInstance instance_{};

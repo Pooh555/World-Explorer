@@ -7,7 +7,7 @@ thresholds or platform requirements have been waived. Status on 2026-10-13:
 |---|---|---|---|
 | M1 vertical slice | Real COLMAP 63/63 → 7k gsplat → checked scene → native viewer; shared GUI/CLI owned inspection/decode/fresh pose chain or retained adoption, with durable map/scene dependencies | IN_PROGRESS | Synthetic fresh-chain publication/restart checks; real automatic decode/cache/pre-solver cancellation; full real fresh solve/fit chain, prescribed fixture, contracts and native reference/platform qualification pending |
 | M1 four contracts | Native frame source, checked pose/calibration import, completed replay and fresh batch estimator, map/scene revisions, update sink; verified FlatBuffers 2.0 worker START/CANCEL/events, canonical FlatBuffers pose assets and durable map checkpoints | IN_PROGRESS | [84 CPU/worker checks in four current profiles](validation/2026-10-12-fit-calibration.md); retained real intrinsic/dimension/journal/map/fit rejection and payload/viewer checks; earlier decode/cache cancellation; real fresh end-to-end and native platform control qualification pending |
-| M2 renderer / updates | GPU projection/stable radix/16×16 front-to-back batches; calibrated views, exclusive termination, FP32 accumulation and SDR presentation | IN_PROGRESS | [Tiled composition](validation/2026-10-12-tiled-composition.md) fixes retained cutoff failure; original/stress views pass locally; overlap index, broader real parity, lifetime stress and performance pending |
+| M2 renderer / updates | GPU projection/overlap count/scan/emission/stable tile radix/ranges; bounded disjoint batches, calibrated views, exclusive termination and direct FP32-to-SDR presentation | IN_PROGRESS | [Indexed viewer regression](validation/2026-10-13-viewer-regression.md): unchanged and forced-partition views pass; full real 4K/fullscreen works; broader real parity, lifetime stress, device-loss and performance qualification pending |
 | M3 offline geometry / walk | Worker cancellation/stages started; no supported geometry | NOT_STARTED | Full milestone unverified |
 | M4 platforms / Brush | Native source portability intended; hosted Windows CPU build succeeds | BLOCKED | Complete native viewer/device/release qualification on Windows, Apple Silicon and AMD unavailable; CPU CI is narrower |
 | M5 larger scenes | Bounded initial admission only | NOT_STARTED | No measured LOD or W3/W4 |
@@ -19,13 +19,13 @@ thresholds or platform requirements have been waived. Status on 2026-10-13:
 | Q5 measured geometry | No geometry pipeline yet | NOT_STARTED | Independent geometry GT absent |
 | Q6 packing fidelity | Uncompressed canonical storage | NOT_STARTED | 100-view render comparison pending |
 | P1 complete offline time | Pose stages 357.989 s; actual 7k fit/compile measured separately | IN_PROGRESS | No continuous whole-video reference H_R timing/certification |
-| P2/P3 viewer performance | Native GPU validation smoke passes | BLOCKED | Reference hardware and statistical measurements absent |
-| P4 bounded memory | Input/admission/retirement budgets; actual buffer/framebuffer allocation charges and constrained native rejection | IN_PROGRESS | [Local FP32 scratch/image allocation and resize checks](validation/2026-10-12-tiled-composition.md); full peak process/device/training measurements pending |
+| P2/P3 viewer performance | Local real-scene regression improves short 720p throughput ~6→~60 completed render frames/s | BLOCKED | [Local 4K/fullscreen timing](validation/2026-10-13-viewer-regression.md) is not presented FPS or prescribed duration/repetition/workload; reference hardware qualification absent |
+| P4 bounded memory | Input/admission/retirement budgets; actual resident-count scratch/pixel/reference allocation charges, count-before-emission and constrained rejection | IN_PROGRESS | [Full-scene 4K screenshot/fullscreen/restoration under 512 MiB](validation/2026-10-13-viewer-regression.md); actual process/device/training peaks and pathological stress pending |
 | P5 coarse-first load | Initial asynchronous load | NOT_STARTED | LOD not implemented |
 | P6 asynchronous updates | Replay, retry, retirement tests and native replace/delete pass | IN_PROGRESS | Staged upload/latency/stress pending |
 | N1 fly controls | Camera + gated SDL input; specified defaults, explicit remaps and active-key overlay | IN_PROGRESS | [Preference/handoff and native overlay checks](validation/2026-10-12-viewer-controls.md) pass; full native input/HiDPI/latency inspection pending |
 | N2 walking | Disabled until independent scale/geometry | NOT_STARTED | No invented collision |
-| E1 correctness/coverage | Contract/worker/coordinator tests; native sync validation, projection/color comparisons and provenance labels; targeted lint | IN_PROGRESS | [91 GCC C++26 / 91 Clang C++23 viewer/core checks and native tiled smoke](validation/2026-10-12-tiled-composition.md); retained cutoff failure fixed; historical libc++/sanitizer scopes remain separate; coverage, fuzzing and full gate fixtures pending |
+| E1 correctness/coverage | Contract/worker/coordinator tests; native sync validation, projection/color comparisons and provenance labels; targeted lint | IN_PROGRESS | [91 GCC C++26 / 91 Clang C++23 CPU/worker checks, native lifetime/budget/overflow smoke, 32 image comparisons](validation/2026-10-13-viewer-regression.md); historical libc++/sanitizer scopes separate; coverage, fuzzing and full gates pending |
 | E2 build/delivery | Local GCC/Clang C++26 and explicit C++23 builds; libc++ CPU checks; pinned dev archives; corrected native CPU CI | IN_PROGRESS | User reports macOS passed; supplied Windows 77/78; [stage flush repair](validation/2026-10-12-windows-flush.md) passes local C++23 79/79 and Python 3.12/3.14 9/9; latest Windows run stops before configuration on Chocolatey HTTP 504; [pinned archive/retry/cache repair](validation/2026-10-13-windows-ffmpeg.md) checked locally; hosted rerun, native viewer/release and distribution-hash qualification pending |
 | L1 / M7–M8 | Only future-compatible contracts in Phase 1 | DEFERRED_BY_USER | No live reconstruction implementation |
 
@@ -35,6 +35,6 @@ another operating system's native qualification.
 
 Evidence is indexed by implementation slice in the [validation index](validation/README.md);
 reports retain exact commands, identities, counts, failures and native scope.
-Current checks are scoped in [tiled composition](validation/2026-10-12-tiled-composition.md) evidence;
+Current checks are scoped in [viewer regression](validation/2026-10-13-viewer-regression.md) evidence;
 earlier reports retain their original scope. No Q/P/N/E requirement is fully certified;
 configured CI is not a native pass.

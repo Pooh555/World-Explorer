@@ -1,0 +1,16 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=256) in;
+shared uint bases[16];
+void main() {
+    uint lane=gl_LocalInvocationID.x;
+    if(lane<16) {
+        uint base=0;
+        for(uint bucket=0;bucket<lane;++bucket) base+=control[16+bucket];
+        bases[lane]=base;
+    }
+    barrier();
+    uint id=gl_GlobalInvocationID.x;
+    if(id<params.count_shift.z*16) histogram[id]+=bases[id%16];
+}

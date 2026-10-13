@@ -174,7 +174,7 @@ if(WE_BUILD_VIEWER)
   target_link_libraries(render_vulkan PUBLIC render_core PRIVATE SDL3::SDL3 Vulkan::Vulkan)
 
   set(WE_SHADER_OUTPUTS)
-  foreach(shader project.comp radix_histogram.comp radix_scan.comp radix_scatter.comp composite.comp composite.frag present.vert present.frag)
+  foreach(shader project.comp radix_histogram.comp radix_scan.comp radix_offsets.comp radix_scatter.comp tile_count.comp tile_scan.comp tile_emit.comp tile_ranges.comp composite.comp composite.frag present.vert)
     set(output "${PROJECT_BINARY_DIR}/shaders/${shader}.spv")
 
     add_custom_command(OUTPUT "${output}"
@@ -207,6 +207,12 @@ if(WE_BUILD_VIEWER)
   target_link_libraries(we_gpu_reference PRIVATE render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
   target_compile_definitions(we_gpu_reference PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
   add_dependencies(we_gpu_reference we_shaders)
+
+  add_executable(we_gpu_viewer_regression tests/gpu/viewer_regression.cpp)
+  we_target(we_gpu_viewer_regression)
+  target_link_libraries(we_gpu_viewer_regression PRIVATE application render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_gpu_viewer_regression PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
+  add_dependencies(we_gpu_viewer_regression we_shaders)
 
   install(TARGETS we_viewer RUNTIME DESTINATION bin)
   install(FILES ${WE_SHADER_OUTPUTS} DESTINATION share/world-explorer/shaders)

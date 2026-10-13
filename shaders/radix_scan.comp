@@ -1,19 +1,26 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "common.glsl"
-layout(local_size_x=16) in;
-shared uint totals[16];
+layout(local_size_x=256) in;
+shared uint prefix[256];
 void main() {
-    uint bucket=gl_LocalInvocationID.x;
-    uint count=0;
-    for(uint group=0;group<params.count_shift.z;++group) count+=histogram[group*16+bucket];
-    totals[bucket]=count;
-    barrier();
-    uint offset=0;
-    for(uint preceding=0;preceding<bucket;++preceding) offset+=totals[preceding];
-    for(uint group=0;group<params.count_shift.z;++group) {
-        uint current=histogram[group*16+bucket];
-        histogram[group*16+bucket]=offset;
-        offset+=current;
+    uint bucket=gl_WorkGroupID.x, lane=gl_LocalInvocationID.x, groups=params.count_shift.z;
+    uint per_lane=(groups+255)/256;
+    uint begin=min(lane*per_lane,groups),end=min(begin+per_lane,groups),sum=0;
+    for(uint group=begin;group<end;++group) {
+        uint count=histogram[group*16+bucket];
+        histogram[group*16+bucket]=sum;
+        sum+=count;
     }
+    prefix[lane]=sum;
+    barrier();
+    for(uint stride=1;stride<256;stride*=2) {
+        uint preceding=lane>=stride?prefix[lane-stride]:0;
+        barrier();
+        prefix[lane]+=preceding;
+        barrier();
+    }
+    uint base=lane==0?0:prefix[lane-1];
+    for(uint group=begin;group<end;++group) histogram[group*16+bucket]+=base;
+    if(lane==255) control[16+bucket]=prefix[lane];
 }

@@ -1,0 +1,26 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=256) in;
+shared uint prefix[256];
+void main() {
+    uint lane=gl_LocalInvocationID.x, id=gl_GlobalInvocationID.x, count=0;
+    if(id<params.count_shift.x) {
+        projected_data value=projected[keys_in[id].y];
+        if(value.conic_opacity.w>0) {
+            uvec4 bounds=tile_bounds(value);
+            count=(bounds.z-bounds.x)*(bounds.w-bounds.y);
+        }
+    }
+    uint limit=params.count_shift.w+1;
+    prefix[lane]=min(count,limit);
+    barrier();
+    for(uint stride=1;stride<256;stride*=2) {
+        uint preceding=lane>=stride?prefix[lane-stride]:0;
+        barrier();
+        prefix[lane]=min(limit,prefix[lane]+preceding);
+        barrier();
+    }
+    if(id<params.count_shift.x) overlap_offsets[id]=lane==0?0:prefix[lane-1];
+    if(lane==255) group_offsets[gl_WorkGroupID.x]=prefix[lane];
+}

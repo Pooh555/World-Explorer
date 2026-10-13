@@ -72,44 +72,14 @@ struct gpu_splat {
     std::array<float, 4> mean_opacity, scale_degree, rotation, world_to_sh;
     std::array<float, 48> sh;
 };
-struct gpu_image {
-    VkDevice device{};
-    VkImage image{};
-    VkImageView view{};
-    VkDeviceMemory memory{};
-    VkDeviceSize bytes{};
-    gpu_image() = default;
-    gpu_image(const gpu_image&) = delete;
-    gpu_image& operator=(const gpu_image&) = delete;
-    gpu_image(gpu_image&& other) noexcept { swap(other); }
-    gpu_image& operator=(gpu_image&& other) noexcept {
-        gpu_image temporary(std::move(other));
-        swap(temporary);
-        return *this;
-    }
-    ~gpu_image() {
-        if (view)
-            vkDestroyImageView(device, view, nullptr);
-        if (image)
-            vkDestroyImage(device, image, nullptr);
-        if (memory)
-            vkFreeMemory(device, memory, nullptr);
-    }
-    void swap(gpu_image& other) noexcept {
-        std::swap(device, other.device);
-        std::swap(image, other.image);
-        std::swap(view, other.view);
-        std::swap(memory, other.memory);
-        std::swap(bytes, other.bytes);
-    }
-};
 static_assert(sizeof(gpu_splat) == 256);
 
 struct push_parameters {
     std::array<float, 4> right, down, forward, camera_position, intrinsics, viewport_clip;
     std::array<std::uint32_t, 4> count_shift;
+    std::array<std::uint32_t, 4> tiles;
 };
-static_assert(sizeof(push_parameters) == 112);
+static_assert(sizeof(push_parameters) == 128);
 
 inline quatd multiply(quatd a, quatd b) {
     return {a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,

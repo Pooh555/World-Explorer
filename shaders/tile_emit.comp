@@ -1,0 +1,19 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=256) in;
+void main() {
+    uint id=gl_GlobalInvocationID.x;
+    if(id>=params.count_shift.x) return;
+    uint splat_id=keys_in[id].y;
+    projected_data value=projected[splat_id];
+    if(value.conic_opacity.w<=0) return;
+    uvec4 bounds=tile_bounds(value);
+    uint index=group_offsets[id/256]+overlap_offsets[id];
+    uint columns=(uint(params.viewport_clip.x)+15)/16;
+    for(uint y=bounds.y;y<bounds.w;++y)
+        for(uint x=bounds.x;x<bounds.z;++x)
+            keys_out[index++]=uvec2(y*columns+x,splat_id);
+    // Emission follows the stable depth sort. Stable tile sorting retains depth
+    // order and original-order ties without requiring a 64-bit key.
+}
