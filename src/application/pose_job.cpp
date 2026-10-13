@@ -8,11 +8,10 @@
 #include <set>
 
 namespace world_explorer::job_detail {
-result<std::unique_ptr<file_lock>> prepare_pose_job(const reconstruction_job& job,
-                                                    const decoded_video& decoded,
-                                                    const video_preflight_report& preflight,
-                                                    const std::stop_token& stop,
-                                                    const log_callback& log) {
+result<std::unique_ptr<file_lock>>
+prepare_pose_job(const reconstruction_job& job, const decoded_video& decoded,
+                 const video_preflight_report& preflight, const std::stop_token& stop,
+                 const log_callback& log, const worker_event_callback& observed) {
     try {
         if (!job.fresh_poses)
             return fail(error_code::INVALID_ARGUMENT, "Missing explicit fresh pose configuration");
@@ -137,7 +136,8 @@ result<std::unique_ptr<file_lock>> prepare_pose_job(const reconstruction_job& jo
                                 .journal_bytes = config.journal_bytes,
                                 .cpu_threads = config.cpu_threads,
                                 .log = log,
-                                .resume_input = std::filesystem::exists(directory)};
+                                .resume_input = std::filesystem::exists(directory),
+                                .observed = observed};
         auto estimator = make_batch_pose_estimator(std::move(batch), stop);
         if (!estimator)
             return std::unexpected(estimator.error());

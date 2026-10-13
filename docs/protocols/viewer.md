@@ -28,6 +28,22 @@ before completion, not permission to capture/exit before a selected scene is
 visible. Errors still fail explicitly. Manual navigation/input/HiDPI/latency and
 other native-platform qualifications require their own evidence.
 
+Reconstruction processing uses one mutex-protected typed progress value. Native
+stage transitions cover request validation, video inspection/selected frames,
+poses/map, fitting or completed-fit verification, compilation and viewer loading.
+Only checked worker events supply backend elapsed time; the fitter's bounded JSON
+`step` must be an unsigned integer within the checked request's total. Other
+backend text stays in the bounded diagnostic log. Unknown stage/invalid optional
+metadata never fabricates a count, percentage or ETA. Whole-job elapsed time stays
+separate from event-scoped backend elapsed time; ETA remains unknown.
+
+Each native stage clears previous step/timing fields. Failure/cancellation names
+the active stage and retained output; post-publication load failure keeps the scene
+location. Completion clears active progress and processing under the same mutex
+that publishes the pending snapshot. Late progress is ignored after completion.
+Completed reuse shows verification rather than an invented fit. UI rendering,
+Cancel, logs and the existing renderer visibility gate retain their own lifetimes.
+
 Viewer preference/handoff unit tests build only with `WE_BUILD_VIEWER` and
 `BUILD_TESTING`. They require the viewer's SDL/ImGui dependencies but no GPU
 execution. CPU-only presets retain their independent contract tests.

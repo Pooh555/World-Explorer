@@ -48,6 +48,7 @@ struct inspection_fixture {
                   "marker=root/'capabilities.json'\nprevious=marker.read_text() if marker.exists() "
                   "else ''\n"
                   "marker.write_text(previous+'START\\n')\n"
+                  "p.progress('inspect','synthetic metadata inspection',.25)\n"
                   "if mode=='cancel_once' and not previous:\n"
                   " while not cancelled.wait(.01): pass\n"
                   " p.failure('CANCELLED','inspect','synthetic cooperative stop'); raise "

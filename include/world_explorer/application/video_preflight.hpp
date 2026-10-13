@@ -46,7 +46,8 @@ struct inspected_video {
 // Capabilities gate START, verified completion selects a contained immutable
 // inspection, and preflight checks it before return. No pose solve or RGB decode.
 result<inspected_video> inspect_video(const video_inspection_request& request,
-                                      const std::stop_token& stop, const log_callback& log = {});
+                                      const std::stop_token& stop, const log_callback& log = {},
+                                      const worker_event_callback& observed = {});
 // Bounded verification, no writes, pixel decoding or backend dependency. Checks
 // source/metadata identity and current storage; does not certify codec decoding,
 // frame selection quality, color conversion, geometry or reconstruction quality.

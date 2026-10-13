@@ -42,7 +42,7 @@ result<decoded_video> adopt_video_decode(const retained_video_decode& selected,
     }
 }
 result<decoded_video> decode_video(const video_decode_request& request, const std::stop_token& stop,
-                                   const log_callback& log) {
+                                   const log_callback& log, const worker_event_callback& observed) {
     try {
         const auto& config = request.configuration;
         if (stop.stop_requested())
@@ -144,6 +144,8 @@ result<decoded_video> decode_video(const video_decode_request& request, const st
                     }
                 if (const auto* value = std::get_if<worker_completed>(&event))
                     completion = *value;
+                if (observed)
+                    observed(event);
             });
         if (stop.stop_requested())
             return fail(error_code::CANCELLED, "Decode cancelled; committed stages retained");

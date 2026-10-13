@@ -276,3 +276,15 @@ Reference hardware, prescribed fixture/native-platform qualification and complet
 M1 gates remain required. Worker source changes retain
 the original recipe/checkpoint identity checks; completed fits can still be
 explicitly reused, but older optimizer checkpoints are not silently upgraded.
+
+## Reconstruction progress observers
+
+The synchronous shared coordinator accepts an optional project-owned typed
+progress callback alongside diagnostic logging. Both run on its calling job
+thread. Native stage boundaries also apply to retained adoption/reuse, which must
+not claim optimizer work. Inspection, decode, batch-pose and fit launchers forward
+verified worker events through optional synchronous observers; unframed diagnostic
+processes provide logs only. Wire format and worker/owner identities are unchanged.
+The application checks stage correspondence, finite nonnegative event duration and
+bounded optional fitting-step metadata before exposing UI values. The viewer's
+[status and terminal handoff contract](viewer.md) owns presentation/lifetime.

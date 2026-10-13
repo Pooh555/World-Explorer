@@ -1,6 +1,7 @@
 #ifndef WORLD_EXPLORER_APPLICATION_COMMANDS_HPP
 #define WORLD_EXPLORER_APPLICATION_COMMANDS_HPP
 #include "world_explorer/core/result.hpp"
+#include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
 #include <filesystem>
 #include <functional>
 #include <stop_token>
@@ -18,9 +19,11 @@ struct worker_configuration {
     std::string python{"python3"};
     bool framed_protocol{true};
 };
+// Observers run synchronously on the calling thread after wire verification.
+// Unframed diagnostic processes provide logs only.
 result<int> run_worker(const worker_configuration& configuration,
                        const std::vector<std::string>& arguments, const std::stop_token& stop,
-                       const log_callback& log);
+                       const log_callback& log, const worker_event_callback& observed = {});
 } // namespace world_explorer
 
 #endif // WORLD_EXPLORER_APPLICATION_COMMANDS_HPP

@@ -33,6 +33,7 @@ void application_state::load(std::filesystem::path path) {
     started = std::chrono::steady_clock::now();
     {
         std::lock_guard lock(mutex);
+        progress.reset();
         status = "Loading and validating scene...";
     }
     job = std::jthread([this, path = std::move(path)](const std::stop_token& stop) {
@@ -62,6 +63,7 @@ void application_state::worker(worker_configuration configuration,
     started = std::chrono::steady_clock::now();
     {
         std::lock_guard lock(mutex);
+        progress.reset();
         status = "Processing locally. ETA unknown.";
         log.clear();
     }
@@ -92,7 +94,9 @@ void application_state::reconstruction(std::filesystem::path request) {
     processing = true;
     {
         std::lock_guard lock(mutex);
-        status = "Continuing reconstruction locally. Scene rendering paused; ETA unknown.";
+        reconstructing = true;
+        progress = reconstruction_progress{};
+        status = "Validating reconstruction request. Scene rendering paused; ETA unknown.";
         reconstruction_error.clear();
         log.clear();
     }
@@ -100,34 +104,68 @@ void application_state::reconstruction(std::filesystem::path request) {
         try {
             const auto selected = read_reconstruction_job(request);
             const auto published =
-                selected ? reconstruct(*selected, stop,
-                                       [this](std::string text) { append(std::move(text)); })
-                         : result<std::filesystem::path>{std::unexpected(selected.error())};
+                selected
+                    ? reconstruct(
+                          *selected, stop, [this](std::string text) { append(std::move(text)); },
+                          [this](const reconstruction_progress& value) {
+                              update_reconstruction_progress(value);
+                          })
+                    : result<std::filesystem::path>{std::unexpected(selected.error())};
             // Publication is a commit boundary. A subsequent stop still leaves
             // the bundle available; the UI may open it in a separate command.
+            if (published)
+                update_reconstruction_progress({reconstruction_stage::LOADING_SCENE, {}, {}, 0});
             const auto scene = published
                                    ? load_bundle(*published, load_limits)
                                    : result<scene_snapshot>{std::unexpected(published.error())};
-            std::lock_guard lock(mutex);
-            if (scene) {
-                loaded = *scene;
-                status = "Scene published and validated; waiting for renderer admission.";
-            } else if (published) {
-                status = "Scene published at " + published->string() +
-                         "; viewer load failed: " + scene.error().message;
-                reconstruction_error = status;
-            } else {
-                status = published.error().message + ". Previous scene retained.";
-                reconstruction_error = status;
-            }
+            complete_reconstruction(std::move(scene),
+                                    published ? std::optional{*published} : std::nullopt);
         } catch (const std::exception& exception) {
-            std::lock_guard lock(mutex);
-            status = "Reconstruction failed: " + std::string(exception.what());
-            reconstruction_error = status;
+            complete_reconstruction(fail(error_code::INVALID_DATA, exception.what()), {});
         }
-        processing = false;
-        busy = false;
     });
+}
+
+void application_state::update_reconstruction_progress(const reconstruction_progress& value) {
+    std::string message;
+    {
+        std::lock_guard lock(mutex);
+        if (!reconstructing)
+            return;
+        progress = value;
+        status = reconstruction_stage_name(value.stage);
+        if (value.fit_step)
+            status +=
+                ": step " + std::to_string(*value.fit_step) + "/" + std::to_string(value.fit_steps);
+        status += ". Scene rendering paused; ETA unknown.";
+        message = "Reconstruction status: " + status;
+        if (value.backend_elapsed_seconds)
+            message += " Backend elapsed " + std::to_string(*value.backend_elapsed_seconds) + "s.";
+        message += '\n';
+    }
+    append(std::move(message));
+}
+
+void application_state::complete_reconstruction(
+    result<scene_snapshot> scene, const std::optional<std::filesystem::path>& published) {
+    std::lock_guard lock(mutex);
+    if (scene) {
+        loaded = *scene;
+        status = "Scene published and validated; waiting for renderer admission.";
+    } else if (published) {
+        status = "Scene published at " + published->string() +
+                 "; viewer load failed: " + scene.error().message;
+        reconstruction_error = status;
+    } else {
+        status = progress ? std::string(reconstruction_stage_name(progress->stage)) + ": " : "";
+        status += scene.error().code == error_code::CANCELLED ? "Cancelled. " : "Failed. ";
+        status += scene.error().message + ". Previous scene and committed output retained.";
+        reconstruction_error = status;
+    }
+    progress.reset();
+    reconstructing = false;
+    processing = false;
+    busy = false;
 }
 
 } // namespace world_explorer::viewer

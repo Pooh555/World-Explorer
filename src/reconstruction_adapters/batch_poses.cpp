@@ -354,6 +354,8 @@ class colmap_batch_estimator final : public batch_pose_estimator {
                     completed && completed->stage != "poses")
                     worker_error =
                         error{error_code::INVALID_DATA, "Worker completed the wrong batch stage"};
+                if (config_.observed)
+                    config_.observed(event);
             };
             const auto executed =
                 execute_worker_protocol(config_.worker_python, config_.worker_script,
