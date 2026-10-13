@@ -7,7 +7,8 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
-| Checked Import metadata/storage | [Retained preflight and current space](2026-10-13-import-metadata.md): bounded read-only source/metadata validation, pending automatic inspection, per-output storage snapshots, 120 GCC/Clang checks, native dialogs/full Cancel/reopen and 2,393 unchanged files |
+| Installed worker identities | [Offline version/file/notice receipts](2026-10-13-worker-identity.md): 37 training / 3 pose distributions checked, 76 notice files identified, archive/metric/rights gaps explicit, 11 new tests across three interpreters and 119 CTest checks in both existing profiles; preceding 120-case reporting error corrected |
+| Checked Import metadata/storage | [Retained preflight and current space](2026-10-13-import-metadata.md): bounded read-only source/metadata validation, pending automatic inspection, per-output storage snapshots, 119 GCC/Clang checks, native dialogs/full Cancel/reopen and 2,393 unchanged files |
 | Windows SQLite handles | [Explicit closure repair](2026-10-13-windows-sqlite.md): supplied Windows 100/101 with six recovery cleanup errors; deterministic leaked-handle regression, local C++23 102/102 and Python 3.12/3.14 25/25; hosted rerun pending |
 | Saved pose continuation | [Complete matching and geometry recovery](2026-10-13-pose-continuation.md): bounded sample_2/3 solves exit normally with disconnected geometry; copied model recovery cannot join sample_2, only 57/64 images connected (58 required); layout repair and 24 worker checks |
 | Laptop service / viewing up | [Bounded supervision and capture orientation](2026-10-13-service-orientation.md): sample_1 validated/viewed with preserved fit/assets; source-reset tilt fixed; 116 GCC/Clang checks and 18 worker checks; remaining bounded service active |

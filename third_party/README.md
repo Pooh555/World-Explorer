@@ -22,6 +22,16 @@ No proprietary driver binaries, pretrained weights, personal captures or worker
 environments are redistributed. Release SBOM, transitive notices and worker/model
 rights remain M6 gates. Do not infer clearance from a wrapper's license.
 
+The [installed identity audit](../docs/protocols/worker_identity.md) checks 37
+training and three pose distributions against these selected environment files.
+The [2026-10-13 compact receipt](../workers/identity/local-development-20261013.json)
+records metadata/RECORD/installed-file/notice hashes. All listed file hashes match;
+76 notice files were identified. Triton 3.0.0 has no separate notice identified in
+its installed RECORD. Original wheel archive hashes, transitive rights and complete
+runtime/SBOM qualification remain pending; installed hashes are not archive locks.
+TorchMetrics/LPIPS are absent and AlexNet bytes are not provisioned, so no metric
+package/backbone lock or Q2/Q3 result is claimed.
+
 `workers/gsplat/fit.py` adapts initialization/settings from the pinned gsplat
 example. The upstream attribution is Copyright 2025 Nerfstudio Team; the complete
 license is retained. This development recipe does not use learned checkpoints,
