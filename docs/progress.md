@@ -129,10 +129,13 @@ storage fails; metadata inspection still applies the decoded-storage estimate.
 
 Other native devices/platforms, corpus/reference performance, geometry/collision,
 coverage/fuzzing and full gates remain pending; [requirements](requirements.md)
-tracks scope. Latest supplied Windows CI builds and passes 100/101 CTest cases;
-only recovery database cleanup fails with WinError 32. [Explicit SQLite closure
-repair](validation/2026-10-13-windows-sqlite.md) passes local C++23 102/102 and
-Python 3.12/3.14 25/25; Windows hosted rerun remains pending. Earlier
+tracks scope. Latest [supplied native CPU logs and observer repair](validation/2026-10-13-native-audit-paths.md)
+show Windows **101/102** and macOS **102/103**: both fail the same Python audit
+read observer. All named SQLite recovery cases now pass on both hosts. Canonical
+observer targets plus a portable alias regression pass locally: 12 audit checks
+on three interpreters, 37 worker checks, C++23 CPU 103/103 and C++26 dev 119/119.
+Hosted reruns of this repair remain pending. The earlier [SQLite closure repair](validation/2026-10-13-windows-sqlite.md)
+retains local 102/102 / 25-case scope; prior Windows 100/101 cleanup failure,
 macOS CPU pass and Windows 77/78 (worker only) remain historical;
 [flush repair](validation/2026-10-12-windows-flush.md) records local C++23 79/79 and
 Python 3.12/3.14 9/9. Native viewer/release qualification is separate. Sandbox ICD

@@ -172,7 +172,18 @@ class WorkerEnvironmentAuditTests(unittest.TestCase):
 
     def test_record_and_inventory_digests_use_the_same_file_read(self):
         self.inventory("sha512")
-        module = self.site / "example.py"
+        self.assert_shared_file_read()
+
+    def test_read_observer_matches_resolved_files_through_an_aliased_site(self):
+        # Exercise equivalent spellings on every OS without requiring symlink
+        # privileges: the auditor resolves paths before opening installed files.
+        self.site = self.site / ".." / self.site.name
+        self.info = self.site / self.info.name
+        self.inventory("sha512")
+        self.assert_shared_file_read()
+
+    def assert_shared_file_read(self):
+        module = (self.site / "example.py").resolve(strict=True)
         original = module.read_bytes()
         original_open = Path.open
         reads = []
