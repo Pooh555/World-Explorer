@@ -2,6 +2,7 @@
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
 #include "world_explorer/render_core/radix.hpp"
+#include "world_explorer/render_core/tile_plan.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <algorithm>
@@ -32,6 +33,7 @@ struct vulkan_renderer::implementation {
     SDL_Window* window{};
     renderer_options options;
     renderer_update_sink sink;
+    tile_region_plan region_plan;
     renderer_capabilities capabilities;
     renderer_diagnostics diagnostics;
     std::atomic<std::uint32_t> validation_errors{};
@@ -709,6 +711,7 @@ struct vulkan_renderer::implementation {
         screenshot_path.reset();
     }
     bool refresh_swapchain() {
+        region_plan.reset();
         if (swapchain_backend) {
             check(vkDeviceWaitIdle(device), "wait before resizing composition scratch");
             collect_completed(submitted_timeline);
@@ -829,89 +832,86 @@ struct vulkan_renderer::implementation {
         std::size_t total_references = 0;
         if (splat_count && draw_appearance) {
             record_projection(current, params);
-            std::vector<std::array<std::uint32_t, 4>> pending_regions{params.tiles};
-            while (!pending_regions.empty()) {
-                auto region = pending_regions.back();
-                pending_regions.pop_back();
-                std::uint32_t reference_count = 0;
-                std::size_t capacity = 16, histogram_bytes = 64;
-                for (;;) {
-                    params.count_shift[0] = static_cast<std::uint32_t>(splat_count);
-                    params.count_shift[2] = static_cast<std::uint32_t>((splat_count + 255) / 256);
-                    params.tiles = region;
-                    record_count(current, params);
-                    submit_count(current, completion);
-                    reference_count = static_cast<const std::uint32_t*>(current.control.mapped)[0];
-                    const auto groups = (reference_count + 255) / 256;
-                    capacity = std::max<std::size_t>(
-                        16, ((static_cast<std::size_t>(reference_count) + 4095) / 4096) * 4096 * 8);
-                    histogram_bytes =
-                        std::max<std::size_t>(64, static_cast<std::size_t>(groups) * 64);
-                    bool fits = reference_count <= options.max_tile_references &&
-                                groups <= properties.limits.maxComputeWorkGroupCount[0] &&
-                                capacity <= properties.limits.maxStorageBufferRange;
-                    if (fits) {
-                        auto non_reference_bytes = live_buffer_bytes();
-                        for (const auto& buffered : frames)
-                            non_reference_bytes -=
-                                static_cast<std::size_t>(buffered.references_a.allocation_bytes +
-                                                         buffered.references_b.allocation_bytes);
-                        if (current.histogram.bytes < histogram_bytes) {
-                            non_reference_bytes -=
-                                static_cast<std::size_t>(current.histogram.allocation_bytes);
-                            non_reference_bytes +=
-                                static_cast<std::size_t>(device_backend->buffer_allocation_bytes(
-                                    {histogram_bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT}));
-                        }
-                        // Reserve a checked SDR readback allocation, so requesting a
-                        // screenshot cannot turn a valid fullscreen frame into an OOM.
+            const auto planned =
+                region_plan.begin({params.tiles[2], params.tiles[3]}, options.reuse_tile_plans);
+            if (!planned)
+                throw std::runtime_error(planned.error().message);
+            if (options.collect_timings)
+                current.timing.reused_tile_regions = static_cast<std::uint32_t>(*planned);
+            for (;;) {
+                const auto candidate = region_plan.next();
+                if (!candidate)
+                    throw std::runtime_error(candidate.error().message);
+                if (!*candidate)
+                    break;
+                const auto region = **candidate;
+                params.count_shift[0] = static_cast<std::uint32_t>(splat_count);
+                params.count_shift[2] = static_cast<std::uint32_t>((splat_count + 255) / 256);
+                params.tiles = {region.x, region.y, region.width, region.height};
+                record_count(current, params);
+                submit_count(current, completion);
+                const auto reference_count =
+                    static_cast<const std::uint32_t*>(current.control.mapped)[0];
+                const auto groups = (reference_count + 255) / 256;
+                const auto capacity = std::max<std::size_t>(
+                    16, ((static_cast<std::size_t>(reference_count) + 4095) / 4096) * 4096 * 8);
+                const auto histogram_bytes =
+                    std::max<std::size_t>(64, static_cast<std::size_t>(groups) * 64);
+                bool fits = reference_count <= options.max_tile_references &&
+                            groups <= properties.limits.maxComputeWorkGroupCount[0] &&
+                            capacity <= properties.limits.maxStorageBufferRange;
+                if (fits) {
+                    auto non_reference_bytes = live_buffer_bytes();
+                    for (const auto& buffered : frames)
+                        non_reference_bytes -=
+                            static_cast<std::size_t>(buffered.references_a.allocation_bytes +
+                                                     buffered.references_b.allocation_bytes);
+                    if (current.histogram.bytes < histogram_bytes) {
+                        non_reference_bytes -=
+                            static_cast<std::size_t>(current.histogram.allocation_bytes);
                         non_reference_bytes +=
                             static_cast<std::size_t>(device_backend->buffer_allocation_bytes(
-                                {static_cast<VkDeviceSize>(extent.width) * extent.height * 4,
-                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT}));
-                        const auto pair_bytes =
-                            2 * device_backend->buffer_allocation_bytes(
-                                    {capacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
-                        fits = non_reference_bytes <= options.residency_bytes &&
-                               pair_bytes <=
-                                   (options.residency_bytes - non_reference_bytes) / frames.size();
-                        if (fits) {
-                            // The count timeline completes every earlier frame on
-                            // this queue. Trim cached pools against the new share,
-                            // including the other frame after histogram growth.
-                            const auto share =
-                                (options.residency_bytes - non_reference_bytes) / frames.size();
-                            for (auto& buffered : frames)
-                                if (buffered.references_a.allocation_bytes +
-                                        buffered.references_b.allocation_bytes >
-                                    share) {
-                                    buffered.references_a = {};
-                                    buffered.references_b = {};
-                                    buffered.references_a =
-                                        allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-                                    buffered.references_b =
-                                        allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-                                }
-                        }
+                                {histogram_bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT}));
                     }
-                    check(vkResetCommandBuffer(current.command, 0),
-                          "reset completed count commands");
-                    check(vkBeginCommandBuffer(current.command, &command_begin),
-                          "begin tile-region commands");
-                    completion = submitted_timeline + 1;
-                    if (fits)
-                        break;
-                    if (region[2] == 1 && region[3] == 1)
-                        throw std::runtime_error("one tile exceeds reference/residency limits "
-                                                 "before emission; no contributors were dropped");
-                    // Disjoint tile rectangles preserve every full-resolution pixel.
-                    auto remainder = region;
-                    const auto axis = region[2] >= region[3] && region[2] > 1 ? 0U : 1U;
-                    const auto half = region[axis + 2] / 2;
-                    region[axis + 2] = half;
-                    remainder[axis] += half;
-                    remainder[axis + 2] -= half;
-                    pending_regions.push_back(remainder);
+                    // Reserve a checked SDR readback allocation, so requesting a
+                    // screenshot cannot turn a valid fullscreen frame into an OOM.
+                    non_reference_bytes +=
+                        static_cast<std::size_t>(device_backend->buffer_allocation_bytes(
+                            {static_cast<VkDeviceSize>(extent.width) * extent.height * 4,
+                             VK_BUFFER_USAGE_TRANSFER_DST_BIT}));
+                    const auto pair_bytes = 2 * device_backend->buffer_allocation_bytes(
+                                                    {capacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
+                    fits = non_reference_bytes <= options.residency_bytes &&
+                           pair_bytes <=
+                               (options.residency_bytes - non_reference_bytes) / frames.size();
+                    if (fits) {
+                        // The count timeline completes every earlier frame on
+                        // this queue. Trim cached pools against the new share,
+                        // including the other frame after histogram growth.
+                        const auto share =
+                            (options.residency_bytes - non_reference_bytes) / frames.size();
+                        for (auto& buffered : frames)
+                            if (buffered.references_a.allocation_bytes +
+                                    buffered.references_b.allocation_bytes >
+                                share) {
+                                buffered.references_a = {};
+                                buffered.references_b = {};
+                                buffered.references_a =
+                                    allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+                                buffered.references_b =
+                                    allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+                            }
+                    }
+                }
+                check(vkResetCommandBuffer(current.command, 0), "reset completed count commands");
+                check(vkBeginCommandBuffer(current.command, &command_begin),
+                      "begin tile-region commands");
+                completion = submitted_timeline + 1;
+                if (!fits) {
+                    const auto split = region_plan.split_current();
+                    if (!split)
+                        throw std::runtime_error(split.error().message);
+                    continue;
                 }
                 grow_buffer(current.references_a, capacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
                 grow_buffer(current.references_b, capacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
@@ -933,6 +933,9 @@ struct vulkan_renderer::implementation {
                 record_tiles(current, params, reference_count);
                 record_composition(current, params, true);
                 total_references += reference_count;
+                const auto accepted = region_plan.accept_current();
+                if (!accepted)
+                    throw std::runtime_error(accepted.error().message);
             }
         } else {
             params.count_shift[0] = 0;
@@ -999,6 +1002,11 @@ struct vulkan_renderer::implementation {
         submission.signalSemaphoreInfoCount = 2;
         submission.pSignalSemaphoreInfos = signals.data();
         check(vkQueueSubmit2(queue, 1, &submission, VK_NULL_HANDLE), "submit viewer frame");
+        if (splat_count && draw_appearance) {
+            const auto committed = region_plan.commit();
+            if (!committed)
+                throw std::runtime_error(committed.error().message);
+        }
         submitted_timeline = completion;
         current.completion = completion;
         if (update) {

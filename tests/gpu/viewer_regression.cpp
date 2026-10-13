@@ -7,6 +7,7 @@
 #include <iostream>
 #include <map>
 #include <nlohmann/json.hpp>
+#include <span>
 
 using namespace world_explorer;
 namespace {
@@ -28,6 +29,7 @@ json timing_summary(const std::map<std::uint64_t, renderer_frame_timing>& sample
     for (const auto& [sequence, sample] : samples) {
         json row{{"sequence", sequence},
                  {"tile_sort_passes", sample.tile_sort_passes},
+                 {"reused_tile_regions", sample.reused_tile_regions},
                  {"width", sample.width},
                  {"height", sample.height},
                  {"gpu_valid", sample.gpu_valid},
@@ -53,6 +55,7 @@ json timing_summary(const std::map<std::uint64_t, renderer_frame_timing>& sample
             metrics["gpu_measured_stages_ms"].push_back(total);
         }
         metrics["count_submissions"].push_back(static_cast<double>(sample.count_submissions));
+        metrics["reused_tile_regions"].push_back(static_cast<double>(sample.reused_tile_regions));
         metrics["tile_batches"].push_back(static_cast<double>(sample.tile_batches));
         output["samples"].push_back(std::move(row));
     }
@@ -64,17 +67,27 @@ json timing_summary(const std::map<std::uint64_t, renderer_frame_timing>& sample
 }
 } // namespace
 int main(int argc, char** argv) try {
-    const bool timings = argc == 4 && std::string_view(argv[3]) == "--timings";
-    if ((argc != 3 && !timings) || std::filesystem::exists(argv[2])) {
-        std::cerr
-            << "usage: we_gpu_viewer_regression <scene directory> <new report.json> [--timings]\n";
+    if (argc < 3 || argc > 5) {
+        std::cerr << "usage: we_gpu_viewer_regression <scene> <new report> [--timings] "
+                     "[--fresh-tile-plan]\n";
         return 2;
     }
+    bool timings = false, reuse_tile_plans = true;
+    for (const auto* argument : std::span(argv + 3, static_cast<std::size_t>(argc - 3))) {
+        if (std::string_view(argument) == "--timings")
+            timings = true;
+        else if (std::string_view(argument) == "--fresh-tile-plan")
+            reuse_tile_plans = false;
+        else
+            throw std::runtime_error("unknown regression option");
+    }
+    require(!std::filesystem::exists(argv[2]), "report already exists");
     json report{{"scope", "local real-scene regression; not P2/P3 certification"},
                 {"present_mode", "FIFO"},
                 {"warmup_frames", 8},
                 {"measured_frames", 24},
                 {"timing_collection", timings},
+                {"reuse_tile_plans", reuse_tile_plans},
                 {"cases", json::array()}};
     try {
         require(!std::filesystem::exists(argv[2]), "report already exists");
@@ -95,6 +108,7 @@ int main(int argc, char** argv) try {
         renderer_options options;
         options.max_splats = 1000000;
         options.collect_timings = timings;
+        options.reuse_tile_plans = reuse_tile_plans;
         options.shader_directory = WE_SHADER_DIRECTORY;
         auto created = vulkan_renderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().message);
@@ -276,7 +290,7 @@ int main(int argc, char** argv) try {
         report["passed"] = false;
         report["error"] = exception.what();
     }
-    if (argc == 3 || timings) {
+    {
         std::ofstream stream(argv[2]);
         stream << report.dump(2) << '\n';
         if (!stream)
