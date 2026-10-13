@@ -49,9 +49,11 @@ Each video now has one folder: `artifacts/sample_1/`, `sample_2/`, `sample_3/`.
 `request.json` and `source.json` identify inputs/config; stage directories hold
 owned processing state; `logs/reconstruction.log` records progress and
 `logs/result.json` appears on terminal exit. The original session interruption cancelled all three coordinators before fitting.
-All three same requests have now restarted in detached processes; completed
-inspection/decode stages are reused. Sample 2 required removal of a proven-stale
-worker lock. `logs/resume-command.json` records each supervisor PID/attempt.
+A second crash stopped those parallel restarts too. At the user’s request, one
+sequential supervisor now processes sample_1 → sample_2 → sample_3. Native process
+inspection confirms one active coordinator (sample_1) and two pending jobs.
+`artifacts/queue.json` records queue PID, current state and terminal results.
+Completed inspection/decode stages are reused; no outputs were deleted.
 Publication and native viewing remain unverified at this checkpoint.
 See [fresh reset evidence](validation/2026-10-13-fresh-video-reset.md).
 

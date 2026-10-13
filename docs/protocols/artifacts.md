@@ -60,3 +60,25 @@ On 2026-10-13 the user explicitly requested deletion of **all** old artifacts an
 fresh reconstruction, superseding the earlier preservation/archiving cleanup.
 Historical validation reports remain in Git as records; their old private raw
 artifact locations are no longer available. New runs use the layout above.
+
+## Sequential processing on the local Linux development host
+
+Use one queue for several videos when concurrent jobs exceed laptop resources:
+
+```sh
+python3 tools/run_video_jobs.py --recover-stale-locks artifacts/sample_1/request.json artifacts/sample_2/request.json artifacts/sample_3/request.json
+```
+
+The queue waits for each coordinator and successful scene validation before
+starting the next video. Normal job failure is recorded and the next video still
+runs. `artifacts/queue.json` shows RUNNING/PENDING and terminal per-job results;
+logs stay inside each video's `logs/`. A kernel-owned `.queue.lock` prevents
+a second queue from starting. It does not control separately launched CLI jobs;
+do not start parallel reconstructions while the queue is active.
+
+The explicit recovery flag removes a worker `job.lock` only when its recorded PID
+is confirmed absent. Malformed locks and live/inaccessible PIDs fail admission.
+Requests, cached stages, checkpoints and solver limits are not changed. This local
+launcher uses Linux/POSIX signal and file-lock facilities; it does not qualify
+other platforms. Detaching it permits the launch command to exit, but cannot
+protect it from shutdown, process-tree termination or resource exhaustion.
