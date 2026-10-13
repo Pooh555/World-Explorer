@@ -1,6 +1,8 @@
+#include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
 #include <SDL3/SDL.h>
+#include <bit>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -168,37 +170,196 @@ json export_chunks(const scene_state& scene) {
     }
     return chunks;
 }
+json read_json(const std::filesystem::path& path) {
+    require(std::filesystem::file_size(path) <= std::size_t{4} * 1024 * 1024,
+            "fit metadata exceeds diagnostic budget");
+    std::ifstream stream(path);
+    return json::parse(stream);
+}
+std::string file_hash(const std::filesystem::path& path, std::size_t budget) {
+    auto hash = sha256_file(path, budget);
+    require(hash.has_value(), hash ? "" : hash.error().message);
+    return *hash;
+}
+std::uint32_t image_dimension(const json& value) {
+    require(value.is_number_unsigned() && value.get<std::uint64_t>() > 0 &&
+                value.get<std::uint64_t>() <= 4096,
+            "fit image dimension exceeds diagnostic budget");
+    return value.get<std::uint32_t>();
+}
+json export_binary_chunks(const scene_state& scene, const std::filesystem::path& output) {
+    json chunks = json::array();
+    for (const auto& [id, chunk] : scene.chunks) {
+        const auto name = "chunk-" + std::to_string(id.value) + ".f32";
+        std::ofstream stream(output / name, std::ios::binary);
+        // Version 2 diagnostic rows: mean, scale, wxyz, opacity, 16 RGB SH,
+        // degree; exactly 60 little-endian float32 values, no native padding.
+        const auto put = [&](float value) {
+            const auto bits = std::bit_cast<std::uint32_t>(value);
+            for (unsigned shift = 0; shift < 32; shift += 8)
+                stream.put(static_cast<char>((bits >> shift) & 255U));
+        };
+        for (const auto& splat : chunk->splats) {
+            for (auto value : splat.mean)
+                put(value);
+            for (auto value : splat.scale)
+                put(value);
+            for (auto value : splat.rotation)
+                put(value);
+            put(splat.opacity);
+            for (auto value : splat.sh)
+                put(value);
+            put(static_cast<float>(splat.sh_degree));
+        }
+        stream.close();
+        require(stream.good(), "cannot write binary diagnostic splats");
+        const auto& transform = chunk->world_from_chunk;
+        const auto q = transform.rotation;
+        chunks.push_back({{"rotation", {q.w, q.x, q.y, q.z}},
+                          {"translation", vector(transform.translation)},
+                          {"scale", transform.scale},
+                          {"file", name},
+                          {"count", chunk->splats.size()},
+                          {"sha256", file_hash(output / name, std::size_t{240} * 1000000)}});
+    }
+    return chunks;
+}
+camera_view fit_camera(const json& frame) {
+    const auto& view = frame.at("view");
+    const auto& intrinsic = frame.at("intrinsic");
+    require(view.size() == 4 && intrinsic.size() == 3, "invalid fit camera matrices");
+    for (const auto& row : view)
+        require(row.size() == 4, "invalid fit view row");
+    for (const auto& row : intrinsic)
+        require(row.size() == 3, "invalid fit intrinsic row");
+    require(view.at(3) == json::array({0, 0, 0, 1}) && intrinsic.at(2) == json::array({0, 0, 1}) &&
+                intrinsic.at(0).at(1) == 0 && intrinsic.at(1).at(0) == 0,
+            "unsupported fit camera matrix");
+    // Fit uses native COLMAP world; canonical scene applies Rx(pi).
+    const auto canonical = [](vec3d value) { return vec3d{value.x, -value.y, -value.z}; };
+    camera_view camera;
+    camera.right = canonical({view.at(0).at(0), view.at(0).at(1), view.at(0).at(2)});
+    camera.down = canonical({view.at(1).at(0), view.at(1).at(1), view.at(1).at(2)});
+    camera.forward = canonical({view.at(2).at(0), view.at(2).at(1), view.at(2).at(2)});
+    // The stored float32 rotation is only approximately orthonormal. Invert
+    // its actual rows, preserving the saved affine translation exactly.
+    const auto determinant = dot(camera.right, cross(camera.down, camera.forward));
+    require(std::isfinite(determinant) && std::abs(determinant - 1) < 1e-4,
+            "invalid fit rotation determinant");
+    camera.position = (cross(camera.down, camera.forward) * -view.at(0).at(3).get<double>() +
+                       cross(camera.forward, camera.right) * -view.at(1).at(3).get<double>() +
+                       cross(camera.right, camera.down) * -view.at(2).at(3).get<double>()) *
+                      (1 / determinant);
+    camera.calibration = calibrated_projection{{intrinsic.at(0).at(0), intrinsic.at(1).at(1),
+                                                intrinsic.at(0).at(2).get<double>() - 0.5,
+                                                intrinsic.at(1).at(2).get<double>() - 0.5},
+                                               image_dimension(frame.at("width")),
+                                               image_dimension(frame.at("height"))};
+    const auto valid_camera =
+        raster_intrinsics(camera, camera.calibration->width, camera.calibration->height);
+    require(valid_camera.has_value(), valid_camera ? "" : valid_camera.error().message);
+    return camera;
+}
 } // namespace
 int main(int argc, char** argv) {
     try {
-        require(argc == 2 || (argc == 3 && (std::string_view(argv[2]) == "--compositing" ||
-                                            std::string_view(argv[2]) == "--termination" ||
-                                            std::string_view(argv[2]) == "--batches" ||
-                                            std::string_view(argv[2]) == "--batches-bounded")),
+        const bool real = argc == 5 && std::string_view(argv[2]) == "--real";
+        require(real || argc == 2 ||
+                    (argc == 3 && (std::string_view(argv[2]) == "--compositing" ||
+                                   std::string_view(argv[2]) == "--termination" ||
+                                   std::string_view(argv[2]) == "--batches" ||
+                                   std::string_view(argv[2]) == "--batches-bounded")),
                 "usage: we_gpu_reference <new output directory> "
-                "[--compositing|--termination|--batches|--batches-bounded]");
+                "[--compositing|--termination|--batches|--batches-bounded] or "
+                "we_gpu_reference <new output directory> --real <scene bundle> <completed fit>");
         const bool compositing = argc == 3;
         const bool termination = compositing && std::string_view(argv[2]) == "--termination";
         const bool bounded = compositing && std::string_view(argv[2]) == "--batches-bounded";
         const bool batches = bounded || (compositing && std::string_view(argv[2]) == "--batches");
         const std::filesystem::path output(argv[1]);
         require(std::filesystem::create_directory(output), "output directory must not exist");
-        const auto scene = batches       ? batch_fixture()
-                           : compositing ? compositing_fixture(termination)
-                                         : fixture();
-        auto saved = write_bundle(output / "fixture.wexplore", scene);
-        require(saved.has_value(), saved ? "" : saved.error().message);
-        require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
+        scene_snapshot scene = real          ? scene_snapshot{}
+                               : batches     ? batch_fixture()
+                               : compositing ? compositing_fixture(termination)
+                                             : fixture();
+        std::uint32_t image_width = WIDTH, image_height = HEIGHT;
+        json fit_frames, identity;
+        if (real) {
+            bundle_limits limits;
+            limits.scene.max_chunks = 1024;
+            limits.scene.max_splats = 1000000;
+            limits.scene.max_payload_bytes = std::size_t{512} * 1024 * 1024;
+            auto loaded = load_bundle(argv[3], limits);
+            require(loaded.has_value(), loaded ? "" : loaded.error().message);
+            scene = *loaded;
+            const std::filesystem::path fit(argv[4]);
+            const auto result = read_json(fit / "result.json");
+            const auto input = read_json(fit / "input_manifest.json");
+            const auto& provenance = scene->provenance;
+            require(provenance.at("source_kind") == "video_reconstruction" &&
+                        provenance.at("fit_identity") == result.at("identity").get<std::string>() &&
+                        provenance.at("input_sha256") ==
+                            result.at("ply_sha256").get<std::string>() &&
+                        provenance.at("capture_sha256") ==
+                            result.at("source_sha256").get<std::string>() &&
+                        input.at("source_sha256") == result.at("source_sha256") &&
+                        result.at("schema_version") == 1 && result.at("status") == "complete" &&
+                        input.at("color_domain") == "srgb" && input.at("sh_degree") == 3 &&
+                        input.at("rasterize_mode") == "classic" &&
+                        input.at("dataset").at("world_transform") ==
+                            "native COLMAP; canonical chunk applies Rx(pi)",
+                    "scene and completed fit identities/profile differ");
+            const std::filesystem::path ply_relative(result.at("ply").get<std::string>());
+            require(!ply_relative.empty() && !ply_relative.is_absolute(), "invalid fit asset path");
+            const auto fit_root = std::filesystem::canonical(fit);
+            const auto ply_path = std::filesystem::canonical(fit / ply_relative);
+            const auto within_fit = ply_path.lexically_relative(fit_root);
+            require(!within_fit.empty() && *within_fit.begin() != "..",
+                    "fit asset escaped directory");
+            require(file_hash(ply_path, std::size_t{512} * 1024 * 1024) ==
+                        result.at("ply_sha256").get<std::string>(),
+                    "original fitted asset checksum mismatch");
+            std::size_t count = 0;
+            for (const auto& [id, chunk] : scene->chunks) {
+                static_cast<void>(id);
+                count += chunk->splats.size();
+            }
+            require(count > 0 && result.at("splats").is_number_unsigned() &&
+                        count == result.at("splats").get<std::uint64_t>(),
+                    "fit splats were trimmed or invalid");
+            fit_frames = input.at("dataset").at("frames");
+            require(fit_frames.size() >= 3 && fit_frames.size() <= 120,
+                    "fit frame budget exceeded");
+            image_width = image_dimension(fit_frames.at(0).at("width"));
+            image_height = image_dimension(fit_frames.at(0).at("height"));
+            identity = {{"fit_identity", result.at("identity")},
+                        {"source_sha256", result.at("source_sha256")},
+                        {"ply_sha256", result.at("ply_sha256")},
+                        {"fit_input_sha256",
+                         file_hash(fit / "input_manifest.json", std::size_t{4} * 1024 * 1024)},
+                        {"fit_result_sha256",
+                         file_hash(fit / "result.json", std::size_t{4} * 1024 * 1024)}};
+            // Preserve exact fit metadata for independent camera/identity checks.
+            std::filesystem::copy_file(fit / "input_manifest.json", output / "fit-input.json");
+            std::filesystem::copy_file(fit / "result.json", output / "fit-result.json");
+        } else {
+            auto saved = write_bundle(output / "fixture.wexplore", scene);
+            require(saved.has_value(), saved ? "" : saved.error().message);
+        }
+        const bool initialized = SDL_Init(SDL_INIT_VIDEO);
+        require(initialized, SDL_GetError());
         struct sdl_guard {
             ~sdl_guard() { SDL_Quit(); }
         } sdl;
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
-            SDL_CreateWindow("Synthetic fixed-camera comparison", WIDTH, HEIGHT,
+            SDL_CreateWindow(real ? "Real calibrated comparison"
+                                  : "Synthetic fixed-camera comparison",
+                             static_cast<int>(image_width), static_cast<int>(image_height),
                              SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN),
             SDL_DestroyWindow);
         require(window != nullptr, SDL_GetError());
         renderer_options options;
-        options.max_splats = 250000;
+        options.max_splats = real ? 1000000 : 250000;
         if (bounded)
             options.max_tile_references = 2048;
         options.shader_directory = WE_SHADER_DIRECTORY;
@@ -221,6 +382,8 @@ int main(int argc, char** argv) {
         std::vector<std::string> names{"centered", "off_center", "rolled", "translated"};
         if (compositing)
             names.insert(names.end(), {"orbit_left", "orbit_right", "close_up"});
+        if (real)
+            names = {"fit_first", "fit_middle", "fit_last"};
         for (const auto& name : names) {
             camera_view camera;
             camera.position = {0, 0, 6};
@@ -242,6 +405,16 @@ int main(int argc, char** argv) {
             }
             if (name == "close_up")
                 camera.position = {0.2, 0.1, 2.8};
+            std::size_t fit_index = 0;
+            if (real) {
+                fit_index = name == "fit_first"    ? 0
+                            : name == "fit_middle" ? fit_frames.size() / 2
+                                                   : fit_frames.size() - 1;
+                camera = fit_camera(fit_frames.at(fit_index));
+                require(camera.calibration->width == image_width &&
+                            camera.calibration->height == image_height,
+                        "fit cameras have different dimensions");
+            }
             const auto k = camera.calibration->intrinsics;
             views.push_back({{"name", name},
                              {"position", vector(camera.position)},
@@ -251,12 +424,18 @@ int main(int argc, char** argv) {
                              {"intrinsics", {k.fx, k.fy, k.cx, k.cy}},
                              {"near", camera.near_plane},
                              {"far", camera.far_plane}});
+            if (real) {
+                views.back()["fit_frame_index"] = fit_index;
+                views.back()["fit_frame_name"] = fit_frames.at(fit_index).at("name");
+            }
             bool captured = false;
             for (int frame = 0; frame < 120 && !captured; ++frame) {
                 SDL_PumpEvents();
                 int width{}, height{};
                 SDL_GetWindowSizeInPixels(window.get(), &width, &height);
-                require(width == WIDTH && height == HEIGHT, "native framebuffer extent changed");
+                require(width == static_cast<int>(image_width) &&
+                            height == static_cast<int>(image_height),
+                        "native framebuffer extent changed");
                 auto status = renderer->updates().query_progress(*admitted);
                 require(status.has_value(), status ? "" : status.error().message);
                 if (status->state == update_state::RENDER_VISIBLE) {
@@ -273,18 +452,36 @@ int main(int argc, char** argv) {
         require(renderer->wait_for_idle().has_value(), "GPU completion failed");
         const auto stats = renderer->diagnostics();
         require(stats.validation_errors == 0, "Vulkan validation errors");
-        write_json(output / "fixture.json",
-                   {{"schema", 1},
-                    {"label", batches       ? "synthetic tile batches v1; not a capture"
-                              : termination ? "synthetic exclusive termination v1; not a capture"
-                              : compositing ? "synthetic compositing stress v1; not a capture"
-                                            : "synthetic asymmetric reference v3; not a capture"},
-                    {"width", WIDTH},
-                    {"height", HEIGHT},
-                    {"background", {0.045F, 0.051F, 0.063F}},
-                    {"chunks", export_chunks(*scene)},
-                    {"views", views},
-                    {"scene_content_sha256", scene_content_hash(*scene)}});
+        if (real) {
+            std::size_t expected_count = 0;
+            for (const auto& [id, chunk] : scene->chunks) {
+                static_cast<void>(id);
+                expected_count += chunk->splats.size();
+            }
+            require(stats.resident_splat_count == expected_count,
+                    "renderer trimmed the real scene");
+        }
+        json diagnostic = {
+            {"schema", real ? 2 : 1},
+            {"label", real ? "real calibrated retained fit; no quality/performance certification"
+                      : batches     ? "synthetic tile batches v1; not a capture"
+                      : termination ? "synthetic exclusive termination v1; not a capture"
+                      : compositing ? "synthetic compositing stress v1; not a capture"
+                                    : "synthetic asymmetric reference v3; not a capture"},
+            {"width", image_width},
+            {"height", image_height},
+            {"background", {0.045F, 0.051F, 0.063F}},
+            {"chunks", real ? export_binary_chunks(*scene, output) : export_chunks(*scene)},
+            {"views", views},
+            {"scene_content_sha256", scene_content_hash(*scene)}};
+        if (real) {
+            diagnostic["identity"] = identity;
+            diagnostic["splat_count"] = stats.resident_splat_count;
+            diagnostic["render_origin"] = views.at(0).at("position");
+            diagnostic["row_format"] =
+                "little-endian float32[60]: mean3,scale3,wxyz4,opacity,sh48,degree";
+        }
+        write_json(output / "fixture.json", diagnostic);
         write_json(output / "native.json",
                    {{"device", renderer->capabilities().device_name},
                     {"fp32_compositing", renderer->capabilities().fp32_compositing},
@@ -294,8 +491,9 @@ int main(int argc, char** argv) {
                     {"splat_count", stats.resident_splat_count},
                     {"tile_references", stats.tile_reference_count},
                     {"submitted_frames", stats.submitted_frames}});
-        std::cout << "Synthetic fixed-camera fixture: " << stats.resident_splat_count << " splats, "
-                  << names.size() << " views, 1280x720, validation_errors=0\n";
+        std::cout << (real ? "Real calibrated retained fit: " : "Synthetic fixed-camera fixture: ")
+                  << stats.resident_splat_count << " splats, " << names.size() << " views, "
+                  << image_width << 'x' << image_height << ", validation_errors=0\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "Fixed-camera rendering failed: " << error.what() << '\n';

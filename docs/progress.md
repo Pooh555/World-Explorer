@@ -29,7 +29,7 @@ Earlier [fixed-camera](validation/2026-10-12-render-reference.md) and
 [provenance](validation/2026-10-12-synthetic-labels.md) checks establish calibration,
 roll, covariance margins and imported synthetic labels, including hidden panels.
 
-Latest [viewer regression repair](validation/2026-10-13-viewer-regression.md)
+Earlier [viewer regression repair](validation/2026-10-13-viewer-regression.md)
 replaces per-tile global scans with budgeted GPU count/scan/emission/stable tile
 sorting and ranges. Scratch grows by resident count; direct FP32-to-SDR presentation
 removes duplicate swapchain attachments. Full 304,867-splat 4K screenshot,
@@ -39,6 +39,18 @@ frames/s; fullscreen/4K remain slower. **91/91 GCC C++26 and Clang C++23 CPU/wor
 checks**, native lifetime/budget/overflow checks, and **32 fixed reference views**
 pass (maximum one color level). Forced small-budget partitioning is byte-identical.
 Host count waits remain; no P2/P3, Q6 or reconstruction gate is certified.
+
+Latest [full retained calibrated comparison](validation/2026-10-13-real-reference.md)
+checks all **304,867 splats** at original fit resolution **1280×688**, using first,
+middle and last saved fit cameras. Explicit bounded real input, fit/PLY identities,
+exact affine inversion and shared floating-origin representation preserve the
+original assets. Native projection now follows pinned affine/quaternion/covariance
+operations. All three real and 32 unchanged synthetic views pass, maximum one
+color level; GCC/Clang real captures match byte-for-byte. **91/91 CPU/worker checks
+per profile**, nine reference-admission checks, four native rejection probes and
+native lifecycle/budget smoke pass. **329 protected files are unchanged.** Initial
+single-pixel cutoff failure remains recorded; absolute-world float32 arithmetic
+and all-camera/Q6 parity are unverified.
 
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
@@ -71,13 +83,14 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 
 ## Next executable work and blockers
 
-Next executable task: add a calibrated native/gsplat comparison of the full
-retained scene using its checked original fit camera (1280×688) and pose, without
-trimming its 304,867 splats. Extend the bounded diagnostic input explicitly for
-real assets; retain separate synthetic labels, fixture hashes and fixed tolerances.
-`--source-view` remains an upright spectator reset, not calibrated parity or
-capture-driven navigation. Then profile count waits and high-resolution reference
-sorting. Retain both `--termination` and `--batches-bounded` cases; for each run
+Next executable task: instrument CPU count-timeline waits and supported GPU
+timestamp measurements for projection/count, reference sorting and compositing.
+Then run `build/dev/we_gpu_viewer_regression artifacts/sample2.wexplore artifacts/validation/count-waits-20261013/baseline.json` (create the ignored parent
+directory first) using the full scene and unchanged budgets. Separate count waits
+from GPU work before selecting another optimization. `--source-view` remains an
+upright spectator reset; calibrated comparison uses the diagnostic command in
+[latest evidence](validation/2026-10-13-real-reference.md). Retain both
+`--termination` and `--batches-bounded` cases; for each run
 `build/dev/we_gpu_reference artifacts/validation/<new-output> <mode>`
 and `.venv-train/bin/python tests/gpu/compare_reference.py artifacts/validation/<new-output>`.
 

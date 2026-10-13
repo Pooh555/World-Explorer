@@ -43,21 +43,33 @@ def multiply(a, b):
 
 def reference(data, view):
     tensor = lambda value: torch.tensor(value, dtype=torch.float32, device="cuda")
-    position = tensor(view["position"])
+    origin = np.asarray(data.get("render_origin", [0, 0, 0]), dtype=np.float64)
+    position = tensor(np.asarray(view["position"]) - origin)
     means, quats, scales, opacities, colors = [], [], [], [], []
     for chunk in data["chunks"]:
         q = tensor(chunk["rotation"])
-        splats = chunk["splats"]
-        local = tensor([s["mean"] for s in splats])
+        splats = chunk.get("rows")
+        if splats is None:
+            splats = np.array([[*s["mean"], *s["scale"], *s["rotation"], s["opacity"],
+                                *s["sh"], s["sh_degree"]] for s in chunk["splats"]], dtype=np.float32)
+        local = tensor(splats[:, :3])
         world = rotate(q, local * chunk["scale"]) + tensor(chunk["translation"])
+        if "render_origin" in data:
+            # Both renderers consume the same explicitly declared floating
+            # origin and float32 world payload, retaining every original splat.
+            local64 = splats[:, :3].astype(np.float64) * chunk["scale"]
+            q64 = np.asarray(chunk["rotation"], dtype=np.float64)
+            twice = 2 * np.cross(q64[1:], local64)
+            world64 = local64 + q64[0] * twice + np.cross(q64[1:], twice)
+            world = tensor(world64 + np.asarray(chunk["translation"]) - origin)
         means.append(world)
-        quats.append(multiply(q, tensor([s["rotation"] for s in splats])))
-        scales.append(tensor([s["scale"] for s in splats]) * chunk["scale"])
-        opacities.append(tensor([s["opacity"] for s in splats]))
+        quats.append(multiply(q, tensor(splats[:, 6:10])))
+        scales.append(tensor(splats[:, 3:6]) * chunk["scale"])
+        opacities.append(tensor(splats[:, 10]))
         inverse = q * tensor([1, -1, -1, -1])
         directions = rotate(inverse, world - position)
-        coefficients = tensor([s["sh"] for s in splats]).reshape(-1, 16, 3)
-        assert all(s["sh_degree"] == 3 for s in splats)
+        coefficients = tensor(splats[:, 11:59]).reshape(-1, 16, 3)
+        assert np.all(splats[:, 59] == 3)
         # Evaluate with pinned gsplat SH in the chunk's local basis, preserving
         # its captured radiance under chunk transforms. No fitted correction.
         colors.append((spherical_harmonics(3, directions, coefficients) + 0.5).clamp_min(0))
@@ -65,6 +77,9 @@ def reference(data, view):
     viewmat = torch.eye(4, dtype=torch.float32, device="cuda")
     viewmat[:3, :3] = basis
     viewmat[:3, 3] = -(basis @ position)
+    if "render_origin" in data:
+        basis64 = np.asarray([view["right"], view["down"], view["forward"]])
+        viewmat[:3, 3] = tensor(-(basis64 @ (np.asarray(view["position"]) - origin)))
     fx, fy, cx, cy = view["intrinsics"]
     intrinsic = tensor([[fx, 0, cx + 0.5], [0, fy, cy + 0.5], [0, 0, 1]])
     rendered, alpha, _ = rasterization(
@@ -80,9 +95,93 @@ def reference(data, view):
     return (rendered[0] + (1 - alpha[0]) * tensor(data["background"])).clamp(0, 1)
 
 
+def load_real(root, data):
+    """Explicit real diagnostic profile; bounded, hashed portable binary rows."""
+    def check(condition, message):
+        if not condition:
+            raise ValueError(message)
+
+    def metadata(name, digest):
+        path = root / name
+        check(path.stat().st_size <= 4 * 1024**2, "fit metadata exceeds budget")
+        check(sha256(path) == digest, "fit metadata checksum mismatch")
+        return json.loads(path.read_text())
+
+    check(data["schema"] == 2 and data["label"].startswith("real calibrated"),
+          "explicit real diagnostic profile required")
+    check(data["row_format"] == "little-endian float32[60]: mean3,scale3,wxyz4,opacity,sh48,degree",
+          "unknown binary row profile")
+    check(all(type(data[k]) is int and 0 < data[k] <= 4096 for k in ("width", "height")),
+          "real framebuffer exceeds budget")
+    identity = data["identity"]
+    config = metadata("fit-input.json", identity["fit_input_sha256"])
+    result = metadata("fit-result.json", identity["fit_result_sha256"])
+    digest = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+    check(digest == identity["fit_identity"] == result["identity"], "fit configuration identity mismatch")
+    check(config["source_sha256"] == identity["source_sha256"] == result["source_sha256"] and
+          result["ply_sha256"] == identity["ply_sha256"] and result["status"] == "complete" and
+          config["color_domain"] == "srgb" and config["sh_degree"] == 3 and
+          config["rasterize_mode"] == "classic" and
+          config["dataset"]["world_transform"] == "native COLMAP; canonical chunk applies Rx(pi)",
+          "incompatible completed fit profile")
+    check(type(data["splat_count"]) is int and 0 < data["splat_count"] <= 1000000 and
+          data["splat_count"] == result["splats"], "full real splat count mismatch")
+    check(0 < len(data["chunks"]) <= 1024, "chunk budget exceeded")
+    total = 0
+    files = set()
+    for chunk in data["chunks"]:
+        count = chunk["count"]
+        check(type(count) is int and 0 < count <= data["splat_count"] - total, "chunk count exceeds budget")
+        total += count
+        name = chunk["file"]
+        check(isinstance(name, str) and Path(name).name == name and name not in files,
+              "invalid or repeated diagnostic asset path")
+        files.add(name)
+        path = (root / name).resolve(strict=True)
+        check(path.parent == root and path.stat().st_size == count * 240, "binary asset size/path mismatch")
+        check(sha256(path) == chunk["sha256"], "binary asset checksum mismatch")
+        rows = np.fromfile(path, dtype="<f4").reshape(count, 60)
+        check(np.isfinite(rows).all() and (rows[:, 3:6] > 0).all() and
+              ((rows[:, 10] >= 0) & (rows[:, 10] <= 1)).all() and (rows[:, 59] == 3).all() and
+              np.allclose((rows[:, 6:10] ** 2).sum(1), 1, atol=1e-4, rtol=0),
+              "invalid real splat values/profile")
+        rotation = np.asarray(chunk["rotation"], dtype=np.float64)
+        translation = np.asarray(chunk["translation"], dtype=np.float64)
+        check(rotation.shape == (4,) and translation.shape == (3,) and
+              np.isfinite(rotation).all() and np.isfinite(translation).all() and
+              abs(np.dot(rotation, rotation) - 1) < 1e-4 and
+              math.isfinite(chunk["scale"]) and chunk["scale"] > 0, "invalid chunk transform")
+        chunk["rows"] = rows
+    check(total == data["splat_count"], "real scene was trimmed")
+    frames = config["dataset"]["frames"]
+    check(3 <= len(frames) <= 120 and len(data["views"]) == 3, "fit view budget mismatch")
+    canonical = np.diag([1., -1., -1.])
+    for view, index, name in zip(data["views"], [0, len(frames) // 2, len(frames) - 1],
+                                 ["fit_first", "fit_middle", "fit_last"]):
+        frame = frames[index]
+        check(view["name"] == name and view["fit_frame_index"] == index and
+              view["fit_frame_name"] == frame["name"], "fit view selection mismatch")
+        matrix = np.asarray(frame["view"], dtype=np.float64)
+        intrinsic = np.asarray(frame["intrinsic"], dtype=np.float64)
+        check(matrix.shape == (4, 4) and intrinsic.shape == (3, 3) and
+              np.isfinite(matrix).all() and np.isfinite(intrinsic).all(), "invalid fit camera")
+        basis = matrix[:3, :3] @ canonical
+        position = -np.linalg.solve(basis, matrix[:3, 3])
+        check(np.allclose([view["right"], view["down"], view["forward"]], basis, atol=1e-10, rtol=0) and
+              np.allclose(view["position"], position, atol=1e-10, rtol=0) and
+              np.allclose(view["intrinsics"], [intrinsic[0, 0], intrinsic[1, 1],
+                                             intrinsic[0, 2] - 0.5, intrinsic[1, 2] - 0.5], atol=1e-10, rtol=0) and
+              frame["width"] == data["width"] and frame["height"] == data["height"],
+              "native diagnostic camera differs from original fit")
+    check(np.array_equal(data["render_origin"], data["views"][0]["position"]),
+          "render origin differs from native admission camera")
+    return total
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
+    parser.add_argument("--real", action="store_true", help="admit the explicit bounded real-asset profile")
     args = parser.parse_args()
     version = importlib.metadata.version("gsplat")
     if version != "1.5.3+pt24cu124" or torch.__version__ != "2.4.1+cu124":
@@ -94,11 +193,15 @@ def main():
     if fixture.stat().st_size > 4 * 1024 * 1024:
         raise RuntimeError("reference fixture exceeds bounded diagnostic input")
     data = json.loads(fixture.read_text())
-    assert data["schema"] == 1 and data["label"].startswith("synthetic")
-    assert (data["width"], data["height"]) == (1280, 720)
-    count = sum(len(c["splats"]) for c in data["chunks"])
-    assert 0 < count <= 250000
-    report = {"scope": "synthetic fixed-camera diagnostic; no quality/performance certification",
+    if args.real:
+        count = load_real(root, data)
+    else:
+        assert data["schema"] == 1 and data["label"].startswith("synthetic")
+        assert (data["width"], data["height"]) == (1280, 720)
+        count = sum(len(c["splats"]) for c in data["chunks"])
+        assert 0 < count <= 250000
+    report = {"scope": ("real calibrated retained fit" if args.real else "synthetic fixed-camera diagnostic") +
+                      "; no quality/performance certification",
               "fixture_sha256": sha256(fixture), "splat_count": count,
               "comparison_script_sha256": sha256(Path(__file__)),
               "ssim_script_sha256": sha256(Path(__file__).resolve().parents[2] / "workers" / "gsplat" / "losses.py"),
@@ -106,6 +209,10 @@ def main():
               "device": torch.cuda.get_device_name(), "width": data["width"], "height": data["height"],
               "tolerance": {"min_psnr_db": MIN_PSNR, "max_error_levels": MAX_ERROR_LEVELS},
               "views": []}
+    if args.real:
+        report["identity"] = data["identity"]
+        report["scene_content_sha256"] = data["scene_content_sha256"]
+        report["assets_sha256"] = {c["file"]: c["sha256"] for c in data["chunks"]}
     distribution = importlib.metadata.distribution("gsplat")
     report["gsplat_files_sha256"] = {
         str(path): sha256(Path(distribution.locate_file(path)))
@@ -115,7 +222,7 @@ def main():
         for view in data["views"]:
             name = view["name"]
             assert name in ("centered", "off_center", "rolled", "translated",
-                            "orbit_left", "orbit_right", "close_up")
+                            "orbit_left", "orbit_right", "close_up", "fit_first", "fit_middle", "fit_last")
             rendered = reference(data, view)
             assert torch.isfinite(rendered).all().item(), "nonfinite reference render"
             floating = rendered.cpu().numpy()

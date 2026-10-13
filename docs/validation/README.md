@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Full retained calibrated scene | [Real camera comparison](2026-10-13-real-reference.md): all 304,867 splats, three original fit views; affine/shared-origin diagnostics, 35 real/synthetic comparisons, protected assets and native scope |
 | Viewer fullscreen/lag | [Indexed tiles/residency](2026-10-13-viewer-regression.md): full real 4K/readback/fullscreen/restore under 512 MiB; unchanged/forced-partition parity; short local timings, no performance certification |
 | Windows FFmpeg setup | [Pinned archive](2026-10-13-windows-ffmpeg.md): supplied Chocolatey HTTP 504 before build/tests; checksum, retry and cache checks; hosted rerun pending |
 | Tiled exclusive composition | [Front-to-back batches](2026-10-12-tiled-composition.md): cutoff regression fixed; unchanged fixtures, batch reuse, scratch budgets, observed resize and full retained native scene |
