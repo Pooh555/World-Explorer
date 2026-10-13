@@ -38,33 +38,55 @@ bool overlaps(const std::filesystem::path& first, const std::filesystem::path& s
 }
 result<void> check_storage(const std::vector<std::filesystem::path>& outputs,
                            std::uint64_t minimum_free_bytes, const std::stop_token& stop) {
-    if (minimum_free_bytes == 0 || minimum_free_bytes > MAX_FREE_BYTES || outputs.empty() ||
-        outputs.size() > 4)
-        return fail(error_code::INVALID_ARGUMENT, "Invalid output storage requirements");
-    for (const auto& output : outputs) {
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Video preflight cancelled");
-        if (output.empty())
-            return fail(error_code::INVALID_ARGUMENT, "Empty output storage path");
-        auto ancestor = std::filesystem::weakly_canonical(output);
-        while (!std::filesystem::exists(ancestor)) {
-            const auto parent = ancestor.parent_path();
-            if (parent == ancestor || parent.empty())
-                return fail(error_code::IO_ERROR, "No existing output volume for preflight");
-            ancestor = parent;
-        }
-        if (!std::filesystem::is_directory(ancestor))
-            return fail(error_code::INVALID_ARGUMENT, "Output ancestor is not a directory");
-        const auto available = std::filesystem::space(ancestor).available;
-        if (available == std::numeric_limits<std::uintmax_t>::max())
-            return fail(error_code::IO_ERROR, "Available output storage is unknown");
-        if (available < minimum_free_bytes)
-            return fail(error_code::RESOURCE_EXHAUSTED,
-                        "Insufficient available space at output: " + output.string());
-    }
+    const auto report = inspect_output_storage(outputs, minimum_free_bytes, stop);
+    if (!report)
+        return std::unexpected(report.error());
     return {};
 }
 } // namespace video_detail
+
+result<std::vector<output_storage_report>>
+inspect_output_storage(const std::vector<std::filesystem::path>& outputs,
+                       std::uint64_t minimum_free_bytes, const std::stop_token& stop) {
+    try {
+        if (stop.stop_requested())
+            return fail(error_code::CANCELLED, "Output storage inspection cancelled");
+        if (minimum_free_bytes == 0 || minimum_free_bytes > MAX_FREE_BYTES || outputs.empty() ||
+            outputs.size() > 4)
+            return fail(error_code::INVALID_ARGUMENT, "Invalid output storage requirements");
+        std::vector<output_storage_report> report;
+        report.reserve(outputs.size());
+        for (const auto& output : outputs) {
+            if (stop.stop_requested())
+                return fail(error_code::CANCELLED, "Video preflight cancelled");
+            if (output.empty())
+                return fail(error_code::INVALID_ARGUMENT, "Empty output storage path");
+            const auto selected = std::filesystem::weakly_canonical(output);
+            auto ancestor = selected;
+            while (!std::filesystem::exists(ancestor)) {
+                const auto parent = ancestor.parent_path();
+                if (parent == ancestor || parent.empty())
+                    return fail(error_code::IO_ERROR, "No existing output volume for preflight");
+                ancestor = parent;
+            }
+            if (!std::filesystem::is_directory(ancestor))
+                return fail(error_code::INVALID_ARGUMENT, "Output ancestor is not a directory");
+            const auto available = std::filesystem::space(ancestor).available;
+            if (available == std::numeric_limits<std::uintmax_t>::max())
+                return fail(error_code::IO_ERROR, "Available output storage is unknown");
+            if (available < minimum_free_bytes)
+                return fail(error_code::RESOURCE_EXHAUSTED,
+                            "Insufficient available space at output: " + output.string());
+            report.push_back({selected, ancestor, available});
+        }
+        return report;
+    } catch (const std::bad_alloc&) {
+        return fail(error_code::RESOURCE_EXHAUSTED, "Output storage inspection allocation failed");
+    } catch (const std::filesystem::filesystem_error& exception) {
+        return fail(error_code::IO_ERROR,
+                    std::string("Output storage inspection failed: ") + exception.what());
+    }
+}
 
 result<video_preflight_report> preflight_video(const video_preflight_request& request,
                                                const std::stop_token& stop,
@@ -108,6 +130,7 @@ result<video_preflight_report> preflight_video(const video_preflight_request& re
         if (!metadata)
             return std::unexpected(metadata.error());
         const auto& stream = metadata->at("stream");
+        const auto codec_name = stream.at("codec_name").get<std::string>();
         const auto width = unsigned_integer(stream.at("width"));
         const auto height = unsigned_integer(stream.at("height"));
         const auto duration = metadata->at("duration_seconds").get<double>();
@@ -118,7 +141,8 @@ result<video_preflight_report> preflight_video(const video_preflight_request& re
         const auto rotation = rotation_value.get<std::int64_t>();
         if (!metadata->at("schema_version").is_number_unsigned() ||
             metadata->at("schema_version") != 1 || stream.at("codec_type") != "video" ||
-            stream.at("codec_name").get<std::string>().empty() || width == 0 || height == 0 ||
+            codec_name.empty() || codec_name.size() > 256 ||
+            codec_name.find('\0') != std::string::npos || width == 0 || height == 0 ||
             width > std::uint64_t{4096} * 4096 || height > std::uint64_t{4096} * 4096 ||
             width * height > std::uint64_t{4096} * 4096 || !std::isfinite(duration) ||
             duration <= 0 || duration > 1200 || rotation < -270 || rotation > 270 ||
@@ -152,10 +176,12 @@ result<video_preflight_report> preflight_video(const video_preflight_request& re
         report.height = static_cast<std::uint32_t>(height);
         report.duration_seconds = duration;
         report.rotation_degrees = static_cast<std::int32_t>(rotation);
+        report.codec_name = codec_name;
         const auto storage =
-            video_detail::check_storage(request.outputs, selected.minimum_free_bytes, stop);
+            inspect_output_storage(request.outputs, selected.minimum_free_bytes, stop);
         if (!storage)
             return std::unexpected(storage.error());
+        report.storage = *storage;
         const auto final_hash =
             sha256_file(stage / "completion.json", std::size_t{64} * 1024, stop);
         if (!final_hash)

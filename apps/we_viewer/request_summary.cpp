@@ -53,7 +53,7 @@ result<request_summary> review_reconstruction_request(const std::filesystem::pat
                                      ? "Resume optimizer checkpoint"
                                      : "Reuse completed fit; optimization skipped");
         add("Inspection", job.automatic_inspection
-                              ? "Inspect video locally (compatible cache allowed)"
+                              ? "Inspect video locally (metadata pending; compatible cache allowed)"
                           : job.inspection ? "Adopt selected completed inspection"
                                            : "Not selected (legacy request)");
         std::optional<std::uint64_t> minimum_free_bytes;
@@ -61,9 +61,61 @@ result<request_summary> review_reconstruction_request(const std::filesystem::pat
             minimum_free_bytes = job.automatic_inspection->minimum_free_bytes;
         else if (job.inspection)
             minimum_free_bytes = job.inspection->minimum_free_bytes;
-        if (minimum_free_bytes)
-            add("Minimum free space",
-                std::format("{} bytes at each output; checked when running", *minimum_free_bytes));
+        if (minimum_free_bytes) {
+            add("Minimum free space", std::format("{} bytes at each output; rechecked when running",
+                                                  *minimum_free_bytes));
+            auto map_directory = job.map_directory;
+            if (map_directory.empty()) {
+                map_directory = job.fit_directory;
+                map_directory += ".map";
+            }
+            const std::vector<std::filesystem::path> outputs{map_directory, job.fit_directory,
+                                                             job.scene_output};
+            std::vector<output_storage_report> storage;
+            if (job.inspection) {
+                const auto preflight = preflight_video({job.video, *job.inspection, outputs}, stop);
+                if (!preflight)
+                    return std::unexpected(preflight.error());
+                add("Checked video",
+                    std::format("{}; {} x {}; {:.3f} s; {} source bytes", preflight->codec_name,
+                                preflight->width, preflight->height, preflight->duration_seconds,
+                                preflight->source_bytes));
+                add("Source timing",
+                    std::format("Original time base {}/{}; display rotation {} degrees",
+                                preflight->time_base_numerator, preflight->time_base_denominator,
+                                preflight->rotation_degrees));
+                add("Appearance and scale",
+                    "sRGB captured radiance; arbitrary scale; gravity unknown");
+                storage = preflight->storage;
+            } else {
+                const auto checked_storage =
+                    inspect_output_storage(outputs, *minimum_free_bytes, stop);
+                if (!checked_storage)
+                    return std::unexpected(checked_storage.error());
+                storage = *checked_storage;
+            }
+            // These jobs can live on different volumes from the final outputs.
+            std::vector<std::filesystem::path> stage_outputs;
+            if (job.automatic_inspection)
+                stage_outputs.push_back(job.automatic_inspection->job_directory);
+            if (job.automatic_decode)
+                stage_outputs.push_back(job.automatic_decode->job_directory);
+            if (job.fresh_poses)
+                stage_outputs.push_back(job.pose_job);
+            if (!stage_outputs.empty()) {
+                const auto checked_storage =
+                    inspect_output_storage(stage_outputs, *minimum_free_bytes, stop);
+                if (!checked_storage)
+                    return std::unexpected(checked_storage.error());
+                storage.insert(storage.end(), checked_storage->begin(), checked_storage->end());
+            }
+            std::string display =
+                "Available at review; no reservation or whole-job peak estimate.\n";
+            for (const auto& output : storage)
+                display += std::format("{}: {} bytes available\n", display_path(output.output),
+                                       output.available_bytes);
+            add("Current output storage", std::move(display));
+        }
         if (job.automatic_decode) {
             const auto& config = *job.automatic_decode;
             add("Selected frames", std::format("Timestamp sampling: {} frames/s, at most {} frames",
@@ -111,6 +163,13 @@ result<request_summary> review_reconstruction_request(const std::filesystem::pat
             add("Pose Python", job.fresh_poses->pose_python, true);
             add("Pose worker", display_path(job.fresh_poses->worker.script), true);
         }
+        if (stop.stop_requested())
+            return fail(error_code::CANCELLED, "Request review cancelled");
+        const auto final_digest = sha256_file(selected, MAX_REQUEST_BYTES, stop);
+        if (!final_digest)
+            return std::unexpected(final_digest.error());
+        if (*final_digest != *digest || std::filesystem::canonical(path) != selected)
+            return fail(error_code::INVALID_DATA, "Request changed during review; review again");
         return summary;
     } catch (const std::length_error& error) {
         return fail(error_code::RESOURCE_EXHAUSTED, error.what());

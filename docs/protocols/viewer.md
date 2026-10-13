@@ -69,8 +69,14 @@ execution. CPU-only presets retain their independent contract tests.
 ## Import request review
 
 The Import dialog runs `Review request` on the same owned background-job thread,
-using the shared strict reader. Appearance stays active; no worker, video decoder,
-source-media hash, inventory admission or reconstruction runs during review.
+using the shared strict reader. Appearance stays active; review is read-only and
+does not start a worker, decoder, pose solve, optimizer or scene publication.
+Explicit retained inspection runs shared preflight: bounded committed-stage
+inventory/hash/schema validation, source-byte/hash identity and current output
+storage. The summary shows checked codec/dimensions/duration/source size, original
+time base/display rotation, captured color domain and arbitrary scale.
+Automatic inspection leaves metadata pending; review checks current storage without
+searching for or adopting an unselected cached inspection.
 One immutable presentation value holds at most 32 rows / 128 KiB text. Error
 bodies are limited to 2,048 bytes. It shows selected fresh/retained pose action,
 start/resume/reuse, source/scene output, frame-selection/CPU/storage caps when
@@ -78,6 +84,13 @@ specified, and fit steps/image/splat limits. Completed reuse marks fit values as
 compatibility requirements, not work to be performed or final scene size. Legacy
 requests expose absent inspection without inventing frame/storage values.
 Backend paths and separate manual worker commands remain advanced controls.
+Storage uses each destination's nearest existing directory, including fresh
+inspection/decode/pose jobs on separate volumes. Unknown/insufficient space or a
+file ancestor rejects review. Available bytes are snapshots, not reservations or
+whole-job peak estimates; inputs/storage are checked again when running. Legacy
+requests without inspection do not claim metadata or storage checks. The request
+digest/canonical selection is rechecked after metadata/storage review before
+publishing eligibility. Metadata does not certify decoding or capture quality.
 
 `Run reviewed request` rereads the canonical path with the reviewed digest on the
 job thread. Editing the field invalidates eligibility, including an in-flight

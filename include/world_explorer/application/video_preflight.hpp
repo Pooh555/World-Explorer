@@ -19,6 +19,16 @@ struct video_preflight_request {
     retained_video_inspection inspection;
     std::vector<std::filesystem::path> outputs;
 };
+struct output_storage_report {
+    std::filesystem::path output;
+    std::filesystem::path existing_directory;
+    std::uintmax_t available_bytes{};
+};
+// Read-only snapshot for at most four destinations, using their nearest existing
+// directory. Unknown/insufficient space fails; no reservation or aggregate peak estimate.
+result<std::vector<output_storage_report>>
+inspect_output_storage(const std::vector<std::filesystem::path>& outputs,
+                       std::uint64_t minimum_free_bytes, const std::stop_token& stop = {});
 struct video_preflight_report {
     std::string source_sha256;
     std::string inspection_completion_sha256;
@@ -27,6 +37,8 @@ struct video_preflight_report {
     double duration_seconds{};
     std::int32_t rotation_degrees{};
     std::int64_t time_base_numerator{}, time_base_denominator{};
+    std::string codec_name;
+    std::vector<output_storage_report> storage;
 };
 struct automatic_video_inspection {
     std::filesystem::path job_directory;
