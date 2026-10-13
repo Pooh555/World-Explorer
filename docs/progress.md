@@ -34,6 +34,13 @@ pass. A repaired fresh-chain checkpoint guard permits only canonical
 files** pass. Temporal holdout quality remains unqualified (15.388–19.981 dB).
 Active initial/resume time is 2,896.992 s on this local profile, not P1 certification.
 
+Latest [processing status](validation/2026-10-13-progress-status.md) adds typed
+native stages and checked backend elapsed/fit steps, with unknown ETA and explicit
+failure/cancellation/handoff state. **105/105 GCC C++26 / Clang C++23 checks**;
+native completed-job reuse displays poses/compilation and loads all 297,489 splats
+with zero Vulkan errors. **670 protected files** remain unchanged; no solver or
+optimizer rerun. Synthetic step tests do not claim another real training run.
+
 The original **304,867-splat** result, its step-4,323 cancellation/resume, all
 successful jobs and decode pointer remain preserved. RTX 4060 Laptop/driver
 615.78.08 is **not H_R/H_V**. Both full results exceed M1's prescribed ≤250k fixture;
@@ -64,16 +71,17 @@ explicitly select `artifacts/sample2-job/stages/decode-36c925841001fd1027759ac7d
 
 ## Next executable work and blockers
 
-Next executable task: propagate checked reconstruction stage/progress events from
-`src/application/commands.cpp` / `reconstruction_job.cpp` into
-`apps/we_viewer/job_state.cpp` and the processing status. The real run's stages and
-fit steps currently reach the diagnostic log while the main status stays generic.
-Use bounded typed state and actual backend values; keep ETA unknown unless
-measured. Cover cancellation, terminal failure and pending-scene handoff in tests,
-then exercise `build/dev/we_viewer --reconstruction-request artifacts/sample2-fresh-chain-20261013/reuse.json --source-view --max-splats 1000000` with fresh ignored
-capture/settings paths. Reuse completed stages; do not rerun the solver/optimizer
-or rewrite owners/checkpoints. If worker sources change, use the checked
-`adopt.json` for retained opening rather than rewriting automatic ownership.
+Next executable task: exercise cancellation through the actual viewer-owned
+reconstruction thread during retained-stage verification, then reopen the same
+completed job successfully. Extend `tests/ui/job_state_tests.cpp` with a bounded
+synchronization hook/fixture rather than timing sleeps; check stage-specific
+cancellation, cleared progress, previous-scene preservation and pending admission.
+Run native Cancel/reopen using
+`artifacts/sample2-fresh-chain-20261013/reuse.json` with fresh ignored settings and
+capture paths. Capture processing via the renderer's own readback or a verified
+visible window; desktop geometry captures can miss a moved workspace. Do not rerun
+successful solvers/optimizers or rewrite owners/checkpoints. `adopt.json` stays the
+worker-independent retained alternative.
 
 Reference hardware, prescribed fixture/platform qualification and complete gates
 remain pending. Do not weaken thresholds or silently trim either full scene.

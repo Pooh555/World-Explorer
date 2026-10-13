@@ -19,7 +19,8 @@ constexpr std::string_view LOCK_FILE = ".we-inspection.lock";
 } // namespace
 
 result<inspected_video> inspect_video(const video_inspection_request& request,
-                                      const std::stop_token& stop, const log_callback& log) {
+                                      const std::stop_token& stop, const log_callback& log,
+                                      const worker_event_callback& observed) {
     try {
         if (stop.stop_requested())
             return fail(error_code::CANCELLED, "Video inspection cancelled");
@@ -104,6 +105,8 @@ result<inspected_video> inspect_video(const video_inspection_request& request,
                 }
                 if (const auto* completed = std::get_if<worker_completed>(&event))
                     completion = *completed;
+                if (observed)
+                    observed(event);
             });
         if (stop.stop_requested())
             return fail(error_code::CANCELLED,

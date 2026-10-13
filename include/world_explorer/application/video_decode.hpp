@@ -29,7 +29,8 @@ struct decoded_video {
 // Worker capabilities gate START; final inventory/source/metadata are checked.
 // No solver/optimizer runs. Compatible worker stages are cached on restart.
 result<decoded_video> decode_video(const video_decode_request& request, const std::stop_token& stop,
-                                   const log_callback& log = {});
+                                   const log_callback& log = {},
+                                   const worker_event_callback& observed = {});
 result<decoded_video> adopt_video_decode(const retained_video_decode& selected,
                                          const std::string& source_sha256,
                                          const std::stop_token& stop);

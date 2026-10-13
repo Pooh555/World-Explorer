@@ -401,8 +401,21 @@ result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& 
 }
 
 result<std::filesystem::path> reconstruct(const reconstruction_job& job,
-                                          const std::stop_token& stop, const log_callback& log) {
+                                          const std::stop_token& stop, const log_callback& log,
+                                          const reconstruction_progress_callback& progress) {
+    reconstruction_stage stage = reconstruction_stage::VALIDATING;
+    const auto begin_stage = [&](reconstruction_stage next) {
+        stage = next;
+        if (progress)
+            progress({stage, {}, {}, 0});
+    };
+    const auto observe = [&](const worker_event& event) {
+        if (progress)
+            if (const auto checked = checked_reconstruction_progress(event, stage, job.steps))
+                progress(*checked);
+    };
     try {
+        begin_stage(reconstruction_stage::VALIDATING);
         const auto valid = validate_job(job);
         if (!valid)
             return std::unexpected(valid.error());
@@ -413,16 +426,18 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
         std::optional<video_preflight_report> preflight;
         auto selected_inspection = job.inspection;
         if (job.automatic_inspection) {
+            begin_stage(reconstruction_stage::INSPECTING);
             const auto inspected =
                 inspect_video({job.video,
                                *job.automatic_inspection,
                                {pose_map_directory(job), job.fit_directory, job.scene_output}},
-                              stop, log);
+                              stop, log, observe);
             if (!inspected)
                 return std::unexpected(inspected.error());
             selected_inspection = inspected->inspection;
             preflight = inspected->report;
         } else if (selected_inspection) {
+            begin_stage(reconstruction_stage::INSPECTING);
             const auto inspected =
                 preflight_video({job.video,
                                  *selected_inspection,
@@ -443,6 +458,7 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
             if (!selected_inspection || !preflight)
                 return fail(error_code::INVALID_ARGUMENT,
                             "Fresh poses require checked video preflight");
+            begin_stage(reconstruction_stage::DECODING);
             result<decoded_video> decoded =
                 fail(error_code::INVALID_ARGUMENT, "Missing decode action");
             if (job.automatic_decode)
@@ -451,22 +467,27 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
                                   *selected_inspection,
                                   *job.automatic_decode,
                                   {pose_map_directory(job), job.fit_directory, job.scene_output}},
-                                 stop, log);
+                                 stop, log, observe);
             else if (job.selected_decode)
                 decoded = adopt_video_decode(*job.selected_decode, *source_hash, stop);
             if (!decoded)
                 return std::unexpected(decoded.error());
             selected_decode = *decoded;
-            auto ready = job_detail::prepare_pose_job(job, *decoded, *preflight, stop, log);
+            begin_stage(reconstruction_stage::POSES);
+            auto ready =
+                job_detail::prepare_pose_job(job, *decoded, *preflight, stop, log, observe);
             if (!ready)
                 return std::unexpected(ready.error());
             pose_intent_lock = std::move(*ready);
         }
+        if (!job.fresh_poses)
+            begin_stage(reconstruction_stage::POSES);
         if (log)
             log("Verifying completed poses...\n");
         const auto poses = job_detail::verify_poses(job, *source_hash, stop);
         if (!poses)
             return std::unexpected(poses.error());
+        begin_stage(reconstruction_stage::MAP);
         auto prepared = prepare_completed_pose_map(
             {{job.pose_job, job.video, job.decode_stage}, pose_map_directory(job)}, stop, log);
         if (!prepared)
@@ -477,6 +498,7 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
         if (log)
             log("Durable pose map ready at epoch 0/revision 1.\n");
         if (job.action != fit_action::REUSE_COMPLETED) {
+            begin_stage(reconstruction_stage::FITTING);
             if (log)
                 log("Fitting locally; ETA unknown.\n");
             std::vector<std::string> arguments{"--source",
@@ -497,7 +519,7 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
                 arguments.emplace_back("--resume");
                 arguments.push_back(job.checkpoint.string());
             }
-            const auto fitting = run_worker(job.fitting_worker, arguments, stop, log);
+            const auto fitting = run_worker(job.fitting_worker, arguments, stop, log, observe);
             if (!fitting)
                 return std::unexpected(fitting.error());
             if (*fitting != 0)
@@ -505,6 +527,7 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
                             "Fit worker failed with exit code " + std::to_string(*fitting));
         } else if (log)
             log("Reusing the explicitly selected completed fit; optimization skipped.\n");
+        begin_stage(reconstruction_stage::VERIFYING_FIT);
         const auto final_source = sha256_file(job.video, 16ULL * 1024 * 1024 * 1024, stop);
         if (!final_source)
             return std::unexpected(final_source.error());
@@ -558,6 +581,7 @@ result<std::filesystem::path> reconstruct(const reconstruction_job& job,
             if (!rechecked)
                 return std::unexpected(rechecked.error());
         }
+        begin_stage(reconstruction_stage::COMPILING);
         if (log)
             log("Compiling checked fit and publishing scene...\n");
         const auto published = compile_fit_scene(

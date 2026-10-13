@@ -2,6 +2,7 @@
 #define WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_JOB_HPP
 
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/reconstruction_progress.hpp"
 #include "world_explorer/application/video_decode.hpp"
 #include "world_explorer/application/video_preflight.hpp"
 #include "world_explorer/reconstruction_adapters/batch_poses.hpp"
@@ -53,11 +54,12 @@ struct reconstruction_job {
 // Strict, bounded schema; relative paths resolve against the request's directory.
 result<reconstruction_job> read_reconstruction_job(const std::filesystem::path& request);
 // One synchronous command, called off the UI thread. Logs run on the calling
-// thread. Cancellation before manifest publication retains the previous scene;
-// the final atomic publication is a commit boundary. Concurrent worker execution
-// is excluded by the fit worker's lock. Completed reuse requires an explicit SHA.
+// thread, including checked progress callbacks. Cancellation before manifest publication retains
+// the previous scene; the final atomic publication is a commit boundary. Concurrent worker
+// execution is excluded by the fit worker's lock. Completed reuse requires an explicit SHA.
 result<std::filesystem::path> reconstruct(const reconstruction_job& job,
-                                          const std::stop_token& stop, const log_callback& log);
+                                          const std::stop_token& stop, const log_callback& log,
+                                          const reconstruction_progress_callback& progress = {});
 } // namespace world_explorer
 
 #endif // WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_JOB_HPP

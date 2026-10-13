@@ -416,6 +416,9 @@ int viewer_main(int argc, char** argv) {
                 if (ImGui::Button("Cancel"))
                     state.job.request_stop();
             }
+            if (state.progress && state.progress->backend_elapsed_seconds)
+                ImGui::Text("Backend event elapsed %.1fs (ETA unknown)",
+                            *state.progress->backend_elapsed_seconds);
             if (ImGui::CollapsingHeader("Diagnostic log"))
                 ImGui::TextUnformatted(state.log.c_str());
         }

@@ -1,6 +1,7 @@
 #ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_BATCH_POSES_HPP
 #define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_BATCH_POSES_HPP
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
+#include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -22,6 +23,8 @@ struct batch_pose_config {
     // Caller must own the job and its exact source/configuration intent. Rebuilds
     // ordered receipts; existing immutable RGB assets must match byte-for-byte.
     bool resume_input{};
+    // Verified events are observed synchronously during finish(), not retained.
+    worker_event_callback observed{};
 };
 // Offline single-camera selected-frame profile. start requires capacity for the
 // inspected selection; successful submit persists RGB before consuming its lease.

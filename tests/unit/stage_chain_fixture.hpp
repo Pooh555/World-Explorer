@@ -26,6 +26,7 @@ inline void stage_worker(const std::filesystem::path& script_path, const pose_fi
            "'capabilities.json'\nprevious=marker.read_text() if marker.exists() else ''\n"
            "marker.write_text(previous+'START\\n')\nkind='decode' if sys.argv[1]=='run' else "
            "'poses'\n"
+           "p.progress(kind,json.dumps({'event':'stage_started','stage':kind}),1.25)\n"
            "if mode=='cancel_once' and not previous:\n"
            " while not cancelled.wait(.01): pass\n"
            " p.failure('CANCELLED',kind,'synthetic stage cancelled');raise SystemExit(130)\n"

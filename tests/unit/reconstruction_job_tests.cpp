@@ -11,6 +11,7 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <chrono>
 #include <fstream>
+#include <limits>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
@@ -1088,4 +1089,153 @@ TEST_CASE("fresh checkpoint exception preserves other protected inputs and desti
     CHECK(log.find("Worker accepted START") == std::string::npos);
     CHECK(sha256_file(fixture.job.checkpoint, 65536).value() == checkpoint_hash);
     CHECK(sha256_file(fixture.job.scene_output / "manifest.json", 65536).value() == published);
+}
+
+TEST_CASE("reconstruction telemetry bounds backend metadata and keeps ETA unknown", "[progress]") {
+    const auto checked = [](const std::string& message, double elapsed = 12.5,
+                            const std::string& stage = "appearance") {
+        return checked_reconstruction_progress(worker_progress{stage, message, elapsed},
+                                               reconstruction_stage::FITTING, 7000);
+    };
+    const auto valid = checked(R"({"step":1101,"loss":0.4})");
+    REQUIRE(valid);
+    if (!valid)
+        return;
+    CHECK(valid.value().fit_step == 1101);
+    CHECK(valid.value().fit_steps == 7000);
+    CHECK(valid.value().backend_elapsed_seconds == 12.5);
+    for (const auto* message : {"not JSON", R"({"step":-1})", R"({"step":7001})", R"({"step":1.5})",
+                                R"({"step":true})", R"({"step":18446744073709551615})", "[]",
+                                R"({"step":1,"nested":[[[[[[[[[[0]]]]]]]]]]})"}) {
+        INFO(message);
+        const auto value = checked(message);
+        REQUIRE(value);
+        if (!value)
+            return;
+        CHECK_FALSE(value.value().fit_step);
+        CHECK(value.value().fit_steps == 0);
+        CHECK(value.value().backend_elapsed_seconds == 12.5);
+    }
+    const auto oversized = checked(std::string(65537, 'x'));
+    REQUIRE(oversized);
+    if (oversized)
+        CHECK_FALSE(oversized->fit_step);
+    CHECK_FALSE(checked("{}", -1));
+    CHECK_FALSE(checked("{}", std::numeric_limits<double>::infinity()));
+    CHECK_FALSE(checked("{}", std::numeric_limits<double>::quiet_NaN()));
+    CHECK_FALSE(checked("{}", 0, "arbitrary backend stage"));
+    CHECK_FALSE(checked_reconstruction_progress(worker_completed{"appearance", {}},
+                                                reconstruction_stage::FITTING, 7000));
+    const auto zero = checked(R"({"step":0})", 0);
+    REQUIRE(zero);
+    if (!zero)
+        return;
+    CHECK(zero.value().fit_step == 0);
+    CHECK(zero.value().backend_elapsed_seconds == 0);
+}
+
+TEST_CASE("coordinator reports retained stages and stops progress at failed or cancelled stage",
+          "[progress]") {
+    job_fixture fixture;
+    fixture.adopt_inspection();
+    std::vector<reconstruction_stage> stages;
+    std::stop_source cancellation;
+    bool cancel = false;
+    SECTION("checked completed reuse has no invented fitting progress") {}
+    SECTION("cancel during map preparation") { cancel = true; }
+    SECTION("bad fit retains failing verification stage") {
+        fixture.job.completed_fit_identity = std::string(64, 'c');
+    }
+    const auto result = reconstruct(fixture.job, cancellation.get_token(), {},
+                                    [&](const reconstruction_progress& value) {
+                                        stages.push_back(value.stage);
+                                        CHECK_FALSE(value.fit_step);
+                                        CHECK_FALSE(value.backend_elapsed_seconds);
+                                        if (cancel && value.stage == reconstruction_stage::MAP)
+                                            cancellation.request_stop();
+                                    });
+    const std::vector<reconstruction_stage> prefix{
+        reconstruction_stage::VALIDATING, reconstruction_stage::INSPECTING,
+        reconstruction_stage::POSES, reconstruction_stage::MAP};
+    REQUIRE(stages.size() >= prefix.size());
+    CHECK(std::equal(prefix.begin(), prefix.end(), stages.begin()));
+    if (cancel) {
+        REQUIRE_FALSE(result);
+        CHECK(result.error().code == error_code::CANCELLED);
+        CHECK(stages.back() == reconstruction_stage::MAP);
+    } else if (fixture.job.completed_fit_identity != fixture.identity) {
+        REQUIRE_FALSE(result);
+        CHECK(stages.back() == reconstruction_stage::VERIFYING_FIT);
+    } else {
+        REQUIRE(result);
+        CHECK(stages == std::vector<reconstruction_stage>{
+                            reconstruction_stage::VALIDATING, reconstruction_stage::INSPECTING,
+                            reconstruction_stage::POSES, reconstruction_stage::MAP,
+                            reconstruction_stage::VERIFYING_FIT, reconstruction_stage::COMPILING});
+    }
+}
+
+TEST_CASE("coordinator forwards verified fit steps without parsing diagnostic process output",
+          "[progress]") {
+    job_fixture fixture;
+    const auto retained = fixture.job.fit_directory;
+    fixture.job.fit_directory = fixture.root / "new fit";
+    fixture.job.action = fit_action::START;
+    fixture.job.completed_fit_identity.clear();
+    fixture.job.gsplat_source = fixture.root / "local source";
+    fixture.job.fitting_worker = {fixture.root / "progress worker.py", WE_TEST_PYTHON};
+    // Copies explicitly synthetic contract assets; never trains or qualifies a real gate.
+    std::ofstream script(fixture.job.fitting_worker.script);
+    script << "import sys,json,shutil\nfrom pathlib import Path\nsys.path.insert(0,"
+           << nlohmann::json(WE_TEST_PROTOCOL_MODULE).dump() << ")\nimport we_protocol as p\n"
+           << "p.configure(sys.argv,backend='synthetic_fit',backend_version='1',\n"
+           << "sensors=['video'],devices=['cpu'],checkpoint_semantics='synthetic',\n"
+           << "checkpoint_rights='diagnostic',limits={'max_frames':120,'max_source_bytes':16*1024**"
+              "3,'max_output_bytes':32*1024**3})\n"
+           << "p.progress('appearance',json.dumps({'step':1101}),42.655)\n"
+           << "out=Path(sys.argv[sys.argv.index('--output')+1])\nshutil.copytree("
+           << nlohmann::json(retained.string()).dump() << ",out)\n"
+           << "p.completed('appearance',out/'result.json')\n";
+    script.close();
+    std::vector<reconstruction_progress> events;
+    const auto result = reconstruct(fixture.job, {}, {}, [&](const reconstruction_progress& value) {
+        events.push_back(value);
+    });
+    INFO((result ? "published" : result.error().message));
+    REQUIRE(result);
+    const auto fit =
+        std::ranges::find_if(events, [](const auto& value) { return value.fit_step.has_value(); });
+    REQUIRE(fit != events.end());
+    CHECK(fit->stage == reconstruction_stage::FITTING);
+    CHECK(fit->fit_step == 1101);
+    CHECK(fit->fit_steps == 7000);
+    CHECK(fit->backend_elapsed_seconds == 42.655);
+    CHECK(events.back().stage == reconstruction_stage::COMPILING);
+    CHECK_FALSE(events.back().fit_step);
+}
+
+TEST_CASE("fresh coordinator forwards checked inspection decode and pose progress", "[progress]") {
+    job_fixture fixture;
+    fixture.fresh("valid", true);
+    test::inspection_fixture inspector{fixture.root / "inspection-inputs", fixture.job.video};
+    fixture.job.inspection.reset();
+    fixture.job.automatic_inspection = inspector.request.configuration;
+    std::vector<reconstruction_progress> events;
+    const auto result = reconstruct(fixture.job, {}, {}, [&](const reconstruction_progress& value) {
+        events.push_back(value);
+    });
+    INFO((result ? "published synthetic fixture" : result.error().message));
+    REQUIRE(result);
+    std::vector<reconstruction_stage> backend_stages;
+    for (const auto& value : events) {
+        if (!value.backend_elapsed_seconds)
+            continue;
+        backend_stages.push_back(value.stage);
+        CHECK_FALSE(value.fit_step);
+        CHECK(*value.backend_elapsed_seconds ==
+              (value.stage == reconstruction_stage::INSPECTING ? .25 : 1.25));
+    }
+    CHECK(backend_stages == std::vector<reconstruction_stage>{reconstruction_stage::INSPECTING,
+                                                              reconstruction_stage::DECODING,
+                                                              reconstruction_stage::POSES});
 }
