@@ -30,6 +30,7 @@ struct renderer_diagnostics {
     std::uint64_t submitted_frames{};
     std::uint64_t completed_timeline{};
     std::size_t resident_splat_count{};
+    std::size_t tile_reference_count{};
     std::size_t allocated_bytes{};
     std::size_t staging_bytes{};
     std::size_t scratch_bytes{};

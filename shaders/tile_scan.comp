@@ -1,0 +1,27 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x=256) in;
+shared uint prefix[256];
+void main() {
+    uint lane=gl_LocalInvocationID.x, groups=params.count_shift.z;
+    uint per_lane=(groups+255)/256;
+    uint begin=min(lane*per_lane,groups), end=min(begin+per_lane,groups);
+    uint limit=params.count_shift.w+1, sum=0;
+    for(uint group=begin;group<end;++group) {
+        uint count=group_offsets[group];
+        group_offsets[group]=sum;
+        sum=min(limit,sum+count);
+    }
+    prefix[lane]=sum;
+    barrier();
+    for(uint stride=1;stride<256;stride*=2) {
+        uint preceding=lane>=stride?prefix[lane-stride]:0;
+        barrier();
+        prefix[lane]=min(limit,prefix[lane]+preceding);
+        barrier();
+    }
+    uint base=lane==0?0:prefix[lane-1];
+    for(uint group=begin;group<end;++group) group_offsets[group]=min(limit,group_offsets[group]+base);
+    if(lane==255) control[0]=prefix[lane];
+}

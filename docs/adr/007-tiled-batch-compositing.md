@@ -26,3 +26,6 @@ two FP32 pixel buffers. It does not replace specification §4.6's planned bounde
 overlap count/scan/reference index or certify P2/P3. Center-depth ordering remains
 approximate. Revisit after calibrated real-scene comparison, overlap-index
 implementation, performance traces and native AMD/Apple Silicon qualification.
+
+Superseded for indexing, residency and presentation by [ADR 008](008-indexed-tile-residency.md);
+exclusive cutoff and shared batch semantics remain.

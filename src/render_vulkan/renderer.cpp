@@ -55,11 +55,8 @@ struct vulkan_renderer::implementation {
     VkRenderPass render_pass{};
     descriptor_resources bindings;
     VkPipeline project_pipeline{}, histogram_pipeline{}, scan_pipeline{}, scatter_pipeline{},
-        composite_pipeline{}, draw_pipeline{}, present_pipeline{};
-    VkDescriptorSetLayout present_layout{};
-    VkPipelineLayout present_pipeline_layout{};
-    VkDescriptorPool present_pool{};
-    std::vector<VkDescriptorSet> present_sets;
+        composite_pipeline{}, draw_pipeline{}, radix_offsets_pipeline{}, tile_count_pipeline{},
+        tile_scan_pipeline{}, tile_emit_pipeline{}, tile_ranges_pipeline{};
     VkSemaphore timeline{};
     std::uint64_t submitted_timeline{};
     std::size_t frame_index{};
@@ -68,15 +65,15 @@ struct vulkan_renderer::implementation {
         VkCommandBuffer command{};
         VkSemaphore acquired{};
         std::uint64_t completion{};
-        gpu_buffer projected, keys_a, keys_b, histogram, captured;
-        std::array<VkDescriptorSet, 2> descriptors{};
+        gpu_buffer projected, keys_a, keys_b, histogram, captured, overlap_offsets, group_offsets,
+            control, tile_ranges, references_a, references_b;
+        std::array<VkDescriptorSet, 4> descriptors{};
     };
     std::array<frame, 2> frames;
     gpu_buffer scene_buffer;
     scene_snapshot visible_scene;
     vec3d scene_origin{};
     std::size_t splat_count{};
-    std::size_t initial_buffer_reservation{};
     struct retired_buffer {
         std::uint64_t timeline;
         gpu_buffer buffer;
@@ -99,13 +96,21 @@ struct vulkan_renderer::implementation {
             current.keys_b = {};
             current.histogram = {};
             current.captured = {};
+            current.overlap_offsets = {};
+            current.group_offsets = {};
+            current.control = {};
+            current.tile_ranges = {};
+            current.references_a = {};
+            current.references_b = {};
             if (current.acquired)
                 vkDestroySemaphore(device, current.acquired, nullptr);
             if (current.pool)
                 vkDestroyCommandPool(device, current.pool, nullptr);
         }
-        for (auto pipeline : {draw_pipeline, present_pipeline, project_pipeline, histogram_pipeline,
-                              scan_pipeline, scatter_pipeline, composite_pipeline})
+        for (auto pipeline :
+             {draw_pipeline, project_pipeline, histogram_pipeline, scan_pipeline, scatter_pipeline,
+              composite_pipeline, radix_offsets_pipeline, tile_count_pipeline, tile_scan_pipeline,
+              tile_emit_pipeline, tile_ranges_pipeline})
             if (pipeline)
                 vkDestroyPipeline(device, pipeline, nullptr);
         if (bindings.pipeline_layout)
@@ -116,12 +121,6 @@ struct vulkan_renderer::implementation {
             vkDestroyDescriptorPool(device, bindings.overlay_pool, nullptr);
         if (bindings.layout)
             vkDestroyDescriptorSetLayout(device, bindings.layout, nullptr);
-        if (present_pool)
-            vkDestroyDescriptorPool(device, present_pool, nullptr);
-        if (present_pipeline_layout)
-            vkDestroyPipelineLayout(device, present_pipeline_layout, nullptr);
-        if (present_layout)
-            vkDestroyDescriptorSetLayout(device, present_layout, nullptr);
         swapchain_backend.reset();
         device_backend.reset();
     }
@@ -140,14 +139,10 @@ struct vulkan_renderer::implementation {
         if (!window || !options.max_splats || options.max_splats > 10000000)
             throw std::runtime_error(
                 "invalid renderer window or splat budget (maximum 10 million)");
-        const std::size_t scratch =
-            2 * (options.max_splats * (48 + 8 + 8) + ((options.max_splats + 255) / 256) * 64);
-        if (scratch > options.residency_bytes ||
-            options.max_splats * sizeof(gpu_splat) > options.residency_bytes - scratch)
-            throw std::runtime_error(
-                "renderer budget cannot hold its configured splat and scratch capacity");
-        device_backend = std::make_unique<vulkan_device>(window, options, capabilities, diagnostics,
-                                                         validation_errors);
+        if (!options.max_tile_references || options.max_tile_references > 8000000)
+            throw std::runtime_error("invalid tile-reference limit (maximum 8 million)");
+        device_backend =
+            std::make_unique<vulkan_device>(window, options, capabilities, validation_errors);
         device_backend->initialize();
         instance = device_backend->instance();
         surface = device_backend->surface();
@@ -158,10 +153,7 @@ struct vulkan_renderer::implementation {
         properties = device_backend->properties();
         timeline = device_backend->timeline();
         device_backend->create_descriptor_layout(bindings);
-        initial_buffer_reservation = scratch + 16;
-        create_present_layout();
         refresh_swapchain();
-        initial_buffer_reservation = 0;
         create_pipelines();
         create_frames();
         scene_buffer = allocate(
@@ -182,8 +174,16 @@ struct vulkan_renderer::implementation {
             "composite.comp", bindings.pipeline_layout, options.shader_directory);
         draw_pipeline =
             create_graphics_pipeline("present.vert", "composite.frag", bindings.pipeline_layout, 0);
-        present_pipeline =
-            create_graphics_pipeline("present.vert", "present.frag", present_pipeline_layout, 1);
+        radix_offsets_pipeline = device_backend->create_compute_pipeline(
+            "radix_offsets.comp", bindings.pipeline_layout, options.shader_directory);
+        tile_count_pipeline = device_backend->create_compute_pipeline(
+            "tile_count.comp", bindings.pipeline_layout, options.shader_directory);
+        tile_scan_pipeline = device_backend->create_compute_pipeline(
+            "tile_scan.comp", bindings.pipeline_layout, options.shader_directory);
+        tile_emit_pipeline = device_backend->create_compute_pipeline(
+            "tile_emit.comp", bindings.pipeline_layout, options.shader_directory);
+        tile_ranges_pipeline = device_backend->create_compute_pipeline(
+            "tile_ranges.comp", bindings.pipeline_layout, options.shader_directory);
     }
     VkPipeline create_graphics_pipeline(const char* vertex_name, const char* fragment_name,
                                         VkPipelineLayout layout, std::uint32_t subpass) {
@@ -257,59 +257,6 @@ struct vulkan_renderer::implementation {
         check(status, "create graphics pipeline");
         return pipeline;
     }
-    void create_present_layout() {
-        const VkDescriptorSetLayoutBinding binding{0, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1,
-                                                   VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
-        auto info = structure<VkDescriptorSetLayoutCreateInfo>(
-            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
-        info.bindingCount = 1;
-        info.pBindings = &binding;
-        check(vkCreateDescriptorSetLayout(device, &info, nullptr, &present_layout),
-              "create presentation layout");
-        auto pipeline =
-            structure<VkPipelineLayoutCreateInfo>(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
-        pipeline.setLayoutCount = 1;
-        pipeline.pSetLayouts = &present_layout;
-        check(vkCreatePipelineLayout(device, &pipeline, nullptr, &present_pipeline_layout),
-              "create presentation pipeline layout");
-    }
-    void create_present_descriptors() {
-        if (present_pool) {
-            vkDestroyDescriptorPool(device, present_pool, nullptr);
-            present_pool = VK_NULL_HANDLE;
-        }
-        present_sets.clear();
-        const auto count = static_cast<std::uint32_t>(images.size());
-        const VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, count};
-        auto pool =
-            structure<VkDescriptorPoolCreateInfo>(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO);
-        pool.maxSets = count;
-        pool.poolSizeCount = 1;
-        pool.pPoolSizes = &size;
-        check(vkCreateDescriptorPool(device, &pool, nullptr, &present_pool),
-              "create presentation descriptor pool");
-        const std::vector<VkDescriptorSetLayout> layouts(count, present_layout);
-        present_sets.resize(count);
-        auto allocation =
-            structure<VkDescriptorSetAllocateInfo>(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO);
-        allocation.descriptorPool = present_pool;
-        allocation.descriptorSetCount = count;
-        allocation.pSetLayouts = layouts.data();
-        check(vkAllocateDescriptorSets(device, &allocation, present_sets.data()),
-              "allocate presentation descriptors");
-        for (std::size_t index = 0; index < present_sets.size(); ++index) {
-            const VkDescriptorImageInfo image{VK_NULL_HANDLE,
-                                              swapchain_backend->color_targets()[index].view,
-                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-            auto write = structure<VkWriteDescriptorSet>(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
-            write.dstSet = present_sets[index];
-            write.dstBinding = 0;
-            write.descriptorCount = 1;
-            write.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-            write.pImageInfo = &image;
-            vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
-        }
-    }
     void create_frames() {
         for (auto& current : frames) {
             auto pool =
@@ -329,19 +276,21 @@ struct vulkan_renderer::implementation {
                 structure<VkSemaphoreCreateInfo>(VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO);
             check(vkCreateSemaphore(device, &semaphore, nullptr, &current.acquired),
                   "create acquire semaphore");
-            current.projected =
-                allocate(options.max_splats * 48, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-            current.keys_a =
-                allocate(options.max_splats * 8, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-            current.keys_b =
-                allocate(options.max_splats * 8, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-            current.histogram = allocate(((options.max_splats + 255) / 256) * 64,
-                                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-            const std::array<VkDescriptorSetLayout, 2> layouts{bindings.layout, bindings.layout};
+            current.projected = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            current.keys_a = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            current.keys_b = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            current.histogram = allocate(64, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            current.overlap_offsets = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            current.group_offsets = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            current.control = allocate(128, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true);
+            current.references_a = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            current.references_b = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            const std::array<VkDescriptorSetLayout, 4> layouts{bindings.layout, bindings.layout,
+                                                               bindings.layout, bindings.layout};
             auto descriptors = structure<VkDescriptorSetAllocateInfo>(
                 VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO);
             descriptors.descriptorPool = bindings.scene_pool;
-            descriptors.descriptorSetCount = 2;
+            descriptors.descriptorSetCount = 4;
             descriptors.pSetLayouts = layouts.data();
             check(vkAllocateDescriptorSets(device, &descriptors, current.descriptors.data()),
                   "allocate frame descriptors");
@@ -358,17 +307,21 @@ struct vulkan_renderer::implementation {
               "wait GPU timeline (5 second timeout)");
     }
     void descriptors(frame& current) {
-        for (std::size_t pass = 0; pass < 2; ++pass) {
-            const std::array<VkDescriptorBufferInfo, 6> buffers{
+        for (std::size_t pass = 0; pass < 4; ++pass) {
+            const auto& keys_a = pass < 2 ? current.keys_a : current.references_a;
+            const auto& keys_b = pass < 2 ? current.keys_b : current.references_b;
+            const std::array<VkDescriptorBufferInfo, 10> buffers{
                 {{scene_buffer.buffer, 0, scene_buffer.bytes},
                  {current.projected.buffer, 0, current.projected.bytes},
-                 {pass == 0 ? current.keys_a.buffer : current.keys_b.buffer, 0,
-                  current.keys_a.bytes},
-                 {pass == 0 ? current.keys_b.buffer : current.keys_a.buffer, 0,
-                  current.keys_a.bytes},
+                 {pass % 2 == 0 ? keys_a.buffer : keys_b.buffer, 0, keys_a.bytes},
+                 {pass % 2 == 0 ? keys_b.buffer : keys_a.buffer, 0, keys_b.bytes},
                  {current.histogram.buffer, 0, current.histogram.bytes},
-                 {current.captured.buffer, 0, current.captured.bytes}}};
-            std::array<VkWriteDescriptorSet, 6> writes{};
+                 {current.captured.buffer, 0, current.captured.bytes},
+                 {current.overlap_offsets.buffer, 0, current.overlap_offsets.bytes},
+                 {current.group_offsets.buffer, 0, current.group_offsets.bytes},
+                 {current.control.buffer, 0, current.control.bytes},
+                 {current.tile_ranges.buffer, 0, current.tile_ranges.bytes}}};
+            std::array<VkWriteDescriptorSet, 10> writes{};
             for (std::uint32_t binding = 0; binding < writes.size(); ++binding) {
                 writes[binding].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 writes[binding].dstSet = current.descriptors[pass];
@@ -384,8 +337,8 @@ struct vulkan_renderer::implementation {
     std::size_t live_buffer_bytes() const {
         std::size_t bytes =
             static_cast<std::size_t>(scene_buffer.allocation_bytes) + scratch_allocation_bytes();
-        if (swapchain_backend)
-            bytes += swapchain_backend->allocated_bytes();
+        for (const auto& current : frames)
+            bytes += static_cast<std::size_t>(current.captured.allocation_bytes);
         for (const auto& item : retired)
             bytes += static_cast<std::size_t>(item.buffer.allocation_bytes);
         return bytes;
@@ -396,7 +349,9 @@ struct vulkan_renderer::implementation {
             bytes += static_cast<std::size_t>(
                 current.projected.allocation_bytes + current.keys_a.allocation_bytes +
                 current.keys_b.allocation_bytes + current.histogram.allocation_bytes +
-                current.captured.allocation_bytes);
+                current.overlap_offsets.allocation_bytes + current.group_offsets.allocation_bytes +
+                current.control.allocation_bytes + current.tile_ranges.allocation_bytes +
+                current.references_a.allocation_bytes + current.references_b.allocation_bytes);
         return bytes;
     }
     void upload(VkCommandBuffer command, const scene_snapshot& snapshot, vec3d origin,
@@ -465,48 +420,137 @@ struct vulkan_renderer::implementation {
                 {static_cast<float>(extent.width), static_cast<float>(extent.height),
                  camera.near_plane, camera.far_plane},
                 {static_cast<std::uint32_t>(splat_count), 0,
-                 static_cast<std::uint32_t>((splat_count + 255) / 256), 0}};
+                 static_cast<std::uint32_t>((splat_count + 255) / 256),
+                 static_cast<std::uint32_t>(options.max_tile_references)},
+                {0, 0, (extent.width + 15) / 16, (extent.height + 15) / 16}};
     }
-    void record_projection(frame& current, push_parameters& params) {
-        auto command = current.command;
-        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE, bindings.pipeline_layout,
-                                0, 1, &current.descriptors[0], 0, nullptr);
-        vkCmdPushConstants(command, bindings.pipeline_layout,
+    void bind_compute(frame& current, const push_parameters& params, std::size_t descriptor = 0) {
+        vkCmdBindDescriptorSets(current.command, VK_PIPELINE_BIND_POINT_COMPUTE,
+                                bindings.pipeline_layout, 0, 1, &current.descriptors[descriptor], 0,
+                                nullptr);
+        vkCmdPushConstants(current.command, bindings.pipeline_layout,
                            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(params), &params);
-        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, project_pipeline);
-        vkCmdDispatch(command, params.count_shift[2], 1, 1);
-        compute_barrier(command);
+    }
+    void record_sort(frame& current, push_parameters& params, std::size_t descriptor) {
         for (std::uint32_t pass = 0; pass < 8; ++pass) {
             params.count_shift[1] = pass * 4;
-            vkCmdPushConstants(command, bindings.pipeline_layout,
-                               VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                               sizeof(params), &params);
-            vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                    bindings.pipeline_layout, 0, 1, &current.descriptors[pass % 2],
-                                    0, nullptr);
-            vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, histogram_pipeline);
-            vkCmdDispatch(command, params.count_shift[2], 1, 1);
-            compute_barrier(command);
-            vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, scan_pipeline);
-            vkCmdDispatch(command, 1, 1, 1);
-            compute_barrier(command);
-            vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, scatter_pipeline);
-            vkCmdDispatch(command, params.count_shift[2], 1, 1);
-            compute_barrier(command);
+            bind_compute(current, params, descriptor + pass % 2);
+            vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, histogram_pipeline);
+            vkCmdDispatch(current.command, params.count_shift[2], 1, 1);
+            compute_barrier(current.command);
+            vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, scan_pipeline);
+            vkCmdDispatch(current.command, 16, 1, 1);
+            compute_barrier(current.command);
+            vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE,
+                              radix_offsets_pipeline);
+            vkCmdDispatch(current.command, (params.count_shift[2] + 15) / 16, 1, 1);
+            compute_barrier(current.command);
+            vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, scatter_pipeline);
+            vkCmdDispatch(current.command, params.count_shift[2], 1, 1);
+            compute_barrier(current.command);
+        }
+    }
+    void record_projection(frame& current, push_parameters& params) {
+        bind_compute(current, params);
+        vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, project_pipeline);
+        vkCmdDispatch(current.command, params.count_shift[2], 1, 1);
+        compute_barrier(current.command);
+        record_sort(current, params, 0);
+    }
+    void record_count(frame& current, const push_parameters& params) {
+        compute_barrier(current.command);
+        bind_compute(current, params);
+        vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, tile_count_pipeline);
+        vkCmdDispatch(current.command, params.count_shift[2], 1, 1);
+        compute_barrier(current.command);
+        vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, tile_scan_pipeline);
+        vkCmdDispatch(current.command, 1, 1, 1);
+        memory_barrier(current.command, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                       VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_HOST_BIT,
+                       VK_ACCESS_2_HOST_READ_BIT);
+    }
+    void collect_completed(std::uint64_t completed) {
+        while (!retired.empty() && retired.front().timeline <= completed)
+            retired.pop_front();
+        sink.retire_completed(completed);
+        diagnostics.completed_timeline = completed;
+    }
+    void grow_buffer(gpu_buffer& buffer, VkDeviceSize bytes, VkBufferUsageFlags usage) {
+        if (buffer.bytes >= bytes)
+            return;
+        // Only this completed frame owns the old scratch allocation.
+        buffer = {};
+        buffer = allocate(bytes, usage, false);
+    }
+    void grow_splat_scratch(frame& current) {
+        grow_buffer(current.projected, std::max<std::size_t>(splat_count * 48, 16),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        for (auto* keys : {&current.keys_a, &current.keys_b})
+            grow_buffer(*keys, std::max<std::size_t>(splat_count * 8, 16),
+                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        grow_buffer(current.overlap_offsets, std::max<std::size_t>(splat_count * 4, 16),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        grow_buffer(current.group_offsets,
+                    std::max<std::size_t>(((splat_count + 255) / 256) * 4, 16),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        grow_buffer(current.histogram, std::max<std::size_t>(((splat_count + 255) / 256) * 64, 64),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    }
+    void submit_count(frame& current, std::uint64_t completion) {
+        check(vkEndCommandBuffer(current.command), "end tile-count commands");
+        auto command =
+            structure<VkCommandBufferSubmitInfo>(VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO);
+        command.commandBuffer = current.command;
+        auto signal = structure<VkSemaphoreSubmitInfo>(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO);
+        signal.semaphore = timeline;
+        signal.value = completion;
+        signal.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        auto submission = structure<VkSubmitInfo2>(VK_STRUCTURE_TYPE_SUBMIT_INFO_2);
+        submission.commandBufferInfoCount = 1;
+        submission.pCommandBufferInfos = &command;
+        submission.signalSemaphoreInfoCount = 1;
+        submission.pSignalSemaphoreInfos = &signal;
+        check(vkQueueSubmit2(queue, 1, &submission, VK_NULL_HANDLE), "submit tile-count prepass");
+        submitted_timeline = completion;
+        current.completion = completion;
+        wait_timeline(completion);
+        collect_completed(completion);
+    }
+    void record_tiles(frame& current, push_parameters& params, std::uint32_t count) {
+        vkCmdFillBuffer(current.command, current.tile_ranges.buffer, 0, current.tile_ranges.bytes,
+                        0);
+        memory_barrier(current.command, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                       VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                       VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
+        if (count) {
+            bind_compute(current, params);
+            vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, tile_emit_pipeline);
+            vkCmdDispatch(current.command, params.count_shift[2], 1, 1);
+            compute_barrier(current.command);
+            params.count_shift[0] = count;
+            params.count_shift[2] = (count + 255) / 256;
+            record_sort(current, params, 2);
+            bind_compute(current, params, 2);
+            vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE,
+                              tile_ranges_pipeline);
+            vkCmdDispatch(current.command, params.count_shift[2], 1, 1);
+            compute_barrier(current.command);
+        } else {
+            params.count_shift[0] = 0;
         }
     }
     void record_composition(frame& current, push_parameters params, bool draw_appearance) {
         if (!draw_appearance)
             params.count_shift[0] = 0;
         vkCmdBindDescriptorSets(current.command, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                bindings.pipeline_layout, 0, 1, &current.descriptors[0], 0,
+                                bindings.pipeline_layout, 0, 1, &current.descriptors[2], 0,
                                 nullptr);
         vkCmdPushConstants(current.command, bindings.pipeline_layout,
                            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(params), &params);
         vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_COMPUTE, composite_pipeline);
-        vkCmdDispatch(current.command, (extent.width + 15) / 16, (extent.height + 15) / 16, 1);
+        vkCmdDispatch(current.command, params.tiles[2], params.tiles[3], 1);
         memory_barrier(current.command, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
                        VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
                        VK_ACCESS_2_SHADER_READ_BIT);
@@ -563,33 +607,23 @@ struct vulkan_renderer::implementation {
         screenshot_path.reset();
     }
     bool refresh_swapchain() {
-        // Resize already requires device-idle retirement of the presentation targets.
-        // Retire pixel scratch at the same boundary before allocating its replacement.
         if (swapchain_backend) {
             check(vkDeviceWaitIdle(device), "wait before resizing composition scratch");
-            for (auto& current : frames)
+            collect_completed(submitted_timeline);
+            for (auto& current : frames) {
                 current.captured = {};
-        }
-        const auto previous_images = swapchain_backend ? swapchain_backend->allocated_bytes() : 0;
-        const auto other_bytes = live_buffer_bytes() - previous_images;
-        if (other_bytes > options.residency_bytes ||
-            initial_buffer_reservation > options.residency_bytes - other_bytes)
-            throw std::runtime_error("renderer buffers exceed residency budget before resize");
-        const auto framebuffer_budget =
-            options.residency_bytes - other_bytes - initial_buffer_reservation;
-        if (!swapchain_backend) {
+                current.tile_ranges = {};
+                current.references_a = {};
+                current.references_b = {};
+                current.references_a = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+                current.references_b = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            }
+        } else {
             swapchain_backend =
                 std::make_unique<vulkan_swapchain>(*device_backend, surface, format);
-            if (!swapchain_backend->create(window, framebuffer_budget))
-                return false;
-        } else {
-            if (swapchain_backend->create(window, framebuffer_budget)) {
-                // create() already reinitializes a resize-safe swapchain and populates the new
-                // handles.
-            } else {
-                return false;
-            }
         }
+        if (!swapchain_backend->create(window))
+            return false;
         swapchain = swapchain_backend->swapchain();
         render_pass = swapchain_backend->render_pass();
         format = swapchain_backend->format();
@@ -605,15 +639,20 @@ struct vulkan_renderer::implementation {
             (extent.width + 15) / 16 > properties.limits.maxComputeWorkGroupCount[0] ||
             (extent.height + 15) / 16 > properties.limits.maxComputeWorkGroupCount[1])
             throw std::runtime_error("framebuffer exceeds composition buffer or dispatch limits");
-        for (auto& current : frames)
-            current.captured = allocate(pixel_bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false,
-                                        initial_buffer_reservation);
+        diagnostics.framebuffer_bytes = 0;
+        for (auto& current : frames) {
+            current.captured = allocate(pixel_bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+            current.tile_ranges = allocate(
+                static_cast<VkDeviceSize>((extent.width + 15) / 16) * ((extent.height + 15) / 16) *
+                    8,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
+            diagnostics.framebuffer_bytes +=
+                static_cast<std::size_t>(current.captured.allocation_bytes);
+        }
         diagnostics.scratch_bytes = scratch_allocation_bytes();
-        diagnostics.framebuffer_bytes = swapchain_backend->allocated_bytes();
         diagnostics.framebuffer_width = extent.width;
         diagnostics.framebuffer_height = extent.height;
         capabilities.fp32_compositing = true;
-        create_present_descriptors();
         return true;
     }
     void draw(const camera_view& camera, bool draw_appearance) {
@@ -635,10 +674,7 @@ struct vulkan_renderer::implementation {
         std::uint64_t completed = 0;
         check(vkGetSemaphoreCounterValue(device, timeline, &completed),
               "query retirement timeline");
-        while (!retired.empty() && retired.front().timeline <= completed)
-            retired.pop_front();
-        sink.retire_completed(completed);
-        diagnostics.completed_timeline = completed;
+        collect_completed(completed);
         std::uint32_t image_index = 0;
         const auto acquired = vkAcquireNextImageKHR(device, swapchain, 5'000'000'000ULL,
                                                     current.acquired, VK_NULL_HANDLE, &image_index);
@@ -653,7 +689,7 @@ struct vulkan_renderer::implementation {
             structure<VkCommandBufferBeginInfo>(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
         command_begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         check(vkBeginCommandBuffer(current.command, &command_begin), "begin frame commands");
-        const auto completion = submitted_timeline + 1;
+        auto completion = submitted_timeline + 1;
         auto update = sink.take_next();
         if (update) {
             try {
@@ -667,11 +703,124 @@ struct vulkan_renderer::implementation {
         } else if (visible_scene &&
                    dot(camera.position - scene_origin, camera.position - scene_origin) > 100000000)
             upload(current.command, visible_scene, camera.position, completion);
+        grow_splat_scratch(current);
         descriptors(current);
         auto params = parameters(camera, *checked_camera);
-        if (splat_count && draw_appearance)
+        std::size_t total_references = 0;
+        if (splat_count && draw_appearance) {
             record_projection(current, params);
-        record_composition(current, params, draw_appearance);
+            std::vector<std::array<std::uint32_t, 4>> pending_regions{params.tiles};
+            while (!pending_regions.empty()) {
+                auto region = pending_regions.back();
+                pending_regions.pop_back();
+                std::uint32_t reference_count = 0;
+                std::size_t capacity = 16, histogram_bytes = 64;
+                for (;;) {
+                    params.count_shift[0] = static_cast<std::uint32_t>(splat_count);
+                    params.count_shift[2] = static_cast<std::uint32_t>((splat_count + 255) / 256);
+                    params.tiles = region;
+                    record_count(current, params);
+                    submit_count(current, completion);
+                    reference_count = static_cast<const std::uint32_t*>(current.control.mapped)[0];
+                    const auto groups = (reference_count + 255) / 256;
+                    capacity = std::max<std::size_t>(
+                        16, ((static_cast<std::size_t>(reference_count) + 4095) / 4096) * 4096 * 8);
+                    histogram_bytes =
+                        std::max<std::size_t>(64, static_cast<std::size_t>(groups) * 64);
+                    bool fits = reference_count <= options.max_tile_references &&
+                                groups <= properties.limits.maxComputeWorkGroupCount[0] &&
+                                capacity <= properties.limits.maxStorageBufferRange;
+                    if (fits) {
+                        auto non_reference_bytes = live_buffer_bytes();
+                        for (const auto& buffered : frames)
+                            non_reference_bytes -=
+                                static_cast<std::size_t>(buffered.references_a.allocation_bytes +
+                                                         buffered.references_b.allocation_bytes);
+                        if (current.histogram.bytes < histogram_bytes) {
+                            non_reference_bytes -=
+                                static_cast<std::size_t>(current.histogram.allocation_bytes);
+                            non_reference_bytes +=
+                                static_cast<std::size_t>(device_backend->buffer_allocation_bytes(
+                                    {histogram_bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT}));
+                        }
+                        // Reserve a checked SDR readback allocation, so requesting a
+                        // screenshot cannot turn a valid fullscreen frame into an OOM.
+                        non_reference_bytes +=
+                            static_cast<std::size_t>(device_backend->buffer_allocation_bytes(
+                                {static_cast<VkDeviceSize>(extent.width) * extent.height * 4,
+                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT}));
+                        const auto pair_bytes =
+                            2 * device_backend->buffer_allocation_bytes(
+                                    {capacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT});
+                        fits = non_reference_bytes <= options.residency_bytes &&
+                               pair_bytes <=
+                                   (options.residency_bytes - non_reference_bytes) / frames.size();
+                        if (fits) {
+                            // The count timeline completes every earlier frame on
+                            // this queue. Trim cached pools against the new share,
+                            // including the other frame after histogram growth.
+                            const auto share =
+                                (options.residency_bytes - non_reference_bytes) / frames.size();
+                            for (auto& buffered : frames)
+                                if (buffered.references_a.allocation_bytes +
+                                        buffered.references_b.allocation_bytes >
+                                    share) {
+                                    buffered.references_a = {};
+                                    buffered.references_b = {};
+                                    buffered.references_a =
+                                        allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+                                    buffered.references_b =
+                                        allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+                                }
+                        }
+                    }
+                    check(vkResetCommandBuffer(current.command, 0),
+                          "reset completed count commands");
+                    check(vkBeginCommandBuffer(current.command, &command_begin),
+                          "begin tile-region commands");
+                    completion = submitted_timeline + 1;
+                    if (fits)
+                        break;
+                    if (region[2] == 1 && region[3] == 1)
+                        throw std::runtime_error("one tile exceeds reference/residency limits "
+                                                 "before emission; no contributors were dropped");
+                    // Disjoint tile rectangles preserve every full-resolution pixel.
+                    auto remainder = region;
+                    const auto axis = region[2] >= region[3] && region[2] > 1 ? 0U : 1U;
+                    const auto half = region[axis + 2] / 2;
+                    region[axis + 2] = half;
+                    remainder[axis] += half;
+                    remainder[axis + 2] -= half;
+                    pending_regions.push_back(remainder);
+                }
+                grow_buffer(current.references_a, capacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+                grow_buffer(current.references_b, capacity, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+                grow_buffer(current.histogram, histogram_bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+                descriptors(current);
+                const VkDescriptorBufferInfo output{current.references_a.buffer, 0,
+                                                    current.references_a.bytes};
+                auto write =
+                    structure<VkWriteDescriptorSet>(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+                write.dstSet = current.descriptors[0];
+                write.dstBinding = 3;
+                write.descriptorCount = 1;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                write.pBufferInfo = &output;
+                vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+                memory_barrier(current.command, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                               VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                               VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
+                record_tiles(current, params, reference_count);
+                record_composition(current, params, true);
+                total_references += reference_count;
+            }
+        } else {
+            params.count_shift[0] = 0;
+            record_tiles(current, params, 0);
+            record_composition(current, params, false);
+        }
+        diagnostics.tile_reference_count = total_references;
+        diagnostics.scratch_bytes = scratch_allocation_bytes();
         VkClearValue clear{};
         clear.color = {{0.045F, 0.051F, 0.063F, 1}};
         auto pass = structure<VkRenderPassBeginInfo>(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
@@ -696,12 +845,6 @@ struct vulkan_renderer::implementation {
                                sizeof(params), &params);
             vkCmdDraw(current.command, 3, 1, 0, 0);
         }
-        vkCmdNextSubpass(current.command, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS, present_pipeline);
-        vkCmdBindDescriptorSets(current.command, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                present_pipeline_layout, 0, 1, &present_sets[image_index], 0,
-                                nullptr);
-        vkCmdDraw(current.command, 3, 1, 0, 0);
         if (overlay)
             overlay(reinterpret_cast<std::uintptr_t>(current.command));
         vkCmdEndRenderPass(current.command);
@@ -801,7 +944,7 @@ vulkan_overlay_context vulkan_renderer::overlay_context() const noexcept {
             impl_->queue_family,
             static_cast<std::uint32_t>(impl_->images.size()),
             impl_->minimum_images,
-            1};
+            0};
 }
 void vulkan_renderer::set_overlay_callback(std::function<void(std::uintptr_t)> callback) {
     impl_->overlay = std::move(callback);

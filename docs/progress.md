@@ -29,16 +29,16 @@ Earlier [fixed-camera](validation/2026-10-12-render-reference.md) and
 [provenance](validation/2026-10-12-synthetic-labels.md) checks establish calibration,
 roll, covariance margins and imported synthetic labels, including hidden panels.
 
-Latest [tiled composition](validation/2026-10-12-tiled-composition.md) fixes the
-pinned exclusive-termination mismatch. All **25 views** pass (maximum one color
-level): unchanged seven termination, seven saturation/orbit/close-up and four
-original views, plus seven views of the 1,027-splat batch-reuse fixture.
-**91/91 GCC C++26 and Clang C++23 viewer/core checks** pass. Native budget rejection,
-observed resize, replacement/deletion and pause/resume pass with zero validation
-errors; the full retained scene opens. Actual FP32 pixel scratch and image/buffer
-allocations are budgeted. Fixed shared batches scan globally sorted splats per
-tile; the specified overlap count/scan/reference index and performance remain
-pending. No performance/Q6/reconstruction gate is certified.
+Latest [viewer regression repair](validation/2026-10-13-viewer-regression.md)
+replaces per-tile global scans with budgeted GPU count/scan/emission/stable tile
+sorting and ranges. Scratch grows by resident count; direct FP32-to-SDR presentation
+removes duplicate swapchain attachments. Full 304,867-splat 4K screenshot,
+native fullscreen and restoration fit the unchanged 512 MiB budget with zero
+Vulkan errors. Short 720p throughput improves from ~6 to ~60 completed render
+frames/s; fullscreen/4K remain slower. **91/91 GCC C++26 and Clang C++23 CPU/worker
+checks**, native lifetime/budget/overflow checks, and **32 fixed reference views**
+pass (maximum one color level). Forced small-budget partitioning is byte-identical.
+Host count waits remain; no P2/P3, Q6 or reconstruction gate is certified.
 
 Retained real result: replacement capture → **63/63 connected poses → 7,000-step
 fit → 304,867 splats → checked native viewer**, with cancellation at step 4,323
@@ -53,7 +53,7 @@ separate solution; their map cannot reuse the original fit.
 Run from repository root; all media/jobs/screenshots stay local and ignored.
 
 ```sh
-build/dev/we_viewer --scene artifacts/sample2.wexplore --source-view --max-splats 500000
+build/dev/we_viewer --scene artifacts/sample2.wexplore --source-view --max-splats 1000000
 build/dev/we_process reconstruct --request artifacts/sample2-fit-boundary-20261012/original.json
 ```
 
@@ -76,9 +76,9 @@ retained scene using its checked original fit camera (1280×688) and pose, witho
 trimming its 304,867 splats. Extend the bounded diagnostic input explicitly for
 real assets; retain separate synthetic labels, fixture hashes and fixed tolerances.
 `--source-view` remains an upright spectator reset, not calibrated parity or
-capture-driven navigation. Then replace per-tile global scans with §4.6's budgeted
-overlap count/exclusive scan/reference index. Preserve the cutoff regression with
-`build/dev/we_gpu_reference artifacts/validation/<new-output> --termination`
+capture-driven navigation. Then profile count waits and high-resolution reference
+sorting. Retain both `--termination` and `--batches-bounded` cases; for each run
+`build/dev/we_gpu_reference artifacts/validation/<new-output> <mode>`
 and `.venv-train/bin/python tests/gpu/compare_reference.py artifacts/validation/<new-output>`.
 
 Reference-hardware/native-platform qualification and the real owned fresh RGB/

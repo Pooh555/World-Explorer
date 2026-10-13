@@ -2,16 +2,13 @@
 #extension GL_GOOGLE_include_directive : require
 #include "common.glsl"
 layout(local_size_x=16,local_size_y=16) in;
-// Fixed scratch, independent of tile overlap count. Stable compaction preserves
-// the global front-to-back sort (including ties). No contributor is dropped.
+// Tile references are already stably sorted front-to-back.
 shared projected_data batch[256];
-shared uint masks[8];
-shared uint batch_count;
 shared uint active_pixels;
 void main() {
     uint lane=gl_LocalInvocationIndex;
-    uvec2 tile=gl_WorkGroupID.xy;
-    uvec2 pixel=gl_GlobalInvocationID.xy;
+    uvec2 tile=gl_WorkGroupID.xy+params.tiles.xy;
+    uvec2 pixel=gl_GlobalInvocationID.xy+params.tiles.xy*16;
     bool inside=all(lessThan(pixel,uvec2(params.viewport_clip.xy)));
     bool pixel_active=inside;
     if(lane==0) active_pixels=0;
@@ -20,32 +17,12 @@ void main() {
     barrier();
     float transmittance=1;
     vec3 color=vec3(0);
-    for(uint start=0;start<params.count_shift.x;start+=256) {
+    uint tile_id=tile.y*((uint(params.viewport_clip.x)+15)/16)+tile.x;
+    uvec2 range=params.count_shift.x==0?uvec2(0):tile_ranges[tile_id];
+    for(uint start=range.x;start<range.y;start+=256) {
         if(active_pixels==0) break; // Uniform workgroup decision before barriers.
-        if(lane<8) masks[lane]=0;
-        barrier();
-        uint index=start+lane;
-        bool intersects=false;
-        projected_data candidate;
-        if(index<params.count_shift.x) {
-            candidate=projected[keys_in[index].y];
-            vec2 lower=floor((candidate.center_radius.xy-candidate.center_radius.zw)/16);
-            vec2 upper=ceil((candidate.center_radius.xy+candidate.center_radius.zw)/16);
-            intersects=candidate.conic_opacity.w>0 &&
-                all(greaterThanEqual(vec2(tile),lower)) && all(lessThan(vec2(tile),upper));
-        }
-        if(intersects) atomicOr(masks[lane/32],1u<<(lane%32));
-        barrier();
-        if(intersects) {
-            uint rank=0;
-            for(uint word=0;word<lane/32;++word) rank+=bitCount(masks[word]);
-            rank+=bitCount(masks[lane/32]&((1u<<(lane%32))-1u));
-            batch[rank]=candidate;
-        }
-        if(lane==0) {
-            batch_count=0;
-            for(uint word=0;word<8;++word) batch_count+=bitCount(masks[word]);
-        }
+        uint batch_count=min(256,range.y-start);
+        if(lane<batch_count) batch[lane]=projected[keys_in[start+lane].y];
         barrier();
         if(pixel_active) {
             for(uint index_in_batch=0;index_in_batch<batch_count;++index_in_batch) {

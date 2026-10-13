@@ -14,6 +14,8 @@ struct renderer_options {
     std::size_t residency_bytes{512ULL * 1024 * 1024};
     bool validation{true};
     std::filesystem::path shader_directory;
+    // Per emitted tile batch; larger frames split without dropping contributors.
+    std::size_t max_tile_references{8000000};
 };
 // Adapter-only handles. Public scene/core APIs never carry graphics objects.
 struct vulkan_overlay_context {

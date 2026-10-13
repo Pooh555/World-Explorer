@@ -173,12 +173,14 @@ int main(int argc, char** argv) {
     try {
         require(argc == 2 || (argc == 3 && (std::string_view(argv[2]) == "--compositing" ||
                                             std::string_view(argv[2]) == "--termination" ||
-                                            std::string_view(argv[2]) == "--batches")),
+                                            std::string_view(argv[2]) == "--batches" ||
+                                            std::string_view(argv[2]) == "--batches-bounded")),
                 "usage: we_gpu_reference <new output directory> "
-                "[--compositing|--termination|--batches]");
+                "[--compositing|--termination|--batches|--batches-bounded]");
         const bool compositing = argc == 3;
         const bool termination = compositing && std::string_view(argv[2]) == "--termination";
-        const bool batches = compositing && std::string_view(argv[2]) == "--batches";
+        const bool bounded = compositing && std::string_view(argv[2]) == "--batches-bounded";
+        const bool batches = bounded || (compositing && std::string_view(argv[2]) == "--batches");
         const std::filesystem::path output(argv[1]);
         require(std::filesystem::create_directory(output), "output directory must not exist");
         const auto scene = batches       ? batch_fixture()
@@ -197,6 +199,8 @@ int main(int argc, char** argv) {
         require(window != nullptr, SDL_GetError());
         renderer_options options;
         options.max_splats = 250000;
+        if (bounded)
+            options.max_tile_references = 2048;
         options.shader_directory = WE_SHADER_DIRECTORY;
         auto created = vulkan_renderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().message);
@@ -288,6 +292,7 @@ int main(int argc, char** argv) {
                     {"allocated_bytes", stats.allocated_bytes},
                     {"validation_errors", stats.validation_errors},
                     {"splat_count", stats.resident_splat_count},
+                    {"tile_references", stats.tile_reference_count},
                     {"submitted_frames", stats.submitted_frames}});
         std::cout << "Synthetic fixed-camera fixture: " << stats.resident_splat_count << " splats, "
                   << names.size() << " views, 1280x720, validation_errors=0\n";

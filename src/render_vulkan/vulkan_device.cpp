@@ -15,9 +15,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_device::debug_callback(
 }
 
 vulkan_device::vulkan_device(SDL_Window* window, const renderer_options& options,
-                             renderer_capabilities& capabilities, renderer_diagnostics& diagnostics,
+                             renderer_capabilities& capabilities,
                              std::atomic<std::uint32_t>& validation_errors)
-    : window_(window), options_(options), capabilities_(capabilities), diagnostics_(diagnostics),
+    : window_(window), options_(options), capabilities_(capabilities),
       validation_errors_(validation_errors) {}
 
 vulkan_device::~vulkan_device() {
@@ -42,13 +42,6 @@ vulkan_device::~vulkan_device() {
 void vulkan_device::initialize() {
     if (!window_ || !options_.max_splats || options_.max_splats > 10000000)
         throw std::runtime_error("invalid renderer window or splat budget (maximum 10 million)");
-
-    const std::size_t scratch =
-        2 * (options_.max_splats * (48 + 8 + 8) + ((options_.max_splats + 255) / 256) * 64);
-    if (scratch > options_.residency_bytes ||
-        options_.max_splats * sizeof(detail::gpu_splat) > options_.residency_bytes - scratch)
-        throw std::runtime_error(
-            "renderer budget cannot hold its configured splat and scratch capacity");
 
     std::uint32_t loader_version = VK_API_VERSION_1_0;
     detail::check(vkEnumerateInstanceVersion(&loader_version), "query Vulkan loader version");
@@ -153,8 +146,6 @@ void vulkan_device::initialize() {
 
     select_physical_device();
     create_logical_device();
-    diagnostics_.scratch_bytes =
-        2 * (options_.max_splats * (48 + 8 + 8) + ((options_.max_splats + 255) / 256) * 64);
 }
 
 void vulkan_device::select_physical_device() {
@@ -173,9 +164,10 @@ void vulkan_device::select_physical_device() {
             candidate_properties.limits.maxStorageBufferRange <
                 options_.max_splats * sizeof(detail::gpu_splat) ||
             candidate_properties.limits.maxComputeWorkGroupSize[1] < 16 ||
+            candidate_properties.limits.maxPushConstantsSize < sizeof(detail::push_parameters) ||
             candidate_properties.limits.maxComputeSharedMemorySize < COMPOSITION_SHARED_BYTES ||
-            candidate_properties.limits.maxPerStageDescriptorStorageBuffers < 6 ||
-            candidate_properties.limits.maxDescriptorSetStorageBuffers < 6 ||
+            candidate_properties.limits.maxPerStageDescriptorStorageBuffers < 10 ||
+            candidate_properties.limits.maxDescriptorSetStorageBuffers < 10 ||
             candidate_properties.limits.maxComputeWorkGroupCount[0] <
                 (options_.max_splats + 255) / 256)
             continue;
@@ -323,55 +315,18 @@ detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes, VkBufferUsageFlag
     return output;
 }
 
-detail::gpu_image vulkan_device::allocate_color_image(VkExtent2D extent, VkFormat format,
-                                                      std::size_t budget) {
-    if (!extent.width || !extent.height || extent.width > properties_.limits.maxImageDimension2D ||
-        extent.height > properties_.limits.maxImageDimension2D)
-        throw std::runtime_error("floating framebuffer extent exceeds device limits");
-    detail::gpu_image output;
-    output.device = device_;
-    auto info = detail::structure<VkImageCreateInfo>(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
-    info.imageType = VK_IMAGE_TYPE_2D;
-    info.format = format;
-    info.extent = {extent.width, extent.height, 1};
-    info.mipLevels = info.arrayLayers = 1;
-    info.samples = VK_SAMPLE_COUNT_1_BIT;
-    info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+VkDeviceSize vulkan_device::buffer_allocation_bytes(buffer_allocation_request request) const {
+    detail::gpu_buffer buffer;
+    buffer.device = device_;
+    auto info = detail::structure<VkBufferCreateInfo>(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
+    info.size = request.bytes;
+    info.usage = request.usage;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    detail::check(vkCreateImage(device_, &info, nullptr, &output.image),
-                  "create floating framebuffer");
+    detail::check(vkCreateBuffer(device_, &info, nullptr, &buffer.buffer),
+                  "query scratch allocation size");
     VkMemoryRequirements requirements{};
-    vkGetImageMemoryRequirements(device_, output.image, &requirements);
-    if (requirements.size > budget)
-        throw std::runtime_error("floating framebuffer exceeds remaining residency budget");
-    std::uint32_t memory_type = memory_properties_.memoryTypeCount;
-    for (std::uint32_t index = 0; index < memory_properties_.memoryTypeCount; ++index)
-        if ((requirements.memoryTypeBits & (1U << index)) &&
-            (memory_properties_.memoryTypes[index].propertyFlags &
-             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-            memory_type = index;
-            break;
-        }
-    if (memory_type == memory_properties_.memoryTypeCount)
-        throw std::runtime_error("no device-local floating framebuffer memory type");
-    auto allocation =
-        detail::structure<VkMemoryAllocateInfo>(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
-    allocation.allocationSize = requirements.size;
-    allocation.memoryTypeIndex = memory_type;
-    detail::check(vkAllocateMemory(device_, &allocation, nullptr, &output.memory),
-                  "allocate floating framebuffer");
-    output.bytes = requirements.size;
-    detail::check(vkBindImageMemory(device_, output.image, output.memory, 0),
-                  "bind floating framebuffer");
-    auto view = detail::structure<VkImageViewCreateInfo>(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
-    view.image = output.image;
-    view.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    view.format = format;
-    view.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    detail::check(vkCreateImageView(device_, &view, nullptr, &output.view),
-                  "create floating framebuffer view");
-    return output;
+    vkGetBufferMemoryRequirements(device_, buffer.buffer, &requirements);
+    return requirements.size;
 }
 
 VkShaderModule vulkan_device::load_shader_module(const std::filesystem::path& shader_directory,
@@ -420,7 +375,7 @@ vulkan_device::create_compute_pipeline(const char* name, VkPipelineLayout pipeli
 }
 
 void vulkan_device::create_descriptor_layout(descriptor_resources& resources) {
-    std::array<VkDescriptorSetLayoutBinding, 6> bindings{};
+    std::array<VkDescriptorSetLayoutBinding, 10> bindings{};
     for (std::uint32_t index = 0; index < bindings.size(); ++index) {
         bindings[index].binding = index;
         bindings[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -436,10 +391,10 @@ void vulkan_device::create_descriptor_layout(descriptor_resources& resources) {
     detail::check(vkCreateDescriptorSetLayout(device_, &layout, nullptr, &resources.layout),
                   "create scene descriptor layout");
 
-    VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 24};
+    VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 80};
     auto pool = detail::structure<VkDescriptorPoolCreateInfo>(
         VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO);
-    pool.maxSets = 4;
+    pool.maxSets = 8;
     pool.poolSizeCount = 1;
     pool.pPoolSizes = &size;
     detail::check(vkCreateDescriptorPool(device_, &pool, nullptr, &resources.scene_pool),
