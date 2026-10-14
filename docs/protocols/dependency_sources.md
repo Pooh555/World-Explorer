@@ -58,3 +58,11 @@ that graph or other platforms. The observed FFmpeg enables GPL/version3 features
 so it cannot be represented as the proposed minimal LGPL release build. Metric
 package, backbone and learned linear-weight rights remain separate from numerical
 parity and their existing installed/downloaded byte identities.
+
+The [selected runtime supplement](runtime_dependencies.md) now binds controlled
+Linux loader contexts, ELF fingerprints/edges, package ownership/notices and
+interpreter metadata. The same checker validates its tracked structure and,
+with `--local-evidence`, raw receipt and current payloads. That local check streams
+ELF files using separate 4-GiB per-file / 16-GiB aggregate limits. Lazy plugins,
+actual Python imports/GPU execution, original source archives and rights remain
+unqualified; this does not upgrade the earlier source/notice audit's scope.

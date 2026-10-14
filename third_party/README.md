@@ -48,6 +48,15 @@ not the proposed minimal LGPL release build. The release-vcpkg graph remains
 unresolved; this inventory grants no redistribution clearance. See the
 [protocol](../docs/protocols/dependency_sources.md) for scope and checks.
 
+The [runtime supplement](runtime-audit-20261014.json) records fifteen selected
+Linux loader contexts, 213 ELF fingerprints, 123 system package owners and 96
+notice files. Its [selection](runtime-selection-20261014.json) pins roots and
+explicit extension library paths. The existing local inventory check now rehashes
+those ELF/notice/interpreter bytes against the raw receipt. This observes controlled
+loader contexts; actual Python imports, lazy GPU/ICD/provider/codec loading,
+original archives and source/bundled rights remain unqualified.
+[Runtime protocol](../docs/protocols/runtime_dependencies.md).
+
 `workers/gsplat/fit.py` adapts initialization/settings from the pinned gsplat
 example. The upstream attribution is Copyright 2025 Nerfstudio Team; the complete
 license is retained. This development recipe does not use learned checkpoints,

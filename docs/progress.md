@@ -299,14 +299,25 @@ System FFmpeg is GPL-enabled, differing from the proposed LGPL release profile.
 242/242 explicit C++23 CPU CTest**. No production sources or environments changed,
 no gate upgraded; current saved reconstruction state is reconciled above.
 
-Next executable task: M1 native/worker runtime dependency closure (§6.2/§7.3).
-Start with `readelf -d build/dev/we_viewer` and the selected FFmpeg/worker extension
-ELF dependencies; identify actual libraries, interpreter/CUDA runtime selections,
-package/source/notice evidence and unresolved transitive components. Extend the
-[dated gap inventory](../third_party/dependency-audit-20261014.json) with a new
-checked receipt; preserve original archives/rights as unqualified where absent.
-Do not install, download models, rerun completed fits or retry sample_2 unchanged.
-Current inventory check: `python3 tools/check_dependency_manifest.py --local-evidence`.
+[Selected Linux runtime audit](validation/2026-10-14-runtime-dependencies.md):
+**15 roots / 213 ELF files / 123 system packages / 96 system notices**, with
+three local interpreter metadata/notice associations and exact worker ELF/RECORD
+checks. A corrected loader SONAME observer resolves all selected-context edges;
+initial false missing-loader results are retained. The manifest checker validates
+complete graphs and rehashes current ELF/notice/interpreter bytes. **13 new / 92
+worker cases** pass on Python 3.10/3.12/3.14; **260/260 dev / 242/242 C++23 CPU
+CTest**. All **2,088 protected / 94 src/include files** unchanged. Source/rights,
+actual import order and lazy driver/plugins remain unqualified; no gate upgrade,
+installation, solver/fit or GPU/UI rerun.
+
+Next executable task: M1 actual backend import and driver/plugin binding
+observation (§6.2/§7.3). Use isolated short-lived, offline diagnostic processes for
+the selected backend imports and viewer capability path; capture mapped-library
+identities and distinguish actual observations from the recorded loader contexts.
+Do not load checkpoints, download models, run optimizers, start video jobs or
+retry sample_2 unchanged. Keep source archives, transitive terms and unobserved
+lazy paths explicitly unqualified. Start with the [runtime selection and protocol](protocols/runtime_dependencies.md).
+Current audit check: `python3 tools/check_dependency_manifest.py --local-evidence`.
 
 For these videos, use the working sample_1 view below; preserve
 sample_2's failed stages until replacement footage or a qualified pose recovery
