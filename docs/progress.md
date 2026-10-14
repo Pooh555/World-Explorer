@@ -271,16 +271,26 @@ pass. All 94 tracked src/include files retain parent bytes. Mutation length reac
 all parser behavior, other platforms or a full gate. [Protocol](protocols/fuzzing.md)
 gives reproducible campaign and crash-retention commands.
 
-Next executable task: M1/E1 bounded transaction fuzzing (§7.3). Add a second
-opt-in target in the existing isolated `fuzz` preset for `scene_store::commit`,
-using only fresh synthetic chunks and bounded operation/input/replay budgets.
-Exercise create/replace/delete/transform, invalid enums/numerics/IDs/base/epoch,
-corrected retries and repeated operation IDs. Check failed admission preserves
-caller chunks, snapshots and retry receipts; successful commits validate and
-remain immutable. Run a fixed-duration native ASan/UBSan/LeakSanitizer campaign,
-record source/seed identities and actual limits/executions, retain crashes and
-reproduce any failure deterministically before repair. Keep normal builds,
-coverage and TSan separate. Never feed private media or saved jobs to targets.
+[Bounded scene transaction fuzzing](validation/2026-10-14-transaction-fuzz.md):
+second isolated Clang C++26 target, 44 synthetic bytecode seeds and bounded
+commit/replay/receipt/snapshot budgets. A native **60-second campaign executes
+30,251 inputs**, **308 MiB peak RSS**, zero crashes/reported ASan/UBSan/LeakSanitizer
+errors; caller aliases, immutable history, failed admission, corrected/repeated
+operations and replay limits checked. **257/257 dev / 239/239 C++23 CPU checks**,
+format/tidy/docs and **2,393 protected / 94 src/include files unchanged**.
+Sandbox LeakSanitizer ptrace failure is retained separately; native runs keep
+leak detection. No production/reconstruction/environment changes or gate pass.
+
+Next executable task: M1/E1 bounded scene-bundle fuzzing (§7.3). Add a third
+opt-in target in the isolated `fuzz` preset for `load_scene_bundle`, starting
+only from fresh synthetic manifests/indexes/chunks with bounded file/count/byte
+budgets. Mutate schema, checksums, path references and binary counts; include
+rehashed payload corruption to reach admission beyond checksum rejection.
+Check loader admission preserves caller files and successful snapshots validate.
+Use an exclusive ignored scratch directory and fixed-duration native
+ASan/UBSan/LeakSanitizer campaign; retain crashes and reproduce any failure
+deterministically before repair. Keep coverage/TSan/normal builds separate;
+never feed private media or saved jobs to targets.
 
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
