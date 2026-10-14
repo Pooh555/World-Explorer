@@ -3,7 +3,7 @@
 [Selection](../../third_party/runtime-selection-20261014.json) pins fifteen local
 ELF roots: viewer/CLI, FFmpeg/ffprobe, system Python, three worker interpreter
 entries and seven selected worker extensions. The
-[summary](../../third_party/runtime-audit-20261014.json) records normalized paths,
+[current summary](../../third_party/runtime-audit-20261015.json) records normalized paths,
 byte identities, DT_NEEDED/RPATH/RUNPATH/SONAME metadata, loader resolutions,
 dependency edges, system ownership/notices and local interpreter metadata.
 The full raw receipt and command outputs stay ignored under `artifacts/`.
@@ -72,3 +72,9 @@ The separate [observed mapping supplement](backend_bindings.md) now checks fixed
 backend imports and an empty native viewer. It retains its own execution contexts,
 raw/source identities and exclusions; it does not retroactively expand this
 loader receipt or qualify every lazy path.
+
+The [15 October refresh](../validation/2026-10-15-runtime-refresh.md) captures
+current snappy/zlib bytes and package metadata with unchanged selected root pins.
+The active manifest points to fresh loader/mapping/owner records. The original
+14 October summary and raw receipt remain historical; checking them against
+current system bytes still reproduces their recorded failure.

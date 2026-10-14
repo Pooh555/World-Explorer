@@ -331,16 +331,26 @@ manifest check now fails **2**: system snappy **1.2.2-3→1.3.1-1** removed the 
 library path and zlib **1:1.3.2-3→1:1.3.2-4** changed recorded bytes. Old receipts
 retain their historical identities; new associations do not conceal this drift.
 
-Next executable task: M1 fresh runtime evidence for the observed system changes.
-First run the existing controlled loader selection into a new receipt:
-`python3 tools/audit_runtime_dependencies.py --selection third_party/runtime-selection-20261014.json --output artifacts/validation/runtime-refresh-20261015/runtime-current.json --require-resolved`.
-Compare it with the retained loader receipt and
-`artifacts/validation/binding-owners-20261015/current-payload-drift.json`; then
-recapture the affected backend/viewer mapping contexts before superseding active
-system pins. Preserve old failed evidence and all saved runs. No installs,
-checkpoint/model loading, optimizer/video jobs or unchanged sample_2 retries.
-Current scoped ownership check:
-`python3 tools/audit_binding_owners.py --summary third_party/binding-owners-20261015.json --local-evidence`.
+[Runtime refresh](validation/2026-10-15-runtime-refresh.md) restores the active
+full local check after actual fresh captures: **15 roots / 213 loader ELF files /
+zero unresolved edges**, **five contexts / 208 mapped ELF files**, **137 unchanged
+owner targets / 30 notices**. Only snappy/zlib differ; all root pins, earlier
+summaries/raw receipts and **2,088 protected / 94 src/include files** are unchanged.
+Native empty viewer completes **900 frames / zero Vulkan errors**; training sees
+one CUDA device without PyTorch CUDA-context initialization. **260 dev / 242
+C++23 CPU checks**, including **133 worker cases** each, pass. Old manifest still
+fails **2**; active `python3 tools/check_dependency_manifest.py --local-evidence`
+passes **0**, strict closure remains **3**. No source/environment/fit changes or
+gate upgrade.
+
+Next executable task: M1 read-only verification of the completed replacement
+sample_3's retained native/reference/holdout evidence. Start with
+`artifacts/sample_3/logs/validation/{viewer.log,reference.log,holdout.json,pairs.json}`
+and bind them to the current source, fit and **648,332-splat** scene identities.
+Check existing data before generating more; report actual scope and per-frame
+results without upgrading Q/P/N/E gates. Preserve both completed scenes and all
+failed stages. No refitting, solver reruns, model downloads or unchanged sample_2
+retries; prescribed ≤250k fixture/platform/reference qualification stays open.
 
 [Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
 latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /

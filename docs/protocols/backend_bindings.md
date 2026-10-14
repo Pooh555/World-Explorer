@@ -1,6 +1,6 @@
 # Observed Linux backend and viewer mappings
 
-The [summary](../../third_party/backend-bindings-20261015.json) supplements the
+The [current summary](../../third_party/backend-bindings-refresh-20261015.json) supplements the
 [loader audit](runtime_dependencies.md) with actual fixed backend imports and an
 empty native viewer. Its five observations preserve profile, native/sandbox
 context, module versions, CUDA availability, exclusions and mapped ELF hashes.
@@ -11,8 +11,8 @@ established by a mapped-file observation.
 From the repository root:
 
 ```sh
-python3 tools/check_backend_bindings.py
-python3 tools/check_backend_bindings.py --local-evidence
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-refresh-20261015.json
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-refresh-20261015.json --local-evidence
 python3 tools/check_dependency_manifest.py --local-evidence
 ```
 
@@ -82,3 +82,9 @@ scene fidelity or reference performance. The tested viewer's generic
 The [installed owner supplement](binding_owners.md) associates the 137 newly
 observed ELF files with current worker/system metadata and notice bytes. It checks
 that subset independently; it does not upgrade stale overlapping runtime evidence.
+
+The [fresh capture](../validation/2026-10-15-runtime-refresh.md) re-observes all
+five contexts with current zlib bytes. The comparison baseline intentionally
+remains the historical loader summary, so the changed overlap is explicit.
+The tool's original default summary remains available for historical replay;
+use the explicit current path above or the active dependency-manifest check.

@@ -1,6 +1,6 @@
 # Installed ownership of newly observed libraries
 
-[Owner summary](../../third_party/binding-owners-20261015.json) associates the
+[Current owner summary](../../third_party/binding-owners-refresh-20261015.json) associates the
 **137 `baseline_unseen` ELF files** from the [mapping supplement](backend_bindings.md)
 with installed worker distributions or system packages. The preceding loader and
 mapping receipts remain historical, independently bound records. This supplement
@@ -11,11 +11,12 @@ From the repository root, using a fresh ignored output:
 
 ```sh
 python3 tools/audit_binding_owners.py \
+  --mapping third_party/backend-bindings-refresh-20261015.json \
   --output artifacts/binding-owners/run-001.json
 python3 tools/audit_binding_owners.py \
-  --summary third_party/binding-owners-20261015.json
+  --summary third_party/binding-owners-refresh-20261015.json
 python3 tools/audit_binding_owners.py \
-  --summary third_party/binding-owners-20261015.json --local-evidence
+  --summary third_party/binding-owners-refresh-20261015.json --local-evidence
 python3 tools/check_dependency_manifest.py
 ```
 
@@ -61,3 +62,7 @@ local check pass if old system paths/bytes have drifted. On 15 October, the old
 snappy path is absent and zlib's bytes differ; the [evidence](../validation/2026-10-15-binding-owners.md)
 retains those failures. Fresh runtime observations must be recorded before
 superseding any affected active pins. No old failure is rewritten as a pass.
+
+The [runtime refresh](../validation/2026-10-15-runtime-refresh.md) now supplies
+those fresh observations. Active full local checking passes with its new records;
+the old summaries and raw receipts remain available with their historical scope.
