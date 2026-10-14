@@ -237,16 +237,29 @@ sanitizer cases and format/tidy/docs pass. **2,393 protected files unchanged**;
 only the batch adapter's production source changes. No reconstruction/GPU rerun
 or recipe/schema/environment/scope changes; synthetic completion is diagnostic.
 
-Next executable task: M1/E1 scene bundle admission. Inspect
-`build/coverage/coverage/run-7k6ap09k/html/` and `export.json` for
-`src/scene_store/bundle.cpp` (65 uncovered branch outcomes). Extend public bundle
-cases around `tests/unit/contracts_tests.cpp` with fresh tiny synthetic scenes:
-rehashed malformed manifests/indexes/payloads, path/coordinate/provenance checks,
-exact byte/count limits and failed publication. Verify exact errors, complete
-caller-file preservation and retained immutable snapshots; a corrected retry
-must preserve previous valid published assets. Keep original Q/E thresholds,
-bundle/benchmark scope and platform limits; do not open or rewrite saved scenes.
-Use fresh output directories and remeasure without excluding error paths.
+[Scene bundle/PLY admission](validation/2026-10-14-bundle-admission.md): **13
+synthetic cases / 8,467 assertions** check rehashed packages, exact budgets,
+failed publication/repair, caller files, retained snapshots and SH degrees 0–3.
+LF/CRLF regressions expose undercounted PLY headers; raw-byte/remaining-budget
+reads repair the limit, including carriage-return-heavy lines. Bundle/PLY branches
+**94.59%**; core **90.03% line / 81.65% branch**, package/update **90.78% branch**.
+The strict CPU target now passes the unchanged goals. **239/239 coverage CPU /
+257/257 dev / 239/239 explicit C++23 CPU CTest**, 13 native sanitizer cases and
+format/tidy/docs pass. **2,393 protected files unchanged**; only `bundle.cpp`
+changes in production. No reconstruction/GPU rerun or recipe/schema/environment/
+scope changes. CPU coverage alone does not qualify E1 or complete M1.
+
+Next executable task: M1/E1 bounded parser fuzzing (§7.3). There are no existing
+fuzz targets. Add an opt-in isolated Clang CPU libFuzzer + ASan/UBSan target for
+`load_gsplat_ply`, with small synthetic SH0–3/LF/CRLF seeds, bounded input/header/
+scene budgets and a dedicated ignored scratch/corpus directory under `build/`
+or `artifacts/`. The local Clang 23 runtime resolves to
+`/usr/lib/clang/23/lib/linux/libclang_rt.fuzzer-x86_64.a`; it has not been exercised.
+Keep this separate from normal builds, coverage and TSan. Run a fixed-duration
+native campaign, record actual executions/limits/source and seed identities,
+retain crashes, and promote any failure into a deterministic regression before
+repairing it. Do not claim fuzz verification from configuration alone or change
+coverage/quality thresholds. Never feed private media or saved jobs to the target.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.

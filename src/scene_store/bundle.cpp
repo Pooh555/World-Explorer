@@ -256,18 +256,20 @@ void expect(const json& object, const char* key, const char* value) {
 std::span<const std::byte> as_bytes(const std::string& text) {
     return std::as_bytes(std::span(text.data(), text.size()));
 }
-bool bounded_line(std::istream& input, std::string& line, std::size_t limit) {
+bool bounded_line(std::istream& input, std::string& line, std::size_t limit, std::size_t& bytes) {
     line.clear();
+    bytes = 0;
     char character{};
     while (input.get(character)) {
+        if (bytes == limit)
+            throw std::runtime_error("PLY line exceeds length limit");
+        ++bytes;
         if (character == '\n')
             return true;
-        if (line.size() == limit)
-            throw std::runtime_error("PLY line exceeds length limit");
         if (character != '\r')
             line.push_back(character);
     }
-    return !line.empty();
+    return bytes != 0;
 }
 } // namespace
 result<void> write_bundle(const std::filesystem::path& directory, const scene_snapshot& snapshot) {
@@ -435,15 +437,13 @@ result<scene_snapshot> load_gsplat_ply(const std::filesystem::path& path, scene_
         if (!input)
             return fail(error_code::IO_ERROR, "cannot open PLY input");
         std::string line;
-        std::size_t header_bytes{}, count{};
+        std::size_t header_bytes{}, line_bytes{}, count{};
         bool ascii{}, exporter{}, color{}, vertices{}, header_done{};
         std::vector<std::string> properties;
-        if (!bounded_line(input, line, limits.max_ply_header_bytes) || line != "ply")
+        if (!bounded_line(input, line, limits.max_ply_header_bytes, header_bytes) || line != "ply")
             throw std::runtime_error("missing PLY magic");
-        while (bounded_line(input, line, limits.max_ply_header_bytes)) {
-            header_bytes += line.size() + 1;
-            if (header_bytes > limits.max_ply_header_bytes)
-                throw std::runtime_error("PLY header exceeds budget");
+        while (bounded_line(input, line, limits.max_ply_header_bytes - header_bytes, line_bytes)) {
+            header_bytes += line_bytes;
             if (line == "end_header") {
                 header_done = true;
                 break;
@@ -524,7 +524,7 @@ result<scene_snapshot> load_gsplat_ply(const std::filesystem::path& path, scene_
                                  std::numeric_limits<double>::infinity()};
         chunk->bounds.maximum = chunk->bounds.minimum * (-1);
         for (std::size_t row = 0; row < count; ++row) {
-            if (!bounded_line(input, line, 16384))
+            if (!bounded_line(input, line, 16384, line_bytes))
                 throw std::runtime_error("truncated PLY vertices");
             std::istringstream values(line);
             values.imbue(std::locale::classic());
@@ -575,7 +575,7 @@ result<scene_snapshot> load_gsplat_ply(const std::filesystem::path& path, scene_
                                      std::max(chunk->bounds.maximum.z, splat.mean[2] + radius)};
             chunk->splats.push_back(splat);
         }
-        while (bounded_line(input, line, 16384))
+        while (bounded_line(input, line, 16384, line_bytes))
             if (line.find_first_not_of(" \t\r") != std::string::npos)
                 throw std::runtime_error("trailing PLY data");
         auto state = std::make_shared<scene_state>();
