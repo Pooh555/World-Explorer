@@ -201,28 +201,93 @@ TEST_CASE("worker START and CANCEL encoding enforce bounded structured arguments
                                     std::vector<std::string>(9, std::string(4096, 'x'))));
 }
 
+TEST_CASE("worker completion observers require actual regular-file size and checksum validation",
+          "[worker_validation][worker_manifest]") {
+    temporary_worker worker;
+    const auto script = worker.directory / "synthetic-manifest.py";
+    const auto artifact = worker.directory / "manifest.json";
+    const auto mode = GENERATE("valid", "missing", "directory", "size", "hash", "growing");
+    std::ofstream file(script);
+    file
+        << "import sys, hashlib\nfrom pathlib import Path\nsys.path.insert(0, "
+        << nlohmann::json(WE_TEST_PROTOCOL_MODULE).dump()
+        << ")\nimport we_protocol as p\n"
+           "p.configure(sys.argv,backend='synthetic_manifest',backend_version='1',"
+           "sensors=['diagnostic'],devices=['cpu'],checkpoint_semantics='none',"
+           "checkpoint_rights='synthetic',limits={'max_frames':120,'max_source_bytes':1024,"
+           "'max_output_bytes':1024})\n"
+           "mode=sys.argv[1]; path=Path(sys.argv[2]); data=b'{}'\n"
+           "if mode == 'directory': path.mkdir()\n"
+           "elif mode != 'missing': path.write_bytes(data + (b'x' if mode == 'growing' else b''))\n"
+           "writer=p.WRITER; builder=writer.runtime.Builder(512)\n"
+           "reference=writer.table(builder,'artifact_reference',{'Path':builder.CreateString(str("
+           "path)),"
+           "'Sha256':builder.CreateString('0'*64 if mode == 'hash' else "
+           "hashlib.sha256(data).hexdigest()),"
+           "'Bytes':3 if mode == 'size' else 2})\n"
+           "body=writer.table(builder,'completed',{'Stage':builder.CreateString('synthetic'),"
+           "'Artifact':reference})\nwriter.write(builder,'completed',body)\n";
+    file.close();
+    std::string log;
+    std::size_t completions{};
+    const auto result = execute_worker_protocol(
+        WE_TEST_PYTHON, script, {mode, artifact.string()}, {},
+        [&](const std::string& message) { log += message; },
+        [&](const worker_event& event) {
+            completions += std::holds_alternative<worker_completed>(event) ? 1U : 0U;
+        });
+    INFO(log);
+    if (std::string_view(mode) == "valid") {
+        REQUIRE(result);
+        CHECK(*result == 0);
+        CHECK(completions == 1);
+    } else {
+        REQUIRE(!result);
+        CHECK(result.error().code == error_code::INVALID_DATA);
+        CHECK(completions == 0);
+        const bool invalid_file =
+            std::string_view(mode) == "missing" || std::string_view(mode) == "directory";
+        CHECK(result.error().message ==
+              (invalid_file ? "Worker completion manifest must be a regular file"
+                            : "Worker completion manifest checksum/size mismatch"));
+    }
+    CHECK(log.find("Worker accepted START.") != std::string::npos);
+}
+
+TEST_CASE("worker invocation rejects invalid START before launching a process",
+          "[worker_validation]") {
+    temporary_worker worker;
+    const auto result = execute_worker_protocol(
+        WE_TEST_PYTHON, worker.directory / "never-created.py", {""}, {}, {});
+    REQUIRE(!result);
+    CHECK(result.error().code == error_code::INVALID_ARGUMENT);
+}
+
 TEST_CASE("worker event sessions and command acknowledgements cannot be spoofed or reordered") {
     worker_stream_decoder decoder{std::string(SESSION)};
+    const auto start = [&] {
+        REQUIRE(decoder.feed(handshake_frame(), {}));
+        decoder.expect_start();
+        REQUIRE(decoder.feed(acknowledgement_frame(), {}));
+    };
     SECTION("wrong session") {
         worker_stream_decoder other{std::string(64, 'b')};
         CHECK_FALSE(other.feed(handshake_frame(), {}));
-        return;
     }
-    REQUIRE(decoder.feed(handshake_frame(), {}));
     SECTION("unsolicited START acknowledgement") {
+        REQUIRE(decoder.feed(handshake_frame(), {}));
         CHECK_FALSE(decoder.feed(acknowledgement_frame(), {}));
-        return;
     }
     SECTION("completion before START") {
+        REQUIRE(decoder.feed(handshake_frame(), {}));
         CHECK_FALSE(decoder.feed(completion_frame(1), {}));
-        return;
     }
-    decoder.expect_start();
-    REQUIRE(decoder.feed(acknowledgement_frame(), {}));
     SECTION("unsolicited CANCEL acknowledgement") {
+        start();
         CHECK_FALSE(decoder.feed(acknowledgement_frame(2, wire::command_kind::CANCEL), {}));
     }
     SECTION("acknowledged cancellation and duplicate replies") {
+        start();
         decoder.expect_cancel();
         REQUIRE(decoder.feed(acknowledgement_frame(2, wire::command_kind::CANCEL), {}));
         REQUIRE(decoder.feed(acknowledgement_frame(3, wire::command_kind::CANCEL), {}));

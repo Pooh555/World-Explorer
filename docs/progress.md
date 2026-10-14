@@ -148,14 +148,26 @@ and operation enums now fail admission without changing snapshots/retry receipts
 The reviewed scope includes compiled platform code and all seven CPU libraries;
 this does not qualify native UI, inactive platform branches or full E1/M1.
 
-Next executable task: M1/E1 worker-envelope validation regressions. Run
-`cmake --build --preset coverage --target we_coverage_report`, inspect the printed
-HTML/JSON for `src/reconstruction_adapters/worker_protocol.cpp` (84 uncovered
-branch outcomes in this measurement), and extend `tests/unit/worker_protocol_tests.cpp`
-for uncovered malformed-envelope, session/order, progress and acknowledgement
-rejection paths. Preserve production protocol semantics and thresholds; remeasure
-both groups, then use remaining durable-map/asset admission gaps for the next
-regressions. No error-path or platform exclusion to obtain a pass.
+[Worker envelope/completion validation](validation/2026-10-14-worker-envelope.md)
+adds 16 synthetic cases and repairs early-return Catch section discovery (one →
+14 actual assertions). Native manifest admission checks exact error and completion
+observer suppression. Worker branches reach **97.20%**, core **87.04% line /
+71.61% branch**, whole package/update **74.25% branch**; its 90% goal remains
+unmet. **133/133 coverage CPU / 151/151 dev CTest**, 17 focused native
+ASan/UBSan/LeakSanitizer cases, format/tidy/docs pass; **2,393 protected files
+unchanged**. Production/worker/schema/recipe/environment/scope are unchanged.
+No user reconstruction/GPU rerun or full gate certification.
+
+Next executable task: M1/E1 durable-map configuration/checkpoint admission.
+Run `cmake --build --preset coverage --target we_coverage_report`, inspect the
+printed HTML/JSON for `src/map_store/map_persistence.cpp` (78 uncovered branch
+outcomes) and `src/map_store/map_codec.cpp` (63). Extend
+`tests/unit/persistent_map_tests.cpp` with invalid configuration and rehashed
+malformed checkpoint/recovery cases through public map-store commands. Use fresh
+synthetic temporary stores; verify caller directories, committed manifest/RAM
+snapshots and retry receipts survive rejection. Preserve byte/count/schema,
+platform and coverage limits, then remeasure both groups. Do not touch retained
+sample maps, run duplicate solves/fits or exclude error/platform paths to pass.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
