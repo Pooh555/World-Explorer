@@ -20,8 +20,17 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(WE_BUILD_VIEWER "Build the native SDL/Vulkan viewer" ON)
 option(WE_SYSTEM_DEVELOPMENT_DEPS "Use measured local system libraries (not release qualification)" OFF)
+option(WE_COVERAGE "Instrument first-party CPU targets with Clang source coverage" OFF)
 
 set(WE_SANITIZER "" CACHE STRING "GNU/Clang sanitizer set, thread is separate from address")
+
+if(WE_COVERAGE)
+  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR WE_BUILD_VIEWER OR NOT BUILD_TESTING OR WE_SANITIZER)
+    message(FATAL_ERROR "WE_COVERAGE requires Clang, BUILD_TESTING, WE_BUILD_VIEWER=OFF and no sanitizer")
+  endif()
+  find_program(WE_LLVM_COV NAMES llvm-cov REQUIRED)
+  find_program(WE_LLVM_PROFDATA NAMES llvm-profdata REQUIRED)
+endif()
 
 find_package(Threads REQUIRED)
 message(STATUS "Required C++${WE_CXX_STANDARD} APIs: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})")
@@ -46,6 +55,11 @@ include(cmake/dependencies.cmake)
 function(we_target target)
   target_include_directories(${target} PUBLIC "${PROJECT_SOURCE_DIR}/include")
   target_compile_features(${target} PUBLIC cxx_std_${WE_CXX_STANDARD})
+
+  if(WE_COVERAGE)
+    target_compile_options(${target} PRIVATE -fprofile-instr-generate -fcoverage-mapping -fprofile-update=atomic)
+    target_link_options(${target} PRIVATE -fprofile-instr-generate)
+  endif()
 
   if(WIN32)
     target_compile_definitions(${target} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
@@ -268,4 +282,27 @@ if(BUILD_TESTING)
 
   add_test(NAME worker_integration COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tests/integration -p "worker*_test.py" -v)
   set_tests_properties(worker_integration PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;worker")
+  add_test(NAME coverage_reporting COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tests/tools -p "coverage_test.py" -v)
+  set_tests_properties(coverage_reporting PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;tooling")
+
+  if(WE_COVERAGE)
+    set(WE_COVERAGE_OBJECTS)
+    foreach(target core reconstruction_adapters map_store scene_store navigation application render_core)
+      list(APPEND WE_COVERAGE_OBJECTS --object $<TARGET_FILE:${target}>)
+    endforeach()
+    foreach(mode report check)
+      set(enforce)
+      if(mode STREQUAL "check")
+        set(enforce --enforce)
+      endif()
+      add_custom_target(we_coverage_${mode}
+        COMMAND ${Python3_EXECUTABLE} "${PROJECT_SOURCE_DIR}/tools/measure_coverage.py"
+          --build-dir "${PROJECT_BINARY_DIR}" --binary $<TARGET_FILE:we_core_tests>
+          --ctest "${CMAKE_CTEST_COMMAND}" --llvm-cov "${WE_LLVM_COV}"
+          --llvm-profdata "${WE_LLVM_PROFDATA}" --compiler "${CMAKE_CXX_COMPILER}"
+          ${WE_COVERAGE_OBJECTS} ${enforce}
+        DEPENDS we_core_tests
+        USES_TERMINAL VERBATIM)
+    endforeach()
+  endif()
 endif()

@@ -14,6 +14,7 @@ Read by task; do not load the entire directory for routine work.
 | Find historical results | [Validation index](validation/README.md); reports preserve their original scope |
 | Understand a consequential choice | [Decision records](adr/) |
 | Build/use the application | Repository [README](../README.md) |
+| Measure CPU contract coverage | [Coverage protocol](protocols/coverage.md), reviewed [scope](../tools/coverage_scope.json) |
 
 Current state belongs in progress/requirements; historical measurements belong in
 validation reports. Protocols describe implemented behavior, not planned capability.

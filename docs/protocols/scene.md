@@ -23,6 +23,8 @@ classification. A present `source_kind` is authoritative.
 `scene_store` copies mutable producer chunks into immutable revisions. Transactions
 have scene ID, world epoch, base/new revision and idempotent operation ID. Creates,
 replacements, deletes, transforms and geometry invalidation publish atomically.
+Unknown operation kinds and scale statuses are rejected before publication;
+rejected transactions do not consume their operation ID or alter retry receipts.
 Transforms invalidate derived geometry and record the source pose revision.
 Wrong base/epoch fails without changing visible state. A bounded replay window
 returns a current snapshot with base/new revisions; older requests need full resync.

@@ -24,6 +24,12 @@ build/dev/we_viewer
 `release-vcpkg` is an unqualified release dependency configuration, not a certified
 package. Native Windows/macOS viewer and release profiles remain unqualified.
 
+`coverage` keeps C++26 in an isolated Clang CPU build. After building it, run
+`cmake --build --preset coverage --target we_coverage_report` for fresh-test LLVM
+line/branch reports and separate package/update coverage. The
+[coverage protocol](docs/protocols/coverage.md) defines exclusions, saved evidence
+and `we_coverage_check`, which enforces the unchanged E1 coverage thresholds.
+
 The `native-builds` workflow checks the explicit C++23 CPU profile with GCC 13
 and Clang 19/libstdc++ 13 on Ubuntu, MSVC with the runner's OpenSSL SDK on Windows,
 and LLVM 20 with its matching libc++ and Homebrew OpenSSL on macOS. Selecting
