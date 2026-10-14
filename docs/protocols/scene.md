@@ -40,6 +40,13 @@ Chunk payloads are presently uncompressed. No general archive extraction is offe
 The controlling byte layout is the paired reader/writer in `bundle.cpp`; this
 development format has not passed cross-platform schema qualification.
 
+The gsplat PLY interchange reader accepts the explicit gsplat-1.5.3/srgb ASCII
+profile, SH degrees 0–3 and reordered named float columns. Its header byte budget
+includes the magic line and all raw bytes, including CRLF line endings. Vertex
+and trailing lines are bounded to 16,384 raw bytes each; carriage returns cannot
+bypass either limit. Log scales, opacity logits and channel-major SH input are
+decoded into the canonical runtime representation before validation.
+
 Publication writes and flushes immutable assets before replacing the manifest.
 The old scene survives rejected publication. Local filesystem atomic rename and
 fsync semantics are assumed; network filesystems are unqualified. Package writes
