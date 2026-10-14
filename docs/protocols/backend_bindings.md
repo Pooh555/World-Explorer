@@ -78,3 +78,7 @@ of a loaded backing file; it does not prove symbol binding, plugin selection,
 relocated/private memory contents, every lazy kernel/provider/codec path, rendered
 scene fidelity or reference performance. The tested viewer's generic
 `fixture: user-selected` output is labeled **empty viewer** in this evidence.
+
+The [installed owner supplement](binding_owners.md) associates the 137 newly
+observed ELF files with current worker/system metadata and notice bytes. It checks
+that subset independently; it does not upgrade stale overlapping runtime evidence.

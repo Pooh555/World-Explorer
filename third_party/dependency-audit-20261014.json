@@ -213,6 +213,7 @@
     {"bytes": 1075, "kind": "tracked", "path": "third_party/notices/json-LICENSE.txt", "sha256": "c0d068392ea65358b798b8c165103560f06e9e3b38c4ab4e2d8810a7b931af86"},
     {"bytes": 1132, "kind": "tracked", "path": "third_party/notices/triton-3.0.0-LICENSE.txt", "sha256": "92640fb97222fd0a698ff28ce0c3782c172623f8d6c609b557636a80f28fb946"},
     {"bytes": 99980, "kind": "tracked", "path": "third_party/backend-bindings-20261015.json", "sha256": "2f15958705976ebad9ac342eeaa2fa08024cffb18f5bdb7e8d1a3f13348f5ba2"},
+    {"bytes": 56508, "kind": "tracked", "path": "third_party/binding-owners-20261015.json", "sha256": "fa8e07762276bb6fb8e7844e33570268be29371c79739b82102efa175d3d984a"},
     {"bytes": 448755, "kind": "tracked", "path": "third_party/runtime-audit-20261014.json", "sha256": "c08e86dab78ae10fd437fbf2b44d5f13969595bac5982d1f23bb5d034ffb6ca3"},
     {"bytes": 7381, "kind": "tracked", "path": "third_party/runtime-selection-20261014.json", "sha256": "b474a78226070b729fb64c38c42b36385f17510e725488f9058faee9be509cbd"},
     {"bytes": 166, "kind": "tracked", "path": "vcpkg-configuration.json", "sha256": "19a3d9bbfcb9fca64f6413c113461cfee80608a08e91261a306eba8a1a2dc691"},
@@ -360,6 +361,7 @@
       ]
     }
   ],
+  "binding_owners_summary": "third_party/binding-owners-20261015.json",
   "backend_bindings_summary": "third_party/backend-bindings-20261015.json",
   "runtime_summary": "third_party/runtime-audit-20261014.json"
 }

@@ -14,6 +14,7 @@ Read by task; do not load the entire directory for routine work.
 | Check selected dependency provenance gaps | [Source/archive/notice inventory](protocols/dependency_sources.md) |
 | Capture/check selected Linux ELF dependencies | [Runtime dependency receipts](protocols/runtime_dependencies.md) |
 | Check actual backend imports / owned viewer mappings | [Observed Linux mappings](protocols/backend_bindings.md) |
+| Check newly mapped owners and installed notices | [Installed owner associations](protocols/binding_owners.md) |
 | Find historical results | [Validation index](validation/README.md); reports preserve their original scope |
 | Understand a consequential choice | [Decision records](adr/) |
 | Build/use the application | Repository [README](../README.md) |
