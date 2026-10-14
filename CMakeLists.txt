@@ -21,8 +21,26 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(WE_BUILD_VIEWER "Build the native SDL/Vulkan viewer" ON)
 option(WE_SYSTEM_DEVELOPMENT_DEPS "Use measured local system libraries (not release qualification)" OFF)
 option(WE_COVERAGE "Instrument first-party CPU targets with Clang source coverage" OFF)
+option(WE_FUZZING "Build isolated Clang libFuzzer parser diagnostics" OFF)
 
 set(WE_SANITIZER "" CACHE STRING "GNU/Clang sanitizer set, thread is separate from address")
+
+if(WE_FUZZING)
+  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR MSVC OR WE_BUILD_VIEWER OR WE_COVERAGE
+     OR BUILD_TESTING OR NOT WE_SANITIZER STREQUAL "address,undefined")
+    message(FATAL_ERROR "WE_FUZZING requires Clang, WE_BUILD_VIEWER=OFF, BUILD_TESTING=OFF, WE_COVERAGE=OFF and WE_SANITIZER=address,undefined; TSan is separate")
+  endif()
+  try_compile(WE_FUZZ_RUNTIME
+    SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/feature_probes/fuzzer.cpp"
+    CXX_STANDARD ${WE_CXX_STANDARD}
+    CXX_STANDARD_REQUIRED ON
+    COMPILE_DEFINITIONS -fsanitize=fuzzer,address,undefined
+    LINK_OPTIONS -fsanitize=fuzzer,address,undefined
+    OUTPUT_VARIABLE WE_FUZZ_LOG)
+  if(NOT WE_FUZZ_RUNTIME)
+    message(FATAL_ERROR "The selected Clang must compile and link libFuzzer with ASan/UBSan.\n${WE_FUZZ_LOG}")
+  endif()
+endif()
 
 if(WE_COVERAGE)
   if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR WE_BUILD_VIEWER OR NOT BUILD_TESTING OR WE_SANITIZER)
@@ -59,6 +77,9 @@ function(we_target target)
   if(WE_COVERAGE)
     target_compile_options(${target} PRIVATE -fprofile-instr-generate -fcoverage-mapping -fprofile-update=atomic)
     target_link_options(${target} PRIVATE -fprofile-instr-generate)
+  endif()
+  if(WE_FUZZING)
+    target_compile_options(${target} PRIVATE -fsanitize=fuzzer-no-link -fno-sanitize-recover=all)
   endif()
 
   if(WIN32)
@@ -152,6 +173,14 @@ target_link_libraries(map_store PRIVATE nlohmann_json::nlohmann_json)
 add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp)
 we_target(scene_store)
 target_link_libraries(scene_store PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
+
+if(WE_FUZZING)
+  add_executable(we_fuzz_ply tests/fuzz/ply_fuzzer.cpp)
+  we_target(we_fuzz_ply)
+  target_link_libraries(we_fuzz_ply PRIVATE scene_store)
+  target_link_options(we_fuzz_ply PRIVATE -fsanitize=fuzzer)
+  target_compile_definitions(we_fuzz_ply PRIVATE WE_FUZZ_SCRATCH_ROOT="${PROJECT_BINARY_DIR}/fuzz-scratch")
+endif()
 
 add_library(navigation src/navigation/fly_camera.cpp)
 we_target(navigation)
