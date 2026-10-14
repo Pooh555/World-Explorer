@@ -16,6 +16,10 @@ WOULD_BLOCK. POSIX uses `flock` on a regular, nonsymlink descriptor; Windows use
 an exclusive native handle. Never unlink the lock file. These locks and hashes
 are integrity/cooperation mechanisms, not authentication against a malicious
 owner who can alter the directory.
+The Windows handle also prevents concurrent read opens of the held lock file.
+Preservation observers inventory its regular entry while hashing manifests/assets;
+they must keep writer ownership active and distinguish the exact lock path from
+unrelated caller files with the same name.
 
 Explicit initialization requires a fresh/empty directory and existing parent.
 An existing valid store is loaded rather than reset. Missing/corrupt manifests,
