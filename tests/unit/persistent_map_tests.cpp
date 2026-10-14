@@ -109,6 +109,26 @@ void restore_manifest(const std::filesystem::path& root, const nlohmann::json& v
     output << value.dump();
     REQUIRE(output);
 }
+canonical_pose_asset producer_asset() {
+    map_store memory;
+    REQUIRE(memory.commit(first_transaction()));
+    return {memory.acquire_snapshot(),
+            {std::string(64, 'a'), std::string(64, 'b'), std::string(64, 'c'), {}}};
+}
+std::map<std::string, std::string> tree_identity(const std::filesystem::path& root) {
+    std::map<std::string, std::string> files;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+        const auto name = entry.path().lexically_relative(root).generic_string();
+        if (entry.is_directory())
+            files.emplace(name, "directory");
+        else {
+            const auto digest = sha256_file(entry.path(), std::size_t{256} * 1024 * 1024);
+            REQUIRE(digest);
+            files.emplace(name, *digest);
+        }
+    }
+    return files;
+}
 } // namespace
 TEST_CASE("persistent maps reload snapshots and operation receipts without losing correction "
           "invalidation",
@@ -1035,4 +1055,358 @@ TEST_CASE("antipodal baked world quaternions preserve valid canonical poses on r
     CHECK(restored->acquire_snapshot()->poses.at({1}).submap_from_camera.rotation.w ==
           saved->poses.at({1}).submap_from_camera.rotation.w);
     CHECK(restored->acquire_snapshot()->scale == scale_status::ARBITRARY);
+}
+
+TEST_CASE("canonical producer identity and transform failures leave the persistent map untouched",
+          "[canonical_admission][producer]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto original = producer_asset();
+    const auto original_bytes = encode_pose_asset(original);
+    REQUIRE(original_bytes);
+    auto state = std::make_shared<map_state>(*original.snapshot);
+    auto invalid = original;
+    invalid.snapshot = state;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        state->calibrations.at({7}).id = {8};
+        break;
+    case 1:
+        state->observations.at({1}).id = {42};
+        break;
+    case 2: {
+        auto observation = state->observations.extract({1});
+        observation.key() = {0};
+        observation.mapped().id = {0};
+        state->observations.insert(std::move(observation));
+        break;
+    }
+    case 3:
+        state->poses.at({1}).frame = {42};
+        break;
+    case 4:
+        state->poses.at({1}).submap = {56};
+        break;
+    case 5:
+        state->poses.at({1}).submap_from_camera.rotation = {0, 0, 0, 0};
+        break;
+    case 6:
+        state->poses.at({1}).submap_from_camera.translation.x =
+            std::numeric_limits<double>::infinity();
+        break;
+    case 7:
+        state->world_from_submap.at({55}) = {{}, {}, std::numeric_limits<double>::max()};
+        state->poses.at({1}).submap_from_camera = {{}, {2, 0, 0}, 1};
+        break;
+    case 8:
+        state->initial_pose_asset_sha256 = std::string(64, 'G');
+        break;
+    case 9:
+        state->poses.at({1}).submap_from_camera.scale = 2;
+        break;
+    case 10:
+        state->observations.erase({1});
+        break;
+    default:
+        FAIL("unknown producer mutation");
+    }
+    const auto before = store->acquire_snapshot();
+    const auto files = tree_identity(root);
+    const auto rejected = store->import_pose_asset(invalid, {777});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_DATA);
+    CHECK(invalid.snapshot == state);
+    CHECK(state->calibrations.size() == 1);
+    CHECK(state->poses.size() == 2);
+    CHECK(store->acquire_snapshot() == before);
+    CHECK(tree_identity(root) == files);
+    const auto unchanged = encode_pose_asset(original);
+    REQUIRE(unchanged);
+    CHECK(*unchanged == *original_bytes);
+    // A rejected operation must not reserve its ID or poison the later authentic retry.
+    REQUIRE(store->import_pose_asset(original, {777}));
+    const auto installed = tree_identity(root);
+    const auto committed = store->acquire_snapshot();
+    const auto rejected_retry = store->import_pose_asset(invalid, {777});
+    REQUIRE(!rejected_retry);
+    CHECK(rejected_retry.error().code == error_code::INVALID_DATA);
+    CHECK(store->acquire_snapshot() == committed);
+    CHECK(tree_identity(root) == installed);
+    store.reset();
+    auto restored = open(root);
+    REQUIRE(restored->import_pose_asset(original, {777}));
+    CHECK(restored->acquire_snapshot()->revision.value == 1);
+    CHECK(tree_identity(root) == installed);
+}
+
+TEST_CASE("canonical producer provenance and required records fail before dependency publication",
+          "[canonical_admission][producer]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto original = producer_asset();
+    auto state = std::make_shared<map_state>(*original.snapshot);
+    auto invalid = original;
+    invalid.snapshot = state;
+    auto expected = error_code::INVALID_DATA;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        invalid.snapshot.reset();
+        expected = error_code::INVALID_ARGUMENT;
+        break;
+    case 1:
+        invalid.provenance.source_sha256 = "bad";
+        break;
+    case 2:
+        invalid.provenance.decode_completion_sha256 = std::string(64, 'G');
+        break;
+    case 3:
+        invalid.provenance.pose_completion_sha256.clear();
+        break;
+    case 4:
+        state->revision = {0};
+        break;
+    case 5:
+        state->calibrations.clear();
+        break;
+    case 6:
+        state->observations.clear();
+        break;
+    case 7:
+        state->poses.clear();
+        break;
+    case 8:
+        state->world_from_submap.clear();
+        break;
+    case 9:
+        state->scale = scale_status::METRIC_MEASURED;
+        expected = error_code::UNSUPPORTED_OPERATION;
+        break;
+    default:
+        FAIL("unknown required producer field");
+    }
+    const auto before = store->acquire_snapshot();
+    const auto files = tree_identity(root);
+    const auto rejected = store->import_pose_asset(invalid, {777});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == expected);
+    CHECK(store->acquire_snapshot() == before);
+    CHECK(tree_identity(root) == files);
+    REQUIRE(store->import_pose_asset(original, {777}));
+    CHECK(store->acquire_snapshot()->observations.size() == 2);
+}
+
+TEST_CASE("canonical import accepts only a fresh initial solve without invalidated frames",
+          "[canonical_admission][initial]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto original = producer_asset();
+    auto state = std::make_shared<map_state>(*original.snapshot);
+    const auto field = GENERATE(0, 1, 2);
+    if (field == 0)
+        state->epoch = {1};
+    else if (field == 1)
+        state->revision = {2};
+    else
+        state->invalidated_frames.insert({1});
+    const canonical_pose_asset advanced{state, original.provenance};
+    const auto encoded = encode_pose_asset(advanced);
+    REQUIRE(encoded); // Valid interchange can still be unsuitable for initial seeding.
+    const auto before = store->acquire_snapshot();
+    const auto files = tree_identity(root);
+    const auto rejected = store->import_pose_asset(advanced, {777});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::UNSUPPORTED_OPERATION);
+    CHECK(store->acquire_snapshot() == before);
+    CHECK(tree_identity(root) == files);
+    const auto unchanged = encode_pose_asset(advanced);
+    REQUIRE(unchanged);
+    CHECK(*unchanged == *encoded);
+    REQUIRE(store->import_pose_asset(original, {777}));
+    CHECK(store->acquire_snapshot()->epoch.value == 0);
+}
+
+TEST_CASE("cancelled canonical memory and file imports preserve producer bytes and allow retry",
+          "[canonical_admission][cancellation]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto original = producer_asset();
+    const auto source = temporary.path / "synthetic.weposes";
+    const auto hash = write_pose_asset(source, original);
+    REQUIRE(hash);
+    const auto before = store->acquire_snapshot();
+    const auto files = tree_identity(temporary.path);
+    std::stop_source stopped;
+    stopped.request_stop();
+    const auto from_file = GENERATE(false, true);
+    const auto rejected = from_file
+                              ? store->import_pose_asset(source, *hash, {777}, stopped.get_token())
+                              : store->import_pose_asset(original, {777}, stopped.get_token());
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::CANCELLED);
+    CHECK(store->acquire_snapshot() == before);
+    CHECK(tree_identity(temporary.path) == files);
+    REQUIRE(store->import_pose_asset(original, {777}));
+    store.reset();
+    auto restored = open(root);
+    REQUIRE(restored->import_pose_asset(source, *hash, {777}));
+    CHECK(restored->acquire_snapshot()->revision.value == 1);
+}
+
+TEST_CASE("canonical import record budgets retain complete orphans without acknowledging failure",
+          "[canonical_admission][limits]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto original = producer_asset();
+    auto state = std::make_shared<map_state>(*original.snapshot);
+    auto calibration = state->calibrations.at({7});
+    calibration.id = {8};
+    state->calibrations.emplace(calibration.id, calibration);
+    state->world_from_submap.emplace(submap_id{56}, similarity_transform{});
+    original.snapshot = state;
+    persistent_map_config config{.directory = root, .create_if_missing = true};
+    const auto field = GENERATE(0, 1, 2);
+    if (field == 0)
+        config.records.max_frames = 1;
+    else if (field == 1)
+        config.records.max_calibrations = 1;
+    else
+        config.records.max_submaps = 1;
+    auto opened = map_store::open_persistent(config);
+    REQUIRE(opened);
+    auto store = std::move(*opened);
+    const auto before = store->acquire_snapshot();
+    const auto digest = manifest_digest(root);
+    const auto bytes = encode_pose_asset(original);
+    REQUIRE(bytes);
+    const auto hash = sha256(*bytes);
+    const auto rejected = store->import_pose_asset(original, {777});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
+    CHECK(store->acquire_snapshot() == before);
+    CHECK(manifest_digest(root) == digest);
+    // Immutable dependencies may be installed before checkpoint admission fails.
+    const auto orphan = root / "assets" / ("poses-" + hash + ".weposes");
+    REQUIRE(read_pose_asset(orphan, hash));
+    store.reset();
+    auto restored = open(root);
+    REQUIRE(restored->import_pose_asset(original, {777}));
+    const auto installed = tree_identity(root);
+    restored.reset();
+    restored = open(root);
+    REQUIRE(restored->import_pose_asset(original, {777}));
+    CHECK(tree_identity(root) == installed);
+    CHECK(restored->acquire_snapshot()->calibrations.size() == 2);
+}
+
+TEST_CASE(
+    "canonical import refuses memory stores and missing operation IDs without consuming input",
+    "[canonical_admission][operation]") {
+    directory temporary;
+    const auto original = producer_asset();
+    const auto bytes = encode_pose_asset(original);
+    REQUIRE(bytes);
+    map_store memory;
+    const auto before = memory.acquire_snapshot();
+    const auto unsupported = memory.import_pose_asset(original, {777});
+    REQUIRE(!unsupported);
+    CHECK(unsupported.error().code == error_code::UNSUPPORTED_OPERATION);
+    CHECK(memory.acquire_snapshot() == before);
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto initial = store->acquire_snapshot();
+    const auto digest = manifest_digest(root);
+    const auto rejected = store->import_pose_asset(original, {0});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_ARGUMENT);
+    CHECK(store->acquire_snapshot() == initial);
+    CHECK(manifest_digest(root) == digest);
+    const auto unchanged = encode_pose_asset(original);
+    REQUIRE(unchanged);
+    CHECK(*unchanged == *bytes);
+    REQUIRE(store->import_pose_asset(original, {777}));
+}
+
+TEST_CASE("occupied canonical dependency paths preserve caller entries until explicit repair",
+          "[canonical_admission][assets]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto original = producer_asset();
+    const auto bytes = encode_pose_asset(original);
+    REQUIRE(bytes);
+    const auto hash = sha256(*bytes);
+    const auto occupied = root / "assets" / ("poses-" + hash + ".weposes");
+    const auto directory_entry = GENERATE(false, true);
+    if (directory_entry)
+        REQUIRE(std::filesystem::create_directory(occupied));
+    else
+        std::ofstream(occupied) << "caller data";
+    const auto before = store->acquire_snapshot();
+    const auto files = tree_identity(root);
+    const auto rejected = store->import_pose_asset(original, {777});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_DATA);
+    CHECK(store->acquire_snapshot() == before);
+    CHECK(tree_identity(root) == files);
+    std::filesystem::remove(occupied);
+    REQUIRE(store->import_pose_asset(original, {777}));
+    store.reset();
+    auto restored = open(root);
+    REQUIRE(restored->import_pose_asset(original, {777}));
+}
+
+TEST_CASE("canonical file import rejects unavailable incomplete and rehashed malformed sources",
+          "[canonical_admission][file]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto original = producer_asset();
+    auto bytes = encode_pose_asset(original);
+    REQUIRE(bytes);
+    auto hash = sha256(*bytes);
+    const auto source = temporary.path / "caller.weposes";
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5);
+    CAPTURE(field);
+    auto expected = error_code::INVALID_DATA;
+    if (field == 1)
+        REQUIRE(std::filesystem::create_directory(source));
+    else if (field >= 2) {
+        if (field == 2) {
+            bytes->clear();
+            expected = error_code::RESOURCE_EXHAUSTED;
+        } else if (field == 3)
+            bytes->resize(bytes->size() / 2);
+        else if (field == 4)
+            hash = std::string(64, '0');
+        else {
+            pose_wire::GetMutablepose_asset(bytes->data())
+                ->mutable_provenance()
+                ->mutable_source_sha256()
+                ->Mutate(0, 'G');
+            hash = sha256(*bytes);
+        }
+        std::ofstream output(source, std::ios::binary);
+        output.write(reinterpret_cast<const char*>(bytes->data()),
+                     static_cast<std::streamsize>(bytes->size()));
+        REQUIRE(output);
+    }
+    const auto before = store->acquire_snapshot();
+    const auto files = tree_identity(temporary.path);
+    const auto rejected = store->import_pose_asset(source, hash, {777});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == expected);
+    CHECK(store->acquire_snapshot() == before);
+    CHECK(tree_identity(temporary.path) == files);
+    REQUIRE(store->import_pose_asset(original, {777}));
+    store.reset();
+    auto restored = open(root);
+    REQUIRE(restored->import_pose_asset(original, {777}));
 }

@@ -169,6 +169,10 @@ Default limits: 256 MiB encoded bytes, 1M observations/poses/invalidations, 4096
 calibrations/submaps; callers may lower them. Borrowed unaligned buffers are
 copied before accessing double-aligned structs. Snapshot ownership survives the
 input buffer's lifetime. JSON inspection uses the same validated native records.
+Native producers must supply matching map keys and record IDs, all pose
+dependencies and finite composed world transforms. Observation, pose and
+invalidation counts have independent limits. Encoding accepts an exact byte
+budget and rejects any smaller budget before file publication.
 
 `write_pose_asset` stages in a privately owned sibling directory, closes and
 flushes the file, and publishes by an atomic hard link that cannot overwrite an

@@ -167,16 +167,26 @@ ASan/UBSan/LeakSanitizer cases, format/tidy/docs pass. Core reaches **87.54% lin
 73.18% branch**, package/update **76.83% branch**; its 90% target remains unmet.
 **2,393 protected files unchanged**; no reconstruction/environment/GPU rerun.
 
-Next executable task: M1/E1 canonical producer snapshot admission. Inspect
-`build/coverage/coverage/run-c5d4ivg5/html/` and its `export.json` for
-`src/map_store/map_codec.cpp` (28 uncovered branch outcomes), `pose_asset.cpp`
-(30) and `map_store.cpp` (58). Extend public in-memory `import_pose_asset` cases
-with inconsistent map keys/record IDs, missing pose dependencies, invalid local
-transforms and world-compose overflow, plus encoded byte-budget/cancellation
-boundaries where reachable. Use fresh synthetic persistent stores; verify producer
-snapshots, committed manifest/RAM and operation receipts survive rejection and
-subsequent valid retries succeed. Preserve all schema/platform/coverage limits,
-then remeasure both groups. Do not exclude dominated/error/platform guards to pass.
+[Canonical producer admission](validation/2026-10-14-canonical-admission.md) adds
+13 synthetic cases with **1,271 assertions**: malformed native/file sources,
+independent record budgets, exact byte admission, pre-cancelled imports and
+acknowledged-retry preservation. Complete unreferenced dependencies remain
+recoverable after map admission failure. **156/156 coverage CPU / 174/174 dev
+CTest**, 13 focused native ASan/UBSan/LeakSanitizer cases and format/tidy/docs pass.
+Core reaches **87.93% line / 74.35% branch**, package/update **78.77% branch**;
+its 90% target remains unmet. Production/schema/environment/scope are unchanged;
+**2,393 protected files unchanged**; no reconstruction/GPU rerun.
+
+Next executable task: M1/E1 durable-map transaction admission. Inspect
+`build/coverage/coverage/run-0hg7e901/html/` and `export.json` for
+`src/map_store/map_store.cpp` (46 uncovered branch outcomes). Extend public commit
+cases in `tests/unit/contracts_tests.cpp` / `persistent_map_tests.cpp` for invalid
+receipt budgets, image provenance, revision arithmetic, duplicate/invalid records,
+pose dependencies/covariance, deletion collisions and aggregate storage limits.
+Use fresh synthetic stores; verify immutable producer data, committed manifest/RAM
+and acknowledged receipts survive rejection, then retry the corrected transaction
+with the same operation ID and reopen. Retain all schema/platform/coverage limits
+and remeasure both groups; do not exclude error or dominated guards to obtain a pass.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
