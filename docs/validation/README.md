@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Bounded scene bundle fuzzing | [Rehashed package admission and caller preservation](2026-10-14-bundle-fuzz.md): 196 synthetic seeds, 55,915 inputs / 61 s, 339 MiB peak RSS, zero native crashes/reported sanitizer errors; 257 dev / 239 C++23 CPU checks, 2,393 protected / 94 src/include files unchanged; full gates pending |
 | Bounded scene transaction fuzzing | [Commit/retry/ownership and replay invariants](2026-10-14-transaction-fuzz.md): 44 synthetic seeds, 30,251 inputs / 61 s, 308 MiB peak RSS, zero native crashes/reported sanitizer errors; 257 dev / 239 C++23 CPU checks and 2,393 protected files / 94 src/include files unchanged; sandbox LSan failure retained separately, full gates pending |
 | Bounded PLY fuzzing | [Isolated libFuzzer campaign and byte preservation](2026-10-14-ply-fuzz.md): ten synthetic seeds, 281,683 executions / 61 s, 101 accepted, 367 MiB peak RSS, zero crashes/reported sanitizer errors; 257 dev / 239 C++23 CPU checks, isolated-profile guards and 2,393 preserved files; broader fuzzing/full gates pending |
 | Windows batch launch marker | [Binary fixture marker and portable CRLF replay](2026-10-14-windows-batch-marker.md): supplied Windows 236/238 fails two marker observers; all ten failures reproduced, 2 corrected cases / 6,077 assertions, local 257 dev / 239 C++23 CPU CTest, focused sanitizers and 2,393 preserved files; production unchanged, native Windows rerun pending |

@@ -1,7 +1,7 @@
 # Bounded synthetic parser and transaction fuzzing
 
-The opt-in `fuzz` preset builds `we_fuzz_ply` and `we_fuzz_scene_transactions` with Clang libFuzzer,
-ASan/UBSan and C++26. A compile/link probe checks the selected sanitizer runtime.
+The opt-in `fuzz` preset builds `we_fuzz_ply`, `we_fuzz_scene_transactions` and
+`we_fuzz_bundle` with Clang libFuzzer, ASan/UBSan and C++26. A compile/link probe checks the selected sanitizer runtime.
 Viewer, CTest, coverage and other sanitizer selections are rejected in this
 profile. Normal builds do not acquire fuzzer instrumentation. The build preset
 selects only these targets and their CPU dependencies.
@@ -113,3 +113,68 @@ ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
 Native sanitizer execution, identities, failure retention and deterministic
 reproduction follow the rules above. Report commit/rejection/corrected/retry/
 conflict/replay counters separately from libFuzzer's input execution count.
+
+## Scene bundle target
+
+`we_fuzz_bundle` exercises the production `load_bundle` entry point. Each process
+reserves an exclusive directory under `build/fuzz/fuzz-scratch/`. Its initial
+template is freshly produced by `write_bundle`: two synthetic chunks, each with
+one SH3 splat and two source frames, plus manifest, index and provenance. A sibling
+caller sentinel is included in preservation checks. No private assets are read.
+Each callback restores the five template files, applies one mutation, snapshots
+the complete private tree, and loads it. Both acceptance and rejection must
+preserve every file, directory and byte. Successful snapshots must pass production
+scene validation; the preceding admitted snapshot's content hash must remain
+unchanged across later file edits and loads. This hash oracle is shared with
+production, not an independent proof of hash correctness.
+
+Bounds: **4,104 input bytes (eight header + at most 4,096 payload)**; default loader
+budgets **8,192 manifest/provenance bytes / two chunks / eight splats / 8,192
+aggregate encoded chunk bytes / four source frames per chunk**. The retained
+snapshot is replaced only after successful load. Fixed synthetic filenames are
+the only write destinations. Arbitrary path mutations occur inside asset
+references, never in filesystem write arguments. The harness does not create
+symlinks, remove assets or exercise concurrent filesystem changes.
+
+| Header offset | Meaning |
+|---|---|
+| 0 | Target modulo seven: raw manifest, index, first/second chunk, provenance, structured manifest field, unchanged baseline |
+| 1 | Edit modulo five: overwrite/extend, truncate, append, replace whole file, XOR byte |
+| 2 | Bit zero repairs checksums/lengths; bit one replaces the structured manifest root |
+| 3–4 | Little-endian edit offset modulo original file size plus one |
+| 5 | XOR byte or one of 21 manifest field selectors |
+| 6–7 | Optional smaller manifest/chunk/splat/payload/source-frame budget; a separate selector tests an overflowing chunk budget |
+
+Short headers are zero-padded. Structured field payloads parse as JSON, falling
+back to strings on invalid JSON; dumping uses UTF-8 replacement for arbitrary
+string bytes. Raw manifest/provenance edits still reach the actual loader parser.
+Rehashing index edits repairs manifest index hash/length; chunk edits repair the
+selected index entry hash/length and manifest index hash/length; provenance edits
+repair its manifest hash. Template filenames stay fixed. This deliberately
+reaches binary/numeric/schema validation beyond checksum rejection. Counters
+record rehash attempts, not proof that each edit reached a particular branch.
+
+`tools/make_bundle_fuzz_seeds.py` generates 196 synthetic bytecode seeds with
+size/SHA-256 identities: typed fields/root values, paths, hashes, binary counts,
+truncation/trailing bytes, raw numerics, checksum-repaired payloads and budgets.
+The generator uses the same fresh ignored-output rules as the other helpers.
+
+```sh
+cmake --preset fuzz
+cmake --build --preset fuzz -j 4
+FUZZ_DIR=artifacts/fuzz/bundle-run-001
+python3 tools/make_bundle_fuzz_seeds.py "$FUZZ_DIR/seeds"
+mkdir "$FUZZ_DIR/corpus" "$FUZZ_DIR/crashes"
+ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  build/fuzz/we_fuzz_bundle -seed=20261014 -max_total_time=60 -timeout=2 \
+  -rss_limit_mb=512 -malloc_limit_mb=128 -max_len=4104 \
+  -use_value_profile=1 -print_final_stats=1 -artifact_prefix="$FUZZ_DIR/crashes/" \
+  "$FUZZ_DIR/corpus" "$FUZZ_DIR/seeds/corpus"
+```
+
+Replay seeds with `-runs=0` and the seed corpus as the sole positional directory.
+Native execution, crash retention and deterministic regressions follow the
+rules above. Keep sandbox sanitizer-runtime failures separate from native
+campaign crashes. Cleanup on normal exit removes only the exclusively reserved
+scratch tree. Publication failures, archive extraction, allocation faults and
+cross-platform qualification remain outside this bounded read-only campaign.
