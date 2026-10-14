@@ -67,3 +67,8 @@ module execution, generated/JIT kernels and actual GPU work remain unobserved.
 No complete SBOM, release-vcpkg, other-platform or Q/P/N/E certification follows
 from a resolved graph. Missing libraries in a standalone extension inspection
 are context failures; they do not establish GPU absence or a failed saved fit.
+
+The separate [observed mapping supplement](backend_bindings.md) now checks fixed
+backend imports and an empty native viewer. It retains its own execution contexts,
+raw/source identities and exclusions; it does not retroactively expand this
+loader receipt or qualify every lazy path.
