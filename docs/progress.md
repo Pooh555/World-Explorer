@@ -342,15 +342,16 @@ checkpoint/model loading, optimizer/video jobs or unchanged sample_2 retries.
 Current scoped ownership check:
 `python3 tools/audit_binding_owners.py --summary third_party/binding-owners-20261015.json --local-evidence`.
 
-[Windows runtime fixture repair](validation/2026-10-15-windows-runtime-fixture.md):
-supplied C++23 CPU run **240/241**, worker suite five errors / three failures
-caused by Windows host paths in synthetic Linux-loader fixtures. Explicit POSIX
-fixture paths, contained host translation and LF metadata preserve production
-validation and all mutation assertions. Portable replay reproduces all failures
-and passes seven repaired cases; **15 runtime / 117 worker checks** on three
-interpreters and **260 dev / 242 C++23 CPU CTest** pass locally. All **2,088
-protected / 94 src/include files** unchanged. Native Windows rerun against this
-repair remains pending; do not treat the local replay as native qualification.
+[Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
+latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /
+one failure. The previous fixture adapter missed capture's Windows `Path` string
+conversion; contained translation now handles the drive-less virtual namespace
+and mutation cleanup uses `finally`. Full-capture replay reproduces all eight
+reported error/failure records and passes seven repaired cases. **16 runtime /
+133 worker checks** on three interpreters and **260 dev / 242 C++23 CPU CTest**
+pass locally; **2,088 protected / 94 src/include files** unchanged. Production,
+runtime pins and saved reconstructions are unchanged. Native Windows rerun
+against this correction remains pending; local replay is narrower qualification.
 
 For these videos, use the working sample_1 view below; preserve
 sample_2's failed stages until replacement footage or a qualified pose recovery

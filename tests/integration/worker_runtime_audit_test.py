@@ -31,7 +31,10 @@ def fixture_selected_path(text, root, directory=False):
     """
     if not isinstance(text, str) or not text or len(text) > 4096 or any(c in text for c in "\n\r\0"):
         raise ValueError("Invalid selected runtime path")
-    logical = PurePosixPath(text)
+    # capture() passes loader paths through the host Path before calling this
+    # adapter. Windows spells our drive-less POSIX root with backslashes.
+    windows_path = PureWindowsPath(text)
+    logical = PurePosixPath(windows_path.as_posix() if windows_path.root and not windows_path.drive else text)
     if logical.is_relative_to(FIXTURE_ROOT):
         text = logical.relative_to(FIXTURE_ROOT).as_posix()
     if not directory:
@@ -87,8 +90,13 @@ class RuntimeAuditTests(unittest.TestCase):
                           "sha256": audit.file_digest(self.root / "build/program")[0],
                           "scope": "synthetic-loader", "library_path": ["build"]}]}
 
-    def capture(self, runner=None):
-        with patch("sys.stdout", new_callable=io.StringIO), patch.object(audit, "selected_path", fixture_selected_path):
+    def capture(self, runner=None, windows_loader_paths=False):
+        def host_path(text):
+            if windows_loader_paths and str(text).startswith(str(FIXTURE_ROOT) + "/"):
+                return PureWindowsPath(text)
+            return Path(text)
+        with patch("sys.stdout", new_callable=io.StringIO), patch.object(audit, "selected_path", fixture_selected_path), \
+                patch.object(audit, "Path", side_effect=host_path):
             return audit.capture(self.root, self.selection, runner or FixtureCommands(self.root))
 
     def test_synthetic_loader_paths_are_linux_paths_on_windows_hosts(self):
@@ -98,10 +106,20 @@ class RuntimeAuditTests(unittest.TestCase):
         self.assertEqual(parsed["resolved"]["libbase.so"], str(FIXTURE_ROOT / "build/libbase.so"))
         self.assertEqual(fixture_selected_path(parsed["resolved"]["libbase.so"], self.root), self.root / "build/libbase.so")
         self.assertEqual(fixture_selected_path(str(FIXTURE_ROOT / "build"), self.root, directory=True), self.root / "build")
+        self.assertEqual(fixture_selected_path(str(PureWindowsPath(FIXTURE_ROOT / "build/libbase.so")), self.root), self.root / "build/libbase.so")
+        self.assertEqual(fixture_selected_path(str(PureWindowsPath(FIXTURE_ROOT / "build")), self.root, directory=True), self.root / "build")
+
+    def test_complete_capture_replays_host_conversion_of_linux_loader_paths(self):
+        native = self.capture()
+        windows = self.capture(windows_loader_paths=True)
+        self.assertEqual(windows["nodes"], native["nodes"])
+        self.assertEqual(windows["roots"], native["roots"])
+        self.assertEqual(windows["commands"], native["commands"])
 
     def test_fixture_directory_translation_rejects_invalid_and_escaping_paths(self):
         for text in ("build:second", "bad\npath", "bad\0path", "../", str(FIXTURE_ROOT / "../"),
-                     "build/program", "D:/fixture/build", "/foreign/build"):
+                     "build/program", "D:/fixture/build", "/foreign/build", r"\synthetic-runtime\..\escape",
+                     r"D:\synthetic-runtime\build", r"\\server\synthetic-runtime\build"):
             with self.subTest(text=text), self.assertRaises((ValueError, OSError)):
                 fixture_selected_path(text, self.root, directory=True)
         # The actual Linux validator still rejects a literal list separator.
@@ -176,9 +194,11 @@ class RuntimeAuditTests(unittest.TestCase):
                             (self.root / "build/libbase.so").write_bytes(b"changed")
                         return result
                     runner.run = changing
-                with self.assertRaisesRegex(ValueError, "changed"):
-                    self.capture(runner)
-                (self.root / "build" / name).write_bytes(original)
+                try:
+                    with self.assertRaisesRegex(ValueError, "changed"):
+                        self.capture(runner)
+                finally:
+                    (self.root / "build" / name).write_bytes(original)
 
     def test_root_node_byte_and_path_limits_are_checked(self):
         with patch.object(audit, "MAX_NODES", 1), self.assertRaises(ValueError):
