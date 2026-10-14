@@ -177,6 +177,15 @@ Core reaches **87.93% line / 74.35% branch**, package/update **78.77% branch**;
 its 90% target remains unmet. Production/schema/environment/scope are unchanged;
 **2,393 protected files unchanged**; no reconstruction/GPU rerun.
 
+[Windows map observer repair](validation/2026-10-14-windows-map-observer.md):
+supplied Windows CPU CTest **148/155**, seven failures in the preservation helper
+opening the held `writer.lock`. The observer now inventories its exact regular
+entry while hashing every other data file; unrelated lock filenames stay checked.
+Production locking/admission and coverage scope are unchanged. Local **175/175
+C++26 dev / 157/157 explicit C++23 CPU checks**, 14 focused cases / 1,612 assertions,
+format/tidy/docs and **2,393 unchanged protected files** pass. Native Windows CI
+rerun is pending for this commit; no reconstruction or environment change.
+
 Next executable task: M1/E1 durable-map transaction admission. Inspect
 `build/coverage/coverage/run-0hg7e901/html/` and `export.json` for
 `src/map_store/map_store.cpp` (46 uncovered branch outcomes). Extend public commit
@@ -202,13 +211,14 @@ storage fails; metadata inspection still applies the decoded-storage estimate.
 
 Other native devices/platforms, corpus/reference performance, geometry/collision,
 coverage/fuzzing and full gates remain pending; [requirements](requirements.md)
-tracks scope. Latest [supplied native CPU logs and metric observer repair](validation/2026-10-14-native-metric-paths.md)
+tracks scope. Earlier [supplied native CPU logs and metric observer repair](validation/2026-10-14-native-metric-paths.md)
 show Windows **101/102** and macOS **102/103**: both fail the metric mutation
 observer's unresolved/canonical path comparison. Portable alias replay reproduces
 the exact failure; canonical observers and exactly-once mutation checks now pass:
 **18 metric / 68 worker cases** on three interpreters, **103/103 C++23 CPU /
-121/121 C++26 dev**, **2,393 protected files unchanged**. Hosted rerun is pending;
-no reconstruction or environment changes. The [earlier audit observer repair](validation/2026-10-13-native-audit-paths.md)
+121/121 C++26 dev**, **2,393 protected files unchanged**. The latest supplied Windows worker integration
+passes; macOS hosted confirmation remains pending. No reconstruction or environment
+changes. The [earlier audit observer repair](validation/2026-10-13-native-audit-paths.md)
 retains its historical 12 audit / 37 worker / 119 dev scope. Named SQLite recovery
 cases pass in the latest supplied logs. The earlier [SQLite closure repair](validation/2026-10-13-windows-sqlite.md)
 retains local 102/102 / 25-case scope; prior Windows 100/101 cleanup failure,

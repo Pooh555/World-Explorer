@@ -1,4 +1,5 @@
 #include "checkpoint_generated.h"
+#include "world_explorer/core/file_lock.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/map_store/map_store.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
@@ -115,14 +116,27 @@ canonical_pose_asset producer_asset() {
     return {memory.acquire_snapshot(),
             {std::string(64, 'a'), std::string(64, 'b'), std::string(64, 'c'), {}}};
 }
-std::map<std::string, std::string> tree_identity(const std::filesystem::path& root) {
+struct held_writer_lock {
+    std::filesystem::path path;
+};
+std::map<std::string, std::string> tree_identity(const std::filesystem::path& root,
+                                                 const held_writer_lock& writer_lock) {
     std::map<std::string, std::string> files;
     for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
         const auto name = entry.path().lexically_relative(root).generic_string();
-        if (entry.is_directory())
+        CAPTURE(name);
+        const auto status = entry.symlink_status();
+        if (entry.path() == writer_lock.path) {
+            // Windows denies another read handle while the store owns this lock.
+            // Keep its regular entry in the inventory without opening its contents.
+            REQUIRE(std::filesystem::is_regular_file(status));
+            files.emplace(name, "exclusive-writer-lock");
+        } else if (std::filesystem::is_directory(status))
             files.emplace(name, "directory");
         else {
+            REQUIRE(std::filesystem::is_regular_file(status));
             const auto digest = sha256_file(entry.path(), std::size_t{256} * 1024 * 1024);
+            INFO((digest ? "SHA-256 available" : digest.error().message));
             REQUIRE(digest);
             files.emplace(name, *digest);
         }
@@ -130,6 +144,35 @@ std::map<std::string, std::string> tree_identity(const std::filesystem::path& ro
     return files;
 }
 } // namespace
+TEST_CASE("map preservation observer inventories the held lock and hashes unrelated lock names",
+          "[canonical_admission][observation]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto lock_path = root / "writer.lock";
+    const auto caller = temporary.path / "writer.lock";
+    std::ofstream(caller) << "caller data";
+    const auto observed = tree_identity(temporary.path, {lock_path});
+    CHECK(observed.at("map/writer.lock") == "exclusive-writer-lock");
+    const auto caller_hash = sha256_file(caller, 65536);
+    REQUIRE(caller_hash);
+    CHECK(observed.at("writer.lock") == *caller_hash);
+    const auto still_owned = file_lock::acquire(lock_path);
+    REQUIRE(!still_owned);
+    CHECK(still_owned.error().code == error_code::WOULD_BLOCK);
+    const auto before = store->acquire_snapshot();
+    std::ofstream(caller) << "changed caller data";
+    const auto changed = tree_identity(temporary.path, {lock_path});
+    CHECK(changed.at("writer.lock") != observed.at("writer.lock"));
+    CHECK(changed.at("map/writer.lock") == observed.at("map/writer.lock"));
+    CHECK(changed.at("map/manifest.json") == observed.at("map/manifest.json"));
+    CHECK(store->acquire_snapshot() == before);
+    store.reset();
+    const auto released = tree_identity(temporary.path, {});
+    const auto lock_hash = sha256_file(lock_path, 65536);
+    REQUIRE(lock_hash);
+    CHECK(released.at("map/writer.lock") == *lock_hash);
+}
 TEST_CASE("persistent maps reload snapshots and operation receipts without losing correction "
           "invalidation",
           "[map][restart]") {
@@ -1114,7 +1157,7 @@ TEST_CASE("canonical producer identity and transform failures leave the persiste
         FAIL("unknown producer mutation");
     }
     const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(root);
+    const auto files = tree_identity(root, {root / "writer.lock"});
     const auto rejected = store->import_pose_asset(invalid, {777});
     REQUIRE(!rejected);
     CHECK(rejected.error().code == error_code::INVALID_DATA);
@@ -1122,24 +1165,24 @@ TEST_CASE("canonical producer identity and transform failures leave the persiste
     CHECK(state->calibrations.size() == 1);
     CHECK(state->poses.size() == 2);
     CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(root) == files);
+    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
     const auto unchanged = encode_pose_asset(original);
     REQUIRE(unchanged);
     CHECK(*unchanged == *original_bytes);
     // A rejected operation must not reserve its ID or poison the later authentic retry.
     REQUIRE(store->import_pose_asset(original, {777}));
-    const auto installed = tree_identity(root);
+    const auto installed = tree_identity(root, {root / "writer.lock"});
     const auto committed = store->acquire_snapshot();
     const auto rejected_retry = store->import_pose_asset(invalid, {777});
     REQUIRE(!rejected_retry);
     CHECK(rejected_retry.error().code == error_code::INVALID_DATA);
     CHECK(store->acquire_snapshot() == committed);
-    CHECK(tree_identity(root) == installed);
+    CHECK(tree_identity(root, {root / "writer.lock"}) == installed);
     store.reset();
     auto restored = open(root);
     REQUIRE(restored->import_pose_asset(original, {777}));
     CHECK(restored->acquire_snapshot()->revision.value == 1);
-    CHECK(tree_identity(root) == installed);
+    CHECK(tree_identity(root, {root / "writer.lock"}) == installed);
 }
 
 TEST_CASE("canonical producer provenance and required records fail before dependency publication",
@@ -1191,12 +1234,12 @@ TEST_CASE("canonical producer provenance and required records fail before depend
         FAIL("unknown required producer field");
     }
     const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(root);
+    const auto files = tree_identity(root, {root / "writer.lock"});
     const auto rejected = store->import_pose_asset(invalid, {777});
     REQUIRE(!rejected);
     CHECK(rejected.error().code == expected);
     CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(root) == files);
+    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
     REQUIRE(store->import_pose_asset(original, {777}));
     CHECK(store->acquire_snapshot()->observations.size() == 2);
 }
@@ -1219,12 +1262,12 @@ TEST_CASE("canonical import accepts only a fresh initial solve without invalidat
     const auto encoded = encode_pose_asset(advanced);
     REQUIRE(encoded); // Valid interchange can still be unsuitable for initial seeding.
     const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(root);
+    const auto files = tree_identity(root, {root / "writer.lock"});
     const auto rejected = store->import_pose_asset(advanced, {777});
     REQUIRE(!rejected);
     CHECK(rejected.error().code == error_code::UNSUPPORTED_OPERATION);
     CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(root) == files);
+    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
     const auto unchanged = encode_pose_asset(advanced);
     REQUIRE(unchanged);
     CHECK(*unchanged == *encoded);
@@ -1242,7 +1285,7 @@ TEST_CASE("cancelled canonical memory and file imports preserve producer bytes a
     const auto hash = write_pose_asset(source, original);
     REQUIRE(hash);
     const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(temporary.path);
+    const auto files = tree_identity(temporary.path, {root / "writer.lock"});
     std::stop_source stopped;
     stopped.request_stop();
     const auto from_file = GENERATE(false, true);
@@ -1252,7 +1295,7 @@ TEST_CASE("cancelled canonical memory and file imports preserve producer bytes a
     REQUIRE(!rejected);
     CHECK(rejected.error().code == error_code::CANCELLED);
     CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(temporary.path) == files);
+    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == files);
     REQUIRE(store->import_pose_asset(original, {777}));
     store.reset();
     auto restored = open(root);
@@ -1298,11 +1341,11 @@ TEST_CASE("canonical import record budgets retain complete orphans without ackno
     store.reset();
     auto restored = open(root);
     REQUIRE(restored->import_pose_asset(original, {777}));
-    const auto installed = tree_identity(root);
+    const auto installed = tree_identity(root, {root / "writer.lock"});
     restored.reset();
     restored = open(root);
     REQUIRE(restored->import_pose_asset(original, {777}));
-    CHECK(tree_identity(root) == installed);
+    CHECK(tree_identity(root, {root / "writer.lock"}) == installed);
     CHECK(restored->acquire_snapshot()->calibrations.size() == 2);
 }
 
@@ -1350,12 +1393,12 @@ TEST_CASE("occupied canonical dependency paths preserve caller entries until exp
     else
         std::ofstream(occupied) << "caller data";
     const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(root);
+    const auto files = tree_identity(root, {root / "writer.lock"});
     const auto rejected = store->import_pose_asset(original, {777});
     REQUIRE(!rejected);
     CHECK(rejected.error().code == error_code::INVALID_DATA);
     CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(root) == files);
+    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
     std::filesystem::remove(occupied);
     REQUIRE(store->import_pose_asset(original, {777}));
     store.reset();
@@ -1399,12 +1442,12 @@ TEST_CASE("canonical file import rejects unavailable incomplete and rehashed mal
         REQUIRE(output);
     }
     const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(temporary.path);
+    const auto files = tree_identity(temporary.path, {root / "writer.lock"});
     const auto rejected = store->import_pose_asset(source, hash, {777});
     REQUIRE(!rejected);
     CHECK(rejected.error().code == expected);
     CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(temporary.path) == files);
+    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == files);
     REQUIRE(store->import_pose_asset(original, {777}));
     store.reset();
     auto restored = open(root);
