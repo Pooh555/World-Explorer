@@ -206,17 +206,26 @@ boundaries pass 20 consecutive runs. **181/181 coverage CPU / 199/199 dev /
 docs and **2,393 unchanged protected files** pass. No production/schema/recipe/
 environment/scope change or reconstruction/GPU rerun.
 
-Next executable task: M1/E1 completed-pose file import admission. Inspect
-`build/coverage/coverage/run-etthc6yq/html/` and `export.json` for
-`src/reconstruction_adapters/completed_poses.cpp` (79 uncovered branch outcomes).
-Extend `tests/unit/completed_poses_tests.cpp` using fresh synthetic owned stages:
-malformed completion/pointers, rehashed unsupported profiles, camera/vector/numeric
-boundaries, inconsistent registration counts and pose identity/time/dependencies.
-Check exact errors, complete caller-file preservation, retained immutable datasets
-and successful import after explicit fixture repair; never launch a solver.
-Keep canonical/native and legacy timestamp profiles distinct. Retain all schema,
-registration, platform and coverage limits; remeasure without excluding error or
-dominated guards.
+[Completed-pose file admission](validation/2026-10-14-pose-import-admission.md):
+**14 synthetic cases / 36,151 assertions** check rehashed invalid metadata,
+caller-file/retained-dataset preservation, explicit repair, PINHOLE import and
+unchanged registration limits. Importer branches rise **62.38%→93.33%**; core
+**88.72% line / 77.80% branch**, package/update **84.43% branch** (90% unmet).
+**195/195 coverage CPU / 213/213 dev / 195/195 explicit C++23 CPU CTest**, 14 native
+sanitizer cases and format/tidy/docs pass. **2,393 protected files unchanged**;
+production/schema/recipe/environment/scope unchanged, no reconstruction/GPU rerun.
+
+Next executable task: M1/E1 decoded-frame source admission. Inspect
+`build/coverage/coverage/run-kp7adq6_/html/` and `export.json` for
+`src/reconstruction_adapters/decoded_frame_source.cpp` (83 uncovered branch
+outcomes). Extend the scoped tests around `tests/unit/decoded_frame_source_tests.cpp`
+with fresh synthetic committed stages: configuration, inventory/profile/count
+limits, rehashed identity/time-base/image-path/PNG metadata failures and exact RGB
+budgets. Check exact errors and complete caller-file preservation; rejected reads,
+cancellation and invalid seeks must preserve the next frame/reset epoch and old
+leases. Use a controlled local decoder only where reading is required; never
+launch reconstruction. Keep the documented legacy timestamp/profile limits and
+all coverage/platform thresholds; remeasure without excluding error paths.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
