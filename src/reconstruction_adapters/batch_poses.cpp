@@ -18,12 +18,19 @@ std::string utf8(const std::filesystem::path& path) {
     const auto bytes = path.generic_u8string();
     return {bytes.begin(), bytes.end()};
 }
+bool occupied(const std::filesystem::path& path) {
+    return std::filesystem::exists(std::filesystem::symlink_status(path));
+}
+bool output_directory(const std::filesystem::path& path) {
+    return std::filesystem::is_directory(std::filesystem::symlink_status(path)) &&
+           std::filesystem::canonical(path) == path;
+}
 void publish_json(const std::filesystem::path& path, const nlohmann::json& value,
                   bool resume = false) {
     const auto text = value.dump();
     if (text.size() > MAX_JSON)
         throw std::invalid_argument("Batch manifest is oversized or already published");
-    if (std::filesystem::exists(std::filesystem::symlink_status(path))) {
+    if (occupied(path)) {
         if (resume && !std::filesystem::is_symlink(path)) {
             const auto digest = sha256_file(path, MAX_JSON);
             if (digest && *digest == sha256(std::as_bytes(std::span(text))))
@@ -33,9 +40,11 @@ void publish_json(const std::filesystem::path& path, const nlohmann::json& value
     }
     auto temporary = path;
     temporary += ".tmp";
-    if (std::filesystem::exists(temporary))
+    if (occupied(temporary))
         throw std::invalid_argument("Batch temporary manifest already exists");
-    std::ofstream output(temporary, std::ios::binary);
+    std::ofstream output(temporary, std::ios::binary | std::ios::out | std::ios::noreplace);
+    if (!output)
+        throw std::runtime_error("Batch temporary manifest creation failed");
     output.write(text.data(), static_cast<std::streamsize>(text.size()));
     output.close();
     if (!output)
@@ -107,10 +116,10 @@ class colmap_batch_estimator final : public batch_pose_estimator {
     }
     result<observation_ticket> submit(frame_observation& observation) override {
         std::filesystem::path temporary, destination;
-        bool published{};
+        bool temporary_owned{}, published{};
         const auto rollback = [&] {
             std::error_code ignored;
-            if (!temporary.empty())
+            if (temporary_owned)
                 std::filesystem::remove(temporary, ignored);
             if (published)
                 std::filesystem::remove(destination, ignored);
@@ -163,6 +172,10 @@ class colmap_batch_estimator final : public batch_pose_estimator {
                 bytes + prefix.size() > config_.journal_bytes.bytes - METADATA_BYTES - asset_bytes_)
                 return fail(error_code::RESOURCE_EXHAUSTED,
                             "Batch observation exceeds memory/disk budget");
+            if (!output_directory(config_.job_directory) ||
+                !output_directory(config_.job_directory / "input"))
+                return fail(error_code::INVALID_DATA,
+                            "Batch output directory changed or is linked");
             const auto pixels = sha256(*frame.pixels.bytes);
             const observation_ticket ticket{index + 1};
             auto receipts = receipts_;
@@ -178,8 +191,7 @@ class colmap_batch_estimator final : public batch_pose_estimator {
             destination = config_.job_directory / "input" / name;
             temporary = destination;
             temporary += ".tmp";
-            if (config_.resume_input && std::filesystem::exists(destination) &&
-                !std::filesystem::exists(temporary)) {
+            if (config_.resume_input && occupied(destination) && !occupied(temporary)) {
                 if (std::filesystem::is_symlink(destination) ||
                     std::filesystem::file_size(destination) != bytes + prefix.size())
                     return fail(error_code::INVALID_DATA, "Resumed RGB asset shape differs");
@@ -200,9 +212,12 @@ class colmap_batch_estimator final : public batch_pose_estimator {
                 observation.frame.pixels.bytes.reset();
                 return ticket;
             }
-            if (std::filesystem::exists(destination) || std::filesystem::exists(temporary))
+            if (occupied(destination) || occupied(temporary))
                 return fail(error_code::INVALID_DATA, "Batch observation asset already exists");
-            std::ofstream output(temporary, std::ios::binary);
+            std::ofstream output(temporary, std::ios::binary | std::ios::out | std::ios::noreplace);
+            if (!output)
+                throw std::runtime_error("Batch temporary RGB creation failed");
+            temporary_owned = true;
             output.write(prefix.data(), static_cast<std::streamsize>(prefix.size()));
             for (std::size_t offset = 0; offset < bytes;) {
                 if (cancellation_.stop_requested()) {
@@ -305,6 +320,10 @@ class colmap_batch_estimator final : public batch_pose_estimator {
   private:
     result<std::shared_ptr<const completed_pose_dataset>> solve() {
         try {
+            if (!output_directory(config_.job_directory) ||
+                !output_directory(config_.job_directory / "input"))
+                return fail(error_code::INVALID_DATA,
+                            "Batch output directory changed or is linked");
             const auto journal = config_.job_directory / "input" / "journal.json";
             publish_json(journal,
                          {{"schema_version", 1},
@@ -414,6 +433,8 @@ make_batch_pose_estimator(batch_pose_config config, const std::stop_token& stop)
         if (catalog->observations.size() < 3)
             return fail(error_code::INVALID_DATA,
                         "Batch poses require at least three selected frames");
+        if (std::filesystem::is_symlink(config.job_directory))
+            return fail(error_code::INVALID_DATA, "Batch job may not be a symlink");
         config.job_directory = std::filesystem::weakly_canonical(config.job_directory);
         config.decode_stage = std::filesystem::canonical(config.decode_stage);
         auto metadata = adapter_detail::read_json(config.decode_stage / "result.json", MAX_JSON);

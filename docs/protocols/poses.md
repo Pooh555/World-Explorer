@@ -90,6 +90,12 @@ the complete journal is published only after all selected frames are admitted.
 This is atomic publication after closed file writes, not a power-loss durability
 qualification.
 
+Batch job roots may not be symlinks. RGB admission and final publication recheck
+the canonical job/input directories before writing. Existing output entries,
+including dangling symlinks and temporary files, block fresh publication without
+modifying caller data. RGB and manifest temporary files use exclusive creation;
+RGB rollback removes only the temporary file created by that submission.
+
 Finish closes admission, publishes a hashed journal/request and synchronously
 runs `solve-journal` through verified FlatBuffers worker events. The application
 invokes this on its job thread. The worker checks every PPM/header/RGB hash and
