@@ -6,6 +6,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <fstream>
+#include <limits>
 #include <nlohmann/json.hpp>
 #include <thread>
 
@@ -250,6 +251,28 @@ TEST_CASE("map corrections invalidate dependencies and reject stale submissions"
     REQUIRE(store.reset({1}));
     CHECK(store.acquire_snapshot()->poses.empty());
     CHECK_FALSE(store.commit(first));
+}
+
+TEST_CASE("invalid memory map retry windows reject admission without retaining an operation",
+          "[map_transaction_admission][limits]") {
+    const auto receipts = GENERATE(std::size_t{0}, std::size_t{65537});
+    map_store store({.remembered_operations = receipts});
+    map_transaction transaction;
+    transaction.operation = {1};
+    transaction.new_revision = {1};
+    const auto before = store.acquire_snapshot();
+    const auto rejected = store.commit(transaction);
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_ARGUMENT);
+    CHECK(store.acquire_snapshot() == before);
+    CHECK(before->revision.value == 0);
+    CHECK(transaction.operation.value == 1);
+    CHECK(transaction.new_revision.value == 1);
+    // Configuration is immutable; a valid store accepts this same caller-owned input.
+    map_store repaired({.remembered_operations = 1});
+    REQUIRE(repaired.commit(transaction));
+    REQUIRE(repaired.commit(transaction));
+    CHECK(repaired.acquire_snapshot()->revision.value == 1);
 }
 
 TEST_CASE("SHA-256 matches an independent standard test vector", "[contracts][hash]") {

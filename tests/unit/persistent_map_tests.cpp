@@ -4,6 +4,7 @@
 #include "world_explorer/map_store/map_store.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
 #include <atomic>
+#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <fstream>
@@ -143,7 +144,479 @@ std::map<std::string, std::string> tree_identity(const std::filesystem::path& ro
     }
     return files;
 }
+map_transaction extension_transaction() {
+    auto tx = first_transaction();
+    tx.operation = {101};
+    tx.base_revision = {1};
+    tx.new_revision = {2};
+    tx.calibrations[0].id = {8};
+    tx.observations.resize(1);
+    tx.observations[0].id = {3};
+    tx.observations[0].calibration = {8};
+    tx.alignments[0].submap = {56};
+    tx.alignments[0].revision = {2};
+    tx.poses.resize(1);
+    tx.poses[0].frame = {3};
+    tx.poses[0].submap = {56};
+    tx.poses[0].revision = {2};
+    return tx;
+}
+void reject_transaction_and_retry(const map_transaction& rejected, error_code expected,
+                                  const map_transaction& corrected, map_store_limits limits = {}) {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true, limits);
+    const auto first = first_transaction();
+    REQUIRE(store->commit(first));
+    const auto saved = store->acquire_snapshot();
+    const canonical_pose_asset producer{saved, producer_asset().provenance};
+    const auto bytes = encode_pose_asset(producer);
+    REQUIRE(bytes);
+    // This producer file is outside the store and must also survive failed admission.
+    REQUIRE(write_pose_asset(temporary.path / "producer.weposes", producer));
+    const auto files = tree_identity(temporary.path, {root / "writer.lock"});
+    const auto result = store->commit(rejected);
+    INFO((result ? "unexpected admission" : result.error().message));
+    REQUIRE(!result);
+    CHECK(result.error().code == expected);
+    CHECK(store->acquire_snapshot() == saved);
+    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == files);
+    const auto old_retry = store->commit(first);
+    REQUIRE(old_retry);
+    CHECK(old_retry->value == 1);
+    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == files);
+    // Failed admission must not reserve the operation ID in the live writer.
+    REQUIRE(store->commit(corrected));
+    CHECK(store->acquire_snapshot()->revision.value == 2);
+    const auto unchanged = encode_pose_asset(producer);
+    REQUIRE(unchanged);
+    CHECK(*unchanged == *bytes);
+    const auto committed = tree_identity(temporary.path, {root / "writer.lock"});
+    store.reset();
+    store = open(root, false, limits);
+    const auto retry = store->commit(corrected);
+    REQUIRE(retry);
+    CHECK(retry->value == 2);
+    REQUIRE(store->commit(first));
+    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == committed);
+}
 } // namespace
+TEST_CASE("transaction revision and identity rejection preserves durable receipts",
+          "[map_transaction_admission][envelope]") {
+    const auto corrected = extension_transaction();
+    auto rejected = corrected;
+    auto code = error_code::INVALID_ARGUMENT;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        rejected.operation = {};
+        break;
+    case 1:
+        rejected.epoch = {1};
+        code = error_code::WRONG_EPOCH;
+        break;
+    case 2:
+        rejected.base_revision = {};
+        code = error_code::WRONG_BASE;
+        break;
+    case 3:
+        rejected.new_revision = {};
+        break;
+    case 4:
+        rejected.new_revision = {1};
+        break;
+    case 5:
+        rejected.new_revision = {3};
+        break;
+    default:
+        FAIL("unknown transaction envelope mutation");
+    }
+    reject_transaction_and_retry(rejected, code, corrected);
+    CHECK(rejected.operation.value == (field == 0 ? 0 : 101));
+}
+
+TEST_CASE("transaction array budgets independently reject poses deletions and other records",
+          "[map_transaction_admission][limits]") {
+    map_store_limits limits{.max_frames = 2, .max_calibrations = 1, .max_submaps = 1};
+    map_transaction corrected;
+    corrected.operation = {101};
+    corrected.base_revision = {1};
+    corrected.new_revision = {2};
+    auto rejected = corrected;
+    const auto producer = first_transaction();
+    const auto field = GENERATE(0, 1, 2, 3, 4);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        rejected.observations.assign(3, producer.observations[0]);
+        break;
+    case 1:
+        rejected.poses.assign(3, producer.poses[0]);
+        break;
+    case 2:
+        rejected.deleted_frames.assign(3, frame_id{1});
+        break;
+    case 3:
+        rejected.calibrations.assign(2, producer.calibrations[0]);
+        break;
+    case 4:
+        rejected.alignments.assign(2, producer.alignments[0]);
+        break;
+    default:
+        FAIL("unknown transaction array budget");
+    }
+    reject_transaction_and_retry(rejected, error_code::RESOURCE_EXHAUSTED, corrected, limits);
+    CHECK(rejected.observations.size() + rejected.poses.size() + rejected.deleted_frames.size() +
+              rejected.calibrations.size() + rejected.alignments.size() ==
+          (field < 3 ? 3 : 2));
+}
+
+TEST_CASE("transaction calibration admission rejects invalid and reused identities atomically",
+          "[map_transaction_admission][calibration]") {
+    const auto corrected = extension_transaction();
+    auto rejected = corrected;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        rejected.calibrations[0].id = {};
+        break;
+    case 1:
+        rejected.calibrations[0].camera.fx = 0;
+        break;
+    case 2:
+        rejected.calibrations[0].id = {7};
+        break;
+    case 3:
+        rejected.calibrations.push_back(rejected.calibrations[0]);
+        break;
+    case 4:
+        rejected.calibrations[0].distortion[3] = std::numeric_limits<double>::infinity();
+        break;
+    case 5:
+        rejected.calibrations[0].model = std::bit_cast<calibration_model>(std::uint8_t{255});
+        break;
+    default:
+        FAIL("unknown transaction calibration mutation");
+    }
+    reject_transaction_and_retry(rejected, error_code::INVALID_DATA, corrected);
+    CHECK(rejected.calibrations.size() == (field == 3 ? 2 : 1));
+}
+
+TEST_CASE("transaction observations require provenance identities and valid timestamps",
+          "[map_transaction_admission][observations]") {
+    const auto corrected = extension_transaction();
+    auto rejected = corrected;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        rejected.observations[0].image_sha256.pop_back();
+        break;
+    case 1:
+        rejected.observations[0].image_sha256[0] = 'G';
+        break;
+    case 2:
+        rejected.observations[0].image_sha256[63] = '\0';
+        break;
+    case 3:
+        rejected.observations[0].id = {};
+        break;
+    case 4:
+        rejected.observations[0].capture = {};
+        break;
+    case 5:
+        rejected.observations[0].calibration = {999};
+        break;
+    case 6:
+        rejected.observations[0].timestamp.time_base_numerator = 0;
+        break;
+    case 7:
+        rejected.observations[0].timestamp.time_base_numerator = -1;
+        break;
+    case 8:
+        rejected.observations[0].timestamp.time_base_denominator = 0;
+        break;
+    case 9:
+        rejected.observations[0].timestamp.time_base_denominator = -1;
+        break;
+    case 10:
+        rejected.observations[0].capture_time = std::chrono::nanoseconds{-1};
+        break;
+    case 11:
+        rejected.observations[0].id = {1};
+        break;
+    case 12:
+        rejected.observations.push_back(rejected.observations[0]);
+        break;
+    default:
+        FAIL("unknown transaction observation mutation");
+    }
+    reject_transaction_and_retry(rejected, error_code::INVALID_DATA, corrected);
+    CHECK(rejected.observations[0].image_sha256.size() == (field == 0 ? 63 : 64));
+    if (field == 1)
+        CHECK(rejected.observations[0].image_sha256[0] == 'G');
+    if (field == 2)
+        CHECK(rejected.observations[0].image_sha256[63] == '\0');
+}
+
+TEST_CASE("transaction alignments reject invalid dependencies and duplicate changes",
+          "[map_transaction_admission][alignment]") {
+    const auto corrected = extension_transaction();
+    auto rejected = corrected;
+    const auto field = GENERATE(0, 1, 2, 3, 4);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        rejected.alignments[0].submap = {};
+        break;
+    case 1:
+        rejected.alignments[0].revision = {1};
+        break;
+    case 2:
+        rejected.alignments[0].world_from_submap.scale = 0;
+        break;
+    case 3:
+        rejected.alignments[0].world_from_submap.rotation = {1, 1, 0, 0};
+        break;
+    case 4:
+        rejected.alignments.push_back(rejected.alignments[0]);
+        break;
+    default:
+        FAIL("unknown transaction alignment mutation");
+    }
+    reject_transaction_and_retry(rejected, error_code::INVALID_DATA, corrected);
+    CHECK(rejected.alignments.size() == (field == 4 ? 2 : 1));
+}
+
+TEST_CASE("transaction poses reject inconsistent dependencies covariance and world overflow",
+          "[map_transaction_admission][poses]") {
+    auto corrected = extension_transaction();
+    auto& covariance = corrected.poses[0].covariance.emplace();
+    for (std::size_t axis = 0; axis < 6; ++axis)
+        covariance[axis * 6 + axis] = static_cast<double>(axis + 1);
+    auto rejected = corrected;
+    auto rejected_covariance = covariance;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        rejected.poses[0].frame = {999};
+        break;
+    case 1:
+        rejected.poses[0].submap = {999};
+        break;
+    case 2:
+        rejected.poses[0].submap_from_camera.scale = 0;
+        break;
+    case 3:
+        rejected.poses[0].submap_from_camera.scale = 2;
+        break;
+    case 4:
+        rejected.poses[0].revision = {1};
+        break;
+    case 5:
+        rejected.poses.push_back(rejected.poses[0]);
+        break;
+    case 6:
+        rejected.poses[0].capture_time += std::chrono::nanoseconds{1};
+        break;
+    case 7:
+        rejected_covariance[35] = std::numeric_limits<double>::quiet_NaN();
+        break;
+    case 8:
+        rejected_covariance[35] = std::numeric_limits<double>::infinity();
+        break;
+    case 9:
+        rejected_covariance[0] = -1;
+        break;
+    case 10:
+        rejected_covariance[1] = .5;
+        break;
+    case 11:
+        rejected_covariance[1] = 10;
+        rejected_covariance[6] = 10;
+        break;
+    case 12:
+        rejected.poses[0].tracking = std::bit_cast<tracking_state>(std::uint8_t{255});
+        break;
+    case 13:
+        rejected.alignments[0].world_from_submap.scale = std::numeric_limits<double>::max();
+        break;
+    default:
+        FAIL("unknown transaction pose mutation");
+    }
+    rejected.poses[0].covariance = rejected_covariance;
+    reject_transaction_and_retry(rejected, error_code::INVALID_DATA, corrected);
+    if (const auto& retained = rejected.poses[0].covariance; retained) {
+        if (field == 7)
+            CHECK(std::isnan((*retained)[35]));
+        if (field == 8)
+            CHECK(std::isinf((*retained)[35]));
+    } else
+        FAIL("rejected producer covariance was consumed");
+    CHECK(covariance[35] == 6);
+}
+
+TEST_CASE("transaction deletions cannot remove missing observations or change a frame twice",
+          "[map_transaction_admission][deletion]") {
+    map_transaction corrected;
+    corrected.operation = {101};
+    corrected.base_revision = {1};
+    corrected.new_revision = {2};
+    corrected.deleted_frames = {{1}};
+    auto rejected = corrected;
+    const auto field = GENERATE(0, 1, 2, 3);
+    CAPTURE(field);
+    if (field == 0)
+        rejected.deleted_frames = {{1}, {999}};
+    else if (field == 1)
+        rejected.deleted_frames.push_back({1});
+    else if (field == 2) {
+        rejected.poses = {first_transaction().poses[0]};
+        rejected.poses[0].revision = {2};
+    } else
+        rejected.deleted_frames.push_back({0});
+    reject_transaction_and_retry(rejected, error_code::NOT_FOUND, corrected);
+    CHECK(rejected.deleted_frames.front() == frame_id{1});
+}
+
+TEST_CASE("aggregate record budgets reject small extensions while admitting exact boundaries",
+          "[map_transaction_admission][limits]") {
+    const map_store_limits limits{.max_frames = 2, .max_calibrations = 1, .max_submaps = 1};
+    map_transaction corrected;
+    corrected.operation = {101};
+    corrected.base_revision = {1};
+    corrected.new_revision = {2};
+    auto rejected = corrected;
+    const auto extension = extension_transaction();
+    const auto field = GENERATE(0, 1, 2);
+    CAPTURE(field);
+    if (field == 0) {
+        rejected.observations = extension.observations;
+        rejected.observations[0].calibration = {7};
+        corrected.observations = rejected.observations;
+        corrected.deleted_frames = {{1}};
+    } else if (field == 1)
+        rejected.calibrations = extension.calibrations;
+    else
+        rejected.alignments = extension.alignments;
+    reject_transaction_and_retry(rejected, error_code::RESOURCE_EXHAUSTED, corrected, limits);
+}
+
+TEST_CASE(
+    "alignment correction invalidates only dependent poses and each revision replaces the set",
+    "[map_transaction_admission][invalidation]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto first = first_transaction();
+    const auto extension = extension_transaction();
+    REQUIRE(store->commit(first));
+    REQUIRE(store->commit(extension));
+    const auto before = store->acquire_snapshot();
+    CHECK(before->invalidated_frames.empty());
+    map_transaction correction;
+    correction.operation = {102};
+    correction.base_revision = {2};
+    correction.new_revision = {3};
+    correction.alignments = {{{55}, {3}, {{}, {1, 2, 3}, 1}}};
+    REQUIRE(store->commit(correction));
+    const auto changed = store->acquire_snapshot();
+    CHECK(changed->invalidated_frames == std::set<frame_id>{{1}, {2}});
+    CHECK(changed->poses.at({3}).submap == submap_id{56});
+    CHECK(before->world_from_submap.at({55}).translation == vec3d{10, -20, 30});
+    map_transaction deletion;
+    deletion.operation = {103};
+    deletion.base_revision = {3};
+    deletion.new_revision = {4};
+    deletion.deleted_frames = {{3}};
+    REQUIRE(store->commit(deletion));
+    CHECK(store->acquire_snapshot()->invalidated_frames == std::set<frame_id>{{3}});
+    CHECK(!store->acquire_snapshot()->poses.contains({3}));
+    CHECK(changed->poses.contains({3}));
+    const auto files = tree_identity(root, {root / "writer.lock"});
+    store.reset();
+    store = open(root);
+    REQUIRE(store->commit(correction));
+    REQUIRE(store->commit(deletion));
+    CHECK(store->acquire_snapshot()->revision.value == 4);
+    CHECK(store->acquire_snapshot()->invalidated_frames == std::set<frame_id>{{3}});
+    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
+}
+
+TEST_CASE("saturated durable map revisions cannot wrap to revision zero",
+          "[map_transaction_admission][revision]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    REQUIRE(store->commit(first_transaction()));
+    const auto original = manifest(root);
+    store.reset();
+    // A rehashed synthetic checkpoint reaches the otherwise impractical public boundary.
+    auto bytes = checkpoint_bytes(root, original);
+    auto* checkpoint = map_wire::GetMutablecheckpoint(bytes.data());
+    constexpr auto MAX_REVISION = std::numeric_limits<std::uint64_t>::max();
+    REQUIRE(checkpoint->mutate_revision(MAX_REVISION));
+    REQUIRE(checkpoint->mutable_receipts()->GetMutableObject(0)->mutate_revision(MAX_REVISION));
+    auto saturated = original;
+    saturated["revision"] = MAX_REVISION;
+    rehash_checkpoint(root, bytes, saturated);
+    store = open(root);
+    const auto saved = store->acquire_snapshot();
+    CHECK(saved->revision.value == MAX_REVISION);
+    const auto files = tree_identity(root, {root / "writer.lock"});
+    map_transaction wrapped;
+    wrapped.operation = {101};
+    wrapped.base_revision = {MAX_REVISION};
+    const auto rejected = store->commit(wrapped);
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_ARGUMENT);
+    CHECK(store->acquire_snapshot() == saved);
+    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
+    REQUIRE(store->reset({1}));
+    wrapped.epoch = {1};
+    wrapped.base_revision = {};
+    wrapped.new_revision = {1};
+    REQUIRE(store->commit(wrapped));
+    store.reset();
+    store = open(root);
+    REQUIRE(store->commit(wrapped));
+    CHECK(store->acquire_snapshot()->epoch.value == 1);
+    CHECK(store->acquire_snapshot()->revision.value == 1);
+    CHECK(saved->revision.value == MAX_REVISION);
+}
+
+TEST_CASE("failed durable reset preserves epoch records and receipts until explicit repair",
+          "[map_transaction_admission][reset]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto first = first_transaction();
+    REQUIRE(store->commit(first));
+    const auto saved = store->acquire_snapshot();
+    const auto obstruction = root / "assets" / "caller-directory";
+    REQUIRE(std::filesystem::create_directory(obstruction));
+    std::ofstream(obstruction / "caller.txt") << "caller data";
+    const auto files = tree_identity(root, {root / "writer.lock"});
+    const auto rejected = store->reset({1});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_DATA);
+    CHECK(store->acquire_snapshot() == saved);
+    REQUIRE(store->commit(first));
+    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
+    REQUIRE(std::filesystem::remove(obstruction / "caller.txt"));
+    REQUIRE(std::filesystem::remove(obstruction));
+    REQUIRE(store->reset({1}));
+    store.reset();
+    store = open(root);
+    CHECK(store->acquire_snapshot()->epoch.value == 1);
+    CHECK(store->acquire_snapshot()->revision.value == 0);
+    CHECK(store->acquire_snapshot()->observations.empty());
+    CHECK(saved->observations.size() == 2);
+}
+
 TEST_CASE("map preservation observer inventories the held lock and hashes unrelated lock names",
           "[canonical_admission][observation]") {
     directory temporary;

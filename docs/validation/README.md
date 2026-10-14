@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Durable transactions | [Public commit rejection and retry preservation](2026-10-14-map-transactions.md): 12 synthetic cases / 4,168 assertions, map-store 95.19% branch, core 88.15% line / 75.09% branch, package/update 79.97% (90% unmet), 169 coverage CPU / 187 dev / 169 C++23 CPU CTest, 12 native sanitizer cases and 2,393 preserved files |
 | Windows map observer | [Held-lock inventory and caller-file hashing](2026-10-14-windows-map-observer.md): supplied Windows 148/155 fails seven preservation observers; helper repaired, local C++26 dev 175/175 / C++23 CPU 157/157, 14 focused cases / 1,612 assertions and 2,393 preserved files; native rerun pending |
 | Canonical producer admission | [Native/file rejection, bounded encoding and retry preservation](2026-10-14-canonical-admission.md): 13 synthetic cases / 1,271 assertions, core 87.93% line / 74.35% branch, package/update 78.77% branch (90% unmet), 156 coverage CPU / 174 dev CTest, 13 native sanitizer cases and 2,393 preserved files |
 | Durable-map admission | [Checkpoint/configuration rejection and recovery](2026-10-14-map-admission.md): revision-zero dependency repair, ten new synthetic cases, core 87.54% line / 73.18% branch and package/update 76.83% branch (90% unmet), 143 coverage CPU / 161 dev CTest, ten native sanitizer cases and 2,393 preserved files |
