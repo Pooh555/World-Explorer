@@ -4,7 +4,7 @@ import copy
 import importlib.util
 import io
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import sys
 import tempfile
 import unittest
@@ -18,6 +18,33 @@ SPEC.loader.exec_module(audit)
 import check_dependency_manifest as checker
 
 HEADER = "Class: ELF64\nData: 2's complement, little endian\nMachine: Advanced Micro Devices X86-64\n"
+FIXTURE_ROOT = PurePosixPath("/synthetic-runtime")
+SELECTED_PATH = audit.selected_path
+
+
+def fixture_selected_path(text, root, directory=False):
+    """Translate synthetic Linux paths to host files; never run a host loader.
+
+    The fake loader speaks POSIX paths even on Windows. Validate its directory
+    spelling before translation so a host drive colon cannot become a Linux
+    library-list separator. Real capture keeps its original Linux validator.
+    """
+    if not isinstance(text, str) or not text or len(text) > 4096 or any(c in text for c in "\n\r\0"):
+        raise ValueError("Invalid selected runtime path")
+    logical = PurePosixPath(text)
+    if logical.is_relative_to(FIXTURE_ROOT):
+        text = logical.relative_to(FIXTURE_ROOT).as_posix()
+    if not directory:
+        return SELECTED_PATH(text, root)
+    # Only directories in the synthetic repository namespace are translated.
+    if logical.is_absolute() and not logical.is_relative_to(FIXTURE_ROOT):
+        raise ValueError("Directory is outside synthetic runtime namespace")
+    if ":" in text or "\\" in text:
+        raise ValueError("Library path contains a separator or host path spelling")
+    path = (root / text).resolve(strict=True)
+    if not path.is_relative_to(root) or not path.is_dir():
+        raise ValueError("Library path is not a contained fixture directory")
+    return path
 
 
 class FixtureCommands:
@@ -35,7 +62,7 @@ class FixtureCommands:
             else:
                 text += "0 (SONAME) Library soname: [libbase.so]\n"
         elif "--list" in argv:
-            text = f"libbase.so => {self.root / 'build/libbase.so'} (0x1234)\n"
+            text = f"libbase.so => {FIXTURE_ROOT / 'build/libbase.so'} (0x1234)\n"
             if self.missing:
                 text = "libbase.so => not found\n"
             if self.change:
@@ -61,8 +88,28 @@ class RuntimeAuditTests(unittest.TestCase):
                           "scope": "synthetic-loader", "library_path": ["build"]}]}
 
     def capture(self, runner=None):
-        with patch("sys.stdout", new_callable=io.StringIO):
+        with patch("sys.stdout", new_callable=io.StringIO), patch.object(audit, "selected_path", fixture_selected_path):
             return audit.capture(self.root, self.selection, runner or FixtureCommands(self.root))
+
+    def test_synthetic_loader_paths_are_linux_paths_on_windows_hosts(self):
+        runner = FixtureCommands(PureWindowsPath("D:/fixture root"))
+        result = runner.run(["synthetic-loader", "--list"])
+        parsed = audit.parse_loader(result["output"])
+        self.assertEqual(parsed["resolved"]["libbase.so"], str(FIXTURE_ROOT / "build/libbase.so"))
+        self.assertEqual(fixture_selected_path(parsed["resolved"]["libbase.so"], self.root), self.root / "build/libbase.so")
+        self.assertEqual(fixture_selected_path(str(FIXTURE_ROOT / "build"), self.root, directory=True), self.root / "build")
+
+    def test_fixture_directory_translation_rejects_invalid_and_escaping_paths(self):
+        for text in ("build:second", "bad\npath", "bad\0path", "../", str(FIXTURE_ROOT / "../"),
+                     "build/program", "D:/fixture/build", "/foreign/build"):
+            with self.subTest(text=text), self.assertRaises((ValueError, OSError)):
+                fixture_selected_path(text, self.root, directory=True)
+        # The actual Linux validator still rejects a literal list separator.
+        if sys.platform == "linux":
+            directory = self.root / "build:second"
+            directory.mkdir()
+            with self.assertRaisesRegex(ValueError, "separator"):
+                SELECTED_PATH(str(directory), self.root, directory=True)
 
     def test_elf_parser_preserves_needed_rpath_runpath_and_interpreter(self):
         text = HEADER + "0 (NEEDED) Shared library: [libbase.so]\n0 (RPATH) Library rpath: [$ORIGIN/lib]\n"
@@ -162,15 +209,15 @@ class RuntimeAuditTests(unittest.TestCase):
         prefix.mkdir()
         receipt = self.root / "receipt.json"
         receipt.write_text(json.dumps({"schema_version": 1, "requirements_match": False}))
-        with self.assertRaises(ValueError):
+        with patch.object(audit, "selected_path", fixture_selected_path), self.assertRaises(ValueError):
             audit.worker_owners(self.root, [{"prefix": "environment", "receipt": "receipt.json"}])
 
     def test_interpreter_metadata_must_match_selected_binary_directory(self):
         cfg = self.root / "interpreter.cfg"
-        cfg.write_text(f"home = {self.root / 'build'}\nimplementation = CPython\nversion_info = 3.10.22\n")
+        cfg.write_bytes(f"home = {FIXTURE_ROOT / 'build'}\nimplementation = CPython\nversion_info = 3.10.22\n".encode())
         self.selection["roots"][0]["interpreter_metadata"] = {"pyvenv_cfg": "interpreter.cfg"}
         self.assertEqual(self.capture()["interpreter_metadata"][0]["files"]["declared_version"], "3.10.22")
-        cfg.write_text("home = wrong\nimplementation = Other\nversion_info = 0\n")
+        cfg.write_bytes(b"home = wrong\nimplementation = Other\nversion_info = 0\n")
         with self.assertRaises(ValueError):
             self.capture()
 
