@@ -225,17 +225,28 @@ pass. **2,393 protected files unchanged**; no production/schema/recipe/environme
 scope changes or reconstruction/GPU rerun. Legacy source-prefix and timestamp
 limits remain explicit; synthetic header diagnostics do not certify decoding.
 
-Next executable task: M1/E1 fresh batch-pose admission. Inspect
-`build/coverage/coverage/run-0khgqzsr/html/` and `export.json` for
-`src/reconstruction_adapters/batch_poses.cpp` (86 uncovered branch outcomes).
-Extend the public batch tests around `tests/unit/completed_poses_tests.cpp` using
-fresh synthetic stages and controlled local workers only: configuration/start,
-ordered observation admission, exact memory/disk limits, retry receipts,
-closed/cancelled states and resumed-input rejection. Check exact errors and
-complete caller-file/lease preservation; successful admission consumes only the
-accepted lease, and rejected retries preserve prior receipts and journal bytes.
-Use fresh output directories; never launch reconstruction or touch saved jobs.
-Keep all coverage/profile/platform thresholds and remeasure without exclusions.
+[Fresh batch-pose admission](validation/2026-10-14-batch-pose-admission.md): **16
+synthetic cases / 20,633 assertions** verify ordered admission, exact memory/disk
+limits, retry/lease/file preservation, owned resume and isolated worker events.
+Three path regressions reproduce acceptance of dangling RGB output links and a
+linked input directory; non-following entry checks, canonical directory checks,
+exclusive staging and owned rollback repair them. Batch branches **92.75%**;
+core **89.57% line / 80.66% branch**, package/update **89.13% branch** (90% unmet).
+**226/226 coverage CPU / 244/244 dev / 226/226 explicit C++23 CPU CTest**, 16 native
+sanitizer cases and format/tidy/docs pass. **2,393 protected files unchanged**;
+only the batch adapter's production source changes. No reconstruction/GPU rerun
+or recipe/schema/environment/scope changes; synthetic completion is diagnostic.
+
+Next executable task: M1/E1 scene bundle admission. Inspect
+`build/coverage/coverage/run-7k6ap09k/html/` and `export.json` for
+`src/scene_store/bundle.cpp` (65 uncovered branch outcomes). Extend public bundle
+cases around `tests/unit/contracts_tests.cpp` with fresh tiny synthetic scenes:
+rehashed malformed manifests/indexes/payloads, path/coordinate/provenance checks,
+exact byte/count limits and failed publication. Verify exact errors, complete
+caller-file preservation and retained immutable snapshots; a corrected retry
+must preserve previous valid published assets. Keep original Q/E thresholds,
+bundle/benchmark scope and platform limits; do not open or rewrite saved scenes.
+Use fresh output directories and remeasure without excluding error paths.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
