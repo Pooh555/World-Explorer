@@ -282,7 +282,8 @@ result<void> map_persistence::reload(map_store& store, const std::stop_token& st
             return std::unexpected(state.error());
         auto next = std::make_shared<map_state>(**state);
         if (root->initial_pose_asset_sha256()) {
-            if (!map_codec::digest_valid(root->initial_pose_asset_sha256()->string_view()))
+            if (!next->revision.value ||
+                !map_codec::digest_valid(root->initial_pose_asset_sha256()->string_view()))
                 return fail(error_code::INVALID_DATA, "Invalid initial pose dependency");
             next->initial_pose_asset_sha256 = root->initial_pose_asset_sha256()->str();
             const auto dependency =

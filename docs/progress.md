@@ -158,16 +158,25 @@ ASan/UBSan/LeakSanitizer cases, format/tidy/docs pass; **2,393 protected files
 unchanged**. Production/worker/schema/recipe/environment/scope are unchanged.
 No user reconstruction/GPU rerun or full gate certification.
 
-Next executable task: M1/E1 durable-map configuration/checkpoint admission.
-Run `cmake --build --preset coverage --target we_coverage_report`, inspect the
-printed HTML/JSON for `src/map_store/map_persistence.cpp` (78 uncovered branch
-outcomes) and `src/map_store/map_codec.cpp` (63). Extend
-`tests/unit/persistent_map_tests.cpp` with invalid configuration and rehashed
-malformed checkpoint/recovery cases through public map-store commands. Use fresh
-synthetic temporary stores; verify caller directories, committed manifest/RAM
-snapshots and retry receipts survive rejection. Preserve byte/count/schema,
-platform and coverage limits, then remeasure both groups. Do not touch retained
-sample maps, run duplicate solves/fits or exclude error/platform paths to pass.
+[Durable-map admission](validation/2026-10-14-map-admission.md) adds ten synthetic
+cases and rejects revision-zero checkpoints retaining an initial canonical
+dependency. Rehashed manifest/receipt/record failures, independent record budgets,
+occupied roots and asset obstructions preserve caller files, committed snapshots
+and retry receipts. **143/143 coverage CPU / 161/161 dev CTest**, ten focused native
+ASan/UBSan/LeakSanitizer cases, format/tidy/docs pass. Core reaches **87.54% line /
+73.18% branch**, package/update **76.83% branch**; its 90% target remains unmet.
+**2,393 protected files unchanged**; no reconstruction/environment/GPU rerun.
+
+Next executable task: M1/E1 canonical producer snapshot admission. Inspect
+`build/coverage/coverage/run-c5d4ivg5/html/` and its `export.json` for
+`src/map_store/map_codec.cpp` (28 uncovered branch outcomes), `pose_asset.cpp`
+(30) and `map_store.cpp` (58). Extend public in-memory `import_pose_asset` cases
+with inconsistent map keys/record IDs, missing pose dependencies, invalid local
+transforms and world-compose overflow, plus encoded byte-budget/cancellation
+boundaries where reachable. Use fresh synthetic persistent stores; verify producer
+snapshots, committed manifest/RAM and operation receipts survive rejection and
+subsequent valid retries succeed. Preserve all schema/platform/coverage limits,
+then remeasure both groups. Do not exclude dominated/error/platform guards to pass.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.

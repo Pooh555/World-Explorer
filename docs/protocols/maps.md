@@ -45,6 +45,8 @@ same retained operation returns its original revision despite its old base;
 changed content returns DUPLICATE_OPERATION. Expired retries request snapshot
 resynchronization through WRONG_BASE; retry retention is bounded. Epoch reset
 clears records/dependencies/receipts and persists the new epoch at revision zero.
+Recovery rejects a revision-zero checkpoint that retains an initial canonical
+dependency, even when its records and receipts are empty and the dependency is valid.
 Reopening with a receipt budget smaller than the stored tail fails explicitly
 rather than truncating it. Digest profile 1 hashes fixed little-endian 64-bit
 fields, IEEE double bit patterns, count-prefixed record arrays, image digests and
