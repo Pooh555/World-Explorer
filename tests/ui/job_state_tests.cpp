@@ -4,6 +4,7 @@
 #include "world_explorer/application/scenes.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <stop_token>
 
 using namespace world_explorer;
 TEST_CASE("viewer completion waits for published snapshots after the loader clears busy") {
@@ -140,20 +141,25 @@ TEST_CASE("viewer owned job cancels at checked stages and reopens retained publi
         reconstruction_stage::VALIDATING, reconstruction_stage::INSPECTING,
         reconstruction_stage::POSES, reconstruction_stage::MAP, reconstruction_stage::VERIFYING_FIT,
         reconstruction_stage::COMPILING, reconstruction_stage::LOADING_SCENE);
+    CAPTURE(stage);
     test::reconstruction_gate gate(stage); // Outlives the job, including failing assertions.
-    viewer::application_state state;
+    std::stop_token observed_stop;
     std::atomic<bool> stop_observed{};
+    viewer::application_state state;
     state.reconstruction(request,
                          [&](const reconstruction_progress& value, const std::stop_token& stop) {
-                             std::stop_callback observe_stop(stop, [&] {
-                                 // UI cancellation must permit stop callbacks to access the state
-                                 // mutex.
-                                 std::lock_guard lock(state.mutex);
-                                 stop_observed = true;
-                             });
+                             if (value.stage == stage && !observed_stop.stop_possible())
+                                 observed_stop = stop;
                              gate.observe(value, stop);
                          });
     REQUIRE(gate.wait_until_reached());
+    REQUIRE(observed_stop.stop_possible());
+    // Keep the callback alive through cancellation/join. A callback local to the
+    // worker can be unregistered when the gate wakes, before request_stop invokes it.
+    std::stop_callback observe_stop(observed_stop, [&] {
+        std::lock_guard lock(state.mutex);
+        stop_observed = true;
+    });
     {
         std::lock_guard lock(state.mutex);
         REQUIRE(state.progress);

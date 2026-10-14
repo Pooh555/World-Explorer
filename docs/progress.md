@@ -195,16 +195,28 @@ and failed reset preservation. Map-store branches rise **77.88%→95.19%**; core
 sanitizer cases and format/tidy/docs pass. **2,393 protected files unchanged**;
 production/schema/recipe/environment/scope unchanged, no reconstruction/GPU rerun.
 
-Next executable task: M1/E1 completed-pose replay admission. Inspect
-`build/coverage/coverage/run-krrg731o/html/` and `export.json` for
-`src/reconstruction_adapters/completed_pose_replay.cpp` (63 uncovered branch
-outcomes). Extend `tests/unit/completed_poses_tests.cpp` using fresh synthetic
-datasets: reject malformed dataset/record dependencies, start budgets, unsupported
-frame payloads and mismatched retry headers/leases; check exact errors and caller
-lease preservation, corrected operation retry, bounded drain/finish and missing-pose
-LOST events at the unchanged registration boundary. Retain immutable producer
-snapshots and all schema/platform/coverage limits; remeasure both groups without
-excluding error or dominated guards.
+[Completed-pose replay admission](validation/2026-10-14-replay-admission.md): **12
+synthetic cases / 8,867 assertions**, replay **178/178 mapped branch outcomes**,
+core **88.39% line / 76.42% branch**, package/update **82.13% branch** (90% unmet).
+The initial dev run passes 198/199; its cancellation observer can unregister
+before invocation. Retaining the callback through cancellation/join repairs that
+test without changing production; a latch probe reproduces the race and all seven
+boundaries pass 20 consecutive runs. **181/181 coverage CPU / 199/199 dev /
+181/181 explicit C++23 CPU CTest**, 12 native replay sanitizer cases, format/tidy/
+docs and **2,393 unchanged protected files** pass. No production/schema/recipe/
+environment/scope change or reconstruction/GPU rerun.
+
+Next executable task: M1/E1 completed-pose file import admission. Inspect
+`build/coverage/coverage/run-etthc6yq/html/` and `export.json` for
+`src/reconstruction_adapters/completed_poses.cpp` (79 uncovered branch outcomes).
+Extend `tests/unit/completed_poses_tests.cpp` using fresh synthetic owned stages:
+malformed completion/pointers, rehashed unsupported profiles, camera/vector/numeric
+boundaries, inconsistent registration counts and pose identity/time/dependencies.
+Check exact errors, complete caller-file preservation, retained immutable datasets
+and successful import after explicit fixture repair; never launch a solver.
+Keep canonical/native and legacy timestamp profiles distinct. Retain all schema,
+registration, platform and coverage limits; remeasure without excluding error or
+dominated guards.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
