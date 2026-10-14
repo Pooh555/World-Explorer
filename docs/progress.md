@@ -249,6 +249,17 @@ format/tidy/docs pass. **2,393 protected files unchanged**; only `bundle.cpp`
 changes in production. No reconstruction/GPU rerun or recipe/schema/environment/
 scope changes. CPU coverage alone does not qualify E1 or complete M1.
 
+[Windows batch launch-marker repair](validation/2026-10-14-windows-batch-marker.md):
+supplied `windows-2025` C++23 CPU run passes **236/238**, failing two diagnostic
+marker comparisons (ten assertions) because text-mode writes translate LF to
+CRLF. A portable CRLF-write shim reproduces every failure; binary marker append
+repairs it while retaining exact byte/one-launch checks. **2 cases / 6,077
+assertions**, **257/257 dev / 239/239 C++23 CPU CTest**, focused native sanitizers
+and format/tidy/docs pass locally. **87 production source hashes and 2,393
+protected files unchanged**. Native Windows rerun remains pending; no workflow,
+recipe, reconstruction or environment changes. This does not certify Windows
+viewer/release behavior or a full gate.
+
 Next executable task: M1/E1 bounded parser fuzzing (§7.3). There are no existing
 fuzz targets. Add an opt-in isolated Clang CPU libFuzzer + ASan/UBSan target for
 `load_gsplat_ply`, with small synthetic SH0–3/LF/CRLF seeds, bounded input/header/

@@ -650,7 +650,7 @@ void diagnostic_worker(const batch_pose_config& config, std::string_view mode) {
         "'max_source_bytes':17179869184,'max_output_bytes':34359738368})\n"
         "request=json.loads(Path(sys.argv[sys.argv.index('--request')+1]).read_text())\n"
         "root=Path(request['job_dir'])\n"
-        "with (root/'launches').open('a') as output: output.write('launch\\n')\n"
+        "with (root/'launches').open('ab') as output: output.write(b'launch\\n')\n"
         "if mode=='success':\n"
         " source=Path(__file__).parent\n"
         " shutil.copytree(source/'stages',root/'stages')\n"
@@ -668,19 +668,40 @@ void diagnostic_worker(const batch_pose_config& config, std::string_view mode) {
         " sys.exit(2)\n";
     write_bytes(config.worker_script, script);
 }
+void force_crlf_text_writes(const batch_pose_config& config) {
+    std::ifstream input(config.worker_script, std::ios::binary);
+    REQUIRE(input);
+    const std::string script{std::istreambuf_iterator<char>(input), {}};
+    REQUIRE(!input.bad());
+    input.close();
+    // Reproduce Windows text-mode translation on every host. Binary files bypass it.
+    write_bytes(config.worker_script,
+                "import pathlib\n"
+                "original_open=pathlib.Path.open\n"
+                "def crlf_open(self,mode='r',*args,**kwargs):\n"
+                " if 'b' not in mode and any(flag in mode for flag in 'awx') and "
+                "kwargs.get('newline') is None:\n"
+                "  kwargs['newline']='\\r\\n'\n"
+                " return original_open(self,mode,*args,**kwargs)\n"
+                "pathlib.Path.open=crlf_open\n" +
+                    script);
+}
 } // namespace
 
 TEST_CASE("batch worker failure mapping retains one launch journal and immutable retry failure",
-          "[batch_admission][worker]") {
+          "[batch_admission][worker][batch_marker]") {
+    const auto windows_text = GENERATE(false, true);
     const auto mode = GENERATE("CANCELLED", "RESOURCE_LIMIT", "UNSUPPORTED", "BAD_INPUT",
                                "CORRUPT_ASSET", "DIAGNOSTIC_FAILURE", "wrong-stage",
                                "missing-output", "nonzero", "no-batch", "streaming", "capacity");
-    CAPTURE(mode);
+    CAPTURE(mode, windows_text);
     pose_fixture fixture;
     const auto data = fixture.load();
     REQUIRE(data);
     auto config = configuration(fixture);
     diagnostic_worker(config, mode);
+    if (windows_text)
+        force_crlf_text_writes(config);
     std::size_t handshakes{};
     config.observed = [&](const worker_event& event) {
         if (std::holds_alternative<worker_handshake>(event))
@@ -784,14 +805,17 @@ TEST_CASE("batch synthetic completion drains ordered events once and retains its
 }
 
 TEST_CASE("batch resumed publication reuses identical manifests and preserves changed caller files",
-          "[batch_admission][publication]") {
+          "[batch_admission][publication][batch_marker]") {
+    const auto windows_text = GENERATE(false, true);
     const auto field = GENERATE(0, 1, 2, 3, 4);
-    CAPTURE(field);
+    CAPTURE(field, windows_text);
     pose_fixture fixture;
     const auto data = fixture.load();
     REQUIRE(data);
     auto config = configuration(fixture);
     diagnostic_worker(config, "DIAGNOSTIC_FAILURE");
+    if (windows_text)
+        force_crlf_text_writes(config);
     auto initial = make_batch_pose_estimator(config);
     REQUIRE(initial);
     REQUIRE((*initial)->start(START));
