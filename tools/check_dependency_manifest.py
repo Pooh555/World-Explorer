@@ -397,6 +397,12 @@ def check_manifest(root, manifest, local_evidence=False):
             raise ValueError("Unsupported profile kind")
     result = {"profiles": len(profiles), "components": components, "open_gaps": gaps,
               "local_evidence_checked": local_evidence, "rights_qualified": False}
+    if "binding_owners_summary" in manifest:
+        from audit_binding_owners import check_summary
+        path = manifest["binding_owners_summary"]
+        if path not in bindings or bindings[path]["kind"] != "tracked":
+            raise ValueError("Unbound mapped-library owner summary")
+        result["binding_owners"] = check_summary(root, load_json(contained(root, path)), local_evidence)
     if "runtime_summary" in manifest:
         path = manifest["runtime_summary"]
         if path not in bindings or bindings[path]["kind"] != "tracked":

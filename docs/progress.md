@@ -320,16 +320,27 @@ interpreters, **260 dev / 242 C++23 CPU checks** and **2,088 protected / 94
 src/include files unchanged** pass. No solve/fit/checkpoint/model/environment
 changes, rights closure or full gate upgrade.
 
-Next executable task: M1 ownership/notice associations for the **137 newly mapped
-ELF files** (§6.2/§7.3). Start with
-`python3 tools/check_dependency_manifest.py --local-evidence`, then the mapping
-summary's `baseline_unseen` and retained
-`artifacts/validation/live-bindings-20261014/new-mapping-attribution-preflight.json`:
-117 worker hashes already match selected RECORD receipts; audit installed owner/
-notice associations and 20 new system files, preserving original source/archive/
-bundled-term gaps. Use read-only package/metadata checks, no checkpoint loads,
-model downloads, optimizer/video jobs or unchanged sample_2 retries. Preserve
-both completed scenes and failed stages; unobserved lazy paths stay unqualified.
+[Newly mapped owner/notice associations](validation/2026-10-15-binding-owners.md):
+**137 unchanged ELF files / ten worker distributions + six system packages /
+30 installed notices**, zero unattributed targets. Current RECORD/metadata/notice
+checks and repeated read-only package queries pass; **15 new / 132 worker cases**
+on three interpreters and **260 dev / 242 C++23 CPU checks** pass. All **2,088
+protected / 94 src/include files** remain unchanged; no environment provisioning,
+reconstruction or GPU run. Archive/bundled-term/rights gaps remain. The full local
+manifest check now fails **2**: system snappy **1.2.2-3→1.3.1-1** removed the old
+library path and zlib **1:1.3.2-3→1:1.3.2-4** changed recorded bytes. Old receipts
+retain their historical identities; new associations do not conceal this drift.
+
+Next executable task: M1 fresh runtime evidence for the observed system changes.
+First run the existing controlled loader selection into a new receipt:
+`python3 tools/audit_runtime_dependencies.py --selection third_party/runtime-selection-20261014.json --output artifacts/validation/runtime-refresh-20261015/runtime-current.json --require-resolved`.
+Compare it with the retained loader receipt and
+`artifacts/validation/binding-owners-20261015/current-payload-drift.json`; then
+recapture the affected backend/viewer mapping contexts before superseding active
+system pins. Preserve old failed evidence and all saved runs. No installs,
+checkpoint/model loading, optimizer/video jobs or unchanged sample_2 retries.
+Current scoped ownership check:
+`python3 tools/audit_binding_owners.py --summary third_party/binding-owners-20261015.json --local-evidence`.
 
 [Windows runtime fixture repair](validation/2026-10-15-windows-runtime-fixture.md):
 supplied C++23 CPU run **240/241**, worker suite five errors / three failures
