@@ -101,7 +101,7 @@
     { "name": "gcc", "configurePreset": "gcc" },
     { "name": "clang", "configurePreset": "clang" },
     { "name": "coverage", "configurePreset": "coverage" },
-    { "name": "fuzz", "configurePreset": "fuzz", "targets": ["we_fuzz_ply"] },
+    { "name": "fuzz", "configurePreset": "fuzz", "targets": ["we_fuzz_ply", "we_fuzz_scene_transactions"] },
     { "name": "asan", "configurePreset": "asan" },
     { "name": "tsan", "configurePreset": "tsan" },
     { "name": "release-vcpkg", "configurePreset": "release-vcpkg" }
