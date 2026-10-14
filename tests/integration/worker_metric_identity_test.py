@@ -59,13 +59,14 @@ class MetricIdentityTests(unittest.TestCase):
 
     def inventory(self, name):
         info, paths = self.infos[name]
+        site = self.site.resolve(strict=True)
         rows = []
         for file in paths:
             data = file.read_bytes()
-            rows.append([file.relative_to(self.site).as_posix(), "sha256=" +
+            rows.append([file.resolve(strict=True).relative_to(site).as_posix(), "sha256=" +
                          base64.urlsafe_b64encode(hashlib.sha256(data).digest()).decode().rstrip("="),
                          str(len(data))])
-        rows.append([(info / "RECORD").relative_to(self.site).as_posix(), "", ""])
+        rows.append([(info.resolve(strict=True) / "RECORD").relative_to(site).as_posix(), "", ""])
         with (info / "RECORD").open("w", newline="") as stream:
             csv.writer(stream).writerows(rows)
 
@@ -175,28 +176,44 @@ class MetricIdentityTests(unittest.TestCase):
             self.report()
 
     def test_requirements_and_selected_implementation_mutation_abort(self):
+        self.assert_mutations_abort()
+
+    def test_mutation_observers_follow_aliased_fixture_paths(self):
+        # Reproduce equivalent native temp-path spellings without symlink privileges.
+        self.site = self.site / ".." / self.site.name
+        self.backbone = self.prefix / ".." / self.backbone.name
+        self.assert_mutations_abort()
+
+    def assert_mutations_abort(self):
         original_digest = metric.file_digest
-        selected = self.site / "torchmetrics/functional/image/lpips.py"
+        selected = (self.site / "torchmetrics/functional/image/lpips.py").resolve(strict=True)
+        mutations = []
 
         def corrupt_after_audit(path, *args):
-            if path == selected:
+            if path.resolve(strict=True) == selected:
+                mutations.append(path)
                 path.write_text("changed after installed-byte audit")
             return original_digest(path, *args)
 
         with patch.object(metric, "file_digest", corrupt_after_audit):
             with self.assertRaisesRegex(ValueError, "changed after"):
                 self.report()
+        self.assertEqual(len(mutations), 1)
         self.inventory("torchmetrics")
+        mutations.clear()
+        backbone = self.backbone.resolve(strict=True)
 
         def corrupt_requirements(path, *args):
             result = original_digest(path, *args)
-            if path == self.backbone:
+            if path.resolve(strict=True) == backbone:
+                mutations.append(path)
                 self.requirements.write_text("torch==wrong\n")
             return result
 
         with patch.object(metric, "file_digest", corrupt_requirements):
             with self.assertRaisesRegex(ValueError, "Requirements changed"):
                 self.report()
+        self.assertEqual(len(mutations), 1)
 
     def write_manifest(self):
         path = self.root / "metric.json"

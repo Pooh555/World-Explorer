@@ -159,12 +159,15 @@ storage fails; metadata inspection still applies the decoded-storage estimate.
 
 Other native devices/platforms, corpus/reference performance, geometry/collision,
 coverage/fuzzing and full gates remain pending; [requirements](requirements.md)
-tracks scope. Latest [supplied native CPU logs and observer repair](validation/2026-10-13-native-audit-paths.md)
-show Windows **101/102** and macOS **102/103**: both fail the same Python audit
-read observer. All named SQLite recovery cases now pass on both hosts. Canonical
-observer targets plus a portable alias regression pass locally: 12 audit checks
-on three interpreters, 37 worker checks, C++23 CPU 103/103 and C++26 dev 119/119.
-Hosted reruns of this repair remain pending. The earlier [SQLite closure repair](validation/2026-10-13-windows-sqlite.md)
+tracks scope. Latest [supplied native CPU logs and metric observer repair](validation/2026-10-14-native-metric-paths.md)
+show Windows **101/102** and macOS **102/103**: both fail the metric mutation
+observer's unresolved/canonical path comparison. Portable alias replay reproduces
+the exact failure; canonical observers and exactly-once mutation checks now pass:
+**18 metric / 68 worker cases** on three interpreters, **103/103 C++23 CPU /
+121/121 C++26 dev**, **2,393 protected files unchanged**. Hosted rerun is pending;
+no reconstruction or environment changes. The [earlier audit observer repair](validation/2026-10-13-native-audit-paths.md)
+retains its historical 12 audit / 37 worker / 119 dev scope. Named SQLite recovery
+cases pass in the latest supplied logs. The earlier [SQLite closure repair](validation/2026-10-13-windows-sqlite.md)
 retains local 102/102 / 25-case scope; prior Windows 100/101 cleanup failure,
 macOS CPU pass and Windows 77/78 (worker only) remain historical;
 [flush repair](validation/2026-10-12-windows-flush.md) records local C++23 79/79 and
