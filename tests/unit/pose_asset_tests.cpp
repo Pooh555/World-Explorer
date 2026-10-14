@@ -287,3 +287,208 @@ TEST_CASE("canonical pose file publication is immutable and concurrent writers p
     file.close();
     CHECK_FALSE(read_pose_asset(path, *hash));
 }
+
+TEST_CASE("canonical byte and record limits reject invalid configurations before reading files",
+          "[canonical_admission][limits]") {
+    directory temporary;
+    const auto asset = fixture();
+    const auto source = temporary.path / "synthetic.weposes";
+    const auto hash = write_pose_asset(source, asset);
+    REQUIRE(hash);
+    const auto bytes = encode_pose_asset(asset);
+    REQUIRE(bytes);
+    pose_asset_limits limits;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        limits.encoded_bytes.bytes = 0;
+        break;
+    case 1:
+        limits.encoded_bytes.bytes = std::size_t{256} * 1024 * 1024 + 1;
+        break;
+    case 2:
+        limits.records.max_frames = 0;
+        break;
+    case 3:
+        limits.records.max_frames = 1000001;
+        break;
+    case 4:
+        limits.records.max_calibrations = 0;
+        break;
+    case 5:
+        limits.records.max_calibrations = 4097;
+        break;
+    case 6:
+        limits.records.max_submaps = 0;
+        break;
+    case 7:
+        limits.records.max_submaps = 4097;
+        break;
+    default:
+        FAIL("unknown canonical limit");
+    }
+    const auto encoded = encode_pose_asset(asset, limits);
+    REQUIRE(!encoded);
+    CHECK(encoded.error().code == error_code::INVALID_ARGUMENT);
+    const auto decoded = decode_pose_asset(*bytes, *hash, limits);
+    REQUIRE(!decoded);
+    CHECK(decoded.error().code == error_code::INVALID_ARGUMENT);
+    const auto read = read_pose_asset(source, *hash, limits);
+    REQUIRE(!read);
+    CHECK(read.error().code == error_code::INVALID_ARGUMENT);
+    const auto inspected = inspect_pose_asset(asset, limits);
+    REQUIRE(!inspected);
+    CHECK(inspected.error().code == error_code::INVALID_ARGUMENT);
+    const auto preserved = sha256_file(source, bytes->size());
+    REQUIRE(preserved);
+    CHECK(*preserved == *hash);
+    REQUIRE(read_pose_asset(source, *hash));
+}
+
+TEST_CASE("canonical record admission bounds each collection independently",
+          "[canonical_admission][limits]") {
+    auto asset = fixture();
+    auto state = std::make_shared<map_state>(*asset.snapshot);
+    asset.snapshot = state;
+    state->world_from_submap.emplace(submap_id{56}, similarity_transform{});
+    state->invalidated_frames = {{1}, {2}};
+    const auto field = GENERATE(0, 1, 2, 3, 4);
+    CAPTURE(field);
+    if (field == 2 || field == 4) {
+        state->observations.erase({9007199254740993ULL});
+        state->poses.erase({9007199254740993ULL});
+    }
+    auto bytes = encode_pose_asset(asset);
+    REQUIRE(bytes);
+    if (field == 2) {
+        // Keep two poses but one observation so the independent pose budget is reached.
+        state->poses.emplace(frame_id{9007199254740993ULL},
+                             fixture().snapshot->poses.at({9007199254740993ULL}));
+        auto full = fixture();
+        bytes = encode_pose_asset(full);
+        REQUIRE(bytes);
+        auto* observations = pose_wire::GetMutablepose_asset(bytes->data())->mutable_observations();
+        flatbuffers::WriteScalar(reinterpret_cast<std::uint8_t*>(observations), std::uint32_t{1});
+    }
+    pose_asset_limits limits;
+    if (field == 0)
+        limits.records.max_calibrations = 1;
+    else if (field == 3)
+        limits.records.max_submaps = 1;
+    else
+        limits.records.max_frames = 1;
+    const auto encoded = encode_pose_asset(asset, limits);
+    REQUIRE(!encoded);
+    CHECK(encoded.error().code == error_code::RESOURCE_EXHAUSTED);
+    const auto decoded = decode_pose_asset(*bytes, sha256(*bytes), limits);
+    REQUIRE(!decoded);
+    CHECK(decoded.error().code == error_code::RESOURCE_EXHAUSTED);
+    if (field == 2) {
+        const auto unbounded = encode_pose_asset(asset);
+        REQUIRE(!unbounded);
+        CHECK(unbounded.error().code == error_code::INVALID_DATA);
+    } else {
+        const auto unbounded = encode_pose_asset(asset);
+        REQUIRE(unbounded);
+        CHECK(*unbounded == *bytes);
+    }
+}
+
+TEST_CASE("canonical encoding has exact byte admission and rejects incomplete publications",
+          "[canonical_admission][bytes]") {
+    directory temporary;
+    const auto asset = fixture();
+    const auto bytes = encode_pose_asset(asset);
+    REQUIRE(bytes);
+    const auto hash = sha256(*bytes);
+    // Sweep output budgets without depending on FlatBuffers' internal record layout.
+    for (std::size_t budget = 1; budget < bytes->size(); budget += 64) {
+        CAPTURE(budget);
+        const auto rejected = encode_pose_asset(asset, {{budget}, {}});
+        REQUIRE(!rejected);
+        CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
+    }
+    const pose_asset_limits exact{{bytes->size()}, {}};
+    const auto encoded = encode_pose_asset(asset, exact);
+    REQUIRE(encoded);
+    CHECK(*encoded == *bytes);
+    REQUIRE(decode_pose_asset(*bytes, hash, exact));
+    const auto empty = decode_pose_asset({}, hash);
+    REQUIRE(!empty);
+    CHECK(empty.error().code == error_code::RESOURCE_EXHAUSTED);
+    const pose_asset_limits short_budget{{bytes->size() - 1}, {}};
+    const auto rejected = encode_pose_asset(asset, short_budget);
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
+    const auto destination = temporary.path / "never-published.weposes";
+    const auto written = write_pose_asset(destination, asset, short_budget);
+    REQUIRE(!written);
+    CHECK(written.error().code == error_code::RESOURCE_EXHAUSTED);
+    CHECK(std::filesystem::is_empty(temporary.path));
+    const auto published = write_pose_asset(destination, asset, exact);
+    REQUIRE(published);
+    CHECK(*published == hash);
+    const auto read = read_pose_asset(destination, hash, short_budget);
+    REQUIRE(!read);
+    CHECK(read.error().code == error_code::RESOURCE_EXHAUSTED);
+    REQUIRE(read_pose_asset(destination, hash, exact));
+    const auto preserved = sha256_file(destination, bytes->size());
+    REQUIRE(preserved);
+    CHECK(*preserved == *published);
+}
+
+TEST_CASE("rehashed canonical provenance rejects each short hash and invalid hexadecimal value",
+          "[canonical_admission][provenance]") {
+    const auto asset = fixture();
+    auto bytes = encode_pose_asset(asset);
+    REQUIRE(bytes);
+    auto* provenance = pose_wire::GetMutablepose_asset(bytes->data())->mutable_provenance();
+    const auto field = GENERATE(0, 1, 2, 3);
+    const auto short_hash = GENERATE(false, true);
+    flatbuffers::String* hash{};
+    if (field == 0)
+        hash = provenance->mutable_source_sha256();
+    else if (field == 1)
+        hash = provenance->mutable_decode_completion_sha256();
+    else if (field == 2)
+        hash = provenance->mutable_pose_completion_sha256();
+    else
+        hash = provenance->mutable_journal_sha256();
+    REQUIRE(hash);
+    if (short_hash) {
+        hash->Mutate(63, '\0');
+        flatbuffers::WriteScalar(reinterpret_cast<std::uint8_t*>(hash), std::uint32_t{63});
+    } else
+        hash->Mutate(0, 'G');
+    const auto supplied = *bytes;
+    const auto rejected = decode_pose_asset(*bytes, sha256(*bytes));
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_DATA);
+    CHECK(*bytes == supplied);
+    REQUIRE(encode_pose_asset(asset));
+}
+
+TEST_CASE("canonical inspection rejects invalid input and reports invalidations without a journal",
+          "[canonical_admission][inspection]") {
+    auto asset = fixture();
+    auto state = std::make_shared<map_state>(*asset.snapshot);
+    state->invalidated_frames = {{2}};
+    asset.snapshot = state;
+    asset.provenance.journal_sha256.reset();
+    const auto text = inspect_pose_asset(asset);
+    REQUIRE(text);
+    const auto json = nlohmann::json::parse(*text);
+    CHECK(json["provenance"]["journal_sha256"].is_null());
+    CHECK(json["invalidated_frames"] == nlohmann::json::array({2}));
+    const auto rejected = inspect_pose_asset(asset, {{text->size() - 1}, {}});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
+    const auto exact = inspect_pose_asset(asset, {{text->size()}, {}});
+    REQUIRE(exact);
+    CHECK(*exact == *text);
+    asset.snapshot.reset();
+    const auto missing = inspect_pose_asset(asset);
+    REQUIRE(!missing);
+    CHECK(missing.error().code == error_code::INVALID_ARGUMENT);
+}

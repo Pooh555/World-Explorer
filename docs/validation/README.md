@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Canonical producer admission | [Native/file rejection, bounded encoding and retry preservation](2026-10-14-canonical-admission.md): 13 synthetic cases / 1,271 assertions, core 87.93% line / 74.35% branch, package/update 78.77% branch (90% unmet), 156 coverage CPU / 174 dev CTest, 13 native sanitizer cases and 2,393 preserved files |
 | Durable-map admission | [Checkpoint/configuration rejection and recovery](2026-10-14-map-admission.md): revision-zero dependency repair, ten new synthetic cases, core 87.54% line / 73.18% branch and package/update 76.83% branch (90% unmet), 143 coverage CPU / 161 dev CTest, ten native sanitizer cases and 2,393 preserved files |
 | Worker envelope validation | [Typed rejection and manifest observer admission](2026-10-14-worker-envelope.md): Catch section discovery repair, 16 new cases, worker 97.20% branch / whole package-update 74.25% (90% unmet), 133 coverage CPU / 151 dev CTest, 17 native sanitizer cases and 2,393 preserved files |
 | CPU contract coverage | [Isolated Clang C++26 measurement](2026-10-14-cpu-coverage.md): core 86.62% line / 70.08% branch, package/update 71.71% branch (90% unmet); two enum admission repairs, 117 coverage CPU / 135 dev checks, 13 focused native sanitizer cases and 2,393 preserved files |

@@ -106,6 +106,10 @@ separate from recovery checkpoints; it contains no operation receipts. Native
 import also accepts a checked in-memory canonical asset, serializing and retaining
 it through the same byte/count admission and publication path. File import keeps
 the exact supplied bytes and hash; it never substitutes a re-encoding.
+Initial import requires epoch zero/revision one and no invalidated frames. A
+complete dependency may remain as an unreferenced asset if later transaction or
+checkpoint admission fails; the committed manifest, snapshot and retry receipts
+remain unchanged. Correcting the admission failure permits an authentic retry.
 
 `prepare-poses POSE_JOB VIDEO MAP_DIRECTORY [--decode-stage DIR]` verifies the
 retained job and source, then creates/reopens the initial durable map without
