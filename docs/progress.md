@@ -41,55 +41,43 @@ in Git documentation. On 2026-10-13 the user explicitly requested **all old
 artifacts be deleted** and all three videos reconstructed anew. Those prior raw
 jobs, scenes, readbacks and migration inventories are no longer available.
 
-## Current fresh reconstruction runs
+## Current saved reconstruction runs
 
-Sources: `data/local/sample_1.mp4`, `sample_2.mp4`, `sample_3.mp4`.
-The renamed first source is explicitly being reconstructed rather than reused.
-Each video now has one folder: `artifacts/sample_1/`, `sample_2/`, `sample_3/`.
-`request.json` and `source.json` identify inputs/config; stage directories hold
-owned processing state; `logs/reconstruction.log` records progress and
-`logs/result.json` appears on terminal exit. The original session interruption cancelled all three coordinators before fitting.
-The earlier sequential queue stopped after falsely rejecting sample_1 and
-cancelling sample_2; sample_3 remained pending. [Model selection investigation](validation/2026-10-13-model-selection.md)
-found a complete 63-frame model alongside a redundant four-frame subset.
-The worker now selects a unique strict superset, preserving genuine disconnected
-and ambiguous-model rejection. Retained-model recovery completed in a separate
-`pose-recovery/` job, and native replay passed: 63 observations/poses, one calibration.
-The new sequential recovery queue uses `request-recovery.json` per video:
-sample_1 completed its 7k fit: **295,952 splats**, validated/native-viewed with zero
-Vulkan errors. All 204 original pose files and 18 completed fit files remain
-unchanged. Its viewing metadata now preserves capture orientation on an explicit
-Source view reset; canonical world/poses/SH and unknown gravity are unchanged.
+Sources remain under `data/local/`; each video has one folder under `artifacts/`.
+Read-only inspection on 2026-10-14 found newer state than the preceding handoff.
+[Current-state evidence](validation/2026-10-14-dependency-closure.md) records exact
+source/result/scene identities and structural validation, without starting jobs.
 
-Sample_2's later stop was cancellation (exit 130); the original trigger is not
-established. Remaining jobs now run sequentially in an independent, resource-
-bounded user service. A custom-folder stale-lock bug was corrected. Measured CPU
-matching memory pressure required single-pair matching, retaining all features
-and frames. Current requests are `request-bounded.json`, with two extraction/map
-threads and new `pose-bounded/` outputs. Both bounded solves have now exited 2
-with POSE_DISCONNECTED: sample_2 has 52/64 frames across separate models;
-sample_3 failed the same single-model check. No scene was published for either.
-Sample_2 seed/retained-model recovery did not join its models. The match graph
-has only 57 connected images, below the 58 required for 90% of 64. Original
-database/models are retained; no fit was launched and both services are inactive.
-Recapture with overlapping textured views or a separately qualified pose
-approach is needed; unchanged retries cannot pass from these matches.
-See [pose continuation evidence](validation/2026-10-13-pose-continuation.md).
-See [service/orientation evidence](validation/2026-10-13-service-orientation.md).
-See [fresh reset evidence](validation/2026-10-13-fresh-video-reset.md).
+| Video | Current saved state |
+|---|---|
+| sample_1 | Completed 7k fit, **295,952 splats**; saved terminal/validation exits 0 and current native CLI bundle validation exit 0. Its previously inspected Source view remains available |
+| sample_2 | Saved terminal exit 2, **POSE_DISCONNECTED**, no scene. Retain failed stages; unchanged retries cannot meet registration from the retained match graph |
+| sample_3 | Source now hashes to `4448a1d9eb93f8b7fc787f9ea037d282128438a2512fad8eb8df8544f53906da`, replacing the older source identity. Saved **80 registered poses → 7k fit → 648,332 splats**, terminal/validation exits 0 and current native CLI bundle validation exit 0. This turn has not exercised its GPU viewer or evaluated its holdout |
+
+The preceding sample_3 disconnected/recovery records describe the older source
+and attempt; they do not describe this completed replacement run. Historical
+sample_1 recovery, sample_2 graph failure and the former sample_3 failures remain
+in [model selection](validation/2026-10-13-model-selection.md),
+[pose continuation](validation/2026-10-13-pose-continuation.md),
+[service/orientation](validation/2026-10-13-service-orientation.md) and
+[fresh reset](validation/2026-10-13-fresh-video-reset.md) evidence.
+`request.json` / `source.json`, stage directories and `logs/result.json` own the
+actual selected inputs and terminal results. Both completed scenes retain arbitrary
+scale; geometry and walking are unavailable. No source, failed stage or completed
+fit was restored, deleted or rerun to reconcile documentation.
 
 ```sh
-# Inspect the existing runs before starting any duplicate:
-tail -n 10 artifacts/sample_1/logs/reconstruction.log
-tail -n 10 artifacts/sample_2/logs/reconstruction.log
-tail -n 10 artifacts/sample_3/logs/reconstruction.log
+# Inspect saved terminal state before considering another attempt:
+cat artifacts/sample_1/logs/result.json
+cat artifacts/sample_2/logs/result.json
+cat artifacts/sample_3/logs/result.json
 ```
 
 Future videos: `python3 tools/new_video_job.py data/local/VIDEO.mp4` creates
 `artifacts/VIDEO/request.json` without starting processing. Existing folders are
-refused; `--name VIDEO_retry_2` selects a separate attempt. The full SHA-256 is
-stored in `source.json`, keeping folder names readable. All source data and
-artifacts remain ignored; [layout protocol](protocols/artifacts.md).
+refused; `--name VIDEO_retry_2` selects a separate attempt. Full SHA-256 stays in
+`source.json`; all source data/artifacts remain ignored;
+[layout protocol](protocols/artifacts.md).
 
 ## Next executable work and blockers
 
@@ -299,20 +287,31 @@ Native final TSan **3 cases / 5,308 assertions**, ten further repetitions and
 94 src/include files unchanged**. Test-only changes; no reconstruction, environment
 or GPU rerun. This does not certify GPU lifetime, other platforms or full gates.
 
-Next executable task: M1 dependency source/archive/notice closure (§6.1/§7.3).
-Start with `workers/identity/local-development-20261013.json`, the retained raw
-worker receipts, `cmake/dependencies.cmake`, `vcpkg.json` and `third_party/notices/`.
-Create a checked per-component source/version/archive/notice gap manifest for the
-currently selected native and worker profiles; trace the missing Triton 3.0.0
-notice against exact selected source bytes. Installed hashes do not establish
-archive provenance or redistribution rights. Keep absent archives/rights and
-unavailable native/reference devices explicitly unqualified; do not install,
-download models, change environments or rerun saved video jobs for this audit.
+[Selected dependency source/notice audit](validation/2026-10-14-dependency-closure.md):
+**82 components / seven profiles**, all four local native development archive pins
+checked, **119 installed notice files** across 56 worker packages and exact
+Triton 3.0.0 tag/source-notice trace. The offline checker validates tracked/local
+bindings and rejects incomplete/stale evidence; strict closure correctly exits 3.
+Original worker wheel/source bindings, embedded NVIDIA/LLVM/AMD terms, system
+runtime closure, release-vcpkg resolution and model/dataset rights remain open.
+System FFmpeg is GPL-enabled, differing from the proposed LGPL release profile.
+**11 new / 79 worker cases** pass on Python 3.10/3.12/3.14; **260/260 dev /
+242/242 explicit C++23 CPU CTest**. No production sources or environments changed,
+no gate upgraded; current saved reconstruction state is reconciled above.
+
+Next executable task: M1 native/worker runtime dependency closure (§6.2/§7.3).
+Start with `readelf -d build/dev/we_viewer` and the selected FFmpeg/worker extension
+ELF dependencies; identify actual libraries, interpreter/CUDA runtime selections,
+package/source/notice evidence and unresolved transitive components. Extend the
+[dated gap inventory](../third_party/dependency-audit-20261014.json) with a new
+checked receipt; preserve original archives/rights as unqualified where absent.
+Do not install, download models, rerun completed fits or retry sample_2 unchanged.
+Current inventory check: `python3 tools/check_dependency_manifest.py --local-evidence`.
 
 For these videos, use the working sample_1 view below; preserve
-sample_2/3's failed stages until replacement footage or a qualified pose recovery
-is available. Do not restart identical failed solves.
-Do not launch duplicates or rerun sample_1's completed fit. Current sample_1 view:
+sample_2's failed stages until replacement footage or a qualified pose recovery
+is available, and both completed scenes. Do not restart identical failed solves or
+completed fits. Current sample_1 view:
 `build/dev/we_viewer --scene artifacts/sample_1/scene.wexplore --source-view --max-splats 1000000`.
 Source view is a viewing reference, not measured gravity or floor/collision.
 
