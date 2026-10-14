@@ -54,6 +54,20 @@
       }
     },
     {
+      "name": "fuzz",
+      "inherits": "cpu",
+      "binaryDir": "${sourceDir}/build/fuzz",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "BUILD_TESTING": "OFF",
+        "WE_FUZZING": "ON",
+        "WE_SANITIZER": "address,undefined",
+        "WE_COVERAGE": "OFF",
+        "WE_CXX_STANDARD": "26"
+      }
+    },
+    {
       "name": "asan",
       "inherits": "cpu",
       "binaryDir": "${sourceDir}/build/asan",
@@ -87,6 +101,7 @@
     { "name": "gcc", "configurePreset": "gcc" },
     { "name": "clang", "configurePreset": "clang" },
     { "name": "coverage", "configurePreset": "coverage" },
+    { "name": "fuzz", "configurePreset": "fuzz", "targets": ["we_fuzz_ply"] },
     { "name": "asan", "configurePreset": "asan" },
     { "name": "tsan", "configurePreset": "tsan" },
     { "name": "release-vcpkg", "configurePreset": "release-vcpkg" }

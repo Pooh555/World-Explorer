@@ -260,17 +260,28 @@ protected files unchanged**. Native Windows rerun remains pending; no workflow,
 recipe, reconstruction or environment changes. This does not certify Windows
 viewer/release behavior or a full gate.
 
-Next executable task: M1/E1 bounded parser fuzzing (§7.3). There are no existing
-fuzz targets. Add an opt-in isolated Clang CPU libFuzzer + ASan/UBSan target for
-`load_gsplat_ply`, with small synthetic SH0–3/LF/CRLF seeds, bounded input/header/
-scene budgets and a dedicated ignored scratch/corpus directory under `build/`
-or `artifacts/`. The local Clang 23 runtime resolves to
-`/usr/lib/clang/23/lib/linux/libclang_rt.fuzzer-x86_64.a`; it has not been exercised.
-Keep this separate from normal builds, coverage and TSan. Run a fixed-duration
-native campaign, record actual executions/limits/source and seed identities,
-retain crashes, and promote any failure into a deterministic regression before
-repairing it. Do not claim fuzz verification from configuration alone or change
-coverage/quality thresholds. Never feed private media or saved jobs to the target.
+[Bounded PLY fuzzing](validation/2026-10-14-ply-fuzz.md): isolated opt-in Clang
+C++26 libFuzzer + ASan/UBSan target, ten synthetic SH0–3/LF/CRLF/numeric/header
+seeds and input/header/scene budgets. Its **60-second campaign executes 281,683
+inputs** (101 accepted), **367 MiB peak RSS**, with zero retained crashes or
+reported sanitizer errors. **257/257 dev / 239/239 C++23 CPU CTest**, format/tidy/
+docs, rejected incompatible profiles and **2,393 unchanged protected files**
+pass. All 94 tracked src/include files retain parent bytes. Mutation length reached
+8,221 bytes of the 65,536-byte maximum; this bounded local result does not certify
+all parser behavior, other platforms or a full gate. [Protocol](protocols/fuzzing.md)
+gives reproducible campaign and crash-retention commands.
+
+Next executable task: M1/E1 bounded transaction fuzzing (§7.3). Add a second
+opt-in target in the existing isolated `fuzz` preset for `scene_store::commit`,
+using only fresh synthetic chunks and bounded operation/input/replay budgets.
+Exercise create/replace/delete/transform, invalid enums/numerics/IDs/base/epoch,
+corrected retries and repeated operation IDs. Check failed admission preserves
+caller chunks, snapshots and retry receipts; successful commits validate and
+remain immutable. Run a fixed-duration native ASan/UBSan/LeakSanitizer campaign,
+record source/seed identities and actual limits/executions, retain crashes and
+reproduce any failure deterministically before repair. Keep normal builds,
+coverage and TSan separate. Never feed private media or saved jobs to targets.
+
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
@@ -285,7 +296,7 @@ limits. `--source-view` remains an independent spectator reset. Unknown/inadequa
 storage fails; metadata inspection still applies the decoded-storage estimate.
 
 Other native devices/platforms, corpus/reference performance, geometry/collision,
-coverage/fuzzing and full gates remain pending; [requirements](requirements.md)
+broader fuzzing and full gates remain pending; [requirements](requirements.md)
 tracks scope. Earlier [supplied native CPU logs and metric observer repair](validation/2026-10-14-native-metric-paths.md)
 show Windows **101/102** and macOS **102/103**: both fail the metric mutation
 observer's unresolved/canonical path comparison. Portable alias replay reproduces

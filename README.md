@@ -30,6 +30,10 @@ line/branch reports and separate package/update coverage. The
 [coverage protocol](docs/protocols/coverage.md) defines exclusions, saved evidence
 and `we_coverage_check`, which enforces the unchanged E1 coverage thresholds.
 
+`fuzz` builds an isolated Clang C++26 libFuzzer + ASan/UBSan PLY diagnostic.
+The [fuzzing protocol](docs/protocols/fuzzing.md) gives bounded synthetic seeds,
+campaign commands and crash retention; it uses only ignored local directories.
+
 The `native-builds` workflow checks the explicit C++23 CPU profile with GCC 13
 and Clang 19/libstdc++ 13 on Ubuntu, MSVC with the runner's OpenSSL SDK on Windows,
 and LLVM 20 with its matching libc++ and Homebrew OpenSSL on macOS. Selecting
