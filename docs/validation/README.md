@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| Durable-map admission | [Checkpoint/configuration rejection and recovery](2026-10-14-map-admission.md): revision-zero dependency repair, ten new synthetic cases, core 87.54% line / 73.18% branch and package/update 76.83% branch (90% unmet), 143 coverage CPU / 161 dev CTest, ten native sanitizer cases and 2,393 preserved files |
 | Worker envelope validation | [Typed rejection and manifest observer admission](2026-10-14-worker-envelope.md): Catch section discovery repair, 16 new cases, worker 97.20% branch / whole package-update 74.25% (90% unmet), 133 coverage CPU / 151 dev CTest, 17 native sanitizer cases and 2,393 preserved files |
 | CPU contract coverage | [Isolated Clang C++26 measurement](2026-10-14-cpu-coverage.md): core 86.62% line / 70.08% branch, package/update 71.71% branch (90% unmet); two enum admission repairs, 117 coverage CPU / 135 dev checks, 13 focused native sanitizer cases and 2,393 preserved files |
 | Native CI metric observer | [Canonical mutation paths](2026-10-14-native-metric-paths.md): latest supplied Windows 101/102 / macOS 102/103 fail the same metric mutation assertion; alias replay repaired, 18 metric / 68 worker cases across three interpreters, local C++23 103/103 and C++26 121/121, 2,393 protected files unchanged; hosted rerun pending |

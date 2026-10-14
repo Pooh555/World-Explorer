@@ -6,6 +6,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <fstream>
+#include <limits>
 #include <nlohmann/json.hpp>
 #include <thread>
 using namespace world_explorer;
@@ -96,6 +97,17 @@ void rehash_checkpoint(const std::filesystem::path& root, std::span<const std::b
     metadata["sha256"] = hash;
     metadata["bytes"] = bytes.size();
     std::ofstream(root / "manifest.json") << metadata.dump();
+}
+template <class value_type>
+void shorten_vector(flatbuffers::Vector<value_type>* values, flatbuffers::uoffset_t count) {
+    REQUIRE(values);
+    REQUIRE(count <= values->size());
+    flatbuffers::WriteScalar(reinterpret_cast<std::uint8_t*>(values), count);
+}
+void restore_manifest(const std::filesystem::path& root, const nlohmann::json& value) {
+    std::ofstream output(root / "manifest.json");
+    output << value.dump();
+    REQUIRE(output);
 }
 } // namespace
 TEST_CASE("persistent maps reload snapshots and operation receipts without losing correction "
@@ -393,4 +405,634 @@ TEST_CASE("a full retained asset index rejects another checkpoint while the comm
     store.reset();
     store = open(root);
     CHECK(store->acquire_snapshot()->revision.value == 0);
+}
+
+TEST_CASE("invalid persistent configuration fails before creating files or acquiring ownership",
+          "[map_admission][configuration]") {
+    directory temporary;
+    const auto root = temporary.path / "must-remain-missing";
+    persistent_map_config config{.directory = root, .create_if_missing = true};
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        config.directory.clear();
+        break;
+    case 1: {
+        auto spelling = root.native();
+        spelling.push_back(std::filesystem::path::value_type{});
+        spelling += std::filesystem::path("suffix").native();
+        config.directory = spelling;
+        break;
+    }
+    case 2:
+        config.checkpoint_bytes.bytes = 0;
+        break;
+    case 3:
+        config.checkpoint_bytes.bytes = std::size_t{256} * 1024 * 1024 + 1;
+        break;
+    case 4:
+        config.records.max_frames = 0;
+        break;
+    case 5:
+        config.records.max_frames = 1000001;
+        break;
+    case 6:
+        config.records.max_calibrations = 0;
+        break;
+    case 7:
+        config.records.max_calibrations = 4097;
+        break;
+    case 8:
+        config.records.max_submaps = 0;
+        break;
+    case 9:
+        config.records.max_submaps = 4097;
+        break;
+    case 10:
+        config.records.remembered_operations = 0;
+        break;
+    case 11:
+        config.records.remembered_operations = 65537;
+        break;
+    case 12:
+        config.retained_asset_bytes.bytes = 0;
+        break;
+    case 13:
+        config.retained_asset_bytes.bytes = std::size_t{256} * 1024 * 1024 * 1024 + 1;
+        break;
+    default:
+        FAIL("unknown persistent configuration mutation");
+    }
+    const auto result = map_store::open_persistent(config);
+    REQUIRE(!result);
+    CHECK(result.error().code == error_code::INVALID_ARGUMENT);
+    CHECK(!std::filesystem::exists(root));
+    CHECK(std::filesystem::is_empty(temporary.path));
+    auto valid = open(root, true);
+    REQUIRE(valid->commit(first_transaction()));
+}
+
+TEST_CASE("manifest schema and byte admission reject tampering without resetting a committed map",
+          "[map_admission][manifest]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto tx = first_transaction();
+    REQUIRE(store->commit(tx));
+    const auto saved = store->acquire_snapshot();
+    const auto original = manifest(root);
+    store.reset();
+    auto value = original;
+    auto expected = error_code::INVALID_DATA;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        value = nlohmann::json::array();
+        break;
+    case 1:
+        value["extra"] = "unrecognized";
+        break;
+    case 2:
+        value.erase("bytes");
+        break;
+    case 3:
+        value["schema_version"] = "1";
+        break;
+    case 4:
+        value["schema_version"] = 2;
+        break;
+    case 5:
+        value["epoch"] = -1;
+        break;
+    case 6:
+        value["revision"] = 1.5;
+        break;
+    case 7:
+        value["sha256"] = nullptr;
+        break;
+    case 8:
+        value["bytes"] = false;
+        break;
+    case 9:
+        value["sha256"] = std::string(63, 'a');
+        break;
+    case 10:
+        value["sha256"] = std::string(64, 'G');
+        break;
+    case 11:
+        value["bytes"] = 0;
+        expected = error_code::RESOURCE_EXHAUSTED;
+        break;
+    case 12:
+        value["bytes"] = std::size_t{256} * 1024 * 1024 + 1;
+        expected = error_code::RESOURCE_EXHAUSTED;
+        break;
+    case 13:
+        value["bytes"] = original["bytes"].get<std::uint64_t>() + 1;
+        break;
+    case 14:
+        value["sha256"] = std::string(64, '0');
+        break;
+    case 15:
+        value["sha256"] = "nested";
+        for (unsigned depth = 0; depth < 10; ++depth)
+            value["sha256"] = nlohmann::json::array({value["sha256"]});
+        break;
+    default:
+        FAIL("unknown manifest mutation");
+    }
+    restore_manifest(root, value);
+    const auto changed_hash = manifest_digest(root);
+    const auto rejected =
+        map_store::open_persistent({.directory = root, .create_if_missing = true});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == expected);
+    CHECK(manifest_digest(root) == changed_hash);
+    CHECK(saved->revision.value == 1);
+    const auto original_checkpoint =
+        root / "assets" / ("checkpoint-" + original["sha256"].get<std::string>() + ".fb");
+    const auto original_hash = sha256_file(original_checkpoint, std::size_t{256} * 1024 * 1024);
+    REQUIRE(original_hash);
+    CHECK(*original_hash == original["sha256"].get<std::string>());
+    restore_manifest(root, original);
+    auto restored = open(root);
+    REQUIRE(restored->commit(tx));
+    CHECK(restored->acquire_snapshot()->revision.value == 1);
+}
+
+TEST_CASE("rehashed checkpoint receipts reject gaps malformed digests and missing committed tails",
+          "[map_admission][receipt]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    REQUIRE(store->commit(first_transaction()));
+    for (std::uint64_t revision = 2; revision <= 3; ++revision) {
+        map_transaction transaction;
+        transaction.base_revision = {revision - 1};
+        transaction.new_revision = {revision};
+        transaction.operation = {100 + revision};
+        REQUIRE(store->commit(transaction));
+    }
+    const auto saved = store->acquire_snapshot();
+    const auto original = manifest(root);
+    store.reset();
+    auto bytes = checkpoint_bytes(root, original);
+    auto* checkpoint = map_wire::GetMutablecheckpoint(bytes.data());
+    auto* receipts = checkpoint->mutable_receipts();
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        REQUIRE(receipts->GetMutableObject(0)->mutate_operation(0));
+        break;
+    case 1:
+        receipts->GetMutableObject(0)->mutable_digest()->Mutate(0, 'G');
+        break;
+    case 2:
+        shorten_vector(receipts, 0);
+        break;
+    case 3:
+        shorten_vector(receipts, 2);
+        break;
+    case 4:
+        REQUIRE(receipts->GetMutableObject(0)->mutate_revision(0));
+        break;
+    case 5:
+        REQUIRE(receipts->GetMutableObject(1)->mutate_revision(3));
+        break;
+    case 6:
+        REQUIRE(checkpoint->mutate_coordinates(pose_wire::coordinate_profile::UNKNOWN));
+        break;
+    default:
+        FAIL("unknown receipt mutation");
+    }
+    rehash_checkpoint(root, bytes, original);
+    const auto changed_hash = manifest_digest(root);
+    const auto rejected =
+        map_store::open_persistent({.directory = root, .create_if_missing = true});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_DATA);
+    CHECK(manifest_digest(root) == changed_hash);
+    CHECK(saved->revision.value == 3);
+    restore_manifest(root, original);
+    auto restored = open(root);
+    map_transaction retry;
+    retry.base_revision = {2};
+    retry.new_revision = {3};
+    retry.operation = {103};
+    REQUIRE(restored->commit(retry));
+    CHECK(restored->acquire_snapshot()->revision.value == 3);
+}
+
+TEST_CASE("revision-zero checkpoints cannot retain an initial canonical dependency",
+          "[map_admission][dependency]") {
+    directory temporary;
+    map_store memory;
+    REQUIRE(memory.commit(first_transaction()));
+    const auto source = temporary.path / "synthetic.weposes";
+    const auto hash = write_pose_asset(
+        source, {memory.acquire_snapshot(),
+                 {std::string(64, 'a'), std::string(64, 'b'), std::string(64, 'c'), {}}});
+    REQUIRE(hash);
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    REQUIRE(store->import_pose_asset(source, *hash, {777}));
+    const auto saved = store->acquire_snapshot();
+    const auto original = manifest(root);
+    store.reset();
+    auto bytes = checkpoint_bytes(root, original);
+    auto* checkpoint = map_wire::GetMutablecheckpoint(bytes.data());
+    auto metadata = original;
+    const auto field = GENERATE(0, 1, 2);
+    switch (field) {
+    case 0:
+        REQUIRE(checkpoint->mutate_revision(0));
+        shorten_vector(checkpoint->mutable_calibrations(), 0);
+        shorten_vector(checkpoint->mutable_observations(), 0);
+        shorten_vector(checkpoint->mutable_alignments(), 0);
+        shorten_vector(checkpoint->mutable_poses(), 0);
+        shorten_vector(checkpoint->mutable_invalidated_frames(), 0);
+        shorten_vector(checkpoint->mutable_receipts(), 0);
+        metadata["revision"] = 0;
+        break;
+    case 1:
+        checkpoint->mutable_initial_pose_asset_sha256()->Mutate(0, 'G');
+        break;
+    case 2:
+        std::filesystem::rename(root / "assets" / ("poses-" + *hash + ".weposes"),
+                                root / "caller-dependency.weposes");
+        break;
+    default:
+        FAIL("unknown canonical dependency mutation");
+    }
+    rehash_checkpoint(root, bytes, metadata);
+    const auto changed_hash = manifest_digest(root);
+    const auto rejected = map_store::open_persistent({.directory = root});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_DATA);
+    CHECK(manifest_digest(root) == changed_hash);
+    CHECK(saved->initial_pose_asset_sha256 == *hash);
+    if (field == 2)
+        std::filesystem::rename(root / "caller-dependency.weposes",
+                                root / "assets" / ("poses-" + *hash + ".weposes"));
+    restore_manifest(root, original);
+    auto restored = open(root);
+    REQUIRE(restored->import_pose_asset(source, *hash, {777}));
+    CHECK(restored->acquire_snapshot()->revision.value == 1);
+}
+
+TEST_CASE("rehashed checkpoint records reject duplicate identities and invalid pose dependencies",
+          "[map_admission][records]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    auto first = first_transaction();
+    auto calibration = first.calibrations[0];
+    calibration.id = {8};
+    first.calibrations.push_back(calibration);
+    first.alignments.push_back({{56}, {1}, {}});
+    auto& covariance = first.poses[0].covariance.emplace();
+    for (std::size_t axis = 0; axis < 6; ++axis)
+        covariance[axis * 6 + axis] = 1;
+    REQUIRE(store->commit(first));
+    map_transaction second;
+    second.base_revision = {1};
+    second.new_revision = {2};
+    second.operation = {101};
+    second.poses = first.poses;
+    for (auto& pose : second.poses) {
+        pose.revision = {2};
+        pose.submap_from_camera.translation.x += 1;
+    }
+    REQUIRE(store->commit(second));
+    const auto saved = store->acquire_snapshot();
+    const auto original = manifest(root);
+    store.reset();
+    auto bytes = checkpoint_bytes(root, original);
+    auto* checkpoint = map_wire::GetMutablecheckpoint(bytes.data());
+    auto* observation = checkpoint->mutable_observations()->GetMutableObject(0);
+    auto* pose = checkpoint->mutable_poses()->GetMutableObject(0);
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+                                19, 20, 21, 22, 23, 24, 25);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        REQUIRE(checkpoint->mutable_calibrations()->GetMutableObject(1)->mutate_id(7));
+        break;
+    case 1:
+        REQUIRE(checkpoint->mutable_observations()->GetMutableObject(1)->mutate_frame(1));
+        break;
+    case 2:
+        REQUIRE(checkpoint->mutable_alignments()->GetMutableObject(1)->mutate_submap(55));
+        break;
+    case 3:
+        REQUIRE(checkpoint->mutable_poses()->GetMutableObject(1)->mutate_frame(1));
+        break;
+    case 4:
+        checkpoint->mutable_invalidated_frames()->Mutate(1, 1);
+        break;
+    case 5:
+        observation->mutable_image_sha256()->Mutate(0, 'G');
+        break;
+    case 6:
+        observation->mutable_image_sha256()->Mutate(63, '\0');
+        flatbuffers::WriteScalar(
+            reinterpret_cast<std::uint8_t*>(observation->mutable_image_sha256()),
+            std::uint32_t{63});
+        break;
+    case 7:
+        REQUIRE(observation->mutate_capture(0));
+        break;
+    case 8:
+        REQUIRE(observation->mutate_time_base_numerator(0));
+        break;
+    case 9:
+        REQUIRE(observation->mutate_time_base_denominator(0));
+        break;
+    case 10:
+        REQUIRE(observation->mutate_capture_nanoseconds(-1));
+        break;
+    case 11:
+        REQUIRE(observation->mutate_calibration_id(999));
+        break;
+    case 12:
+        REQUIRE(pose->mutate_capture_nanoseconds(42));
+        break;
+    case 13:
+        REQUIRE(pose->mutate_revision(0));
+        break;
+    case 14:
+        REQUIRE(pose->mutate_revision(3));
+        break;
+    case 15:
+        pose->mutable_world_from_camera()->mutate_tx(1234);
+        break;
+    case 16:
+        pose->mutable_world_from_camera()->mutate_qw(0);
+        pose->mutable_world_from_camera()->mutate_qx(1);
+        pose->mutable_world_from_camera()->mutate_qy(0);
+        pose->mutable_world_from_camera()->mutate_qz(0);
+        break;
+    case 17:
+        pose->mutable_submap_from_camera()->mutate_scale(2);
+        pose->mutable_world_from_camera()->mutate_scale(5);
+        break;
+    case 18:
+        REQUIRE(checkpoint->mutable_alignments()->GetMutableObject(1)->mutate_submap(0));
+        break;
+    case 19:
+        checkpoint->mutable_alignments()
+            ->GetMutableObject(1)
+            ->mutable_world_from_submap()
+            ->mutate_scale(0);
+        break;
+    case 20:
+        REQUIRE(checkpoint->mutable_calibrations()->GetMutableObject(1)->mutate_id(0));
+        break;
+    case 21:
+        shorten_vector(pose->mutable_covariance(), 35);
+        break;
+    case 22:
+        pose->mutable_covariance()->Mutate(0, -1);
+        break;
+    case 23:
+        for (std::size_t index = 0; index < 36; ++index)
+            pose->mutable_covariance()->Mutate(static_cast<flatbuffers::uoffset_t>(index), 0);
+        pose->mutable_covariance()->Mutate(1, 1);
+        pose->mutable_covariance()->Mutate(6, 1);
+        break;
+    case 24:
+        checkpoint->mutable_invalidated_frames()->Mutate(0, 0);
+        break;
+    case 25:
+        REQUIRE(pose->mutate_frame(42));
+        break;
+    default:
+        FAIL("unknown checkpoint record mutation");
+    }
+    rehash_checkpoint(root, bytes, original);
+    const auto changed_hash = manifest_digest(root);
+    const auto rejected = map_store::open_persistent({.directory = root});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::INVALID_DATA);
+    CHECK(manifest_digest(root) == changed_hash);
+    CHECK(saved->revision.value == 2);
+    CHECK(saved->invalidated_frames.size() == 2);
+    restore_manifest(root, original);
+    auto restored = open(root);
+    REQUIRE(restored->commit(second));
+    CHECK(restored->acquire_snapshot()->revision.value == 2);
+}
+
+TEST_CASE("persistent opening refuses missing or occupied roots without inventing a blank map",
+          "[map_admission][ownership]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    const auto mode = GENERATE(0, 1, 2, 3, 4);
+    persistent_map_config config{.directory = root};
+    auto expected = error_code::NOT_FOUND;
+    switch (mode) {
+    case 0:
+        break;
+    case 1:
+        std::ofstream(root) << "caller data";
+        expected = error_code::INVALID_DATA;
+        break;
+    case 2:
+        REQUIRE(std::filesystem::create_directory(root));
+        break;
+    case 3:
+        REQUIRE(std::filesystem::create_directory(root));
+        std::ofstream(root / "assets") << "caller assets file";
+        config.create_if_missing = true;
+        expected = error_code::INVALID_DATA;
+        break;
+    case 4:
+        config.create_if_missing = true;
+        config.checkpoint_bytes.bytes = 1;
+        expected = error_code::RESOURCE_EXHAUSTED;
+        break;
+    default:
+        FAIL("unknown root admission mode");
+    }
+    const auto result = map_store::open_persistent(config);
+    REQUIRE(!result);
+    CHECK(result.error().code == expected);
+    if (mode == 0)
+        CHECK(!std::filesystem::exists(root));
+    else if (mode == 1) {
+        std::ifstream input(root);
+        std::string text;
+        std::getline(input, text);
+        CHECK(text == "caller data");
+    } else {
+        CHECK(!std::filesystem::exists(root / "manifest.json"));
+        if (mode == 3) {
+            std::ifstream input(root / "assets");
+            std::string text;
+            std::getline(input, text);
+            CHECK(text == "caller assets file");
+        } else {
+            auto restored = open(root, true);
+            REQUIRE(restored->commit(first_transaction()));
+        }
+    }
+}
+
+TEST_CASE("retained asset admission failures preserve committed RAM manifest and retry receipts",
+          "[map_admission][assets]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto first = first_transaction();
+    REQUIRE(store->commit(first));
+    const auto saved = store->acquire_snapshot();
+    const auto original_hash = manifest_digest(root);
+    const auto mode = GENERATE(0, 1, 2);
+    const auto obstruction = root / "assets" / "caller-directory";
+    if (mode == 0)
+        REQUIRE(std::filesystem::create_directory(obstruction));
+    else if (mode == 1) {
+        store.reset();
+        const auto rejected =
+            map_store::open_persistent({.directory = root, .retained_asset_bytes = {1}});
+        REQUIRE(!rejected);
+        CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
+    } else {
+        store.reset();
+        std::filesystem::rename(root / "assets", root / "caller-assets");
+        const auto rejected = map_store::open_persistent({.directory = root});
+        REQUIRE(!rejected);
+        CHECK(rejected.error().code == error_code::INVALID_DATA);
+    }
+    if (mode == 0) {
+        map_transaction next;
+        next.base_revision = {1};
+        next.new_revision = {2};
+        next.operation = {101};
+        const auto rejected = store->commit(next);
+        REQUIRE(!rejected);
+        CHECK(rejected.error().code == error_code::INVALID_DATA);
+        CHECK(store->acquire_snapshot() == saved);
+        CHECK(manifest_digest(root) == original_hash);
+        REQUIRE(store->commit(first));
+        std::filesystem::remove(obstruction);
+        REQUIRE(store->commit(next));
+        CHECK(store->acquire_snapshot()->revision.value == 2);
+        store.reset();
+    } else {
+        CHECK(manifest_digest(root) == original_hash);
+        if (mode == 2)
+            std::filesystem::rename(root / "caller-assets", root / "assets");
+    }
+    auto restored = open(root);
+    REQUIRE(restored->commit(first));
+    CHECK(saved->revision.value == 1);
+}
+
+TEST_CASE("record budgets reject retained checkpoints without discarding records",
+          "[map_admission][limits]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    auto first = first_transaction();
+    auto calibration = first.calibrations[0];
+    calibration.id = {8};
+    first.calibrations.push_back(calibration);
+    first.alignments.push_back({{56}, {1}, {}});
+    REQUIRE(store->commit(first));
+    const auto original = manifest(root);
+    const auto original_hash = manifest_digest(root);
+    store.reset();
+    persistent_map_config config{.directory = root};
+    const auto mode = GENERATE(0, 1, 2);
+    switch (mode) {
+    case 0:
+        config.records.max_calibrations = 1;
+        break;
+    case 1:
+        config.records.max_frames = 1;
+        break;
+    case 2:
+        config.records.max_submaps = 1;
+        break;
+    default:
+        FAIL("unknown record budget");
+    }
+    const auto rejected = map_store::open_persistent(config);
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
+    CHECK(manifest_digest(root) == original_hash);
+    CHECK(manifest(root) == original);
+    auto restored = open(root);
+    REQUIRE(restored->commit(first));
+    CHECK(restored->acquire_snapshot()->observations.size() == 2);
+}
+
+TEST_CASE("pose and invalidation counts have independent recovery budgets",
+          "[map_admission][limits]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    REQUIRE(store->commit(first_transaction()));
+    const auto mode = GENERATE(0, 1);
+    map_transaction deletion;
+    deletion.base_revision = {1};
+    deletion.new_revision = {2};
+    deletion.operation = {101};
+    deletion.deleted_frames = {{1}, {2}};
+    if (mode == 1)
+        REQUIRE(store->commit(deletion));
+    const auto saved = store->acquire_snapshot();
+    const auto original = manifest(root);
+    store.reset();
+    if (mode == 0) {
+        auto bytes = checkpoint_bytes(root, original);
+        shorten_vector(map_wire::GetMutablecheckpoint(bytes.data())->mutable_observations(), 0);
+        rehash_checkpoint(root, bytes, original);
+    }
+    const auto changed_hash = manifest_digest(root);
+    const auto rejected =
+        map_store::open_persistent({.directory = root, .records = {.max_frames = 1}});
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
+    CHECK(manifest_digest(root) == changed_hash);
+    restore_manifest(root, original);
+    auto restored = open(root);
+    if (mode == 0)
+        CHECK(restored->acquire_snapshot()->poses.size() == 2);
+    else {
+        REQUIRE(restored->commit(deletion));
+        CHECK(restored->acquire_snapshot()->invalidated_frames.size() == 2);
+        CHECK(saved->observations.empty());
+    }
+}
+
+TEST_CASE("antipodal baked world quaternions preserve valid canonical poses on recovery",
+          "[map_admission][coordinates]") {
+    directory temporary;
+    const auto root = temporary.path / "map";
+    auto store = open(root, true);
+    const auto first = first_transaction();
+    REQUIRE(store->commit(first));
+    const auto saved = store->acquire_snapshot();
+    const auto original = manifest(root);
+    store.reset();
+    auto bytes = checkpoint_bytes(root, original);
+    auto* world = map_wire::GetMutablecheckpoint(bytes.data())
+                      ->mutable_poses()
+                      ->GetMutableObject(0)
+                      ->mutable_world_from_camera();
+    world->mutate_qw(-world->qw());
+    world->mutate_qx(-world->qx());
+    world->mutate_qy(-world->qy());
+    world->mutate_qz(-world->qz());
+    rehash_checkpoint(root, bytes, original);
+    auto restored = open(root);
+    REQUIRE(restored->commit(first));
+    CHECK(restored->acquire_snapshot()->poses.at({1}).submap_from_camera.rotation.w ==
+          saved->poses.at({1}).submap_from_camera.rotation.w);
+    CHECK(restored->acquire_snapshot()->scale == scale_status::ARBITRARY);
 }
