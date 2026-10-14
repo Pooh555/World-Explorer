@@ -331,6 +331,16 @@ bundled-term gaps. Use read-only package/metadata checks, no checkpoint loads,
 model downloads, optimizer/video jobs or unchanged sample_2 retries. Preserve
 both completed scenes and failed stages; unobserved lazy paths stay unqualified.
 
+[Windows runtime fixture repair](validation/2026-10-15-windows-runtime-fixture.md):
+supplied C++23 CPU run **240/241**, worker suite five errors / three failures
+caused by Windows host paths in synthetic Linux-loader fixtures. Explicit POSIX
+fixture paths, contained host translation and LF metadata preserve production
+validation and all mutation assertions. Portable replay reproduces all failures
+and passes seven repaired cases; **15 runtime / 117 worker checks** on three
+interpreters and **260 dev / 242 C++23 CPU CTest** pass locally. All **2,088
+protected / 94 src/include files** unchanged. Native Windows rerun against this
+repair remains pending; do not treat the local replay as native qualification.
+
 For these videos, use the working sample_1 view below; preserve
 sample_2's failed stages until replacement footage or a qualified pose recovery
 is available, and both completed scenes. Do not restart identical failed solves or
