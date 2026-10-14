@@ -1,7 +1,7 @@
 {
   "date": "2026-10-14",
   "parent_commit": "09a7074",
-  "remaining_boundaries": ["Native runtime/transitive ELF closure", "Worker interpreter/CUDA host runtime and extension build graph", "Other native platforms and release-vcpkg resolution", "Archive provisioning and commercial redistribution terms"],
+  "remaining_boundaries": ["Selected runtime ELF contexts captured; lazy plugins and actual Python import contexts remain unqualified", "Worker interpreter/CUDA host runtime and extension build graph", "Other native platforms and release-vcpkg resolution", "Archive provisioning and commercial redistribution terms"],
   "rights_qualified": false,
   "schema_version": 1,
   "scope": "Dated selected dependency gaps, not a complete SBOM, source build attestation or release clearance. Raw worker receipts describe historical RECORD-listed bytes; local check rehashes selected metadata/notices, not all installed payloads.",
@@ -212,6 +212,8 @@
     {"bytes": 1083, "kind": "tracked", "path": "third_party/notices/imgui-LICENSE.txt", "sha256": "c80c5789748d955c4a650562baa0d750494e2c7128c2ca66aaebe2e3c4e198bf"},
     {"bytes": 1075, "kind": "tracked", "path": "third_party/notices/json-LICENSE.txt", "sha256": "c0d068392ea65358b798b8c165103560f06e9e3b38c4ab4e2d8810a7b931af86"},
     {"bytes": 1132, "kind": "tracked", "path": "third_party/notices/triton-3.0.0-LICENSE.txt", "sha256": "92640fb97222fd0a698ff28ce0c3782c172623f8d6c609b557636a80f28fb946"},
+    {"bytes": 448755, "kind": "tracked", "path": "third_party/runtime-audit-20261014.json", "sha256": "c08e86dab78ae10fd437fbf2b44d5f13969595bac5982d1f23bb5d034ffb6ca3"},
+    {"bytes": 7381, "kind": "tracked", "path": "third_party/runtime-selection-20261014.json", "sha256": "b474a78226070b729fb64c38c42b36385f17510e725488f9058faee9be509cbd"},
     {"bytes": 166, "kind": "tracked", "path": "vcpkg-configuration.json", "sha256": "19a3d9bbfcb9fca64f6413c113461cfee80608a08e91261a306eba8a1a2dc691"},
     {"bytes": 307, "kind": "tracked", "path": "vcpkg.json", "sha256": "200cf2dd387fccb16f228d5ff6f4a23e3dfc6bec4d17fbad2af039484ae75b8f"},
     {"bytes": 903, "kind": "tracked", "path": "workers/gsplat/local-environment.txt", "sha256": "72710b2ac119a08a24f170e20b1695cafc9070587eae094ce6c9845882346aa3"},
@@ -356,5 +358,6 @@
         {"archive": {"sha256": "df73285e35b22355a2df87cdb6b70b343713b667eddbda73e1977e0c860835c0", "status": "INSTALLED_BYTES_ONLY"}, "gaps": ["ORIGINAL_RESOURCE_ARCHIVE_BINDING_UNVERIFIED", "MODEL_AND_DATASET_RIGHTS_UNREVIEWED", "TRANSITIVE_RIGHTS_UNREVIEWED"], "name": "lpips-alex-linear-weights", "notice": {"status": "MODEL_AND_DATASET_TERMS_NOT_CLEARED"}, "rights": "NOT_REVIEWED", "source": {"path": "torchmetrics/functional/image/lpips_models/alex.pth", "status": "RECORD_CHECKED_PACKAGE_RESOURCE"}, "version": "torchmetrics-1.8.2"}
       ]
     }
-  ]
+  ],
+  "runtime_summary": "third_party/runtime-audit-20261014.json"
 }

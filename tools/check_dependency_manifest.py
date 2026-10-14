@@ -139,6 +139,122 @@ def receipt_packages(receipt):
     return environment
 
 
+def runtime_path(root, value):
+    kind, separator, text = value.partition(":")
+    if not separator or kind not in {"repo", "system"}:
+        raise ValueError("Invalid runtime evidence namespace")
+    if kind == "repo":
+        return contained(root, text)
+    path = Path(text).resolve(strict=True)
+    if not path.is_file() or not (path.is_relative_to(Path("/usr")) or path.is_relative_to(Path("/opt/cuda"))):
+        raise ValueError("Runtime system evidence escapes selected roots")
+    return path
+
+
+def runtime_file_digest(path):
+    # Larger ELF payloads are streamed; JSON/archive bounds stay independent.
+    before = path.stat()
+    if not stat.S_ISREG(before.st_mode) or before.st_size > 4 * 1024**3:
+        raise ValueError("Runtime payload exceeds file budget")
+    result = hashlib.sha256()
+    count = 0
+    with path.open("rb") as stream:
+        while block := stream.read(1024**2):
+            count += len(block)
+            if count > before.st_size:
+                raise ValueError("Runtime payload grew during check")
+            result.update(block)
+    after = path.stat()
+    identity = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
+    if count != before.st_size or identity(before) != identity(after):
+        raise ValueError("Runtime payload changed during check")
+    return result.hexdigest(), count
+
+
+def check_runtime_summary(root, summary, local_evidence):
+    if summary.get("schema_version") != 1 or summary.get("rights_qualified") is not False:
+        raise ValueError("Unsupported runtime summary or rights claim")
+    selection = load_json(contained(root, summary["selection"]["path"]))
+    if digest(read_file(contained(root, summary["selection"]["path"]))) != summary["selection"]["sha256"]:
+        raise ValueError("Runtime selection changed")
+    if digest(read_file(contained(root, "tools/audit_runtime_dependencies.py"))) != summary["auditor_sha256"]:
+        raise ValueError("Runtime auditor changed")
+    declared = {row["id"]: row for row in selection["roots"]}
+    roots = summary["roots"]
+    nodes = summary["nodes"]
+    if (not nodes or len(nodes) > 512 or not roots or len(roots) > 32
+            or len(declared) != len(selection["roots"]) or len({row["id"] for row in roots}) != len(roots)
+            or set(declared) != {row["id"] for row in roots}):
+        raise ValueError("Runtime node/root inventory is incomplete")
+    if sum(node["bytes"] for node in nodes.values()) > 16 * 1024**3:
+        raise ValueError("Runtime aggregate byte budget exceeded")
+    for name, node in nodes.items():
+        kind, separator, text = name.partition(":")
+        if not separator or kind not in {"repo", "system"}:
+            raise ValueError("Invalid runtime node namespace")
+        if kind == "repo":
+            safe_relative(text)
+        elif (".." in PurePosixPath(text).parts or not PurePosixPath(text).is_absolute()
+              or not (PurePosixPath(text).is_relative_to("/usr") or PurePosixPath(text).is_relative_to("/opt/cuda"))):
+            raise ValueError("Invalid runtime system node path")
+        if (type(node["bytes"]) is not int or not 0 <= node["bytes"] <= 4 * 1024**3
+                or not re.fullmatch(r"[0-9a-f]{64}", node["sha256"])):
+            raise ValueError("Invalid runtime node fingerprint")
+    for row in roots:
+        if row["path"] not in nodes or nodes[row["path"]]["sha256"] != declared[row["id"]]["sha256"]:
+            raise ValueError("Runtime selected root fingerprint differs")
+        if row["scope"] != declared[row["id"]]["scope"]:
+            raise ValueError("Runtime root scope differs")
+        loaded = {row["path"], *row["resolved"].values()}
+        if not loaded.issubset(nodes) or not set(row.get("aliases", {}).values()).issubset(loaded):
+            raise ValueError("Runtime resolution points outside loaded inventory")
+        expected_edges = sorted((path, needed) for path in loaded for needed in nodes[path]["elf"]["needed"])
+        actual_edges = sorted((edge["from"], edge["needed"]) for edge in row["edges"])
+        if row["loader_exit"] == 0:
+            expected_aliases = dict(row["resolved"])
+            for path in loaded:
+                for name in nodes[path]["elf"]["soname"]:
+                    if name in expected_aliases and expected_aliases[name] != path:
+                        raise ValueError("Ambiguous runtime SONAME")
+                    expected_aliases[name] = path
+            if row["aliases"] != expected_aliases:
+                raise ValueError("Runtime SONAME alias inventory differs")
+            if actual_edges != expected_edges:
+                raise ValueError("Runtime edge inventory is incomplete")
+            for edge in row["edges"]:
+                if edge["to"] != row["aliases"].get(edge["needed"]):
+                    raise ValueError("Runtime edge resolution differs")
+                if edge["to"] is None and edge["from"] + ":" + edge["needed"] not in row["unresolved"]:
+                    raise ValueError("Runtime unresolved edge is hidden")
+    if local_evidence:
+        receipt = summary["receipt"]
+        path = contained(root, receipt["path"])
+        if digest(read_file(path)) != receipt["sha256"]:
+            raise ValueError("Runtime raw receipt changed")
+        raw = load_json(path)
+        for field in ("nodes", "roots", "system_packages", "interpreter_metadata", "remaining", "auditor_sha256"):
+            if raw[field] != summary[field]:
+                raise ValueError("Runtime summary differs from raw receipt")
+        for name, node in nodes.items():
+            sha256, size = runtime_file_digest(runtime_path(root, name))
+            if node["sha256"] != sha256 or node["bytes"] != size:
+                raise ValueError("Current runtime payload differs")
+        for package in summary["system_packages"].values():
+            for notice in package["notices"]:
+                data = read_file(runtime_path(root, notice["path"]))
+                if digest(data) != notice["sha256"] or len(data) != notice["bytes"]:
+                    raise ValueError("Current runtime notice differs")
+        for interpreter in summary["interpreter_metadata"]:
+            for kind, binding in interpreter["files"].items():
+                if kind == "declared_version":
+                    continue
+                data = read_file(runtime_path(root, binding["path"]))
+                if digest(data) != binding["sha256"] or len(data) != binding["bytes"]:
+                    raise ValueError("Current interpreter metadata differs")
+    return {"roots": len(roots), "nodes": len(nodes),
+            "unresolved": sum(len(row["unresolved"]) for row in roots), "rights_qualified": False}
+
+
 def check_manifest(root, manifest, local_evidence=False):
     if (manifest.get("schema_version") != 1 or manifest.get("rights_qualified") is not False
             or manifest.get("status") != "IN_PROGRESS"):
@@ -279,8 +395,14 @@ def check_manifest(root, manifest, local_evidence=False):
                         raise ValueError("System package observation differs")
         elif profile["kind"] not in {"system-observation", "model"}:
             raise ValueError("Unsupported profile kind")
-    return {"profiles": len(profiles), "components": components, "open_gaps": gaps,
-            "local_evidence_checked": local_evidence, "rights_qualified": False}
+    result = {"profiles": len(profiles), "components": components, "open_gaps": gaps,
+              "local_evidence_checked": local_evidence, "rights_qualified": False}
+    if "runtime_summary" in manifest:
+        path = manifest["runtime_summary"]
+        if path not in bindings or bindings[path]["kind"] != "tracked":
+            raise ValueError("Unbound runtime summary")
+        result["runtime"] = check_runtime_summary(root, load_json(contained(root, path)), local_evidence)
+    return result
 
 
 def main():
