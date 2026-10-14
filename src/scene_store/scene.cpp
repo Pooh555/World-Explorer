@@ -10,7 +10,7 @@ std::string scene_content_hash(const scene_state& scene) {
     const auto add = [&](std::uint64_t value) {
         std::array<std::byte, 8> bytes{};
         for (unsigned index = 0; index < 8; ++index)
-            bytes[index] = static_cast<std::byte>((value >> (8 * index)) & 255);
+            bytes[index] = static_cast<std::byte>((value >> (8U * index)) & 255U);
         hash.update(bytes);
     };
     add(scene.id.value);
@@ -92,6 +92,8 @@ result<std::size_t> validate_chunk(const scene_chunk& chunk, scene_limits limits
 result<std::size_t> validate_scene(const scene_state& scene, scene_limits limits) {
     if (scene.id.value == 0)
         return fail(error_code::INVALID_DATA, "scene ID must be nonzero");
+    if (scene.scale != scale_status::ARBITRARY && scene.scale != scale_status::METRIC_MEASURED)
+        return fail(error_code::INVALID_DATA, "unsupported scene scale status");
     if (scene.provenance.size() > 32)
         return fail(error_code::RESOURCE_EXHAUSTED, "Too many provenance fields");
     for (const auto& [key, value] : scene.provenance)

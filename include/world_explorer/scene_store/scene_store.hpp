@@ -19,7 +19,7 @@ class scene_store {
     result<scene_revision_id> commit(const scene_transaction& transaction);
     scene_snapshot acquire_snapshot() const;
     result<scene_delta_batch> changes_since(scene_revision_id revision, byte_budget budget) const;
-    result<void> reset(scene_snapshot snapshot);
+    result<void> reset(const scene_snapshot& snapshot);
 
   private:
     struct committed_operation {

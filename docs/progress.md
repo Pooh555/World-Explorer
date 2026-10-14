@@ -137,13 +137,25 @@ worker checks** pass on three interpreters; **121/121** dev CTest, independent
 CPU parity and synthetic numerical checks pass. **2,393 protected files** remain
 unchanged; no fit/recipe/checkpoint/environment changes or reconstruction rerun.
 
-Next executable task: M1/E1 scoped C++ contract coverage. Inspect
-`CMakeLists.txt`, `CMakePresets.json` and specification §3/E1; add an isolated
-Clang CPU coverage preset with target-scoped instrumentation and the unchanged
-C++26 mode. Run existing contract tests, record actual line/branch coverage and
-separate package/update-validation coverage with reviewed vendor/generated/platform
-exclusions. Preserve working profiles and keep all thresholds unchanged; use
-measured uncovered error/replay paths to choose regressions.
+[Scoped CPU contract coverage](validation/2026-10-14-cpu-coverage.md): isolated
+Clang C++26 instrumentation measures **86.62% line / 70.08% branch** of the
+non-GPU core and **71.71% package/update branch** coverage. The unchanged 90%
+package/update target is unmet; strict checking correctly exits 1. Unknown scale
+and operation enums now fail admission without changing snapshots/retry receipts.
+**117/117 coverage CPU / 135/135 dev CTest**, five report-integrity checks,
+13 focused native ASan/UBSan/LeakSanitizer cases and format/tidy/docs pass.
+**2,393 protected files unchanged**; no reconstruction/environment/GPU rerun.
+The reviewed scope includes compiled platform code and all seven CPU libraries;
+this does not qualify native UI, inactive platform branches or full E1/M1.
+
+Next executable task: M1/E1 worker-envelope validation regressions. Run
+`cmake --build --preset coverage --target we_coverage_report`, inspect the printed
+HTML/JSON for `src/reconstruction_adapters/worker_protocol.cpp` (84 uncovered
+branch outcomes in this measurement), and extend `tests/unit/worker_protocol_tests.cpp`
+for uncovered malformed-envelope, session/order, progress and acknowledgement
+rejection paths. Preserve production protocol semantics and thresholds; remeasure
+both groups, then use remaining durable-map/asset admission gaps for the next
+regressions. No error-path or platform exclusion to obtain a pass.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.

@@ -44,6 +44,16 @@
       }
     },
     {
+      "name": "coverage",
+      "inherits": "cpu",
+      "binaryDir": "${sourceDir}/build/coverage",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "WE_COVERAGE": "ON",
+        "WE_CXX_STANDARD": "26"
+      }
+    },
+    {
       "name": "asan",
       "inherits": "cpu",
       "binaryDir": "${sourceDir}/build/asan",
@@ -76,6 +86,7 @@
     { "name": "compat-cxx23", "configurePreset": "compat-cxx23" },
     { "name": "gcc", "configurePreset": "gcc" },
     { "name": "clang", "configurePreset": "clang" },
+    { "name": "coverage", "configurePreset": "coverage" },
     { "name": "asan", "configurePreset": "asan" },
     { "name": "tsan", "configurePreset": "tsan" },
     { "name": "release-vcpkg", "configurePreset": "release-vcpkg" }
@@ -86,6 +97,7 @@
     { "name": "compat-cxx23", "configurePreset": "compat-cxx23", "output": { "outputOnFailure": true } },
     { "name": "gcc", "configurePreset": "gcc", "output": { "outputOnFailure": true } },
     { "name": "clang", "configurePreset": "clang", "output": { "outputOnFailure": true } },
+    { "name": "coverage", "configurePreset": "coverage", "output": { "outputOnFailure": true } },
     { "name": "asan", "configurePreset": "asan", "output": { "outputOnFailure": true } },
     { "name": "tsan", "configurePreset": "tsan", "output": { "outputOnFailure": true } }
   ]

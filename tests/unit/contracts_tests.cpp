@@ -54,6 +54,25 @@ void write_json(const std::filesystem::path& path, const nlohmann::json& value) 
     std::ofstream file(path);
     file << value.dump(2);
 }
+std::vector<std::byte> read_bytes(const std::filesystem::path& path) {
+    std::vector<std::byte> bytes(static_cast<std::size_t>(std::filesystem::file_size(path)));
+    std::ifstream input(path, std::ios::binary);
+    REQUIRE(input.read(reinterpret_cast<char*>(bytes.data()),
+                       static_cast<std::streamsize>(bytes.size())));
+    return bytes;
+}
+void write_bytes(const std::filesystem::path& path, std::span<const std::byte> bytes) {
+    std::ofstream output(path, std::ios::binary);
+    output.write(reinterpret_cast<const char*>(bytes.data()),
+                 static_cast<std::streamsize>(bytes.size()));
+    REQUIRE(output);
+}
+// Schema-1 fixtures mutate fixed little-endian wire offsets independently of the reader.
+void put_integer(std::span<std::byte> bytes, std::uint64_t value) {
+    REQUIRE(bytes.size() <= sizeof(value));
+    for (std::size_t index = 0; index < bytes.size(); ++index)
+        bytes[index] = static_cast<std::byte>((value >> (8U * index)) & 255U);
+}
 } // namespace
 
 TEST_CASE("asymmetric optical projection and world pose round trip", "[contracts][coordinates]") {
@@ -335,4 +354,188 @@ TEST_CASE(
         output << "ply\nformat ascii 1.0\nelement vertex 1\nend_header\n";
     }
     CHECK_FALSE(load_gsplat_ply(path, {42}));
+}
+
+TEST_CASE("checksummed hostile bundle indexes never bypass package validation",
+          "[validation][bundle]") {
+    temporary_directory directory;
+    scene_store store({42});
+    REQUIRE(store.commit(create_transaction()));
+    REQUIRE(write_bundle(directory.path, store.acquire_snapshot()));
+    auto manifest = read_json(directory.path / "manifest.json");
+    const auto index_path = directory.path / manifest.at("index").get<std::string>();
+    auto bytes = read_bytes(index_path);
+    bundle_limits limits;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        bytes[0] = std::byte{0};
+        break;
+    case 1:
+        put_integer(std::span(bytes).subspan(8, 8), 2);
+        limits.scene.max_chunks = 1;
+        break;
+    case 2:
+        put_integer(std::span(bytes).subspan(24, 8), 0);
+        break;
+    case 3:
+        bytes[32] = std::byte{'z'};
+        break;
+    case 4:
+        put_integer(std::span(bytes).subspan(96, 4), std::numeric_limits<std::uint32_t>::max());
+        break;
+    case 5:
+        bytes.push_back(std::byte{0});
+        break;
+    case 6:
+        put_integer(std::span(bytes).subspan(16, 8), 2);
+        break;
+    case 7:
+        bytes.resize(5);
+        break;
+    case 8: {
+        const auto entry = std::vector<std::byte>(bytes.begin() + 16, bytes.end());
+        bytes.insert(bytes.end(), entry.begin(), entry.end());
+        put_integer(std::span(bytes).subspan(8, 8), 2);
+        break;
+    }
+    case 9:
+        bytes.resize(40);
+        break;
+    case 10:
+        bytes[100] = std::byte{'z'};
+        break;
+    case 11:
+        put_integer(std::span(bytes).subspan(96, 4), 0);
+        bytes.resize(100);
+        break;
+    default:
+        FAIL("unknown validation mutation");
+    }
+    write_bytes(index_path, bytes);
+    manifest["index_bytes"] = bytes.size();
+    manifest["index_sha256"] = sha256(bytes);
+    write_json(directory.path / "manifest.json", manifest);
+    const auto rejected = load_bundle(directory.path, limits);
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == error_code::INVALID_DATA);
+    CHECK(store.acquire_snapshot()->revision.value == 1);
+}
+
+TEST_CASE("checksummed hostile chunk payloads reject counts enums and trailing bytes",
+          "[validation][bundle]") {
+    temporary_directory directory;
+    scene_store store({42});
+    REQUIRE(store.commit(create_transaction()));
+    REQUIRE(write_bundle(directory.path, store.acquire_snapshot()));
+    auto manifest = read_json(directory.path / "manifest.json");
+    const auto index_path = directory.path / manifest.at("index").get<std::string>();
+    auto index = read_bytes(index_path);
+    const auto chunk_name =
+        std::string(reinterpret_cast<const char*>(index.data() + 100), index.size() - 100);
+    const auto chunk_path = directory.path / chunk_name;
+    auto bytes = read_bytes(chunk_path);
+    bundle_limits limits;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        put_integer(std::span(bytes).subspan(32, 8), 2);
+        break;
+    case 1:
+        put_integer(std::span(bytes).subspan(152, 8), 11);
+        limits.scene.max_splats = 10;
+        break;
+    case 2:
+        put_integer(std::span(bytes).subspan(160, 8), 11);
+        limits.scene.max_source_frames = 10;
+        break;
+    case 3:
+        put_integer(std::span(bytes).subspan(160, 8), 1000);
+        break;
+    case 4:
+        bytes.resize(5);
+        break;
+    case 5:
+        bytes.push_back(std::byte{0});
+        break;
+    case 6:
+        put_integer(std::span(bytes).subspan(bytes.size() - 4, 4), 4);
+        break;
+    case 7:
+        put_integer(std::span(bytes).subspan(8, 8), 0);
+        break;
+    default:
+        FAIL("unknown validation mutation");
+    }
+    write_bytes(chunk_path, bytes);
+    put_integer(std::span(index).subspan(24, 8), bytes.size());
+    const auto chunk_hash = sha256(bytes);
+    for (std::size_t offset = 0; offset < chunk_hash.size(); ++offset)
+        index[32 + offset] = static_cast<std::byte>(chunk_hash[offset]);
+    write_bytes(index_path, index);
+    manifest["index_sha256"] = sha256(index);
+    write_json(directory.path / "manifest.json", manifest);
+    const auto rejected = load_bundle(directory.path, limits);
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == error_code::INVALID_DATA);
+}
+
+TEST_CASE("bundle manifest validation preserves scale and enforces declared identities",
+          "[validation][bundle]") {
+    temporary_directory directory;
+    scene_store store({42});
+    REQUIRE(store.commit(create_transaction()));
+    auto measured = std::make_shared<scene_state>(*store.acquire_snapshot());
+    measured->scale = scale_status::METRIC_MEASURED;
+    REQUIRE(write_bundle(directory.path, measured));
+    auto round_trip = load_bundle(directory.path);
+    REQUIRE(round_trip);
+    CHECK((*round_trip)->scale == scale_status::METRIC_MEASURED);
+    auto manifest = read_json(directory.path / "manifest.json");
+    bundle_limits limits;
+    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+    CAPTURE(field);
+    switch (field) {
+    case 0:
+        manifest["schema_version"] = 2;
+        break;
+    case 1:
+        manifest["scene_id"] = -1;
+        break;
+    case 2:
+        manifest["coordinates"]["scale_status"] = "INFERRED";
+        break;
+    case 3:
+        manifest["index_sha256"] = "invalid";
+        break;
+    case 4:
+        manifest["index_bytes"] = 0;
+        break;
+    case 5:
+        manifest["index_sha256"] = std::string(64, '0');
+        break;
+    case 6:
+        manifest["provenance_sha256"] = "invalid";
+        break;
+    case 7:
+        manifest["provenance_sha256"] = std::string(64, '0');
+        break;
+    case 8:
+        limits.scene.max_chunks = std::numeric_limits<std::size_t>::max();
+        break;
+    case 9:
+        manifest["scene_id"] = 0;
+        break;
+    default:
+        FAIL("unknown validation mutation");
+    }
+    write_json(directory.path / "manifest.json", manifest);
+    const auto rejected = load_bundle(directory.path, limits);
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code ==
+          (field == 0 ? error_code::UNSUPPORTED_OPERATION : error_code::INVALID_DATA));
+    measured->scale = static_cast<scale_status>(255);
+    CHECK_FALSE(write_bundle(directory.path, measured));
 }

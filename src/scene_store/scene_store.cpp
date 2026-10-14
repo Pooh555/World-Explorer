@@ -11,9 +11,9 @@ std::uint64_t fingerprint(const scene_transaction& transaction) {
     std::uint64_t hash = 14695981039346656037ULL;
     const auto add = [&](std::uint64_t value) {
         for (int i = 0; i < 8; ++i) {
-            hash ^= value & 255;
+            hash ^= value & 255U;
             hash *= 1099511628211ULL;
-            value >>= 8;
+            value >>= 8U;
         }
     };
     const auto transform = [&](const similarity_transform& value) {
@@ -77,12 +77,15 @@ result<scene_revision_id> scene_store::commit(const scene_transaction& transacti
         return fail(error_code::INVALID_ARGUMENT, "wrong scene or missing operation ID");
     if (transaction.changes.size() > limits_.scene.max_chunks)
         return fail(error_code::RESOURCE_EXHAUSTED, "transaction exceeds operation budget");
-    for (const auto& change : transaction.changes)
+    for (const auto& change : transaction.changes) {
+        if (change.kind > scene_operation_kind::TRANSFORM)
+            return fail(error_code::INVALID_DATA, "unsupported scene operation kind");
         if (change.chunk) {
             auto checked = validate_chunk(*change.chunk, limits_.scene);
             if (!checked)
                 return std::unexpected(checked.error());
         }
+    }
     const auto digest = fingerprint(transaction);
     for (const auto& prior : operations_)
         if (prior.operation == transaction.operation) {
@@ -175,7 +178,7 @@ result<scene_delta_batch> scene_store::changes_since(scene_revision_id revision,
     return scene_delta_batch{current_->id, current_->epoch, revision, current_->revision,
                              operation,    current_,        false,    *bytes};
 }
-result<void> scene_store::reset(scene_snapshot snapshot) {
+result<void> scene_store::reset(const scene_snapshot& snapshot) {
     if (!snapshot)
         return fail(error_code::INVALID_ARGUMENT, "missing reset snapshot");
     auto checked = validate_scene(*snapshot, limits_.scene);

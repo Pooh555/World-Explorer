@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "roots": ["src", "include/world_explorer"],
+  "excluded_modules": {
+    "render_vulkan": "GPU implementation/public device API; image and synchronization tests qualify this separately."
+  },
+  "package_update_modules": ["scene_store", "map_store", "reconstruction_adapters"],
+  "package_update_files": [
+    "src/render_core/update_sink.cpp",
+    "include/world_explorer/render_core/update_sink.hpp"
+  ],
+  "outside_roots": {
+    "apps": "Executable entry points and viewer UI are outside the non-GPU core library measurement.",
+    "tests": "Test harnesses are instrumented but excluded from production coverage.",
+    "build, .deps, system headers": "Vendored dependencies, generated bindings and standard libraries are excluded."
+  },
+  "platform_exclusions": [],
+  "platform_policy": "All compiled platform branches stay in the denominator, including process, locks and atomic publication. Inactive preprocessor branches are not measured on this host."
+}
