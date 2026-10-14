@@ -50,6 +50,10 @@ transport. Completion references a bounded local manifest by absolute path,
 byte count and SHA-256; the client checks it before accepting the exit. Scene/fit/
 pose admission independently verifies inventories and provenance. Session IDs do
 not change stage/checkpoint content identities; changed worker source still does.
+Native typed completion observers are notified only after actual regular-file,
+exact-size and checksum checks succeed. Rejected manifest admission cancels the
+invocation and suppresses its completion notification; prior capability and
+acknowledgement events may already have been observed.
 
 CANCEL acknowledgement means accepted, not that a checkpoint is already durable.
 The worker's terminal result/committed assets determine the outcome. The client
