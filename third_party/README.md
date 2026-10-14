@@ -29,8 +29,24 @@ records metadata/RECORD/installed-file/notice hashes. All listed file hashes mat
 76 notice files were identified. Triton 3.0.0 has no separate notice identified in
 its installed RECORD. Original wheel archive hashes, transitive rights and complete
 runtime/SBOM qualification remain pending; installed hashes are not archive locks.
-TorchMetrics/LPIPS are absent and AlexNet bytes are not provisioned, so no metric
-package/backbone lock or Q2/Q3 result is claimed.
+That historical receipt's metric absence is superseded by the separate
+[CPU metric profile](../workers/identity/metric-evaluation-cpu-20261014.json):
+TorchMetrics 1.8.2, torch 2.4.1+cpu, torchvision 0.19.1+cpu and explicit AlexNet
+bytes now have identities and independent synthetic parity. Training environments
+remain unchanged; model/dataset/transitive rights and Q2/Q3 qualification remain
+pending.
+
+The [dated selected-component inventory](dependency-audit-20261014.json) records
+source/archive/notice gaps for 82 components across seven profiles. Its
+[offline checker](../tools/check_dependency_manifest.py) rejects stale or incomplete
+evidence. All four native development archive hashes pass; their selected notices
+match, with one explicitly recorded first-line trailing-space normalization in
+JSON. The supplemental [Triton 3.0.0 source notice](notices/triton-3.0.0-LICENSE.txt)
+traces the exact tag commit; installed-wheel notice/source binding and embedded
+dependency terms remain unresolved. The observed system FFmpeg is GPL-enabled,
+not the proposed minimal LGPL release build. The release-vcpkg graph remains
+unresolved; this inventory grants no redistribution clearance. See the
+[protocol](../docs/protocols/dependency_sources.md) for scope and checks.
 
 `workers/gsplat/fit.py` adapts initialization/settings from the pinned gsplat
 example. The upstream attribution is Copyright 2025 Nerfstudio Team; the complete
