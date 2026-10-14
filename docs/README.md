@@ -13,6 +13,7 @@ Read by task; do not load the entire directory for routine work.
 | Audit local worker/metric identities | [Installed identity receipts](protocols/worker_identity.md), [isolated CPU metric profile](../workers/metrics/README.md) |
 | Check selected dependency provenance gaps | [Source/archive/notice inventory](protocols/dependency_sources.md) |
 | Capture/check selected Linux ELF dependencies | [Runtime dependency receipts](protocols/runtime_dependencies.md) |
+| Check actual backend imports / owned viewer mappings | [Observed Linux mappings](protocols/backend_bindings.md) |
 | Find historical results | [Validation index](validation/README.md); reports preserve their original scope |
 | Understand a consequential choice | [Decision records](adr/) |
 | Build/use the application | Repository [README](../README.md) |

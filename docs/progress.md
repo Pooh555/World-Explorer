@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-14 (Asia/Hong_Kong). **M1: IN_PROGRESS. No M1–M6 milestone or
+Updated 2026-10-15 (Asia/Hong_Kong). **M1: IN_PROGRESS. No M1–M6 milestone or
 Q/P/N/E requirement is fully certified. M7–M8: DEFERRED_BY_USER.**
 
 ## Implemented and checked
@@ -310,14 +310,26 @@ CTest**. All **2,088 protected / 94 src/include files** unchanged. Source/rights
 actual import order and lazy driver/plugins remain unqualified; no gate upgrade,
 installation, solver/fit or GPU/UI rerun.
 
-Next executable task: M1 actual backend import and driver/plugin binding
-observation (§6.2/§7.3). Use isolated short-lived, offline diagnostic processes for
-the selected backend imports and viewer capability path; capture mapped-library
-identities and distinguish actual observations from the recorded loader contexts.
-Do not load checkpoints, download models, run optimizers, start video jobs or
-retry sample_2 unchanged. Keep source archives, transitive terms and unobserved
-lazy paths explicitly unqualified. Start with the [runtime selection and protocol](protocols/runtime_dependencies.md).
-Current audit check: `python3 tools/check_dependency_manifest.py --local-evidence`.
+[Actual backend/viewer mappings](validation/2026-10-15-backend-bindings.md): five
+isolated observations / **208 ELF files**, **137** beyond the loader graph, no
+changed overlap. Native training imports the prebuilt gsplat extension and sees
+one CUDA device without initializing PyTorch's CUDA context; native empty viewer
+completes **900 frames / zero Vulkan errors**. Sandbox visibility failures remain
+separate. Source/raw/current-byte checks, **23 new / 115 worker cases** on three
+interpreters, **260 dev / 242 C++23 CPU checks** and **2,088 protected / 94
+src/include files unchanged** pass. No solve/fit/checkpoint/model/environment
+changes, rights closure or full gate upgrade.
+
+Next executable task: M1 ownership/notice associations for the **137 newly mapped
+ELF files** (§6.2/§7.3). Start with
+`python3 tools/check_dependency_manifest.py --local-evidence`, then the mapping
+summary's `baseline_unseen` and retained
+`artifacts/validation/live-bindings-20261014/new-mapping-attribution-preflight.json`:
+117 worker hashes already match selected RECORD receipts; audit installed owner/
+notice associations and 20 new system files, preserving original source/archive/
+bundled-term gaps. Use read-only package/metadata checks, no checkpoint loads,
+model downloads, optimizer/video jobs or unchanged sample_2 retries. Preserve
+both completed scenes and failed stages; unobserved lazy paths stay unqualified.
 
 For these videos, use the working sample_1 view below; preserve
 sample_2's failed stages until replacement footage or a qualified pose recovery

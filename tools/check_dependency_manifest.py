@@ -402,6 +402,12 @@ def check_manifest(root, manifest, local_evidence=False):
         if path not in bindings or bindings[path]["kind"] != "tracked":
             raise ValueError("Unbound runtime summary")
         result["runtime"] = check_runtime_summary(root, load_json(contained(root, path)), local_evidence)
+    if "backend_bindings_summary" in manifest:
+        from check_backend_bindings import check_summary
+        path = manifest["backend_bindings_summary"]
+        if path not in bindings or bindings[path]["kind"] != "tracked":
+            raise ValueError("Unbound backend mapping summary")
+        result["backend_bindings"] = check_summary(root, load_json(contained(root, path)), local_evidence)
     return result
 
 
