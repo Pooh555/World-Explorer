@@ -186,16 +186,25 @@ C++26 dev / 157/157 explicit C++23 CPU checks**, 14 focused cases / 1,612 assert
 format/tidy/docs and **2,393 unchanged protected files** pass. Native Windows CI
 rerun is pending for this commit; no reconstruction or environment change.
 
-Next executable task: M1/E1 durable-map transaction admission. Inspect
-`build/coverage/coverage/run-0hg7e901/html/` and `export.json` for
-`src/map_store/map_store.cpp` (46 uncovered branch outcomes). Extend public commit
-cases in `tests/unit/contracts_tests.cpp` / `persistent_map_tests.cpp` for invalid
-receipt budgets, image provenance, revision arithmetic, duplicate/invalid records,
-pose dependencies/covariance, deletion collisions and aggregate storage limits.
-Use fresh synthetic stores; verify immutable producer data, committed manifest/RAM
-and acknowledged receipts survive rejection, then retry the corrected transaction
-with the same operation ID and reopen. Retain all schema/platform/coverage limits
-and remeasure both groups; do not exclude error or dominated guards to obtain a pass.
+[Durable transaction admission](validation/2026-10-14-map-transactions.md): **12
+synthetic cases / 4,168 assertions** verify rejected records/budgets/revisions,
+same-writer correction/retry, reopened receipts, scoped correction invalidation
+and failed reset preservation. Map-store branches rise **77.88%→95.19%**; core
+**88.15% line / 75.09% branch**, package/update **79.97% branch** (90% unmet).
+**169/169 coverage CPU / 187/187 dev / 169/169 explicit C++23 CPU CTest**, 12 native
+sanitizer cases and format/tidy/docs pass. **2,393 protected files unchanged**;
+production/schema/recipe/environment/scope unchanged, no reconstruction/GPU rerun.
+
+Next executable task: M1/E1 completed-pose replay admission. Inspect
+`build/coverage/coverage/run-krrg731o/html/` and `export.json` for
+`src/reconstruction_adapters/completed_pose_replay.cpp` (63 uncovered branch
+outcomes). Extend `tests/unit/completed_poses_tests.cpp` using fresh synthetic
+datasets: reject malformed dataset/record dependencies, start budgets, unsupported
+frame payloads and mismatched retry headers/leases; check exact errors and caller
+lease preservation, corrected operation retry, bounded drain/finish and missing-pose
+LOST events at the unchanged registration boundary. Retain immutable producer
+snapshots and all schema/platform/coverage limits; remeasure both groups without
+excluding error or dominated guards.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
