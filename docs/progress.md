@@ -281,16 +281,24 @@ format/tidy/docs and **2,393 protected / 94 src/include files unchanged**.
 Sandbox LeakSanitizer ptrace failure is retained separately; native runs keep
 leak detection. No production/reconstruction/environment changes or gate pass.
 
-Next executable task: M1/E1 bounded scene-bundle fuzzing (§7.3). Add a third
-opt-in target in the isolated `fuzz` preset for `load_scene_bundle`, starting
-only from fresh synthetic manifests/indexes/chunks with bounded file/count/byte
-budgets. Mutate schema, checksums, path references and binary counts; include
-rehashed payload corruption to reach admission beyond checksum rejection.
-Check loader admission preserves caller files and successful snapshots validate.
-Use an exclusive ignored scratch directory and fixed-duration native
-ASan/UBSan/LeakSanitizer campaign; retain crashes and reproduce any failure
-deterministically before repair. Keep coverage/TSan/normal builds separate;
-never feed private media or saved jobs to targets.
+[Bounded scene bundle fuzzing](validation/2026-10-14-bundle-fuzz.md): third
+isolated Clang C++26 target, 196 synthetic seeds and explicit input/file/scene
+budgets, checksum-repaired schema/binary mutations and caller-tree/snapshot
+preservation. Native **55,915 inputs / 61 s**, **339 MiB peak RSS**, zero
+crashes/reported ASan/UBSan/LeakSanitizer errors. **257/257 dev / 239/239 C++23
+CPU checks**, format/tidy/docs and **2,393 protected / 94 src/include files
+unchanged**. Sandbox LSan ptrace failure is retained separately; native runs keep
+leak detection. No production/reconstruction/environment changes or gate pass.
+
+Next executable task: M1/E1 separate native TSan contract refresh (§7.3).
+Inspect `tests/unit/render_tests.cpp` and `contracts_tests.cpp` for bounded
+multi-producer/single-consumer queue/update coverage; add synchronized concurrent
+admission/cancellation/retirement checks where absent, preserving caller ownership
+on failed admission. Configure `cmake --preset tsan`, build with
+`cmake --build --preset tsan -j 4`, and run the relevant CPU contracts natively
+under TSan with exact logs/source identities. Keep TSan separate from ASan,
+fuzzing and coverage; suppress only demonstrated external false positives.
+Preserve all saved user jobs/media and do not rerun reconstruction.
 
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
