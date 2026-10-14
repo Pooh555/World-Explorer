@@ -12,6 +12,9 @@
     {"left": "artifacts/validation/dependency-closure-20261014/triton-LICENSE", "right": "third_party/notices/triton-3.0.0-LICENSE.txt", "scope": "Exact source notice bytes retained"}
   ],
   "inputs": [
+    {"bytes": 56545, "kind": "tracked", "path": "third_party/binding-owners-refresh-20261015.json", "sha256": "806f224c7e5fe5c97edfcf0f45469459b437958f78ff6620c199b3bd908f16d1"},
+    {"bytes": 100062, "kind": "tracked", "path": "third_party/backend-bindings-refresh-20261015.json", "sha256": "f17411105897c70710aaa190b8d342f33c174d9f67808add214d3c0dd5f04235"},
+    {"bytes": 448744, "kind": "tracked", "path": "third_party/runtime-audit-20261015.json", "sha256": "1808e6d4b3cb8565bac8bf754bbce15f1dd32979b270316392d154f6e20bb789"},
     {"archive": true, "bytes": 1197623, "kind": "local", "path": ".deps/catch2.tar.gz", "sha256": "18b3f70ac80fccc340d8c6ff0f339b2ae64944782f8d2fca2bd705cf47cadb79"},
     {"archive": true, "bytes": 2299918, "kind": "local", "path": ".deps/flatbuffers.tar.gz", "sha256": "b9c2df49707c57a48fc0923d52b8c73beb72d675f9d44b2211e4569be40a7421"},
     {"archive": true, "bytes": 1846599, "kind": "local", "path": ".deps/imgui.tar.gz", "sha256": "8e1bbc76c71d74fef2fb85db7e7ca8eba13d6a86623c54992b60162db554ffdb"},
@@ -361,7 +364,7 @@
       ]
     }
   ],
-  "binding_owners_summary": "third_party/binding-owners-20261015.json",
-  "backend_bindings_summary": "third_party/backend-bindings-20261015.json",
-  "runtime_summary": "third_party/runtime-audit-20261014.json"
+  "binding_owners_summary": "third_party/binding-owners-refresh-20261015.json",
+  "backend_bindings_summary": "third_party/backend-bindings-refresh-20261015.json",
+  "runtime_summary": "third_party/runtime-audit-20261015.json"
 }
