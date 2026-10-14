@@ -290,15 +290,24 @@ CPU checks**, format/tidy/docs and **2,393 protected / 94 src/include files
 unchanged**. Sandbox LSan ptrace failure is retained separately; native runs keep
 leak detection. No production/reconstruction/environment changes or gate pass.
 
-Next executable task: M1/E1 separate native TSan contract refresh (§7.3).
-Inspect `tests/unit/render_tests.cpp` and `contracts_tests.cpp` for bounded
-multi-producer/single-consumer queue/update coverage; add synchronized concurrent
-admission/cancellation/retirement checks where absent, preserving caller ownership
-on failed admission. Configure `cmake --preset tsan`, build with
-`cmake --build --preset tsan -j 4`, and run the relevant CPU contracts natively
-under TSan with exact logs/source identities. Keep TSan separate from ASan,
-fuzzing and coverage; suppress only demonstrated external false positives.
-Preserve all saved user jobs/media and do not rerun reconstruction.
+[Concurrent renderer/TSan](validation/2026-10-14-render-tsan.md): three new
+synthetic cases check four-producer receipt sharing, consumption, cancellation,
+backpressure/caller preservation, corrected operations and retired residency.
+Native final TSan **3 cases / 5,308 assertions**, ten further repetitions and
+**242/242 CPU CTest** pass without reported races/suppressions. GCC C++26 dev
+**260/260** / explicit C++23 CPU **242/242**, format/tidy/docs and **2,393 protected /
+94 src/include files unchanged**. Test-only changes; no reconstruction, environment
+or GPU rerun. This does not certify GPU lifetime, other platforms or full gates.
+
+Next executable task: M1 dependency source/archive/notice closure (§6.1/§7.3).
+Start with `workers/identity/local-development-20261013.json`, the retained raw
+worker receipts, `cmake/dependencies.cmake`, `vcpkg.json` and `third_party/notices/`.
+Create a checked per-component source/version/archive/notice gap manifest for the
+currently selected native and worker profiles; trace the missing Triton 3.0.0
+notice against exact selected source bytes. Installed hashes do not establish
+archive provenance or redistribution rights. Keep absent archives/rights and
+unavailable native/reference devices explicitly unqualified; do not install,
+download models, change environments or rerun saved video jobs for this audit.
 
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
