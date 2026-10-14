@@ -215,17 +215,27 @@ unchanged registration limits. Importer branches rise **62.38%→93.33%**; core
 sanitizer cases and format/tidy/docs pass. **2,393 protected files unchanged**;
 production/schema/recipe/environment/scope unchanged, no reconstruction/GPU rerun.
 
-Next executable task: M1/E1 decoded-frame source admission. Inspect
-`build/coverage/coverage/run-kp7adq6_/html/` and `export.json` for
-`src/reconstruction_adapters/decoded_frame_source.cpp` (83 uncovered branch
-outcomes). Extend the scoped tests around `tests/unit/decoded_frame_source_tests.cpp`
-with fresh synthetic committed stages: configuration, inventory/profile/count
-limits, rehashed identity/time-base/image-path/PNG metadata failures and exact RGB
-budgets. Check exact errors and complete caller-file preservation; rejected reads,
-cancellation and invalid seeks must preserve the next frame/reset epoch and old
-leases. Use a controlled local decoder only where reading is required; never
-launch reconstruction. Keep the documented legacy timestamp/profile limits and
-all coverage/platform thresholds; remeasure without excluding error paths.
+[Decoded-frame source admission](validation/2026-10-14-decoded-frame-admission.md):
+**15 synthetic cases / 24,056 assertions** check rehashed stages, exact limits,
+caller-file preservation, cancellation/read/seek retry and retained RGB leases.
+Decoded-source branches rise **65.13%→95.80%**; core **89.11% line / 79.27% branch**,
+package/update **86.87% branch** (90% unmet). **210/210 coverage CPU / 228/228 dev /
+210/210 explicit C++23 CPU CTest**, 15 native sanitizer cases and format/tidy/docs
+pass. **2,393 protected files unchanged**; no production/schema/recipe/environment/
+scope changes or reconstruction/GPU rerun. Legacy source-prefix and timestamp
+limits remain explicit; synthetic header diagnostics do not certify decoding.
+
+Next executable task: M1/E1 fresh batch-pose admission. Inspect
+`build/coverage/coverage/run-0khgqzsr/html/` and `export.json` for
+`src/reconstruction_adapters/batch_poses.cpp` (86 uncovered branch outcomes).
+Extend the public batch tests around `tests/unit/completed_poses_tests.cpp` using
+fresh synthetic stages and controlled local workers only: configuration/start,
+ordered observation admission, exact memory/disk limits, retry receipts,
+closed/cancelled states and resumed-input rejection. Check exact errors and
+complete caller-file/lease preservation; successful admission consumes only the
+accepted lease, and rejected retries preserve prior receipts and journal bytes.
+Use fresh output directories; never launch reconstruction or touch saved jobs.
+Keep all coverage/profile/platform thresholds and remeasure without exclusions.
 For these videos, use the working sample_1 view below; preserve
 sample_2/3's failed stages until replacement footage or a qualified pose recovery
 is available. Do not restart identical failed solves.
