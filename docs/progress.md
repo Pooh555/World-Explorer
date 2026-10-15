@@ -1,13 +1,19 @@
 # Current handoff
 
-Updated 2026-10-15 (Asia/Hong_Kong). **M1: IN_PROGRESS. No M1–M6 milestone or
-Q/P/N/E requirement is fully certified. M7–M8: DEFERRED_BY_USER.**
+Updated 2026-10-15 (Asia/Hong_Kong). **M1: VERIFIED for the Linux development
+exit. M2: IN_PROGRESS. No full Q/P/N/E gate is certified. M7–M8:
+DEFERRED_BY_USER.**
 
 [User-approved plan v1.1](adr/012-m1-development-exit.md) changes M1 to a
 Linux development exit with hosted native CPU CI. Physical Windows/macOS viewer,
 GPU/display/input/HiDPI and the original ≤250k / 720p ≥30 FPS reference-device
 checks move to M4. Full Q/P/N/E and release requirements remain unchanged.
-M1 status stays IN_PROGRESS pending its remaining local checklist review.
+The [completed M1 checklist review](validation/2026-10-15-m1-exit-review.md)
+binds the consented real room chain, full 250k synthetic fixture, native fly and
+replace/delete evidence, selected identity/license audit, local timings and a
+successful four-job hosted CPU run at reviewed commit `788db85`. Remaining
+hardware, corpus, benchmark and distribution obligations keep their later gate
+statuses open.
 
 ## Implemented and checked
 
@@ -428,14 +434,13 @@ pass. **2,088 protected / 1,936 prior evidence / 94 production files** unchanged
 This is a synthetic load fixture; Windows/macOS fixture execution remains
 IMPLEMENTED_UNVERIFIED, and no FPS, reconstruction or full gate is certified.
 
-Next executable step: review the retained real sample_1/sample_3 jobs against
-[plan §8.1's local M1 checklist](technical_plan.md#81-m1-development-exit-and-hardware-qualification).
-Verify the selected consented 20–30 s source/provenance, decode → poses → fit →
-bundle → Linux viewer evidence, current hosted CPU CI, four contracts/replay,
-version/license audit and reported local timings. Record satisfied items and
-precise remaining local gaps; reuse completed fits and frozen-fixture evidence.
-Mark M1 VERIFIED only after that review supports every development-exit item,
-then resume M2. Do not restart completed work to generate another success log.
+Next executable step: M2 swapchain recovery. The [entry check](validation/2026-10-15-m2-swapchain-entry.md)
+confirms native replace/delete/resize at 51 frames/zero Vulkan errors, then finds
+that resize destroys the old presentation and scratch before the replacement is
+fully admitted. Stage replacement resources without losing the last renderable
+revision on failure; add bounded native failure injection and
+resize/minimize/restore checks. Keep current captured scenes and the frozen
+fixture untouched.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/
