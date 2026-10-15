@@ -26,6 +26,95 @@ MAX_ERROR_LEVELS = 8
 CLIPPING_LABEL = "synthetic inclusive clipping float neighbors v1; not a capture"
 
 
+REBASING_LABEL = "synthetic floating origin translation v1; not a capture"
+REBASING_OFFSETS = {"zero": [0, 0, 0], "positive": [2**30, -2**29, 2**28],
+                   "negative": [-2**30, 2**29, -2**28]}
+
+
+def rebasing_profile(case):
+    """Independent fixed binary-grid input specification; never a fitted scene."""
+    offset = np.asarray(REBASING_OFFSETS[case], dtype=np.float64)
+    chunks = []
+    for group, count in enumerate((12, 4)):
+        splats = []
+        for index in range(count):
+            sh = np.zeros(48, dtype=np.float32)
+            for channel in range(3):
+                color = np.float32(.125 + ((index + channel) % 4) * .1875)
+                sh[channel] = (color - np.float32(.5)) / np.float32(.2820947918)
+                for coefficient in range(1, 16):
+                    sh[coefficient * 3 + channel] = ((index + coefficient + channel) % 3 - 1) * .015625
+            splats.append({"mean": [(index % 4 - 1.5) * .5, (index // 4 - 1) * .5, -(index % 3) * .25],
+                           "scale": [.25, .125, .0625], "rotation": [1, 0, 0, 0],
+                           "opacity": .625, "sh_degree": 3, "sh": sh.astype(float).tolist()})
+        chunks.append({"rotation": [1, 0, 0, 0] if group == 0 else [0, 1, 0, 0],
+                       "translation": (offset + ([0, 0, 0] if group == 0 else [.5, -.25, 1])).tolist(),
+                       "scale": 1 if group == 0 else .5, "splats": splats})
+    views = []
+    for name in ("centered", "off_center", "rolled", "translated"):
+        rolled = name in ("rolled", "translated")
+        views.append({"name": name,
+                      "position": (offset + ([-.25, .125, 6.5] if name == "translated" else [0, 0, 6])).tolist(),
+                      "right": [math.cos(.37), -math.sin(.37), 0] if rolled else [1, 0, 0],
+                      "down": [-math.sin(.37), -math.cos(.37), 0] if rolled else [0, -1, 0],
+                      "forward": [0, 0, -1],
+                      "intrinsics": [900, 840, 639.5, 359.5] if name == "centered" else [930, 790, 481.25, 302.75],
+                      "near": float(np.float32(.01)), "far": 20})
+    return {"schema": 1, "label": REBASING_LABEL, "width": 1280, "height": 720,
+            "background": np.asarray([.045, .051, .063], dtype=np.float32).astype(float).tolist(),
+            "chunks": chunks, "views": views, "rebasing_case": case,
+            "world_offset": offset.tolist(), "render_origin": views[0]["position"], "rebase_excursion": 16384}
+
+
+def load_rebasing(data, case):
+    def finite_numbers(value):
+        if isinstance(value, dict):
+            return all(finite_numbers(v) for v in value.values())
+        if isinstance(value, list):
+            return all(finite_numbers(v) for v in value)
+        return isinstance(value, str) or (type(value) in (int, float) and math.isfinite(value))
+    payload = dict(data)
+    digest = payload.pop("scene_content_sha256", None)
+    if (case not in REBASING_OFFSETS or not finite_numbers(payload) or
+            not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or
+            payload != rebasing_profile(case)):
+        raise ValueError("rebasing fixture differs from fixed diagnostic profile")
+    return 16
+
+
+def load_rebasing_baseline(root):
+    """Bind every baseline image to its passing report and this comparator."""
+    fixture = root / "fixture.json"
+    report_path = root / "comparison.json"
+    if fixture.stat().st_size > 4 * 1024**2 or report_path.stat().st_size > 1024**2:
+        raise ValueError("rebasing baseline metadata exceeds budget")
+    load_rebasing(json.loads(fixture.read_text()), "zero")
+    report = json.loads(report_path.read_text())
+    if (report.get("passed") is not True or report.get("rebasing_case") != "zero" or
+            report.get("fixture_sha256") != sha256(fixture) or
+            report.get("comparison_script_sha256") != sha256(Path(__file__)) or
+            report.get("tolerance") != {"min_psnr_db": MIN_PSNR, "max_error_levels": MAX_ERROR_LEVELS} or
+            [v.get("name") for v in report.get("views", [])] != ["centered", "off_center", "rolled", "translated"]):
+        raise ValueError("rebasing baseline is not a matching passing zero report")
+    for view in report["views"]:
+        name = view["name"]
+        if (view.get("passed") is not True or view.get("native_sha256") != sha256(root / f"{name}.ppm") or
+                view.get("reference_sha256") != sha256(root / f"{name}-reference.png")):
+            raise ValueError("rebasing baseline readback checksum mismatch")
+    return report
+
+
+def image_comparison(left, right):
+    """Fixed RGB8 limits also apply to joint-translation invariance."""
+    if left.shape != (720, 1280, 3) or right.shape != left.shape or left.dtype != np.uint8 or right.dtype != np.uint8:
+        raise ValueError("rebasing readback must be full RGB8")
+    error = np.abs(left.astype(np.float64) - right.astype(np.float64))
+    mse = np.mean((error / 255) ** 2)
+    psnr = -10 * math.log10(mse) if mse else None
+    return {"psnr_db": psnr, "max_error_levels": int(error.max()),
+            "passed": bool((psnr is None or psnr >= MIN_PSNR) and error.max() <= MAX_ERROR_LEVELS)}
+
+
 def load_clipping(data):
     """Admit exactly the six predeclared one-ULP boundary contributions."""
     def check(condition):
@@ -279,7 +368,13 @@ def main():
     parser.add_argument("--real", action="store_true", help="admit the explicit bounded real-asset profile")
     parser.add_argument("--fit-indices", help="required matching explicit zero-based fit camera selection")
     parser.add_argument("--clipping", action="store_true", help="require the fixed synthetic clipping boundary profile")
+    parser.add_argument("--rebasing", choices=tuple(REBASING_OFFSETS), help="require the fixed synthetic floating-origin profile")
+    parser.add_argument("--baseline", type=Path, help="passing zero-offset comparison required for translated profiles")
     args = parser.parse_args()
+    if sum((args.real, args.clipping, args.rebasing is not None)) > 1:
+        parser.error("--real, --clipping and --rebasing are exclusive")
+    if (args.baseline is not None) != (args.rebasing in ("positive", "negative")):
+        parser.error("--baseline is required only for positive/negative rebasing")
     if args.fit_indices is not None and not args.real:
         parser.error("--fit-indices requires --real")
     if args.clipping and args.real:
@@ -294,7 +389,10 @@ def main():
     if fixture.stat().st_size > 4 * 1024 * 1024:
         raise RuntimeError("reference fixture exceeds bounded diagnostic input")
     data = json.loads(fixture.read_text())
-    if args.real:
+    baseline = load_rebasing_baseline(args.baseline.resolve()) if args.baseline else None
+    if args.rebasing:
+        count = load_rebasing(data, args.rebasing)
+    elif args.real:
         count = load_real(root, data, args.fit_indices)
     elif args.clipping:
         count = load_clipping(data)
@@ -322,6 +420,14 @@ def main():
         str(path): sha256(Path(distribution.locate_file(path)))
         for path in distribution.files
         if str(path).endswith((".so", "rendering.py", "_wrapper.py"))}
+    if args.rebasing:
+        report["rebasing_case"] = args.rebasing
+        report["world_offset"] = data["world_offset"]
+        if baseline:
+            for key in ("gsplat", "torch", "cuda", "device", "gsplat_files_sha256", "ssim_script_sha256"):
+                if baseline.get(key) != report[key]:
+                    raise ValueError("rebasing baseline reference environment differs")
+            report["baseline_comparison_sha256"] = sha256(args.baseline / "comparison.json")
     with torch.no_grad():
         for view in data["views"]:
             name = view["name"]
@@ -360,6 +466,20 @@ def main():
                 record.update(fit_frame_index=view["fit_frame_index"], fit_frame_name=view["fit_frame_name"])
             if boundary_checks is not None:
                 record["clipping_regions"] = boundary_checks
+            if args.rebasing:
+                record["reference_sha256"] = sha256(root / f"{name}-reference.png")
+                background = np.rint(np.asarray(data["background"]) * 255).astype(np.int16)
+                record["nonblank"] = all(np.abs(pixels.astype(np.int16) - background).max() > 32
+                                         for pixels in (native, quantized))
+                passed = passed and record["nonblank"]
+                if baseline:
+                    checks = {}
+                    for kind, pixels, suffix in (("native", native, ".ppm"), ("reference", quantized, "-reference.png")):
+                        with Image.open(args.baseline / (name + suffix)) as image:
+                            checks[kind] = image_comparison(pixels, np.asarray(image.convert("RGB")))
+                    record["translation_invariance"] = checks
+                    passed = passed and all(c["passed"] for c in checks.values())
+                record["passed"] = bool(passed)
             report["views"].append(record)
             print(json.dumps(record), flush=True)
     report["passed"] = all(v["passed"] for v in report["views"])

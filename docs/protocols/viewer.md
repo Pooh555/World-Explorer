@@ -271,6 +271,35 @@ diagnostic tolerances remain PSNR ≥45 dB and maximum error ≤8 levels.
 [Clipping-boundary evidence](../validation/2026-10-15-clipping-boundaries.md)
 records the tested compiler/device scope. No real reconstruction or Q gate follows.
 
+## Synthetic floating origin
+
+`we_gpu_reference NEW_DIRECTORY --rebasing zero|positive|negative` selects a
+separate labeled binary-grid fixture with 16 SH3 splats and four calibrated
+1280×720 views. Scene and cameras receive the same double offset: zero,
+`(2^30,-2^29,2^28)`, or its negative. Local positions and chunk translations are
+binary fractions, preserving exact relative geometry. The second chunk applies
+Rx(pi) and scale 0.5. Before the final fractional camera view, the native camera
+makes a +16,384-unit X excursion and returns, exercising accepted-scene reupload
+across the existing 10,000-unit camera-origin threshold twice.
+
+Run `tests/gpu/compare_reference.py NEW_DIRECTORY --rebasing zero` first.
+Positive/negative comparisons require the matching `--rebasing` case and
+`--baseline ZERO_DIRECTORY`. These flags are exclusive with real/clipping modes.
+Admission requires every fixed splat/SH coefficient, transform, camera, origin and
+excursion; partial or changed profiles, nonfinite values and boolean numbers fail.
+The baseline must have a passing matching-comparator report with checked fixture,
+native PPM and reference PNG hashes and identical reference-library identities.
+All views must be nonblank. Both native/reference parity and native/reference
+translation invariance use unchanged ≥45 dB / ≤8 RGB8-level limits. Reports retain
+baseline identity and per-view invariance metrics alongside original readbacks,
+float reference images and heatmaps.
+
+The fixture factory rejects nonfinite or precision-losing diagnostic translations.
+This is a test-input contract; it adds no absolute float-range limit to production
+world positions. No fitted scene, original synthetic mode or production packing
+changes. [Local evidence](../validation/2026-10-15-floating-origin.md) scopes this
+coordinate check separately from real reconstruction, streaming, Q6 and platforms.
+
 ## Calibrated reference camera selection
 
 `we_gpu_reference NEW_DIRECTORY --real BUNDLE COMPLETED_FIT` keeps its original

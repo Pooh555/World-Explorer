@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 
-from compare_reference import CLIPPING_LABEL, clipping_regions, load_clipping, load_real, parse_fit_indices, sha256
+from compare_reference import rebasing_profile, load_rebasing, load_rebasing_baseline, image_comparison, MIN_PSNR, MAX_ERROR_LEVELS, CLIPPING_LABEL, clipping_regions, load_clipping, load_real, parse_fit_indices, sha256
 
 
 class real_reference_input_tests(unittest.TestCase):
@@ -280,6 +280,85 @@ class clipping_boundary_tests(unittest.TestCase):
         for background in [[0, 0], [0, 0, float("nan")], [-1, 0, 0]]:
             with self.assertRaises(ValueError):
                 clipping_regions(self.image(), background)
+
+
+class rebasing_input_tests(unittest.TestCase):
+    def fixture(self, case="zero"):
+        return dict(rebasing_profile(case), scene_content_sha256="a" * 64)
+
+    def test_all_fixed_cases(self):
+        for case in ("zero", "positive", "negative"):
+            self.assertEqual(load_rebasing(self.fixture(case), case), 16)
+
+    def test_no_camera_or_payload_subsets(self):
+        for field in ("views", "chunks"):
+            data = self.fixture()
+            data[field].pop()
+            with self.assertRaises(ValueError):
+                load_rebasing(data, "zero")
+
+    def test_changed_coordinates_and_payload_rejected(self):
+        for change in (lambda d: d["chunks"][1]["translation"].__setitem__(0, .75),
+                       lambda d: d["chunks"][0]["splats"][0]["mean"].__setitem__(0, 0),
+                       lambda d: d["chunks"][0]["splats"][0]["sh"].__setitem__(47, 1),
+                       lambda d: d["views"][3]["position"].__setitem__(0, 0),
+                       lambda d: d["views"].reverse(),
+                       lambda d: d.__setitem__("rebase_excursion", 0),
+                       lambda d: d.__setitem__("render_origin", [0, 0, 0]),
+                       lambda d: d.__setitem__("world_offset", [1, 0, 0])):
+            data = self.fixture()
+            change(data)
+            with self.assertRaises(ValueError):
+                load_rebasing(data, "zero")
+
+    def test_nonfinite_boolean_wrong_case_rejected(self):
+        for value in (True, float("nan"), float("inf")):
+            data = self.fixture()
+            data["chunks"][0]["translation"][0] = value
+            with self.assertRaises(ValueError):
+                load_rebasing(data, "zero")
+        with self.assertRaises(ValueError):
+            load_rebasing(self.fixture("positive"), "negative")
+
+    def test_invariance_rejects_hard_pixels_and_wrong_shape(self):
+        left = np.zeros((720, 1280, 3), dtype=np.uint8)
+        right = left.copy()
+        self.assertTrue(image_comparison(left, right)["passed"])
+        right[100, 100] = 9
+        self.assertFalse(image_comparison(left, right)["passed"])
+        with self.assertRaises(ValueError):
+            image_comparison(left[:10], right)
+
+    def test_baseline_hashes_and_failed_reports_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = root / "fixture.json"
+            fixture.write_text(json.dumps(self.fixture()))
+            views = []
+            for name in ("centered", "off_center", "rolled", "translated"):
+                # Opaque small bytes test report binding, not image quality.
+                (root / (name + ".ppm")).write_bytes(b"native")
+                (root / (name + "-reference.png")).write_bytes(b"reference")
+                views.append({"name": name, "passed": True,
+                              "native_sha256": sha256(root / (name + ".ppm")),
+                              "reference_sha256": sha256(root / (name + "-reference.png"))})
+            report = {"passed": True, "rebasing_case": "zero", "views": views,
+                      "fixture_sha256": sha256(fixture),
+                      "comparison_script_sha256": sha256(Path(__file__).with_name("compare_reference.py")),
+                      "tolerance": {"min_psnr_db": MIN_PSNR, "max_error_levels": MAX_ERROR_LEVELS}}
+            report_path = root / "comparison.json"
+            report_path.write_text(json.dumps(report))
+            self.assertTrue(load_rebasing_baseline(root)["passed"])
+            for field, value in (("passed", False), ("views", views[:3]),
+                                 ("comparison_script_sha256", "0" * 64),
+                                 ("tolerance", {"min_psnr_db": 0, "max_error_levels": 255})):
+                report_path.write_text(json.dumps(dict(report, **{field: value})))
+                with self.assertRaises(ValueError):
+                    load_rebasing_baseline(root)
+            report_path.write_text(json.dumps(report))
+            (root / "translated-reference.png").write_bytes(b"changed")
+            with self.assertRaises(ValueError):
+                load_rebasing_baseline(root)
 
 
 if __name__ == "__main__":
