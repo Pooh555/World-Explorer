@@ -37,10 +37,12 @@ bytes now have identities and independent synthetic parity. Training environment
 remain unchanged; model/dataset/transitive rights and Q2/Q3 qualification remain
 pending.
 
-The [current selected-component inventory](dependency-audit-20261015.json) records
+The [current selected-component inventory](dependency-audit-20261016.json) records
 source/archive/notice gaps for 84 components across seven profiles. Its
 [offline checker](../tools/check_dependency_manifest.py) rejects stale or incomplete
-evidence. All five native development archive hashes pass; their selected notices
+evidence; pass `--manifest third_party/dependency-audit-20261016.json` for the
+current inventory. The checker's default remains the historical 2026-10-14
+snapshot. All five native development archive hashes pass; their selected notices
 match, with one explicitly recorded first-line trailing-space normalization in
 JSON. The supplemental [Triton 3.0.0 source notice](notices/triton-3.0.0-LICENSE.txt)
 traces the exact tag commit; installed-wheel notice/source binding and embedded
@@ -48,12 +50,12 @@ dependency terms remain unresolved. The observed system FFmpeg is GPL-enabled,
 not the proposed minimal LGPL release build. The release-vcpkg graph remains
 unresolved; this inventory grants no redistribution clearance. See the
 [protocol](../docs/protocols/dependency_sources.md) for scope and checks.
-After the VMA viewer rebuild, the retained runtime supplement's two development
-build-root hashes are stale. The full `--local-evidence` check correctly exits 2;
-the native archive/notice and release declaration subset passes locally. A new
-runtime observation is required before restoring the full local check.
+The [VMA runtime refresh](../docs/validation/2026-10-16-vma-runtime-refresh.md)
+recaptures both rebuilt development executables and the empty native viewer.
+The full current `--local-evidence` check passes; strict closure exits 3 for
+253 explicit source and rights gaps.
 
-The [runtime supplement](runtime-audit-20261015.json) records fifteen selected
+The [runtime supplement](runtime-audit-20261016.json) records fifteen selected
 Linux loader contexts, 213 ELF fingerprints, 123 system package owners and 96
 notice files. Its [selection](runtime-selection-20261014.json) pins roots and
 explicit extension library paths. The existing local inventory check now rehashes
