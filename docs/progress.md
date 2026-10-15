@@ -490,14 +490,25 @@ seconds. Production cancellation and worker deadlines are unchanged. Native
 Windows rerun remains pending. Local **267/267 C++26 / 249/249 C++23 CPU checks**,
 the four-mode regression and format/tidy pass.
 
-Next executable step: implement and run the local native P6 diagnostic for
-concurrent replacement/eviction and revision replay at ten updates/second.
-Measure CPU enqueue p95, per-frame GPU upload time and interactive idle waits
-against the unchanged §3 thresholds; keep H_V qualification separate. Do not rerun
-reconstruction or change saved scenes/frozen fixture. Find a compositor that
-accepts minimize/restore for its separate native check. Physical device loss,
-release-vcpkg and reference Q/P/N/E gates remain
-open.
+[Native P6 update replay](validation/2026-10-16-m2-p6-update-replay.md) now
+measures the full saved 295,952-splat scene with synthetic marker replacement/
+eviction at a scheduled 10 updates/s. On local C++23 Release/NVIDIA, all 100
+revisions become visible with zero Vulkan errors and zero interactive device-idle
+waits, but require **18.048 s**: enqueue p95 **196.268 ms**, GPU upload p95
+**6.494 ms**, and visible rate **5.541/s**. P6 fails this local diagnostic.
+Capacity retries now reject before full validation, and validation/hash run
+outside the sink mutex; exact SHA batching preserves the saved scene hash.
+**269/269 C++26 / 251/251 C++23 CPU checks**, focused TSan and timed native
+smoke pass. The release-vcpkg and H_V gate remain unqualified.
+
+Next executable step: add bounded producer-side scene preparation so expensive
+validation/hash finish before measured sink admission, preserving immutable
+ownership, duplicate-operation comparison and failed admission semantics.
+Then stage large uploads over multiple frames under the unchanged P6 2 ms/frame
+budget and rerun the 10 Hz native replay. Do not rerun reconstruction or change
+saved scenes/frozen fixture. Find a compositor that accepts minimize/restore for
+its separate native check. Physical device loss, release-vcpkg and reference
+Q/P/N/E gates remain open.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

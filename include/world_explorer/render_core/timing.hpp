@@ -9,6 +9,7 @@
 
 namespace world_explorer {
 enum class gpu_timing_stage : std::uint8_t {
+    UPLOAD,
     PROJECTION,
     DEPTH_SORT,
     COUNT_SCAN,

@@ -30,6 +30,7 @@ result<std::array<float, 4>> raster_intrinsics(const camera_view& camera, std::u
 struct renderer_diagnostics {
     std::uint64_t submitted_frames{};
     std::uint64_t completed_timeline{};
+    std::uint64_t interactive_device_idle_waits{};
     std::size_t resident_splat_count{};
     std::size_t tile_reference_count{};
     std::size_t allocated_bytes{};

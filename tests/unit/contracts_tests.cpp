@@ -2,6 +2,7 @@
 #include "world_explorer/map_store/map_store.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
+#include <algorithm>
 #include <atomic>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
@@ -9,6 +10,7 @@
 #include <limits>
 #include <nlohmann/json.hpp>
 #include <thread>
+#include <vector>
 
 using namespace world_explorer;
 
@@ -279,6 +281,26 @@ TEST_CASE("SHA-256 matches an independent standard test vector", "[contracts][ha
     const std::string text = "abc";
     CHECK(sha256(std::as_bytes(std::span(text.data(), text.size()))) ==
           "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+}
+
+TEST_CASE("SHA-256 builder preserves a digest across small updates and buffer boundaries",
+          "[contracts][hash]") {
+    std::vector<std::byte> bytes(65537);
+    for (std::size_t index = 0; index < bytes.size(); ++index)
+        bytes[index] = static_cast<std::byte>(index % 251);
+    const auto expected = sha256(bytes);
+    sha256_builder streamed;
+    for (std::size_t offset = 0; offset < bytes.size();) {
+        const auto count = std::min<std::size_t>(offset % 19 + 1, bytes.size() - offset);
+        streamed.update(std::span(bytes).subspan(offset, count));
+        offset += count;
+    }
+    CHECK(streamed.finish() == expected);
+    CHECK_THROWS(streamed.update(bytes));
+    CHECK_THROWS(streamed.finish());
+    sha256_builder direct;
+    direct.update(bytes);
+    CHECK(direct.finish() == expected);
 }
 
 TEST_CASE("bundle round trip enforces checksums paths conventions and allocation bounds",

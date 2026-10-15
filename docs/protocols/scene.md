@@ -55,7 +55,11 @@ require exclusive writer ownership. Never write into an attacker-mutated directo
 `renderer_update_sink` is mutex-protected, multi-producer/single-consumer. Failed
 enqueue preserves caller data; accepted updates move the immutable snapshot.
 Duplicates are checked by metadata and content hash within a bounded 256-operation
-window. Admission charges pending, visible and not-yet-retired payloads. The GPU
+window. New operations check queue/residency capacity before full validation;
+validation and hashing run outside the sink mutex, followed by a locked revision
+and budget recheck. A rejected retry remains owned by its producer. Admission
+charges pending, visible and not-yet-retired payloads using the validated visible
+ticket's byte count. The GPU
 adapter additionally budgets staging, old/new buffers, sort scratch and FP32
 framebuffers using actual Vulkan allocation requirements. Temporary staging is
 charged while allocating its replacement; insufficient residency fails before
@@ -72,7 +76,13 @@ Visibility means submitted atomically for rendering, not that display scanout is
 complete. Timeline completion governs old resource retirement. Full snapshots use
 this same path for initial load/resync. No reconstruction GPU pointer crosses it.
 
-Current limitations: validation/content hashing run at admission, full-scene uploads
-are not split across frames, snapshots require producer immutability, resize waits
-for device idle, and device loss reports failure rather than automatically rebuilding.
-P6 and full M2 qualification are therefore incomplete.
+Optional completed GPU timestamps include an upload pair around the staging-to-
+replacement copy and transfer-to-compute barrier. Frames without a copy report
+zero upload time. `interactive_device_idle_waits` counts device-idle calls in the
+swapchain refresh path; explicit shutdown/diagnostic idle calls are excluded.
+
+Current limitations: validation/content hashing still run synchronously on the
+producer during enqueue, full-scene uploads are not split across frames, snapshots
+require producer immutability, and resize waits for device idle. The renderer
+reports typed device loss; the viewer can recreate it from its retained scene,
+while physical loss remains unverified. P6 and full M2 qualification are incomplete.
