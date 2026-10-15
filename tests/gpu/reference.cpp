@@ -1,3 +1,4 @@
+#include "fit_view_selection.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
@@ -269,7 +270,8 @@ int main(int argc, char** argv) {
             arguments.size() > 2 && std::string_view(arguments.back()) == "--timings";
         if (timings)
             --argc;
-        const bool real = argc == 5 && std::string_view(argv[2]) == "--real";
+        const bool explicit_indices = argc == 7 && std::string_view(argv[5]) == "--fit-indices";
+        const bool real = (argc == 5 || explicit_indices) && std::string_view(argv[2]) == "--real";
         require(real || argc == 2 ||
                     (argc == 3 && (std::string_view(argv[2]) == "--compositing" ||
                                    std::string_view(argv[2]) == "--termination" ||
@@ -278,6 +280,7 @@ int main(int argc, char** argv) {
                 "usage: we_gpu_reference <new output directory> "
                 "[--compositing|--termination|--batches|--batches-bounded] or "
                 "we_gpu_reference <new output directory> --real <scene bundle> <completed fit>; "
+                "optionally --fit-indices 0,1,... for original fit cameras; "
                 "append --timings for completed GPU/CPU timing checks");
         const bool compositing = argc == 3;
         const bool termination = compositing && std::string_view(argv[2]) == "--termination";
@@ -291,6 +294,8 @@ int main(int argc, char** argv) {
                                              : fixture();
         std::uint32_t image_width = WIDTH, image_height = HEIGHT;
         json fit_frames, identity;
+        std::vector<std::size_t> fit_indices;
+        std::vector<camera_view> fit_cameras;
         if (real) {
             bundle_limits limits;
             limits.scene.max_chunks = 1024;
@@ -337,8 +342,23 @@ int main(int argc, char** argv) {
             fit_frames = input.at("dataset").at("frames");
             require(fit_frames.size() >= 3 && fit_frames.size() <= 120,
                     "fit frame budget exceeded");
+            fit_indices = {0, fit_frames.size() / 2, fit_frames.size() - 1};
+            if (explicit_indices) {
+                auto selected = parse_fit_view_indices(argv[6], fit_frames.size());
+                require(selected.has_value(), selected ? "" : selected.error().message);
+                fit_indices = std::move(*selected);
+            }
             image_width = image_dimension(fit_frames.at(0).at("width"));
             image_height = image_dimension(fit_frames.at(0).at("height"));
+            for (const auto index : fit_indices) {
+                auto camera = fit_camera(fit_frames.at(index));
+                if (!camera.calibration)
+                    throw std::runtime_error("fit camera calibration is missing");
+                const auto& calibration = camera.calibration.value();
+                require(calibration.width == image_width && calibration.height == image_height,
+                        "fit cameras have different dimensions");
+                fit_cameras.push_back(camera);
+            }
             identity = {{"fit_identity", result.at("identity")},
                         {"source_sha256", result.at("source_sha256")},
                         {"ply_sha256", result.at("ply_sha256")},
@@ -390,9 +410,16 @@ int main(int argc, char** argv) {
         std::vector<std::string> names{"centered", "off_center", "rolled", "translated"};
         if (compositing)
             names.insert(names.end(), {"orbit_left", "orbit_right", "close_up"});
-        if (real)
+        if (real) {
             names = {"fit_first", "fit_middle", "fit_last"};
-        for (const auto& name : names) {
+            if (explicit_indices) {
+                names.clear();
+                for (const auto index : fit_indices)
+                    names.push_back("fit_index_" + std::to_string(index));
+            }
+        }
+        for (std::size_t view_index = 0; view_index < names.size(); ++view_index) {
+            const auto& name = names[view_index];
             camera_view camera;
             camera.position = {0, 0, 6};
             camera.far_plane = 20;
@@ -415,15 +442,12 @@ int main(int argc, char** argv) {
                 camera.position = {0.2, 0.1, 2.8};
             std::size_t fit_index = 0;
             if (real) {
-                fit_index = name == "fit_first"    ? 0
-                            : name == "fit_middle" ? fit_frames.size() / 2
-                                                   : fit_frames.size() - 1;
-                camera = fit_camera(fit_frames.at(fit_index));
-                require(camera.calibration->width == image_width &&
-                            camera.calibration->height == image_height,
-                        "fit cameras have different dimensions");
+                fit_index = fit_indices[view_index];
+                camera = fit_cameras[view_index];
             }
-            const auto k = camera.calibration->intrinsics;
+            if (!camera.calibration)
+                throw std::runtime_error("diagnostic camera calibration is missing");
+            const auto k = camera.calibration.value().intrinsics;
             views.push_back({{"name", name},
                              {"position", vector(camera.position)},
                              {"right", vector(camera.right)},
@@ -493,6 +517,8 @@ int main(int argc, char** argv) {
             {"views", views},
             {"scene_content_sha256", scene_content_hash(*scene)}};
         if (real) {
+            if (explicit_indices)
+                diagnostic["fit_frame_indices"] = fit_indices;
             diagnostic["identity"] = identity;
             diagnostic["splat_count"] = stats.resident_splat_count;
             diagnostic["render_origin"] = views.at(0).at("position");
