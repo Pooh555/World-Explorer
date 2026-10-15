@@ -9,6 +9,11 @@
 
 namespace world_explorer {
 class vulkan_device;
+#if defined(WE_VULKAN_TEST_FAULTS)
+namespace detail {
+void fail_next_swapchain_after_create() noexcept;
+}
+#endif
 
 class vulkan_swapchain {
   public:
@@ -52,7 +57,8 @@ class vulkan_swapchain {
     std::vector<VkImageView> views_;
     std::vector<VkFramebuffer> framebuffers_;
     std::vector<VkSemaphore> present_semaphores_;
-    void create_resources(VkExtent2D requested_extent, VkSwapchainKHR old_swapchain);
+    void create_resources(VkExtent2D requested_extent, VkSwapchainKHR old_swapchain,
+                          bool& handoff_attempted);
 };
 
 } // namespace world_explorer

@@ -746,8 +746,22 @@ struct vulkan_renderer::implementation {
             check(vkDeviceWaitIdle(device), "wait before resizing composition scratch");
             collect_completed(submitted_timeline);
         }
-        if (!swapchain_backend->create(window, next_extent))
-            return false;
+        try {
+            if (!swapchain_backend->create(window, next_extent))
+                return false;
+        } catch (...) {
+            if (!swapchain_backend->swapchain()) {
+                swapchain = VK_NULL_HANDLE;
+                images = {};
+                views = {};
+                framebuffers = {};
+                present_semaphores = {};
+                minimum_images = 0;
+                diagnostics.framebuffer_width = 0;
+                diagnostics.framebuffer_height = 0;
+            }
+            throw;
+        }
         for (std::size_t index = 0; index < frames.size(); ++index) {
             if (next_captured[index].buffer)
                 frames[index].captured = std::move(next_captured[index]);
@@ -777,6 +791,8 @@ struct vulkan_renderer::implementation {
     }
     void draw(const camera_view& camera, bool draw_appearance) {
         const auto begin = std::chrono::steady_clock::now();
+        if ((SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) != 0)
+            return;
         int width = 0, height = 0;
         SDL_GetWindowSizeInPixels(window, &width, &height);
         if (width <= 0 || height <= 0)

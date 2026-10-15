@@ -49,3 +49,8 @@ remaining recovery boundary is handled. Plan §6's dependency note expected an
 exact VMA tag fixed at M1; the current build has neither a selected VMA tag nor a
 VMA dependency. Pin and audit it before migration, without retroactively counting
 the unselected library as part of M1's verified dependency set.
+
+Correction recorded in the subsequent
+[post-create recovery](2026-10-15-m2-postcreate-recovery.md): Vulkan retires
+`oldSwapchain` when `vkCreateSwapchainKHR` is called, even if creation fails. The
+earlier successful-create-only wording above was too narrow.

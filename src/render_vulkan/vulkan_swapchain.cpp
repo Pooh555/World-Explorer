@@ -7,6 +7,12 @@
 #include <utility>
 
 namespace world_explorer {
+#if defined(WE_VULKAN_TEST_FAULTS)
+namespace detail {
+thread_local bool fail_swapchain_after_create{};
+void fail_next_swapchain_after_create() noexcept { fail_swapchain_after_create = true; }
+} // namespace detail
+#endif
 
 vulkan_swapchain::vulkan_swapchain(vulkan_device& device, VkSurfaceKHR surface,
                                    VkFormat preferred_format)
@@ -59,7 +65,15 @@ bool vulkan_swapchain::create(SDL_Window* window, std::optional<VkExtent2D> expe
     if (swapchain_)
         detail::check(vkDeviceWaitIdle(device_), "wait for swapchain resize");
     vulkan_swapchain next(*this, true);
-    next.create_resources(requested_extent, swapchain_);
+    bool handoff_attempted = false;
+    try {
+        next.create_resources(requested_extent, swapchain_, handoff_attempted);
+    } catch (...) {
+        // Vulkan retires oldSwapchain when the create call starts, even if it fails.
+        if (handoff_attempted)
+            cleanup();
+        throw;
+    }
     cleanup();
     swapchain_ = std::exchange(next.swapchain_, VK_NULL_HANDLE);
     format_ = next.format_;
@@ -77,7 +91,8 @@ bool vulkan_swapchain::create(SDL_Window* window, std::optional<VkExtent2D> expe
     return true;
 }
 
-void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchainKHR old_swapchain) {
+void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchainKHR old_swapchain,
+                                        bool& handoff_attempted) {
     // Vulkan fills every field before any enum is inspected.
     // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization)
     VkSurfaceCapabilitiesKHR supported{};
@@ -139,9 +154,16 @@ void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchain
     }
     info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     info.clipped = VK_TRUE;
-    // This surface requires a handoff; a successful create retires old presentation.
+    // This surface requires a handoff; the call retires old presentation even on failure.
     info.oldSwapchain = old_swapchain;
+    handoff_attempted = old_swapchain != VK_NULL_HANDLE;
     detail::check(vkCreateSwapchainKHR(device_, &info, nullptr, &swapchain_), "create swapchain");
+#if defined(WE_VULKAN_TEST_FAULTS)
+    if (detail::fail_swapchain_after_create) {
+        detail::fail_swapchain_after_create = false;
+        throw std::runtime_error("injected post-create swapchain failure");
+    }
+#endif
 
     detail::check(vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, nullptr),
                   "query swapchain images");
