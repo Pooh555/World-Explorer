@@ -380,18 +380,27 @@ performance/other-platform/full-gate qualification follows. **2,088 protected /
 environment, scene or fit changes. The cut-off left completed receipts; these
 were checked and retained without repeating the native matrix.
 
-Next executable task: close the remaining M1 calibrated clipping-boundary gap.
-Inspect native projection and pinned gsplat near/far predicates, then add a
-separate labeled synthetic fixture with means exactly at, one float neighbor
-inside and one outside each clipping plane. Use fixed calibration, finite
-attributes and isolated image contributions; preserve existing fixtures and
-**≥45 dB / ≤8-level** limits. Check fixture/admission boundaries on CPU and run
-native Vulkan/gsplat comparisons into fresh ignored outputs; retain any failure
-without exclusions or tolerance changes. This is renderer correctness evidence,
-not a replacement for the prescribed real fixture or Q gates. Preserve completed
-scenes and failed stages; no refitting, solver reruns, downloads or unchanged
-sample_2 retries. M1's ≤250k fixture, rights and reference/native platform
-qualification remain open.
+[Synthetic clipping-boundary evidence](validation/2026-10-15-clipping-boundaries.md)
+checks exact near/far equality and immediate float neighbors in a separate
+six-splat profile. Both planes include equality; all twelve independent
+native/reference presence checks pass at **78.8331 dB / maximum one RGB8 level**.
+The existing **32 synthetic / three full-scene real** comparisons also pass;
+default fixtures/readbacks are unchanged. **1 C++ case / 27 assertions**, **26
+Python cases**, **263 dev / 245 C++23 CPU checks** and format/tidy/docs/boundaries
+pass. **2,088 protected / 1,206 preceding evidence / 94 src/include files**
+unchanged. No production renderer/shader, recipe, environment or fit changes;
+the diagnostic remains synthetic and no full gate is upgraded.
+
+Next executable task: verify M1's floating-origin coordinate promise with a
+separate labeled synthetic translation/rebase diagnostic. Inspect scene upload
+rebasing and affine camera push rows, then translate scene and cameras together
+by large finite double world offsets. Compare baseline/translated views and
+pinned gsplat with unchanged **≥45 dB / ≤8-level** limits; cover nonfinite/
+unrepresentable admission on CPU. Keep original fixtures and both completed
+scenes intact, use fresh ignored outputs, and retain every failure. This tests
+coordinate correctness, not M5 streaming or Q6 packing. No refitting, solver
+reruns, downloads or unchanged sample_2 retries. M1's prescribed ≤250k fixture,
+rights and reference/native platform qualification remain open.
 
 [Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
 latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /

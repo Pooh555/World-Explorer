@@ -249,6 +249,28 @@ throughput. Window managers may choose restored window dimensions. Wayland must
 receive a committed visible buffer before fullscreen mapping. Reported throughput
 is GPU-completed render frames, not P2/P3 presented-FPS certification.
 
+## Synthetic clipping boundaries
+
+`we_gpu_reference NEW_DIRECTORY --clipping` selects a separate six-splat fixture,
+labeled **synthetic inclusive clipping float neighbors v1; not a capture**. Its
+fixed 1280×720 calibrated camera is at the origin, with near **1** and far **8**.
+Mean depths are the immediately adjacent float32 values on either side of each
+plane, plus exact equality. Perspective ratios use powers of two and six isolated
+image regions. This tests **mean-depth culling**, not clipping Gaussian volumes.
+Both planes include equality, matching the pinned gsplat packed projection.
+
+`tests/gpu/compare_reference.py NEW_DIRECTORY --clipping` admits the complete
+fixed profile before rendering: exact depth-bit positions, camera, transforms,
+scale, opacity, color/SH layout, background and all six contributions. Real and
+clipping flags cannot combine. Existing synthetic and real profiles are unchanged.
+Reports retain ordinary PSNR/SSIM/max-error results and twelve presence checks,
+one for each region in each renderer. Outside regions must stay within one RGB8
+level of background; each on/inside region must differ by more than 32 levels.
+These structural checks prevent background-only agreement from passing; global
+diagnostic tolerances remain PSNR ≥45 dB and maximum error ≤8 levels.
+[Clipping-boundary evidence](../validation/2026-10-15-clipping-boundaries.md)
+records the tested compiler/device scope. No real reconstruction or Q gate follows.
+
 ## Calibrated reference camera selection
 
 `we_gpu_reference NEW_DIRECTORY --real BUNDLE COMPLETED_FIT` keeps its original
