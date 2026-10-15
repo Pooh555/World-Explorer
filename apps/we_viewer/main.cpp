@@ -4,6 +4,9 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/navigation/fly_camera.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
+#if defined(WE_VULKAN_TEST_FAULTS)
+#include "renderer_faults.hpp"
+#endif
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <array>
@@ -47,6 +50,9 @@ int viewer_main(int argc, char** argv) {
     bool diagnostic_fixture = false, validation = true;
     bool inspect_source = false;
     unsigned frame_limit = 0;
+#if defined(WE_VULKAN_TEST_FAULTS)
+    unsigned inject_device_loss_frame = 0;
+#endif
     for (int argument = 1; argument < argc; ++argument) {
         const std::string option = argv[argument];
         if (option == "--help") {
@@ -61,6 +67,9 @@ int viewer_main(int argc, char** argv) {
                 << "          [--reconstruction-request JOB.json] [--review-request JOB.json]\n";
             std::cout << "          [--input-trace FILE.jsonl] (bounded native input diagnostics; "
                          "F12 readback)\n";
+#if defined(WE_VULKAN_TEST_FAULTS)
+            std::cout << "          [--inject-device-loss-frame N] (synthetic Debug diagnostic)\n";
+#endif
             return 0;
         }
         if (option == "--diagnostic-fixture")
@@ -91,6 +100,10 @@ int viewer_main(int argc, char** argv) {
                 worker.script = value;
             else if (option == "--frames")
                 frame_limit = static_cast<unsigned>(std::stoul(value));
+#if defined(WE_VULKAN_TEST_FAULTS)
+            else if (option == "--inject-device-loss-frame")
+                inject_device_loss_frame = static_cast<unsigned>(std::stoul(value));
+#endif
             else if (option == "--max-splats")
                 max_splats = std::stoull(value);
             else if (option == "--residency-mib")
@@ -136,11 +149,14 @@ int viewer_main(int argc, char** argv) {
     ImGui::CreateContext();
     struct gui_owner {
         vulkan_renderer* renderer;
-        bool sdl{}, vulkan{};
+        bool sdl{}, vulkan{}, device_lost{};
         ~gui_owner() {
-            renderer->set_overlay_callback({});
-            if (const auto completed = renderer->wait_for_idle(); !completed)
-                std::cerr << "GPU shutdown: " << completed.error().message << '\n';
+            if (renderer) {
+                renderer->set_overlay_callback({});
+                if (!device_lost)
+                    if (const auto completed = renderer->wait_for_idle(); !completed)
+                        std::cerr << "GPU shutdown: " << completed.error().message << '\n';
+            }
             if (vulkan)
                 ImGui_ImplVulkan_Shutdown();
             if (sdl)
@@ -164,28 +180,31 @@ int viewer_main(int argc, char** argv) {
     gui.sdl = ImGui_ImplSDL3_InitForVulkan(window.get());
     if (!gui.sdl)
         throw std::runtime_error("ImGui SDL initialization failed");
-    const auto context = renderer->overlay_context();
-    // The external initialization struct must start zeroed; samples is assigned below.
-    // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization)
-    ImGui_ImplVulkan_InitInfo init{};
-    init.ApiVersion = renderer->capabilities().instance_version;
-    init.Instance = native<VkInstance>(context.instance);
-    init.PhysicalDevice = native<VkPhysicalDevice>(context.physical_device);
-    init.Device = native<VkDevice>(context.device);
-    init.QueueFamily = context.queue_family;
-    init.Queue = native<VkQueue>(context.queue);
-    init.RenderPass = native<VkRenderPass>(context.render_pass);
-    init.Subpass = context.subpass;
-    init.DescriptorPoolSize = 128;
-    init.MinImageCount = context.min_image_count;
-    init.ImageCount = context.image_count;
-    init.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    gui.vulkan = ImGui_ImplVulkan_Init(&init);
-    if (!gui.vulkan)
-        throw std::runtime_error("ImGui Vulkan initialization failed");
-    renderer->set_overlay_callback([](std::uintptr_t command) {
-        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), native<VkCommandBuffer>(command));
-    });
+    const auto initialize_vulkan_overlay = [&] {
+        const auto context = renderer->overlay_context();
+        // The external initialization struct must start zeroed; samples is assigned below.
+        // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization)
+        ImGui_ImplVulkan_InitInfo init{};
+        init.ApiVersion = renderer->capabilities().instance_version;
+        init.Instance = native<VkInstance>(context.instance);
+        init.PhysicalDevice = native<VkPhysicalDevice>(context.physical_device);
+        init.Device = native<VkDevice>(context.device);
+        init.QueueFamily = context.queue_family;
+        init.Queue = native<VkQueue>(context.queue);
+        init.RenderPass = native<VkRenderPass>(context.render_pass);
+        init.Subpass = context.subpass;
+        init.DescriptorPoolSize = 128;
+        init.MinImageCount = context.min_image_count;
+        init.ImageCount = context.image_count;
+        init.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        gui.vulkan = ImGui_ImplVulkan_Init(&init);
+        if (!gui.vulkan)
+            throw std::runtime_error("ImGui Vulkan initialization failed");
+        renderer->set_overlay_callback([](std::uintptr_t command) {
+            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), native<VkCommandBuffer>(command));
+        });
+    };
+    initialize_vulkan_overlay();
     application_state state;
     state.load_limits.scene.max_splats = options.max_splats;
     state.load_limits.scene.max_payload_bytes = options.residency_bytes;
@@ -206,6 +225,7 @@ int viewer_main(int argc, char** argv) {
     int remapping = -1;
     std::ofstream input_trace;
     unsigned input_readbacks{};
+    unsigned device_recoveries{};
     nlohmann::json input_widgets = nlohmann::json::object();
     if (!input_trace_path.empty()) {
         if (std::filesystem::exists(std::filesystem::symlink_status(input_trace_path)))
@@ -675,8 +695,15 @@ int viewer_main(int argc, char** argv) {
             ImGui::EndPopup();
         }
         ImGui::Render();
-        if (!screenshot.empty() && !screenshot_requested && frames >= 8 &&
-            !state.has_pending_work() && reconstruction_request.empty() && review_request.empty() &&
+#if defined(WE_VULKAN_TEST_FAULTS)
+        const bool screenshot_after_injected_loss =
+            !inject_device_loss_frame || device_recoveries != 0;
+#else
+        constexpr bool screenshot_after_injected_loss = true;
+#endif
+        if (!screenshot.empty() && !screenshot_requested && screenshot_after_injected_loss &&
+            frames >= 8 && !state.has_pending_work() && reconstruction_request.empty() &&
+            review_request.empty() &&
             (!(require_reconstruction_success || !scene_path.empty()) ||
              (current && !pending_ticket))) {
             if (require_reconstruction_success) {
@@ -694,9 +721,62 @@ int viewer_main(int argc, char** argv) {
                 throw std::runtime_error(requested.error().message);
             screenshot_requested = true;
         }
+#if defined(WE_VULKAN_TEST_FAULTS)
+        if (inject_device_loss_frame && frames + 1 >= inject_device_loss_frame && current &&
+            !pending_ticket) {
+            detail::fail_next_frame_with_device_loss();
+            inject_device_loss_frame = 0;
+        }
+#endif
         const auto drawn = renderer->draw(
             {camera.position, camera.right(), camera.down(), camera.forward(), camera_fov},
             !state.processing.load());
+        if (!drawn && drawn.error().code == error_code::DEVICE_LOST) {
+            if (device_recoveries++) {
+                gui.device_lost = true;
+                throw std::runtime_error("Vulkan device loss repeated after renderer recreation: " +
+                                         drawn.error().message);
+            }
+            // The last admitted immutable snapshot survives even if its upload was in flight.
+            // The new renderer establishes its own revision chain via normal full-snapshot
+            // admission.
+            const auto replay = current ? current : renderer->updates().visible_snapshot();
+            renderer->set_overlay_callback({});
+            gui.device_lost = true;
+            if (gui.vulkan) {
+                ImGui_ImplVulkan_Shutdown();
+                gui.vulkan = false;
+            }
+            gui.renderer = nullptr;
+            renderer.reset();
+            renderer_result = vulkan_renderer::create(window.get(), options);
+            if (!renderer_result)
+                throw std::runtime_error("Renderer recreation after device loss failed: " +
+                                         renderer_result.error().message);
+            renderer = std::move(*renderer_result);
+            gui.renderer = renderer.get();
+            gui.device_lost = false;
+            initialize_vulkan_overlay();
+            pending_ticket.reset();
+            if (replay) {
+                auto batch = make_snapshot_batch(replay, operation_id{next_operation++});
+                if (!batch)
+                    throw std::runtime_error("Scene replay after device loss failed: " +
+                                             batch.error().message);
+                auto admitted = renderer->updates().enqueue(*batch);
+                if (!admitted)
+                    throw std::runtime_error("Scene replay after device loss was rejected: " +
+                                             admitted.error().message);
+                pending_ticket = *admitted;
+            }
+            screenshot_requested = false;
+            {
+                std::lock_guard lock(state.mutex);
+                state.status = replay ? "GPU device recreated; restoring the last scene..."
+                                      : "GPU device recreated; ready for a scene.";
+            }
+            continue;
+        }
         if (!drawn)
             throw std::runtime_error(drawn.error().message);
         if (pending_ticket) {
@@ -736,6 +816,7 @@ int viewer_main(int argc, char** argv) {
                                   {"remapping", remapping},
                                   {"keys", settings.keys},
                                   {"busy", state.busy.load()},
+                                  {"device_recoveries", device_recoveries},
                                   {"reviewed", reviewed},
                                   {"visible", current && !pending_ticket},
                                   {"logical", {display.x, display.y}},

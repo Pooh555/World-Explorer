@@ -19,7 +19,8 @@ enum class error_code : std::uint8_t {
     RESYNC_REQUIRED,
     DUPLICATE_OPERATION,
     NOT_FOUND,
-    BACKEND_FAILURE
+    BACKEND_FAILURE,
+    DEVICE_LOST
 };
 struct error {
     error_code code;

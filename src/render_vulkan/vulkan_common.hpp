@@ -27,10 +27,21 @@ template <class type> type structure(VkStructureType tag) {
     return value;
 }
 
+class vulkan_error : public std::runtime_error {
+  public:
+    vulkan_error(VkResult status, const char* operation)
+        : std::runtime_error(std::string(operation) + " failed (VkResult " +
+                             std::to_string(status) + ")"),
+          status_(status) {}
+    VkResult status() const noexcept { return status_; }
+
+  private:
+    VkResult status_;
+};
+
 inline void check(VkResult status, const char* operation) {
     if (status != VK_SUCCESS)
-        throw std::runtime_error(std::string(operation) + " failed (VkResult " +
-                                 std::to_string(status) + ")");
+        throw vulkan_error(status, operation);
 }
 
 struct gpu_buffer {
