@@ -482,6 +482,14 @@ profile remains unqualified. The [runtime refresh](validation/2026-10-16-vma-run
 recaptures both rebuilt executables and the empty native viewer: the complete
 local inventory check passes, while strict source/rights closure still exits 3.
 
+[Windows cancellation clock repair](validation/2026-10-16-windows-cancel-deadline.md):
+the supplied native failure counted Python startup and fixture preparation
+inside the cancellation bound. A delayed-ready replay reproduces the old false
+failure; the observer now times from the first stop request while retaining six
+seconds. Production cancellation and worker deadlines are unchanged. Native
+Windows rerun remains pending. Local **267/267 C++26 / 249/249 C++23 CPU checks**,
+the four-mode regression and format/tidy pass.
+
 Next executable step: implement and run the local native P6 diagnostic for
 concurrent replacement/eviction and revision replay at ten updates/second.
 Measure CPU enqueue p95, per-frame GPU upload time and interactive idle waits
