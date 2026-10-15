@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-15 (Asia/Hong_Kong). **M1: VERIFIED for the Linux development
+Updated 2026-10-16 (Asia/Hong_Kong). **M1: VERIFIED for the Linux development
 exit. M2: IN_PROGRESS. No full Q/P/N/E gate is certified. M7–M8:
 DEFERRED_BY_USER.**
 
@@ -474,18 +474,21 @@ buffers. The development archive is SHA-256 pinned to VMA 3.1.0, matching the
 immutable vcpkg port's source SHA-512. GCC C++26 build/267 CPU and worker
 checks, GCC and Clang C++23 viewer builds, native Debug/Release smoke, a
 60-second full-scene update/resize pilot and full-scene 4K/fullscreen/restore
-pass. The VMA two-hour lifetime run is
-active; do not claim its result until exit and final readback. The release-vcpkg
-profile remains unqualified. Rebuilt development binaries make the retained
-runtime dependency receipt stale; the scoped native archive/notice check passes.
+pass. The [VMA two-hour completion audit](validation/2026-10-16-m2-vma-lifetime.md)
+also passes: 7,201.865 seconds, 480 visible updates, 359 resizes, 13 matching
+readbacks, 298,300 submitted frames and zero Vulkan errors. Tracked peak owned
+bytes remain 369,408,864; process HWM is 499,757,056 bytes. The release-vcpkg
+profile remains unqualified. The [runtime refresh](validation/2026-10-16-vma-runtime-refresh.md)
+recaptures both rebuilt executables and the empty native viewer: the complete
+local inventory check passes, while strict source/rights closure still exits 3.
 
-Next executable step: collect `artifacts/validation/m2-vma-20261015/full` and
-`full.log` after `we_gpu_lifetime_stress ... 7200` exits, verify all 13 PPM
-hashes, revisions/resizes, Vulkan errors, tracked/process memory and unchanged
-scene manifest, then update the VMA report and M2 gate status. Do not rerun
+Next executable step: implement and run the local native P6 diagnostic for
+concurrent replacement/eviction and revision replay at ten updates/second.
+Measure CPU enqueue p95, per-frame GPU upload time and interactive idle waits
+against the unchanged §3 thresholds; keep H_V qualification separate. Do not rerun
 reconstruction or change saved scenes/frozen fixture. Find a compositor that
 accepts minimize/restore for its separate native check. Physical device loss,
-release-vcpkg, refreshed runtime evidence and reference Q/P/N/E gates remain
+release-vcpkg and reference Q/P/N/E gates remain
 open.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
