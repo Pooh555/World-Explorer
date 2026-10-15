@@ -173,8 +173,9 @@ opening the held `writer.lock`. The observer now inventories its exact regular
 entry while hashing every other data file; unrelated lock filenames stay checked.
 Production locking/admission and coverage scope are unchanged. Local **175/175
 C++26 dev / 157/157 explicit C++23 CPU checks**, 14 focused cases / 1,612 assertions,
-format/tidy/docs and **2,393 unchanged protected files** pass. Native Windows CI
-rerun is pending for this commit; no reconstruction or environment change.
+format/tidy/docs and **2,393 unchanged protected files** pass. Its then-pending
+native Windows rerun is covered by the later [hosted CPU confirmation](validation/2026-10-15-native-ci.md);
+no reconstruction or environment change.
 
 [Durable transaction admission](validation/2026-10-14-map-transactions.md): **12
 synthetic cases / 4,168 assertions** verify rejected records/budgets/revisions,
@@ -246,7 +247,8 @@ CRLF. A portable CRLF-write shim reproduces every failure; binary marker append
 repairs it while retaining exact byte/one-launch checks. **2 cases / 6,077
 assertions**, **257/257 dev / 239/239 C++23 CPU CTest**, focused native sanitizers
 and format/tidy/docs pass locally. **87 production source hashes and 2,393
-protected files unchanged**. Native Windows rerun remains pending; no workflow,
+protected files unchanged**. The later [hosted CPU confirmation](validation/2026-10-15-native-ci.md)
+covers its then-pending Windows rerun; no workflow,
 recipe, reconstruction or environment changes. This does not certify Windows
 viewer/release behavior or a full gate.
 
@@ -401,16 +403,25 @@ format/tidy/docs/boundaries and preservation of **2,088 protected / 1,531 preced
 evidence / 94 production files** pass. No renderer/shader, fit or environment change;
 no full gate upgrade.
 
-Next executable step: close M1's external qualification prerequisites, starting
-with the latest repaired native Windows CPU run (`cmake --build --preset
-compat-cxx23 -j 4`, then `ctest --preset compat-cxx23`; the local CPU profile now
-has 247 checks). Inspect actual new logs before declaring that platform repaired.
-The prescribed consented 20–30 s room fixture, ≤250k fixture/native 720p ≥30 FPS
-on H_V/H_M and H_R end-to-end measurements, native macOS/viewer results and
-remaining dependency rights are still unqualified. This host cannot certify those
-machines; additional synthetic tests cannot replace them. Keep M1 IN_PROGRESS
-and M2–M6 unadvanced. Preserve both completed scenes and all failures; no refitting,
-solver reruns, downloads or unchanged sample_2 retries.
+[Hosted native CPU confirmation](validation/2026-10-15-native-ci.md) closes the
+Windows rerun prerequisite: current code commit **dd43a8a** passes Windows
+**246/246 CTest / 240.64 s**, including worker integration. GitHub's same-commit
+job/step metadata also confirms successful Linux GCC/Clang and macOS C++23 CPU
+builds/tests/docs/boundaries. Windows has one fewer case because an existing
+closed-stdin descriptor test is POSIX-only. Other hosted counts, internal Python
+skips, exact toolchain versions and macOS architecture are not inferred. All jobs
+have the viewer disabled; no native viewer/release/full-gate upgrade.
+
+Next executable step: qualify M1 on native viewer/reference machines. Freeze
+the ≤250k-splat viewer fixture with its identity/rights record, open that fixed
+bundle on Arch/Windows/macOS and record 720p ≥30 FPS on H_V/H_M with zero Vulkan
+validation errors. Independently obtain the consented 20–30 s textured-room
+source and run the unchanged end-to-end pipeline on H_R. Neither completed local scene fits the ≤250k limit;
+do not trim or refit them to obtain a pass. Native viewer builds/rendering,
+reference-device measurements and remaining dependency rights are unavailable
+prerequisites here. Keep M1 IN_PROGRESS and M2–M6 unadvanced. Preserve both
+completed scenes and all failures; no solver reruns, downloads or unchanged
+sample_2 retries. Additional synthetic tests cannot substitute for this evidence.
 
 [Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
 latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /
@@ -420,8 +431,9 @@ and mutation cleanup uses `finally`. Full-capture replay reproduces all eight
 reported error/failure records and passes seven repaired cases. **16 runtime /
 133 worker checks** on three interpreters and **260 dev / 242 C++23 CPU CTest**
 pass locally; **2,088 protected / 94 src/include files** unchanged. Production,
-runtime pins and saved reconstructions are unchanged. Native Windows rerun
-against this correction remains pending; local replay is narrower qualification.
+runtime pins and saved reconstructions are unchanged. The later
+[hosted Windows CPU run](validation/2026-10-15-native-ci.md) passes **246/246**;
+the earlier local replay retains its narrower qualification.
 
 For these videos, use the working sample_1 view below; preserve
 sample_2's failed stages until replacement footage or a qualified pose recovery
@@ -443,9 +455,9 @@ show Windows **101/102** and macOS **102/103**: both fail the metric mutation
 observer's unresolved/canonical path comparison. Portable alias replay reproduces
 the exact failure; canonical observers and exactly-once mutation checks now pass:
 **18 metric / 68 worker cases** on three interpreters, **103/103 C++23 CPU /
-121/121 C++26 dev**, **2,393 protected files unchanged**. The latest supplied Windows worker integration
-passes; macOS hosted confirmation remains pending. No reconstruction or environment
-changes. The [earlier audit observer repair](validation/2026-10-13-native-audit-paths.md)
+121/121 C++26 dev**, **2,393 protected files unchanged**. The later [hosted CPU confirmation](validation/2026-10-15-native-ci.md)
+passes Windows worker integration and the macOS CPU job. No reconstruction or
+environment changes. The [earlier audit observer repair](validation/2026-10-13-native-audit-paths.md)
 retains its historical 12 audit / 37 worker / 119 dev scope. Named SQLite recovery
 cases pass in the latest supplied logs. The earlier [SQLite closure repair](validation/2026-10-13-windows-sqlite.md)
 retains local 102/102 / 25-case scope; prior Windows 100/101 cleanup failure,
