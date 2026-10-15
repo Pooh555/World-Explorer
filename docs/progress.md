@@ -17,7 +17,9 @@ implementation sequence, failures, identities, timings and profile differences.
 under 512 MiB, reference parity and bounded recount/cache failure behavior.
 [Local timing](validation/2026-10-13-stage-timing.md) remains noisy development
 evidence. [Original real comparisons](validation/2026-10-13-real-reference.md)
-retain calibrated/shared-origin scope; all-camera parity and Q6 remain pending.
+retain calibrated/shared-origin scope. [All 80 replacement sample_3 cameras](validation/2026-10-15-all-camera-reference.md)
+now pass locally; arbitrary-view robustness, packing Q6 and platform qualification
+remain pending.
 
 [Fresh owned chain](validation/2026-10-13-fresh-chain.md): inspection/decode →
 **63 RGB leases/connected poses → 7k fit → 297,489 splats → native viewer**.
@@ -52,7 +54,7 @@ source/result/scene identities and structural validation, without starting jobs.
 |---|---|
 | sample_1 | Completed 7k fit, **295,952 splats**; saved terminal/validation exits 0 and current native CLI bundle validation exit 0. Its previously inspected Source view remains available |
 | sample_2 | Saved terminal exit 2, **POSE_DISCONNECTED**, no scene. Retain failed stages; unchanged retries cannot meet registration from the retained match graph |
-| sample_3 | Replacement source SHA `4448a1d9eb93f8b7fc787f9ea037d282128438a2512fad8eb8df8544f53906da`. Saved **80 registered poses → 7k fit → 648,332 splats**, terminal/validation and native bundle validation exits 0. [Current full-scene checks](validation/2026-10-15-sample3-evidence.md): native viewer 126 frames / zero Vulkan errors; three calibrated gsplat comparisons pass, maximum one RGB8 level; 16/16 offline holdout scores reproduce exactly, mean **20.8708 dB / 0.815687 SSIM / 0.253078 LPIPS**, Q3 remains blocked |
+| sample_3 | Replacement source SHA `4448a1d9eb93f8b7fc787f9ea037d282128438a2512fad8eb8df8544f53906da`. Saved **80 registered poses → 7k fit → 648,332 splats**, terminal/validation and native bundle validation exits 0. [Current full-scene checks](validation/2026-10-15-sample3-evidence.md): native viewer 126 frames / zero Vulkan errors; [all 80 calibrated comparisons](validation/2026-10-15-all-camera-reference.md) pass, maximum one RGB8 level; 16/16 offline holdout scores reproduce exactly, mean **20.8708 dB / 0.815687 SSIM / 0.253078 LPIPS**, Q3 remains blocked |
 
 The preceding sample_3 disconnected/recovery records describe the older source
 and attempt; they do not describe this completed replacement run. Historical
@@ -356,16 +358,27 @@ miss Q3 goals; independent inspection/observed regions remain absent. All
 **2,088 protected / 94 src/include files** unchanged; no refitting, solve,
 installation or download. No full gate or performance qualification change.
 
-Next executable task: strengthen M1's calibrated renderer diagnostic beyond its
-first/middle/last cameras. Extend `tests/gpu/reference.cpp` and
-`tests/gpu/compare_reference.py` to accept a bounded explicit list of original
-fit-camera indices while preserving the default three views and fixed tolerances.
-Check invalid/duplicate/out-of-range selections on CPU, then compare all **80**
-retained sample_3 cameras in fresh ignored outputs on the native device. Keep
-this separate from Q3 novelty and Q6 packing qualification. Preserve both
-completed scenes and all failed stages; no refitting, solver reruns, downloads
-or unchanged sample_2 retries. Prescribed ≤250k fixture, rights and reference/
-native platform qualification remain open.
+[Explicit calibrated selection](validation/2026-10-15-all-camera-reference.md)
+adds matching bounded `--fit-indices` options, preserving the default three views
+and unchanged **≥45 dB / ≤8 RGB8-level** diagnostic limits. All **80** retained
+sample_3 cameras pass at **62.8596–63.3867 dB / maximum one level**; the final
+binary's readbacks match the compared export exactly. Default three views remain
+byte-identical; reordered `79,0,40` and four synthetic default views also pass.
+**2 C++ cases / 174 assertions**, **18 Python admission cases**, six pre-GPU CLI
+rejections, **262 dev / 244 explicit C++23 CPU checks**, format/tidy/docs/boundaries
+pass. **2,088 protected / 54 preceding evidence / 94 src/include files** unchanged.
+No solve, fit, recipe or environment change; Q3/Q6/full gates remain unqualified.
+
+Next executable task: qualify the new diagnostic in the existing full native
+Clang C++23 profile. Inspect `build/clang-viewer-cxx23/CMakeCache.txt` compiler/
+standard identity, then run `cmake --build build/clang-viewer-cxx23 -j 4` and
+`ctest --test-dir build/clang-viewer-cxx23 --output-on-failure`. Exercise its
+default/explicit/reordered admission and all 80 saved cameras in fresh ignored
+outputs with the same comparator/tolerances; report the actual compiler/device
+scope. Preserve both completed scenes and all failed stages. No refitting, solver
+reruns, downloads or unchanged sample_2 retries. M1's prescribed ≤250k fixture,
+rights and reference/native platform qualification remain open; these local
+calibrated comparisons cannot complete those prerequisites.
 
 [Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
 latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /

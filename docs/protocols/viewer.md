@@ -249,6 +249,34 @@ throughput. Window managers may choose restored window dimensions. Wayland must
 receive a committed visible buffer before fullscreen mapping. Reported throughput
 is GPU-completed render frames, not P2/P3 presented-FPS certification.
 
+## Calibrated reference camera selection
+
+`we_gpu_reference NEW_DIRECTORY --real BUNDLE COMPLETED_FIT` keeps its original
+first/middle/last camera selection and schema 2 output. Optional trailing
+`--fit-indices 79,0,40` selects original **zero-based fit dataset indices**, in
+that exact order. Selection is real-profile only: canonical decimal CSV, no
+whitespace/signs/leading zeros, duplicates or out-of-range values. Bounds are
+479 input bytes, 120 unique indices and 3–120 original frames. Every selected
+calibration/extent is checked before SDL/GPU initialization. Inputs and completed
+fits are read without modification; the output directory must be new.
+
+Explicit output records `fit_frame_indices` and names images `fit_index_N.ppm`.
+Every view retains the original frame name/index and calibrated camera. The first
+selected camera determines the declared admission/render origin; changing order
+may change float32 rounding without changing the scene or camera conventions.
+Default output retains `fit_first`, `fit_middle`, `fit_last` and its prior origin.
+
+`tests/gpu/compare_reference.py NEW_DIRECTORY --real --fit-indices 79,0,40`
+requires the same explicit selection, order, count, names and original camera
+correspondence. Missing/mismatched selection fails admission; no implicit subset
+is accepted. Default fixtures require no selection flag. Reports include each
+original frame index/name and its native image hash. Fixed diagnostic tolerances
+remain PSNR ≥45 dB and maximum RGB8 error ≤8 levels; these compare calibrated
+uncompressed renderers, not captured-image quality or Q6 packing fidelity.
+[All-camera development evidence](../validation/2026-10-15-all-camera-reference.md)
+records the actual tested scope. Native Vulkan/CUDA device access is required;
+synthetic fixtures retain their labels and existing modes.
+
 ## Optional stage timings
 
 `renderer_options.collect_timings` defaults off. It records CPU waits for frame

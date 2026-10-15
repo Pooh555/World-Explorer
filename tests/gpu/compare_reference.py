@@ -9,6 +9,7 @@ import hashlib
 import importlib.metadata
 import json
 import math
+import re
 from pathlib import Path
 import sys
 
@@ -95,7 +96,20 @@ def reference(data, view):
     return (rendered[0] + (1 - alpha[0]) * tensor(data["background"])).clamp(0, 1)
 
 
-def load_real(root, data):
+def parse_fit_indices(selection, frame_count):
+    if (type(frame_count) is not int or not 3 <= frame_count <= 120 or
+            not isinstance(selection, str) or not 1 <= len(selection) <= 479):
+        raise ValueError("fit index selection exceeds diagnostic budget")
+    tokens = selection.split(",")
+    if any(re.fullmatch(r"0|[1-9][0-9]{0,2}", token) is None for token in tokens):
+        raise ValueError("invalid fit index selection")
+    indices = [int(token) for token in tokens]
+    if len(set(indices)) != len(indices) or any(index >= frame_count for index in indices):
+        raise ValueError("invalid or duplicate fit index selection")
+    return indices
+
+
+def load_real(root, data, fit_indices=None):
     """Explicit real diagnostic profile; bounded, hashed portable binary rows."""
     def check(condition, message):
         if not condition:
@@ -154,12 +168,22 @@ def load_real(root, data):
         chunk["rows"] = rows
     check(total == data["splat_count"], "real scene was trimmed")
     frames = config["dataset"]["frames"]
-    check(3 <= len(frames) <= 120 and len(data["views"]) == 3, "fit view budget mismatch")
+    check(3 <= len(frames) <= 120, "fit view budget mismatch")
+    if fit_indices is None:
+        check("fit_frame_indices" not in data, "explicit fit index selection is required")
+        indices = [0, len(frames) // 2, len(frames) - 1]
+        names = ["fit_first", "fit_middle", "fit_last"]
+    else:
+        indices = parse_fit_indices(fit_indices, len(frames))
+        recorded = data.get("fit_frame_indices")
+        check(isinstance(recorded, list) and all(type(i) is int for i in recorded) and
+              recorded == indices, "fit index selection differs from requested cameras")
+        names = [f"fit_index_{index}" for index in indices]
+    check(len(data["views"]) == len(indices), "fit view budget mismatch")
     canonical = np.diag([1., -1., -1.])
-    for view, index, name in zip(data["views"], [0, len(frames) // 2, len(frames) - 1],
-                                 ["fit_first", "fit_middle", "fit_last"]):
+    for view, index, name in zip(data["views"], indices, names):
         frame = frames[index]
-        check(view["name"] == name and view["fit_frame_index"] == index and
+        check(view["name"] == name and type(view["fit_frame_index"]) is int and view["fit_frame_index"] == index and
               view["fit_frame_name"] == frame["name"], "fit view selection mismatch")
         matrix = np.asarray(frame["view"], dtype=np.float64)
         intrinsic = np.asarray(frame["intrinsic"], dtype=np.float64)
@@ -182,7 +206,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--real", action="store_true", help="admit the explicit bounded real-asset profile")
+    parser.add_argument("--fit-indices", help="required matching explicit zero-based fit camera selection")
     args = parser.parse_args()
+    if args.fit_indices is not None and not args.real:
+        parser.error("--fit-indices requires --real")
     version = importlib.metadata.version("gsplat")
     if version != "1.5.3+pt24cu124" or torch.__version__ != "2.4.1+cu124":
         raise RuntimeError(f"pinned reference environment required: gsplat={version}, torch={torch.__version__}")
@@ -194,7 +221,7 @@ def main():
         raise RuntimeError("reference fixture exceeds bounded diagnostic input")
     data = json.loads(fixture.read_text())
     if args.real:
-        count = load_real(root, data)
+        count = load_real(root, data, args.fit_indices)
     else:
         assert data["schema"] == 1 and data["label"].startswith("synthetic")
         assert (data["width"], data["height"]) == (1280, 720)
@@ -213,6 +240,7 @@ def main():
         report["identity"] = data["identity"]
         report["scene_content_sha256"] = data["scene_content_sha256"]
         report["assets_sha256"] = {c["file"]: c["sha256"] for c in data["chunks"]}
+        report["fit_frame_indices"] = [v["fit_frame_index"] for v in data["views"]]
     distribution = importlib.metadata.distribution("gsplat")
     report["gsplat_files_sha256"] = {
         str(path): sha256(Path(distribution.locate_file(path)))
@@ -221,8 +249,9 @@ def main():
     with torch.no_grad():
         for view in data["views"]:
             name = view["name"]
-            assert name in ("centered", "off_center", "rolled", "translated",
-                            "orbit_left", "orbit_right", "close_up", "fit_first", "fit_middle", "fit_last")
+            if not args.real:
+                assert name in ("centered", "off_center", "rolled", "translated",
+                                "orbit_left", "orbit_right", "close_up")
             rendered = reference(data, view)
             assert torch.isfinite(rendered).all().item(), "nonfinite reference render"
             floating = rendered.cpu().numpy()
@@ -246,6 +275,8 @@ def main():
             record = {"name": name, "psnr_db": psnr, "ssim": ssim,
                       "max_error_levels": int(error.max()), "mean_error_levels": float(error.mean()),
                       "native_sha256": sha256(native_path), "passed": bool(passed)}
+            if args.real:
+                record.update(fit_frame_index=view["fit_frame_index"], fit_frame_name=view["fit_frame_name"])
             report["views"].append(record)
             print(json.dumps(record), flush=True)
     report["passed"] = all(v["passed"] for v in report["views"])
