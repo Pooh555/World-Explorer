@@ -193,12 +193,14 @@ Use the detailed plan's M1–M6 deliverables and §3 targets. This table gives t
 
 | Milestone | Build and prove | Required evidence |
 |---|---|---|
-| M1: complete vertical slice | Small real video → real COLMAP poses → real gsplat output → versioned scene → native fly viewer. Include synthetic scene replacement/deletion. Preserve minimal cross-platform builds | Exact commands, input provenance, resulting scene, displayed capture and measured local timings. Track native platform runs separately. A loader plus a sample cloud does not complete M1 |
+| M1: development vertical slice | Real consented 20–30 s textured-room video → COLMAP → gsplat → versioned scene → native Linux fly viewer on available hardware; full ≤250k fixture opening and synthetic replace/delete replay; hosted Linux/Windows/macOS CPU builds/tests | Plan §8.1 checklist: exact identities/commands, displayed real capture, contract/input checks, selected version/license audit and actual local timings. Named reference devices and physical Windows/macOS viewer runs belong to later qualification |
 | M2: renderer/update foundation | Projection/compositing parity, GPU sorting/tiling, budgeted updates, safe lifetime, device/swapchain recovery | Q6, P2/P4/P6 and N1 as applicable; validation logs, reference-image comparisons and profile traces |
 | M3: offline robustness/geometry | Preflight, cancellation/resume, recovery recipe, validated depth/mesh, scale, walk collision and mesh export | Q1/Q3/Q5, P1, N2; real difficult-input/failure tests and preserved partial results |
-| M4: platform qualification | Arch, native Windows, Apple Silicon/MoltenVK; AMD viewer; Brush adapter qualification | P3/P4/P5/E2; actual native test results; backend capability differences and limitations recorded |
+| M4: platform qualification | Physical Windows/macOS viewer/GPU/display/input/HiDPI runs; Arch, Apple Silicon/MoltenVK; AMD viewer; Brush adapter qualification | Former M1 ≤250k fixture opening and ≥30 FPS at 720p on H_V/H_M, plus P3/P4/P5/E2; actual native results and limitations required |
 | M5: larger scenes | Chunks/LOD, prefetch/eviction, coarse-first load, W3/W4 handling and collision residency | P4–P6, Q6, adversarial fly paths, bounded peak memory and chunk-boundary tests |
 | M6: release candidate | Complete workflows, documentation, sealed-corpus results, packages, rights/privacy review and repeatable install | Full requirement-to-evidence matrix for claimed profiles, Q/P/N/E gates, unresolved limitations, reproducible release procedure |
+
+The user-approved [M1 development-exit decision](adr/012-m1-development-exit.md) assigns physical Windows/macOS qualification to M4. Close M1 against plan §8.1 on the available Linux development profile and hosted CPU CI, then continue M2; review the remaining local evidence before declaring M1 VERIFIED. Reference-machine Q/P/N/E qualification and full distribution rights stay open in their assigned milestones. This scheduling change does not waive release platforms or numerical gates.
 
 Default reconstruction certification is NVIDIA-first; portable viewing is still a release requirement. A blocked Mac qualification is an unresolved requirement, not permission to claim “all platforms supported.” If a SHOULD feature assigned to M1–M6 cannot be qualified, leave it explicitly incomplete or obtain a scoped release decision; do not quietly discard it.
 
@@ -255,7 +257,7 @@ Start with repository/environment inspection and the first incomplete milestone 
 
 This runbook is a project-specific engineering recommendation, not a guarantee that one autonomous run will finish a production 3D reconstruction system. It uses the existing specification instead of duplicating its research. Its purpose is to make implementation, verification and continuation concrete.
 
-The referenced plan version has SHA-256 `2e9e8a5bea71e51c7416aa0be20d4dfad2310db0baeb511b4d2722e4cd3093c5`. A later user-approved plan may supersede it; record the version used rather than refusing a legitimate update.
+The originally referenced plan v1.0 has SHA-256 `2e9e8a5bea71e51c7416aa0be20d4dfad2310db0baeb511b4d2722e4cd3093c5`. The user-approved v1.1 milestone revision of 15 October 2026 supersedes its M1/M4 scheduling, with SHA-256 `b58103f74ea5fa40e73082e5971b492d7cd93297853cec78d802beb087a9a7f5`; see [ADR 012](adr/012-m1-development-exit.md). Its research cutoff and §3 targets are unchanged. Record future approved versions rather than refusing legitimate updates.
 
 Official OpenAI guidance consulted on 11 October 2026:
 
