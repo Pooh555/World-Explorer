@@ -13,6 +13,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -51,10 +52,10 @@ struct vulkan_renderer::implementation {
     VkExtent2D extent{};
     std::uint32_t minimum_images{};
     bool screenshot_supported{};
-    std::vector<VkImage> images;
-    std::vector<VkImageView> views;
-    std::vector<VkFramebuffer> framebuffers;
-    std::vector<VkSemaphore> present_semaphores;
+    std::span<const VkImage> images;
+    std::span<const VkImageView> views;
+    std::span<const VkFramebuffer> framebuffers;
+    std::span<const VkSemaphore> present_semaphores;
     VkRenderPass render_pass{};
     descriptor_resources bindings;
     VkPipeline project_pipeline{}, histogram_pipeline{}, scan_pipeline{}, scatter_pipeline{},
@@ -711,24 +712,49 @@ struct vulkan_renderer::implementation {
         screenshot_path.reset();
     }
     bool refresh_swapchain() {
-        region_plan.reset();
-        if (swapchain_backend) {
-            check(vkDeviceWaitIdle(device), "wait before resizing composition scratch");
-            collect_completed(submitted_timeline);
-            for (auto& current : frames) {
-                current.captured = {};
-                current.tile_ranges = {};
-                current.references_a = {};
-                current.references_b = {};
-                current.references_a = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-                current.references_b = allocate(16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-            }
-        } else {
+        if (!swapchain_backend)
             swapchain_backend =
                 std::make_unique<vulkan_swapchain>(*device_backend, surface, format);
-        }
-        if (!swapchain_backend->create(window))
+        const auto next_extent = swapchain_backend->extent_for_window(window);
+        if (!next_extent.width || !next_extent.height)
             return false;
+        const auto pixel_bytes =
+            static_cast<VkDeviceSize>(next_extent.width) * next_extent.height * 16;
+        if (pixel_bytes > properties.limits.maxStorageBufferRange ||
+            (next_extent.width + 15) / 16 > properties.limits.maxComputeWorkGroupCount[0] ||
+            (next_extent.height + 15) / 16 > properties.limits.maxComputeWorkGroupCount[1])
+            throw std::runtime_error("framebuffer exceeds composition buffer or dispatch limits");
+        std::array<gpu_buffer, 2> next_captured, next_tile_ranges;
+        std::size_t staged_bytes = 0;
+        const auto tile_range_bytes = static_cast<VkDeviceSize>((next_extent.width + 15) / 16) *
+                                      ((next_extent.height + 15) / 16) * 8;
+        for (std::size_t index = 0; index < frames.size(); ++index) {
+            if (frames[index].captured.bytes < pixel_bytes) {
+                next_captured[index] =
+                    allocate(pixel_bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false, staged_bytes);
+                staged_bytes += static_cast<std::size_t>(next_captured[index].allocation_bytes);
+            }
+            if (frames[index].tile_ranges.bytes < tile_range_bytes) {
+                next_tile_ranges[index] =
+                    allocate(tile_range_bytes,
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                             false, staged_bytes);
+                staged_bytes += static_cast<std::size_t>(next_tile_ranges[index].allocation_bytes);
+            }
+        }
+        if (swapchain && submitted_timeline) {
+            check(vkDeviceWaitIdle(device), "wait before resizing composition scratch");
+            collect_completed(submitted_timeline);
+        }
+        if (!swapchain_backend->create(window, next_extent))
+            return false;
+        for (std::size_t index = 0; index < frames.size(); ++index) {
+            if (next_captured[index].buffer)
+                frames[index].captured = std::move(next_captured[index]);
+            if (next_tile_ranges[index].buffer)
+                frames[index].tile_ranges = std::move(next_tile_ranges[index]);
+        }
+        region_plan.reset();
         swapchain = swapchain_backend->swapchain();
         render_pass = swapchain_backend->render_pass();
         format = swapchain_backend->format();
@@ -739,21 +765,10 @@ struct vulkan_renderer::implementation {
         views = swapchain_backend->image_views();
         framebuffers = swapchain_backend->framebuffers();
         present_semaphores = swapchain_backend->present_semaphores();
-        const auto pixel_bytes = static_cast<VkDeviceSize>(extent.width) * extent.height * 16;
-        if (pixel_bytes > properties.limits.maxStorageBufferRange ||
-            (extent.width + 15) / 16 > properties.limits.maxComputeWorkGroupCount[0] ||
-            (extent.height + 15) / 16 > properties.limits.maxComputeWorkGroupCount[1])
-            throw std::runtime_error("framebuffer exceeds composition buffer or dispatch limits");
         diagnostics.framebuffer_bytes = 0;
-        for (auto& current : frames) {
-            current.captured = allocate(pixel_bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-            current.tile_ranges = allocate(
-                static_cast<VkDeviceSize>((extent.width + 15) / 16) * ((extent.height + 15) / 16) *
-                    8,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
+        for (const auto& current : frames)
             diagnostics.framebuffer_bytes +=
                 static_cast<std::size_t>(current.captured.allocation_bytes);
-        }
         diagnostics.scratch_bytes = scratch_allocation_bytes();
         diagnostics.framebuffer_width = extent.width;
         diagnostics.framebuffer_height = extent.height;

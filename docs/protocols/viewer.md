@@ -225,8 +225,14 @@ and fresh/cached screenshot equality; it requires native validation and timestam
 
 Two in-flight frames own FP32 pixel buffers. Projection/key/scan scratch grows to
 resident count, not configured maximum splats. Completed frame ownership gates
-scratch reuse; device-idle resize retires pixels, ranges and reference pools before
-replacement. Actual Vulkan allocation requirements count toward residency; the
+scratch reuse. Resize checks the prospective extent and stages only pixel/range
+buffers that need to grow, within the same residency cap, before creating the
+replacement swapchain. A rejected extent or scratch allocation retains the old
+presentation, scene revision and tile plan. Existing buffers remain allocated when
+the new extent is smaller. The replacement uses Vulkan `oldSwapchain`; a successful
+create retires the old presentation before all image views/framebuffers can be
+created. Post-create WSI/resource failure and device-loss recovery are still M2
+work. Actual Vulkan allocation requirements count toward residency; the
 reference admission calculation shares remaining capacity between frames and
 reserves one SDR screenshot readback allocation. `framebuffer_bytes` counts owned
 pixel buffers, `scratch_bytes` excludes pixels, and `allocated_bytes` includes

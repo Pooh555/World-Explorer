@@ -3,6 +3,7 @@
 
 #include "vulkan_common.hpp"
 #include <SDL3/SDL.h>
+#include <optional>
 #include <vector>
 #include <vulkan/vulkan.h>
 
@@ -17,7 +18,8 @@ class vulkan_swapchain {
     vulkan_swapchain(const vulkan_swapchain&) = delete;
     vulkan_swapchain& operator=(const vulkan_swapchain&) = delete;
 
-    bool create(SDL_Window* window);
+    VkExtent2D extent_for_window(SDL_Window* window) const;
+    bool create(SDL_Window* window, std::optional<VkExtent2D> expected_extent = std::nullopt);
     void cleanup();
 
     VkSwapchainKHR swapchain() const noexcept { return swapchain_; }
@@ -34,6 +36,7 @@ class vulkan_swapchain {
     }
 
   private:
+    vulkan_swapchain(const vulkan_swapchain& source, bool staged);
     VkDevice device_{};
     VkPhysicalDevice physical_device_{};
     VkSurfaceKHR surface_{};
@@ -44,10 +47,12 @@ class vulkan_swapchain {
     VkExtent2D extent_{};
     std::uint32_t minimum_images_{};
     bool screenshot_supported_{};
+    bool owns_render_pass_{true};
     std::vector<VkImage> images_;
     std::vector<VkImageView> views_;
     std::vector<VkFramebuffer> framebuffers_;
     std::vector<VkSemaphore> present_semaphores_;
+    void create_resources(VkExtent2D requested_extent, VkSwapchainKHR old_swapchain);
 };
 
 } // namespace world_explorer
