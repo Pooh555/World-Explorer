@@ -1,3 +1,4 @@
+#include "clipping_fixture.hpp"
 #include "fit_view_selection.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
@@ -276,19 +277,22 @@ int main(int argc, char** argv) {
                     (argc == 3 && (std::string_view(argv[2]) == "--compositing" ||
                                    std::string_view(argv[2]) == "--termination" ||
                                    std::string_view(argv[2]) == "--batches" ||
+                                   std::string_view(argv[2]) == "--clipping" ||
                                    std::string_view(argv[2]) == "--batches-bounded")),
                 "usage: we_gpu_reference <new output directory> "
-                "[--compositing|--termination|--batches|--batches-bounded] or "
+                "[--compositing|--termination|--batches|--batches-bounded|--clipping] or "
                 "we_gpu_reference <new output directory> --real <scene bundle> <completed fit>; "
                 "optionally --fit-indices 0,1,... for original fit cameras; "
                 "append --timings for completed GPU/CPU timing checks");
-        const bool compositing = argc == 3;
+        const bool clipping = argc == 3 && std::string_view(argv[2]) == "--clipping";
+        const bool compositing = argc == 3 && !clipping;
         const bool termination = compositing && std::string_view(argv[2]) == "--termination";
         const bool bounded = compositing && std::string_view(argv[2]) == "--batches-bounded";
         const bool batches = bounded || (compositing && std::string_view(argv[2]) == "--batches");
         const std::filesystem::path output(argv[1]);
         require(std::filesystem::create_directory(output), "output directory must not exist");
         scene_snapshot scene = real          ? scene_snapshot{}
+                               : clipping    ? clipping_fixture()
                                : batches     ? batch_fixture()
                                : compositing ? compositing_fixture(termination)
                                              : fixture();
@@ -410,6 +414,8 @@ int main(int argc, char** argv) {
         std::vector<std::string> names{"centered", "off_center", "rolled", "translated"};
         if (compositing)
             names.insert(names.end(), {"orbit_left", "orbit_right", "close_up"});
+        if (clipping)
+            names = {"clipping_boundaries"};
         if (real) {
             names = {"fit_first", "fit_middle", "fit_last"};
             if (explicit_indices) {
@@ -440,6 +446,8 @@ int main(int argc, char** argv) {
             }
             if (name == "close_up")
                 camera.position = {0.2, 0.1, 2.8};
+            if (clipping)
+                camera = clipping_camera();
             std::size_t fit_index = 0;
             if (real) {
                 fit_index = fit_indices[view_index];
@@ -506,7 +514,8 @@ int main(int argc, char** argv) {
         json diagnostic = {
             {"schema", real ? 2 : 1},
             {"label", real ? "real calibrated retained fit; no quality/performance certification"
-                      : batches     ? "synthetic tile batches v1; not a capture"
+                      : clipping ? "synthetic inclusive clipping float neighbors v1; not a capture"
+                      : batches  ? "synthetic tile batches v1; not a capture"
                       : termination ? "synthetic exclusive termination v1; not a capture"
                       : compositing ? "synthetic compositing stress v1; not a capture"
                                     : "synthetic asymmetric reference v3; not a capture"},

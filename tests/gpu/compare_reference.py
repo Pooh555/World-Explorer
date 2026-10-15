@@ -23,6 +23,77 @@ from losses import gaussian_ssim
 
 MIN_PSNR = 45.0
 MAX_ERROR_LEVELS = 8
+CLIPPING_LABEL = "synthetic inclusive clipping float neighbors v1; not a capture"
+
+
+def load_clipping(data):
+    """Admit exactly the six predeclared one-ULP boundary contributions."""
+    def check(condition):
+        if not condition:
+            raise ValueError("clipping boundary fixture differs from fixed diagnostic profile")
+    def numbers(values, count):
+        return (isinstance(values, list) and len(values) == count and
+                all(type(v) in (int, float) and math.isfinite(v) for v in values))
+    check(type(data.get("schema")) is int and data["schema"] == 1 and data.get("label") == CLIPPING_LABEL)
+    check((data.get("width"), data.get("height")) == (1280, 720))
+    check(numbers(data["background"], 3))
+    check(np.array_equal(np.asarray(data["background"], dtype=np.float32),
+                         np.array([.045, .051, .063], dtype=np.float32)))
+    check(isinstance(data["views"], list) and isinstance(data["chunks"], list) and
+          len(data["views"]) == 1 and len(data["chunks"]) == 1)
+    view = data["views"][0]
+    for key, expected in {"name": "clipping_boundaries", "position": [0, 0, 0],
+                          "right": [1, 0, 0], "down": [0, -1, 0], "forward": [0, 0, -1],
+                          "near": 1.0, "far": 8.0, "intrinsics": [900, 840, 639.5, 359.5]}.items():
+        value = view.get(key)
+        check(value == expected)
+        if isinstance(expected, list):
+            check(numbers(value, len(expected)))
+        elif type(expected) is float:
+            check(type(value) in (int, float))
+    chunk = data["chunks"][0]
+    check(numbers(chunk["rotation"], 4) and numbers(chunk["translation"], 3) and
+          type(chunk["scale"]) in (int, float))
+    check(chunk["rotation"] == [1, 0, 0, 0] and chunk["translation"] == [0, 0, 0] and chunk["scale"] == 1)
+    check("render_origin" not in data and len(chunk["splats"]) == 6)
+    depths = np.array([0x3f7fffff, 0x3f800000, 0x3f800001,
+                       0x40ffffff, 0x41000000, 0x41000001], dtype=np.uint32).view(np.float32)
+    for index, (splat, depth) in enumerate(zip(chunk["splats"], depths)):
+        check(numbers(splat["mean"], 3) and numbers(splat["scale"], 3) and numbers(splat["rotation"], 4) and
+              numbers(splat["sh"], 48) and type(splat["opacity"]) in (int, float) and
+              math.isfinite(splat["opacity"]) and type(splat["sh_degree"]) is int)
+        mean = np.asarray(splat["mean"], dtype=np.float32)
+        expected = np.array([depth * ((index % 3) - 1) * .5,
+                             depth * (.125 if index < 3 else -.125), -depth], dtype=np.float32)
+        check(mean.shape == (3,) and np.array_equal(mean, expected))
+        scale = np.asarray(splat["scale"], dtype=np.float32)
+        check(scale.shape == (3,) and np.array_equal(scale, [depth / np.float32(64)] * 3))
+        check(splat["rotation"] == [1, 0, 0, 0] and splat["sh_degree"] == 3 and
+              np.float32(splat["opacity"]) == np.float32(.8))
+        sh = np.asarray(splat["sh"], dtype=np.float32)
+        check(sh.shape == (48,) and np.isfinite(sh).all() and np.all(sh[3:] == 0))
+        color = np.array([.85, .35, .15] if index < 3 else [.15, .45, .85], dtype=np.float32)
+        check(np.array_equal(sh[:3], (color - np.float32(.5)) / np.float32(.2820947918)))
+    return 6
+
+
+def clipping_regions(image, background):
+    """Independent presence checks: outside slots stay background; equality stays visible."""
+    if image.shape != (720, 1280, 3) or image.dtype != np.uint8:
+        raise ValueError("clipping readback must be full RGB8")
+    bg = np.asarray(background, dtype=np.float64)
+    if bg.shape != (3,) or not np.isfinite(bg).all() or (bg < 0).any() or (bg > 1).any():
+        raise ValueError("invalid clipping background")
+    bg = np.rint(bg * 255).astype(np.int16)
+    checks = []
+    for index, visible in enumerate([False, True, True, True, True, False]):
+        x = 190 + 450 * (index % 3)
+        y = 255 if index < 3 else 465
+        patch = image[y-8:y+8, x-8:x+8].astype(np.int16)
+        delta = int(np.max(np.abs(patch - bg)))
+        checks.append({"slot": index, "expected_visible": visible, "maximum_background_delta": delta,
+                       "passed": delta > 32 if visible else delta <= 1})
+    return checks
 
 
 def sha256(path):
@@ -207,9 +278,12 @@ def main():
     parser.add_argument("directory", type=Path)
     parser.add_argument("--real", action="store_true", help="admit the explicit bounded real-asset profile")
     parser.add_argument("--fit-indices", help="required matching explicit zero-based fit camera selection")
+    parser.add_argument("--clipping", action="store_true", help="require the fixed synthetic clipping boundary profile")
     args = parser.parse_args()
     if args.fit_indices is not None and not args.real:
         parser.error("--fit-indices requires --real")
+    if args.clipping and args.real:
+        parser.error("--clipping cannot combine with --real")
     version = importlib.metadata.version("gsplat")
     if version != "1.5.3+pt24cu124" or torch.__version__ != "2.4.1+cu124":
         raise RuntimeError(f"pinned reference environment required: gsplat={version}, torch={torch.__version__}")
@@ -222,6 +296,8 @@ def main():
     data = json.loads(fixture.read_text())
     if args.real:
         count = load_real(root, data, args.fit_indices)
+    elif args.clipping:
+        count = load_clipping(data)
     else:
         assert data["schema"] == 1 and data["label"].startswith("synthetic")
         assert (data["width"], data["height"]) == (1280, 720)
@@ -249,7 +325,7 @@ def main():
     with torch.no_grad():
         for view in data["views"]:
             name = view["name"]
-            if not args.real:
+            if not args.real and not args.clipping:
                 assert name in ("centered", "off_center", "rolled", "translated",
                                 "orbit_left", "orbit_right", "close_up")
             rendered = reference(data, view)
@@ -272,11 +348,18 @@ def main():
             y = torch.tensor(quantized.copy(), device="cuda").permute(2, 0, 1)[None].float() / 255
             ssim = gaussian_ssim(x, y).item()
             passed = (psnr is None or psnr >= MIN_PSNR) and error.max() <= MAX_ERROR_LEVELS
+            boundary_checks = None
+            if args.clipping:
+                boundary_checks = {"native": clipping_regions(native, data["background"]),
+                                   "reference": clipping_regions(quantized, data["background"])}
+                passed = passed and all(c["passed"] for rows in boundary_checks.values() for c in rows)
             record = {"name": name, "psnr_db": psnr, "ssim": ssim,
                       "max_error_levels": int(error.max()), "mean_error_levels": float(error.mean()),
                       "native_sha256": sha256(native_path), "passed": bool(passed)}
             if args.real:
                 record.update(fit_frame_index=view["fit_frame_index"], fit_frame_name=view["fit_frame_name"])
+            if boundary_checks is not None:
+                record["clipping_regions"] = boundary_checks
             report["views"].append(record)
             print(json.dumps(record), flush=True)
     report["passed"] = all(v["passed"] for v in report["views"])

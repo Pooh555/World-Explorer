@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 
-from compare_reference import load_real, parse_fit_indices, sha256
+from compare_reference import CLIPPING_LABEL, clipping_regions, load_clipping, load_real, parse_fit_indices, sha256
 
 
 class real_reference_input_tests(unittest.TestCase):
@@ -181,6 +181,105 @@ class real_reference_input_tests(unittest.TestCase):
         for count in [0, 2, 121, True]:
             with self.subTest(count=count), self.assertRaises(ValueError):
                 parse_fit_indices("0", count)
+
+
+class clipping_boundary_tests(unittest.TestCase):
+    def setUp(self):
+        bits = np.array([0x3f7fffff, 0x3f800000, 0x3f800001, 0x40ffffff, 0x41000000, 0x41000001], dtype=np.uint32)
+        splats = []
+        for index, depth in enumerate(bits.view(np.float32)):
+            color = np.array([.85, .35, .15] if index < 3 else [.15, .45, .85], dtype=np.float32)
+            sh = np.zeros(48, dtype=np.float32)
+            sh[:3] = (color - np.float32(.5)) / np.float32(.2820947918)
+            splats.append({"mean": [float(depth * ((index % 3) - 1) * .5),
+                                     float(depth * (.125 if index < 3 else -.125)), -float(depth)],
+                           "scale": [float(depth / np.float32(64))] * 3, "rotation": [1, 0, 0, 0],
+                           "opacity": float(np.float32(.8)), "sh_degree": 3, "sh": sh.tolist()})
+        self.data = {"schema": 1, "label": CLIPPING_LABEL, "width": 1280, "height": 720,
+                     "background": [.045, .051, .063],
+                     "chunks": [{"rotation": [1, 0, 0, 0], "translation": [0, 0, 0], "scale": 1, "splats": splats}],
+                     "views": [{"name": "clipping_boundaries", "position": [0, 0, 0],
+                                "right": [1, 0, 0], "down": [0, -1, 0], "forward": [0, 0, -1],
+                                "near": 1., "far": 8., "intrinsics": [900, 840, 639.5, 359.5]}]}
+        self.background = np.rint(np.array(self.data["background"]) * 255).astype(np.uint8)
+
+    def test_complete_fixed_profile(self):
+        self.assertEqual(load_clipping(copy.deepcopy(self.data)), 6)
+
+    def test_profile_plane_camera_and_count_mutations(self):
+        for field, value in [("near", .5), ("near", True), ("far", 9), ("position", [0, 0, 6]),
+                             ("name", "../clipping_boundaries"), ("intrinsics", [901, 840, 639.5, 359.5])]:
+            data = copy.deepcopy(self.data)
+            data["views"][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                load_clipping(data)
+        for count in [0, 5]:
+            data = copy.deepcopy(self.data)
+            data["chunks"][0]["splats"] = data["chunks"][0]["splats"][:count]
+            with self.subTest(count=count), self.assertRaises(ValueError):
+                load_clipping(data)
+
+    def test_profile_payload_and_transform_mutations(self):
+        for field, value in [("mean", [0, 0, -1]), ("mean", [0, 0, float("inf")]),
+                             ("scale", [0, 0, 0]), ("opacity", .7), ("sh_degree", 0),
+                             ("sh", [float("nan")] * 48)]:
+            data = copy.deepcopy(self.data)
+            data["chunks"][0]["splats"][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                load_clipping(data)
+        data = copy.deepcopy(self.data)
+        data["chunks"][0]["translation"] = [1, 0, 0]
+        with self.assertRaises(ValueError):
+            load_clipping(data)
+
+    def test_profile_number_types_and_background(self):
+        for key, value in [("schema", True), ("background", [float("nan"), 0, 0]),
+                           ("background", [0, 0, 0])]:
+            data = copy.deepcopy(self.data)
+            data[key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                load_clipping(data)
+        data = copy.deepcopy(self.data)
+        data["chunks"][0]["rotation"][0] = True
+        with self.assertRaises(ValueError):
+            load_clipping(data)
+        data = copy.deepcopy(self.data)
+        data["chunks"][0]["splats"].reverse()
+        with self.assertRaises(ValueError):
+            load_clipping(data)
+
+    def image(self):
+        image = np.empty((720, 1280, 3), dtype=np.uint8)
+        image[:] = self.background
+        for index in [1, 2, 3, 4]:
+            x, y = 190 + 450 * (index % 3), 255 if index < 3 else 465
+            image[y-8:y+8, x-8:x+8] = [180, 100, 80]
+        return image
+
+    def test_independent_visible_and_background_regions(self):
+        self.assertTrue(all(v["passed"] for v in clipping_regions(self.image(), self.data["background"])))
+
+    def test_background_only_cannot_pass(self):
+        image = self.image()
+        image[:] = self.background
+        result = clipping_regions(image, self.data["background"])
+        self.assertEqual([v["passed"] for v in result], [True, False, False, False, False, True])
+
+    def test_omitted_visible_and_leaking_excluded_contributions_fail(self):
+        image = self.image()
+        image[247:263, 632:648] = self.background
+        self.assertFalse(clipping_regions(image, self.data["background"])[1]["passed"])
+        image = self.image()
+        image[255, 190] = [255, 255, 255]
+        self.assertFalse(clipping_regions(image, self.data["background"])[0]["passed"])
+
+    def test_invalid_readback_and_background(self):
+        for image in [np.zeros((1, 1, 3), dtype=np.uint8), self.image().astype(np.float32)]:
+            with self.assertRaises(ValueError):
+                clipping_regions(image, self.data["background"])
+        for background in [[0, 0], [0, 0, float("nan")], [-1, 0, 0]]:
+            with self.assertRaises(ValueError):
+                clipping_regions(self.image(), background)
 
 
 if __name__ == "__main__":
