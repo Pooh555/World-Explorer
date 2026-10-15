@@ -251,6 +251,17 @@ tracked live/retired/staging buffers; these are not total process/device VRAM.
 Dimensions, storage/dispatch/shared-memory limits, 128-byte push constants and ten
 storage-buffer descriptors per stage/set are checked explicitly.
 
+`we_gpu_lifetime_stress <retained-scene> <new-output-dir> <seconds>` exercises
+the normal scene update and swapchain resize paths with Vulkan validation. It
+loads the bundle read-only, alternates full and empty revisions every 15 seconds,
+requests four window extents every 20 seconds, and compares periodic full-scene
+1280×720 readbacks with the initial readback. Per-minute records include the
+visible revision, completed timeline, tracked owned bytes, process RSS and
+validation errors. The output directory must be new; all captures and JSONL
+evidence stay under ignored `artifacts/`. This diagnostic checks one local
+device, saved scene and source camera. Its empty revisions are synthetic; it
+does not measure total device VRAM or certify performance gates.
+
 A fullscreen triangle reads completed FP32 pixels directly from storage, clamps
 RGB once to the SDR swapchain and then draws UI in the same subpass.
 `vulkan_overlay_context.subpass` is 0. No extra FP32 swapchain attachments or

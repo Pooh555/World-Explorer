@@ -458,13 +458,25 @@ with zero Vulkan errors.
 The Debug fault is synthetic; physical device loss remains unverified. Release
 C++23 builds without the hook and passes native smoke. M2 stays IN_PROGRESS.
 
-Next executable step: run the M2 two-hour native update/resize lifetime stress
-with validation on a retained scene, recording revisions, readbacks and memory;
-do not rerun reconstruction or change saved scenes/frozen fixture. Find a
-compositor that accepts minimize/restore for its separate native check. Then pin
-VMA and integrate it only in `render_vulkan` allocation ownership, preserving
-current byte budgets, failure behavior and timeline retirement. Physical device
-loss and reference Q/P/N/E gates require their own evidence.
+The [two-hour native lifetime stress](validation/2026-10-15-m2-lifetime-stress.md)
+passes on the retained 295,952-splat sample_1 scene: 7,203.746 seconds, 480
+visible updates, 359 resizes, 13 byte-identical full-scene readbacks, 270,414
+submitted frames and zero Vulkan validation errors. Tracked owned allocations
+peak at 369,408,864 bytes under the 512 MiB budget; process HWM is 499,478,528
+bytes. The saved scene manifest is unchanged. Empty alternate revisions are
+synthetic, and this one native profile does not certify the full M2 gate. The
+local X11 path also fails to report a minimized window after the compositor
+request; accepted minimize/restore remains unverified.
+
+Next executable step: pin a reviewed VMA release in development and the
+immutable release dependency graph, then integrate VMA allocation ownership
+inside `render_vulkan` only. Preserve current requirement-sized residency
+charges, 512 MiB rejection behavior, mapped staging and timeline retirement;
+rerun native validation, the retained full-scene replace/resize/readback checks,
+the two-hour lifetime stress on the VMA path and C++26/C++23 builds. Do not rerun
+reconstruction or change saved scenes/frozen fixture. Find a compositor that
+accepts minimize/restore for its separate native
+check. Physical device loss and reference Q/P/N/E gates require their own evidence.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

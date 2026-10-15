@@ -266,6 +266,12 @@ if(WE_BUILD_VIEWER)
   endif()
   add_dependencies(we_gpu_smoke we_shaders)
 
+  add_executable(we_gpu_lifetime_stress tests/gpu/lifetime_stress.cpp)
+  we_target(we_gpu_lifetime_stress)
+  target_link_libraries(we_gpu_lifetime_stress PRIVATE application render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_gpu_lifetime_stress PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
+  add_dependencies(we_gpu_lifetime_stress we_shaders)
+
   add_executable(we_gpu_portable_fixture tests/gpu/portable_fixture.cpp)
   we_target(we_gpu_portable_fixture)
   target_link_libraries(we_gpu_portable_fixture PRIVATE render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
