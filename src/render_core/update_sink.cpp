@@ -10,23 +10,68 @@ renderer_update_sink::record* renderer_update_sink::find(update_ticket ticket) {
     return found == history_.end() ? nullptr : &*found;
 }
 result<update_ticket> renderer_update_sink::enqueue(scene_delta_batch& batch) {
-    std::lock_guard lock(mutex_);
     if (!batch.snapshot)
         return fail(error_code::INVALID_DATA, "Missing renderer snapshot");
-    auto bytes =
-        validate_scene(*batch.snapshot, {4096, budget_.max_splats, budget_.bytes, 1000000});
+    residency_budget validated_budget;
+    {
+        std::lock_guard lock(mutex_);
+        validated_budget = budget_;
+        const auto duplicate =
+            std::find_if(history_.begin(), history_.end(),
+                         [&](const auto& item) { return item.operation == batch.operation; });
+        if (duplicate == history_.end()) {
+            // A new operation cannot enter a full queue. Keep this check ahead of
+            // full-snapshot validation and hashing so a retry cannot starve the
+            // render consumer while it waits for capacity.
+            if (pending_.size() >= budget_.max_pending)
+                return fail(error_code::WOULD_BLOCK, "renderer pending update queue is full");
+            std::size_t estimated_bytes = 0;
+            bool can_estimate = true;
+            for (const auto& [id, chunk] : batch.snapshot->chunks) {
+                static_cast<void>(id);
+                if (!chunk) {
+                    can_estimate = false;
+                    break;
+                }
+                if (chunk->splats.size() > (budget_.bytes - estimated_bytes) / sizeof(gaussian)) {
+                    can_estimate = false;
+                    break;
+                }
+                estimated_bytes += chunk->splats.size() * sizeof(gaussian);
+            }
+            if (can_estimate) {
+                const auto* visible = visible_ticket_ ? find(*visible_ticket_) : nullptr;
+                const auto resident = (visible ? visible->bytes : 0) + retired_bytes_;
+                if (queued_bytes_ > budget_.bytes ||
+                    estimated_bytes > budget_.bytes - queued_bytes_ ||
+                    resident > budget_.bytes - queued_bytes_ - estimated_bytes)
+                    return fail(error_code::WOULD_BLOCK,
+                                "renderer upload or replacement residency budget is full");
+            }
+        }
+    }
+    auto bytes = validate_scene(
+        *batch.snapshot, {4096, validated_budget.max_splats, validated_budget.bytes, 1000000});
     if (!bytes)
         return std::unexpected(bytes.error());
     const auto content_hash = scene_content_hash(*batch.snapshot);
-    for (const auto& item : history_)
-        if (item.operation == batch.operation) {
-            if (item.scene != batch.id || item.epoch != batch.epoch ||
-                item.base != batch.base_revision || item.progress.revision != batch.new_revision ||
-                item.content_hash != content_hash)
-                return fail(error_code::DUPLICATE_OPERATION,
-                            "renderer operation ID reused for a different revision");
-            return item.ticket;
-        }
+    std::lock_guard lock(mutex_);
+    const auto duplicate = std::find_if(history_.begin(), history_.end(), [&](const auto& item) {
+        return item.operation == batch.operation;
+    });
+    if (duplicate != history_.end()) {
+        if (duplicate->scene != batch.id || duplicate->epoch != batch.epoch ||
+            duplicate->base != batch.base_revision ||
+            duplicate->progress.revision != batch.new_revision ||
+            duplicate->content_hash != content_hash)
+            return fail(error_code::DUPLICATE_OPERATION,
+                        "renderer operation ID reused for a different revision");
+        return duplicate->ticket;
+    }
+    if (budget_.max_splats != validated_budget.max_splats ||
+        budget_.bytes != validated_budget.bytes)
+        return fail(error_code::WOULD_BLOCK,
+                    "renderer residency budget changed during update validation; retry");
     if (!batch.snapshot || batch.operation.value == 0 || batch.snapshot->id != batch.id ||
         batch.snapshot->epoch != batch.epoch || batch.snapshot->revision != batch.new_revision)
         return fail(error_code::INVALID_DATA,
@@ -45,8 +90,8 @@ result<update_ticket> renderer_update_sink::enqueue(scene_delta_batch& batch) {
         if (batch.new_revision.value <= batch.base_revision.value)
             return fail(error_code::INVALID_DATA, "renderer revisions must increase");
     }
-    const std::size_t resident =
-        (visible_ ? validate_scene(*visible_).value_or(budget_.bytes) : 0) + retired_bytes_;
+    const auto* visible = visible_ticket_ ? find(*visible_ticket_) : nullptr;
+    const std::size_t resident = (visible ? visible->bytes : 0) + retired_bytes_;
     if (pending_.size() >= budget_.max_pending || *bytes > budget_.bytes ||
         queued_bytes_ > budget_.bytes - *bytes || resident > budget_.bytes - *bytes - queued_bytes_)
         return fail(error_code::WOULD_BLOCK,

@@ -1,5 +1,7 @@
 #include "world_explorer/core/hash.hpp"
+#include <algorithm>
 #include <array>
+#include <cstring>
 #include <fstream>
 #include <memory>
 #include <openssl/evp.h>
@@ -29,18 +31,39 @@ std::string finish_digest(EVP_MD_CTX* digest) {
 } // namespace
 struct sha256_builder::implementation {
     digest_owner digest{start_digest()};
+    std::array<std::byte, 16384> pending{};
+    std::size_t pending_bytes{};
     bool finished{};
+    void flush() {
+        if (pending_bytes && EVP_DigestUpdate(digest.get(), pending.data(), pending_bytes) != 1)
+            throw std::runtime_error("cannot update SHA-256 builder");
+        pending_bytes = 0;
+    }
 };
 sha256_builder::sha256_builder() : impl_(std::make_unique<implementation>()) {}
 sha256_builder::~sha256_builder() = default;
 void sha256_builder::update(std::span<const std::byte> bytes) {
-    if (impl_->finished || EVP_DigestUpdate(impl_->digest.get(), bytes.data(), bytes.size()) != 1)
+    if (impl_->finished)
         throw std::runtime_error("cannot update SHA-256 builder");
+    while (!bytes.empty()) {
+        if (!impl_->pending_bytes && bytes.size() >= impl_->pending.size()) {
+            if (EVP_DigestUpdate(impl_->digest.get(), bytes.data(), bytes.size()) != 1)
+                throw std::runtime_error("cannot update SHA-256 builder");
+            return;
+        }
+        const auto copied = std::min(bytes.size(), impl_->pending.size() - impl_->pending_bytes);
+        std::memcpy(impl_->pending.data() + impl_->pending_bytes, bytes.data(), copied);
+        impl_->pending_bytes += copied;
+        bytes = bytes.subspan(copied);
+        if (impl_->pending_bytes == impl_->pending.size())
+            impl_->flush();
+    }
 }
 std::string sha256_builder::finish() {
     if (impl_->finished)
         throw std::runtime_error("SHA-256 builder already finalized");
     impl_->finished = true;
+    impl_->flush();
     return finish_digest(impl_->digest.get());
 }
 std::string sha256(std::span<const std::byte> bytes) {

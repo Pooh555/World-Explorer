@@ -421,7 +421,7 @@ struct vulkan_renderer::implementation {
                 current.references_a.allocation_bytes + current.references_b.allocation_bytes);
         return bytes;
     }
-    void upload(VkCommandBuffer command, const scene_snapshot& snapshot, vec3d origin,
+    void upload(frame& current, const scene_snapshot& snapshot, vec3d origin,
                 std::uint64_t completion) {
         std::size_t count = 0;
         for (const auto& [id, chunk] : snapshot->chunks) {
@@ -467,9 +467,12 @@ struct vulkan_renderer::implementation {
             }
         }
         VkBufferCopy copy{0, 0, bytes};
-        vkCmdCopyBuffer(command, staging.buffer, replacement.buffer, 1, &copy);
-        memory_barrier(command, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+        begin_timing(current, gpu_timing_stage::UPLOAD);
+        vkCmdCopyBuffer(current.command, staging.buffer, replacement.buffer, 1, &copy);
+        memory_barrier(current.command, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                       VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                       VK_ACCESS_2_SHADER_READ_BIT);
+        end_timing(current, gpu_timing_stage::UPLOAD);
         if (scene_buffer.buffer)
             retired.push_back({completion, std::move(scene_buffer)});
         retired.push_back({completion, std::move(staging)});
@@ -750,6 +753,7 @@ struct vulkan_renderer::implementation {
             }
         }
         if (swapchain && submitted_timeline) {
+            ++diagnostics.interactive_device_idle_waits;
             check(vkDeviceWaitIdle(device), "wait before resizing composition scratch");
             collect_completed(submitted_timeline);
         }
@@ -862,7 +866,7 @@ struct vulkan_renderer::implementation {
         auto update = sink.take_next();
         if (update) {
             try {
-                upload(current.command, update->batch.snapshot, camera.position, completion);
+                upload(current, update->batch.snapshot, camera.position, completion);
                 sink.acknowledge_uploaded(update->ticket, completion);
             } catch (const detail::vulkan_error& exception) {
                 if (exception.status() == VK_ERROR_DEVICE_LOST)
@@ -876,7 +880,7 @@ struct vulkan_renderer::implementation {
             }
         } else if (visible_scene &&
                    dot(camera.position - scene_origin, camera.position - scene_origin) > 100000000)
-            upload(current.command, visible_scene, camera.position, completion);
+            upload(current, visible_scene, camera.position, completion);
         grow_splat_scratch(current);
         descriptors(current);
         auto params = parameters(camera, *checked_camera);

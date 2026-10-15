@@ -25,7 +25,8 @@ json timing_summary(const std::map<std::uint64_t, renderer_frame_timing>& sample
     json output{{"samples", json::array()}, {"metrics", json::object()}};
     std::map<std::string, std::vector<double>> metrics;
     constexpr std::array<const char*, GPU_TIMING_STAGE_COUNT> STAGES{
-        "projection", "depth_sort", "count_scan", "tile_index", "composition", "presentation_draw"};
+        "upload",     "projection",  "depth_sort",       "count_scan",
+        "tile_index", "composition", "presentation_draw"};
     for (const auto& [sequence, sample] : samples) {
         json row{{"sequence", sequence},
                  {"tile_sort_passes", sample.tile_sort_passes},

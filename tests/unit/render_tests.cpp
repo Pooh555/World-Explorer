@@ -49,6 +49,17 @@ TEST_CASE("renderer admission is idempotent and rejects stale or modified retrie
     wrong_epoch.epoch = {1};
     REQUIRE_FALSE(sink.enqueue(wrong_epoch));
 }
+
+TEST_CASE("renderer reports an oversized new snapshot as invalid before residency admission") {
+    renderer_update_sink sink({sizeof(gaussian) - 1, 250000, 4});
+    auto first = batch_at({1}, {1}, true);
+    const auto retained = first.snapshot;
+    const auto rejected = sink.enqueue(first);
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
+    CHECK(first.snapshot == retained);
+    CHECK_FALSE(sink.take_next());
+}
 TEST_CASE("old residency remains charged until GPU retirement and duplicate ack is harmless") {
     const auto bytes = validate_scene(*make_diagnostic_scene()).value();
     renderer_update_sink sink({bytes * 2, 250000, 4});
