@@ -2,6 +2,7 @@
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
 #if defined(WE_VULKAN_TEST_FAULTS)
+#include "renderer_faults.hpp"
 #include "vulkan_swapchain.hpp"
 #endif
 #include <SDL3/SDL.h>
@@ -161,6 +162,50 @@ int main(int argc, char** argv) {
                     renderer->updates().visible_snapshot()->revision.value == 1,
                 "minimize/restore invalidated Vulkan or the retained scene");
         require(renderer->wait_for_idle().has_value(), "post-create recovery completion failed");
+        const auto replay = renderer->updates().visible_snapshot();
+        require(replay && replay->revision.value == 1,
+                "device-loss fixture did not retain the visible revision");
+        detail::fail_next_frame_with_device_loss();
+        const auto lost = renderer->draw(retained_camera);
+        require(!lost && lost.error().code == error_code::DEVICE_LOST,
+                "injected Vulkan device loss was not typed");
+        renderer.reset();
+        created = vulkan_renderer::create(window.get(), options);
+        require(created.has_value(), created ? "" : created.error().message);
+        renderer = std::move(*created);
+        auto replay_batch = make_snapshot_batch(replay, {2}).value();
+        const auto replay_ticket = renderer->updates().enqueue(replay_batch);
+        require(replay_ticket.has_value(), "device-loss scene replay admission failed");
+        const auto recovery_readback = output.parent_path() / "device-recovery.ppm";
+        require(renderer->request_screenshot(recovery_readback).has_value(),
+                "device-loss recovery readback request failed");
+        const auto replay_draw = renderer->draw(retained_camera);
+        require(replay_draw.has_value(), replay_draw ? "" : replay_draw.error().message);
+        const auto replay_progress = renderer->updates().query_progress(*replay_ticket);
+        require(replay_progress && replay_progress->state == update_state::RENDER_VISIBLE &&
+                    renderer->updates().visible_snapshot()->revision == replay->revision &&
+                    renderer->diagnostics().resident_splat_count == 2 &&
+                    renderer->diagnostics().validation_errors == 0,
+                "device-loss recreation did not restore the exact scene revision");
+        std::ifstream recovered_image(recovery_readback, std::ios::binary);
+        std::string recovered_magic;
+        unsigned recovered_width{}, recovered_height{}, recovered_maximum{};
+        recovered_image >> recovered_magic >> recovered_width >> recovered_height >>
+            recovered_maximum;
+        require(recovered_image && recovered_magic == "P6" && recovered_width >= 256 &&
+                    recovered_height >= 256 && recovered_maximum == 255,
+                "device-loss recreation did not produce a valid readback");
+        recovered_image.get();
+        recovered_image.seekg(
+            static_cast<std::streamoff>(
+                (static_cast<std::size_t>(recovered_height / 2) * recovered_width +
+                 recovered_width / 2) *
+                3),
+            std::ios::cur);
+        std::array<unsigned char, 3> recovered_pixel{};
+        recovered_image.read(reinterpret_cast<char*>(recovered_pixel.data()), 3);
+        require(recovered_image && recovered_pixel == std::array<unsigned char, 3>{130, 3, 68},
+                "device-loss recreation changed the overlap readback");
         renderer.reset();
         require(SDL_HideWindow(window.get()), SDL_GetError());
         require(SDL_SetWindowSize(window.get(), 512, 512), SDL_GetError());

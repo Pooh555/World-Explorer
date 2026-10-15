@@ -448,13 +448,23 @@ Normal/timed smoke and full sample_1 windowed/4K/fullscreen/restore pass with
 zero Vulkan errors. This Wayland compositor denied minimization, so the
 minimized-frame skip remains IMPLEMENTED_UNVERIFIED.
 
-Next executable step: implement controlled `VK_ERROR_DEVICE_LOST` teardown and
-renderer recreation from the immutable CPU scene, then inject the loss at an
-owned GPU boundary and verify revision/readback recovery. Find a compositor that
-accepts minimize/restore for the native minimized-frame check; keep its status
-separate. Preserve current captured scenes and the frozen fixture. VMA integration
-belongs later in M2's `render_vulkan` allocation work; pin it and preserve current
-byte budgets and retirement semantics.
+The [device-loss recreation check](validation/2026-10-15-m2-device-loss.md)
+maps `VK_ERROR_DEVICE_LOST` to a typed error. The viewer recreates its renderer
+and Vulkan overlay, replaying the last admitted immutable scene through the
+normal update path. Native synthetic-loss smoke preserves revision 1 and exact
+overlap RGB8 `130,3,68`; the full 295,952-splat sample_1 viewer becomes visible
+again and writes a 1428×1746 readback byte-identical to its native baseline,
+with zero Vulkan errors.
+The Debug fault is synthetic; physical device loss remains unverified. Release
+C++23 builds without the hook and passes native smoke. M2 stays IN_PROGRESS.
+
+Next executable step: run the M2 two-hour native update/resize lifetime stress
+with validation on a retained scene, recording revisions, readbacks and memory;
+do not rerun reconstruction or change saved scenes/frozen fixture. Find a
+compositor that accepts minimize/restore for its separate native check. Then pin
+VMA and integrate it only in `render_vulkan` allocation ownership, preserving
+current byte budgets, failure behavior and timeline retirement. Physical device
+loss and reference Q/P/N/E gates require their own evidence.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

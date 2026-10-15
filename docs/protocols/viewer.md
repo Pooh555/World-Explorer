@@ -234,7 +234,15 @@ the new extent is smaller. The replacement uses Vulkan `oldSwapchain`; calling
 handoff is attempted, failed creation or later view/framebuffer setup clears the
 retired presentation handles. The next draw retries with no old swapchain while
 retaining scene and scratch ownership. A reported SDL minimized window submits no
-frame. Device-loss recovery remains M2 work. Actual Vulkan allocation requirements
+frame. Vulkan `VK_ERROR_DEVICE_LOST` is a typed renderer error. The viewer shuts
+down its Vulkan overlay, destroys the old renderer, creates a new device and
+overlay, then replays the last admitted immutable CPU scene through normal
+full-snapshot admission. The new update ticket gates visibility; camera and
+navigation state remain independent. One recreation is attempted per viewer run;
+a repeated loss ends with an explicit error. A Debug-testing-only hook reports a
+synthetic loss at the owned retirement-timeline query after draining real GPU
+submissions. It checks teardown and replay, not physical device-loss behavior.
+Actual Vulkan allocation requirements
 count toward residency; the
 reference admission calculation shares remaining capacity between frames and
 reserves one SDR screenshot readback allocation. `framebuffer_bytes` counts owned

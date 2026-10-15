@@ -1,4 +1,5 @@
 #include "world_explorer/render_vulkan/renderer.hpp"
+#include "renderer_faults.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
 #include "world_explorer/render_core/radix.hpp"
@@ -20,6 +21,12 @@
 #include <vulkan/vulkan.h>
 
 namespace world_explorer {
+#if defined(WE_VULKAN_TEST_FAULTS)
+namespace detail {
+thread_local bool inject_device_loss_on_next_frame{};
+void fail_next_frame_with_device_loss() { inject_device_loss_on_next_frame = true; }
+} // namespace detail
+#endif
 using detail::check;
 using detail::compute_barrier;
 using detail::floats;
@@ -812,6 +819,14 @@ struct vulkan_renderer::implementation {
         wait_timeline(current.completion);
         const auto frame_wait_ms = options.collect_timings ? elapsed_ms(frame_wait_begin) : 0;
         std::uint64_t completed = 0;
+#if defined(WE_VULKAN_TEST_FAULTS)
+        if (std::exchange(detail::inject_device_loss_on_next_frame, false)) {
+            // The fault is synthetic: drain real submissions before the test tears down
+            // this healthy device. A real lost device reports its own completion failure.
+            check(vkDeviceWaitIdle(device), "quiesce synthetic device loss");
+            check(VK_ERROR_DEVICE_LOST, "injected retirement timeline query");
+        }
+#endif
         check(vkGetSemaphoreCounterValue(device, timeline, &completed),
               "query retirement timeline");
         collect_completed(completed);
@@ -849,6 +864,11 @@ struct vulkan_renderer::implementation {
             try {
                 upload(current.command, update->batch.snapshot, camera.position, completion);
                 sink.acknowledge_uploaded(update->ticket, completion);
+            } catch (const detail::vulkan_error& exception) {
+                if (exception.status() == VK_ERROR_DEVICE_LOST)
+                    throw;
+                sink.fail_update(update->ticket, {error_code::BACKEND_FAILURE, exception.what()});
+                update.reset();
             } catch (const std::exception& exception) {
                 sink.fail_update(update->ticket,
                                  {error_code::RESOURCE_EXHAUSTED, exception.what()});
@@ -1088,6 +1108,10 @@ result<std::unique_ptr<vulkan_renderer>> vulkan_renderer::create(void* sdl_windo
                                                      std::move(options));
         impl->initialize();
         return std::unique_ptr<vulkan_renderer>(new vulkan_renderer(std::move(impl)));
+    } catch (const detail::vulkan_error& exception) {
+        return fail(exception.status() == VK_ERROR_DEVICE_LOST ? error_code::DEVICE_LOST
+                                                               : error_code::BACKEND_FAILURE,
+                    exception.what());
     } catch (const std::exception& exception) {
         return fail(error_code::BACKEND_FAILURE, exception.what());
     }
@@ -1120,6 +1144,10 @@ result<void> vulkan_renderer::draw(const camera_view& camera, bool draw_appearan
     try {
         impl_->draw(camera, draw_appearance);
         return {};
+    } catch (const detail::vulkan_error& exception) {
+        return fail(exception.status() == VK_ERROR_DEVICE_LOST ? error_code::DEVICE_LOST
+                                                               : error_code::BACKEND_FAILURE,
+                    exception.what());
     } catch (const std::exception& exception) {
         return fail(error_code::BACKEND_FAILURE, exception.what());
     }
@@ -1127,11 +1155,16 @@ result<void> vulkan_renderer::draw(const camera_view& camera, bool draw_appearan
 result<void> vulkan_renderer::wait_for_idle() {
     const auto status = vkDeviceWaitIdle(impl_->device);
     if (status != VK_SUCCESS)
-        return fail(error_code::BACKEND_FAILURE,
-                    "Vulkan idle wait failed (device lost or driver failure)");
+        return fail(status == VK_ERROR_DEVICE_LOST ? error_code::DEVICE_LOST
+                                                   : error_code::BACKEND_FAILURE,
+                    "Vulkan idle wait failed (VkResult " + std::to_string(status) + ")");
     try {
         impl_->collect_completed(impl_->submitted_timeline);
         return {};
+    } catch (const detail::vulkan_error& exception) {
+        return fail(exception.status() == VK_ERROR_DEVICE_LOST ? error_code::DEVICE_LOST
+                                                               : error_code::BACKEND_FAILURE,
+                    exception.what());
     } catch (const std::exception& exception) {
         return fail(error_code::BACKEND_FAILURE, exception.what());
     }
