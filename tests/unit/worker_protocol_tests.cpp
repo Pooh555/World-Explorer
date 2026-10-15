@@ -7,6 +7,7 @@
 #include <chrono>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <optional>
 #ifdef __linux__
 #include <csignal>
 #endif
@@ -320,6 +321,7 @@ void control_fixture(const std::filesystem::path& script) {
             "p.progress('diagnostic','ready')\n"
             " threading.Thread(target=ready,daemon=True).start()\n"
             " w.run_command([sys.executable,'-c',code],timeout=30)\n"
+            "if mode == 'slow_ready': time.sleep(6.25)\n"
             "p.progress('diagnostic','ready')\n"
             "while not p.cancel_requested() or mode == 'ignore': time.sleep(.01)\n"
             "if mode == 'retry':\n while p.WRITER.sequence < 6: time.sleep(.01)\n"
@@ -417,11 +419,12 @@ TEST_CASE("typed worker cancellation acknowledges cooperative stop and bounds an
     const auto script = worker.directory / "control.py";
     const auto marker = worker.directory / "launches";
     control_fixture(script);
-    const auto mode = GENERATE("wait", "ignore", "before_start");
+    const auto mode = GENERATE("wait", "ignore", "before_start", "slow_ready");
     std::stop_source cancellation;
     bool start_ack{}, cancel_ack{};
     std::string log;
     const auto began = std::chrono::steady_clock::now();
+    std::optional<std::chrono::steady_clock::time_point> cancel_began;
     const auto result = execute_worker_protocol(
         WE_TEST_PYTHON, script, {mode, marker.string()}, cancellation.get_token(),
         [&](const std::string& text) { log += text; },
@@ -432,13 +435,29 @@ TEST_CASE("typed worker cancellation acknowledges cooperative stop and bounds an
             }
             if ((std::string_view(mode) == "before_start" &&
                  std::holds_alternative<worker_handshake>(event)) ||
-                std::holds_alternative<worker_progress>(event))
+                std::holds_alternative<worker_progress>(event)) {
+                if (!cancel_began)
+                    cancel_began = std::chrono::steady_clock::now();
                 cancellation.request_stop();
+            }
         });
+    const auto ended = std::chrono::steady_clock::now();
+    CAPTURE(mode);
     INFO(log);
     REQUIRE_FALSE(result);
     CHECK(result.error().code == error_code::CANCELLED);
-    CHECK(std::chrono::steady_clock::now() - began < std::chrono::seconds(6));
+    if (cancel_began) {
+        INFO(
+            "pre-cancel seconds: " << std::chrono::duration<double>(*cancel_began - began).count());
+        INFO("cancellation seconds: "
+             << std::chrono::duration<double>(ended - *cancel_began).count());
+        // Startup and work before the request do not consume the cancellation bound.
+        CHECK(ended - *cancel_began < std::chrono::seconds(6));
+        if (std::string_view(mode) == "slow_ready")
+            CHECK(*cancel_began - began >= std::chrono::seconds(6));
+    } else {
+        FAIL("Worker fixture never requested cancellation");
+    }
     if (std::string_view(mode) == "before_start") {
         CHECK_FALSE(start_ack);
         CHECK_FALSE(std::filesystem::exists(marker));
@@ -448,7 +467,7 @@ TEST_CASE("typed worker cancellation acknowledges cooperative stop and bounds an
         CHECK(std::filesystem::exists(marker));
         auto checkpoint = marker;
         checkpoint.replace_extension(".checkpoint");
-        CHECK(std::filesystem::exists(checkpoint) == (std::string_view(mode) == "wait"));
+        CHECK(std::filesystem::exists(checkpoint) == (std::string_view(mode) != "ignore"));
 #ifdef __linux__
         if (std::string_view(mode) == "ignore") {
             auto child_marker = marker;

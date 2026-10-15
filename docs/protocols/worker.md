@@ -60,6 +60,11 @@ The worker's terminal result/committed assets determine the outcome. The client
 allows two seconds for cooperative stop, then POSIX SIGTERM and a further two
 seconds before SIGKILL; Windows terminates the owned Job Object after its two
 seconds. Output keeps draining during cancellation and input backpressure.
+The native cancellation fixture measures from its first stop request through
+child cleanup, separately from Python startup and work before that request. A
+deliberately delayed-ready fixture guards this boundary while retaining the
+six-second test bound; startup still has its own 30-second acknowledgement
+deadline.
 Invalid event streams force cleanup. A stop before START does not launch backend
 work. Cancellation after an atomic stage commit retains that valid stage.
 
