@@ -369,16 +369,29 @@ rejections, **262 dev / 244 explicit C++23 CPU checks**, format/tidy/docs/bounda
 pass. **2,088 protected / 54 preceding evidence / 94 src/include files** unchanged.
 No solve, fit, recipe or environment change; Q3/Q6/full gates remain unqualified.
 
-Next executable task: qualify the new diagnostic in the existing full native
-Clang C++23 profile. Inspect `build/clang-viewer-cxx23/CMakeCache.txt` compiler/
-standard identity, then run `cmake --build build/clang-viewer-cxx23 -j 4` and
-`ctest --test-dir build/clang-viewer-cxx23 --output-on-failure`. Exercise its
-default/explicit/reordered admission and all 80 saved cameras in fresh ignored
-outputs with the same comparator/tolerances; report the actual compiler/device
-scope. Preserve both completed scenes and all failed stages. No refitting, solver
-reruns, downloads or unchanged sample_2 retries. M1's prescribed ≤250k fixture,
-rights and reference/native platform qualification remain open; these local
-calibrated comparisons cannot complete those prerequisites.
+[Clang C++23 native qualification](validation/2026-10-15-clang-camera-reference.md)
+passes on the same local device: explicit C++23/libstdc++, viewer enabled,
+**262/262** CPU checks, **2 cases / 174 assertions**, **18** Python admission
+cases and six pre-GPU CLI rejections. All **80**, default and reordered reference
+reports match GCC byte for byte. Native viewer **340 frames / 648,332 splats /
+zero Vulkan errors**, actual **1428×1746** Source-view capture inspected. No
+performance/other-platform/full-gate qualification follows. **2,088 protected /
+697 preceding evidence / 94 src/include files** unchanged; no implementation,
+environment, scene or fit changes. The cut-off left completed receipts; these
+were checked and retained without repeating the native matrix.
+
+Next executable task: close the remaining M1 calibrated clipping-boundary gap.
+Inspect native projection and pinned gsplat near/far predicates, then add a
+separate labeled synthetic fixture with means exactly at, one float neighbor
+inside and one outside each clipping plane. Use fixed calibration, finite
+attributes and isolated image contributions; preserve existing fixtures and
+**≥45 dB / ≤8-level** limits. Check fixture/admission boundaries on CPU and run
+native Vulkan/gsplat comparisons into fresh ignored outputs; retain any failure
+without exclusions or tolerance changes. This is renderer correctness evidence,
+not a replacement for the prescribed real fixture or Q gates. Preserve completed
+scenes and failed stages; no refitting, solver reruns, downloads or unchanged
+sample_2 retries. M1's ≤250k fixture, rights and reference/native platform
+qualification remain open.
 
 [Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
 latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /
