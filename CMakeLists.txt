@@ -219,12 +219,16 @@ target_link_libraries(render_core PUBLIC scene_store)
 # Viewer & Vulkan Components
 # -----------------------------------------------------------------------------
 if(WE_BUILD_VIEWER)
+  add_library(we_vma STATIC src/render_vulkan/vma.cpp)
+  target_compile_features(we_vma PRIVATE cxx_std_${WE_CXX_STANDARD})
+  target_link_libraries(we_vma PRIVATE GPUOpen::VulkanMemoryAllocator Vulkan::Vulkan)
+
   add_library(render_vulkan
     src/render_vulkan/renderer.cpp
     src/render_vulkan/vulkan_device.cpp
     src/render_vulkan/vulkan_swapchain.cpp)
   we_target(render_vulkan)
-  target_link_libraries(render_vulkan PUBLIC render_core PRIVATE SDL3::SDL3 Vulkan::Vulkan)
+  target_link_libraries(render_vulkan PUBLIC render_core PRIVATE SDL3::SDL3 Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator we_vma)
   if(BUILD_TESTING AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(render_vulkan PRIVATE WE_VULKAN_TEST_FAULTS=1)
   endif()

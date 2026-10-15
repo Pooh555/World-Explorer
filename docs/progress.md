@@ -468,15 +468,25 @@ synthetic, and this one native profile does not certify the full M2 gate. The
 local X11 path also fails to report a minimized window after the compositor
 request; accepted minimize/restore remains unverified.
 
-Next executable step: pin a reviewed VMA release in development and the
-immutable release dependency graph, then integrate VMA allocation ownership
-inside `render_vulkan` only. Preserve current requirement-sized residency
-charges, 512 MiB rejection behavior, mapped staging and timeline retirement;
-rerun native validation, the retained full-scene replace/resize/readback checks,
-the two-hour lifetime stress on the VMA path and C++26/C++23 builds. Do not rerun
+[VMA buffer ownership](validation/2026-10-15-m2-vma.md) is implemented inside
+`render_vulkan` with one allocator per device and dedicated, requirement-charged
+buffers. The development archive is SHA-256 pinned to VMA 3.1.0, matching the
+immutable vcpkg port's source SHA-512. GCC C++26 build/267 CPU and worker
+checks, GCC and Clang C++23 viewer builds, native Debug/Release smoke, a
+60-second full-scene update/resize pilot and full-scene 4K/fullscreen/restore
+pass. The VMA two-hour lifetime run is
+active; do not claim its result until exit and final readback. The release-vcpkg
+profile remains unqualified. Rebuilt development binaries make the retained
+runtime dependency receipt stale; the scoped native archive/notice check passes.
+
+Next executable step: collect `artifacts/validation/m2-vma-20261015/full` and
+`full.log` after `we_gpu_lifetime_stress ... 7200` exits, verify all 13 PPM
+hashes, revisions/resizes, Vulkan errors, tracked/process memory and unchanged
+scene manifest, then update the VMA report and M2 gate status. Do not rerun
 reconstruction or change saved scenes/frozen fixture. Find a compositor that
-accepts minimize/restore for its separate native
-check. Physical device loss and reference Q/P/N/E gates require their own evidence.
+accepts minimize/restore for its separate native check. Physical device loss,
+release-vcpkg, refreshed runtime evidence and reference Q/P/N/E gates remain
+open.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/
