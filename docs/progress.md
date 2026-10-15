@@ -412,16 +412,27 @@ closed-stdin descriptor test is POSIX-only. Other hosted counts, internal Python
 skips, exact toolchain versions and macOS architecture are not inferred. All jobs
 have the viewer disabled; no native viewer/release/full-gate upgrade.
 
-Next executable step: qualify M1 on native viewer/reference machines. Freeze
-the ≤250k-splat viewer fixture with its identity/rights record, open that fixed
-bundle on Arch/Windows/macOS and record 720p ≥30 FPS on H_V/H_M with zero Vulkan
-validation errors. Independently obtain the consented 20–30 s textured-room
-source and run the unchanged end-to-end pipeline on H_R. Neither completed local scene fits the ≤250k limit;
-do not trim or refit them to obtain a pass. Native viewer builds/rendering,
-reference-device measurements and remaining dependency rights are unavailable
-prerequisites here. Keep M1 IN_PROGRESS and M2–M6 unadvanced. Preserve both
-completed scenes and all failures; no solver reruns, downloads or unchanged
-sample_2 retries. Additional synthetic tests cannot substitute for this evidence.
+[Frozen portable viewer fixture](validation/2026-10-15-viewer-fixture.md) now
+provides the ≤250k viewer input without modifying either capture: four chunks,
+**250,000 SH3 splats**, MIT notice, fixed camera and hashed assets. Five CPU
+generations across GCC C++26/C++23 are byte-identical. Native 1280×720 full-count
+readback and actual GUI loading pass with zero Vulkan errors; **267 dev / 249
+C++23 CPU checks**, two cases / 54 assertions, five CLI rejects and static checks
+pass. **2,088 protected / 1,936 prior evidence / 94 production files** unchanged.
+This is a synthetic load fixture; Windows/macOS fixture execution remains
+IMPLEMENTED_UNVERIFIED, and no FPS, reconstruction or full gate is certified.
+
+Next executable step: run the [frozen fixture commands](protocols/viewer.md#frozen-portable-viewer-fixture)
+on native Windows/macOS viewer builds, retaining the same scene content hash
+`10ddfa905d3136ed8343d13393cfdab1c79cc23bfd846d23bc237793492b65ba`.
+The local bundle is `artifacts/validation/viewer-fixture-20261015/dev-checked/`;
+regenerate from source if transfer is unavailable. Record actual 720p ≥30 FPS on
+H_V/H_M separately; the load/readback helper does not measure it. Independently
+obtain the consented 20–30 s textured-room source and run the unchanged end-to-end
+pipeline on H_R. Reference machines/native GPU builds and remaining dependency
+rights are unavailable prerequisites here. Keep M1 IN_PROGRESS and M2–M6
+unadvanced; preserve both completed scenes and all failures. No refitting, solver
+reruns, downloads or unchanged sample_2 retries.
 
 [Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
 latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /

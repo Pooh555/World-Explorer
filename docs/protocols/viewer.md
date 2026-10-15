@@ -271,6 +271,57 @@ diagnostic tolerances remain PSNR ≥45 dB and maximum error ≤8 levels.
 [Clipping-boundary evidence](../validation/2026-10-15-clipping-boundaries.md)
 records the tested compiler/device scope. No real reconstruction or Q gate follows.
 
+## Frozen portable viewer fixture
+
+`we_viewer_fixture NEW_DIRECTORY` creates the project-authored MIT synthetic
+`portable_viewer_250k_v1` diagnostic. This CPU-only target is available with
+`BUILD_TESTING=ON`, including development and explicit C++23 CPU builds. The
+parent directory must exist; existing outputs are refused. Generation uses fixed
+integer indexing/binary fractions, no RNG/libm, private observations, models or
+worker execution. Four offset 250×250 layers contain exactly **250,000** anisotropic
+SH3 splats. The content hash is fixed in source:
+`10ddfa905d3136ed8343d13393cfdab1c79cc23bfd846d23bc237793492b65ba`.
+Changing the fixture requires a new version/identity, rather than a silently
+regenerated benchmark input.
+
+The generator uses normal bundle publication/loading and verifies the roundtrip.
+`scene.wexplore/`, `LICENSE` and a final atomically renamed `fixture.json` form the
+portable output. The profile binds all eight bundle/license assets by relative
+path, size and SHA-256, plus content identity, full count, camera, dimensions and
+SH degree. Scale is **ARBITRARY**, geometry/collision unavailable, and provenance
+is `synthetic_diagnostic`. Partial failed generation remains in its new output;
+retry with a fresh directory. Neither completed capture is trimmed or refitted.
+
+With native viewer dependencies available and `WE_BUILD_VIEWER=ON`, run:
+
+```sh
+build/dev/we_viewer_fixture artifacts/diagnostics/portable-v1
+build/dev/we_gpu_portable_fixture artifacts/diagnostics/portable-v1/scene.wexplore artifacts/diagnostics/portable-v1-native
+build/dev/we_viewer --scene artifacts/diagnostics/portable-v1/scene.wexplore --max-splats 250000
+```
+
+Use new output names and an existing parent. On another native build, substitute
+its executable directory/suffix. The CPU CI profile deliberately disables the
+viewer; its success does not qualify these GPU commands.
+
+`we_gpu_portable_fixture FIXED_BUNDLE NEW_DIRECTORY` requires the frozen content
+hash and bounded full bundle (four chunks, ≤250k splats, ≤128 MiB decoded payload).
+It uses ordinary asynchronous snapshot admission and captures all 250k resident
+splats at exactly 1280×720, position `(0,0,12)`, right/down/forward
+`(+X,-Y,-Z)`, intrinsics `(900,900,639.5,359.5)`, near 1/far 64. Vulkan validation
+is mandatory. A strict full RGB8 readback must have >1% foreground pixels differing
+by >8 levels from background `(11,13,16)` in any channel. The helper writes
+`fixture.ppm` and `native.json`, retaining validation, count, dimensions, device,
+readback hash and failed reports. Existing output directories remain untouched.
+The GUI's fitted spectator view is separate from this calibrated helper camera.
+
+This freezes a reproducible viewer load/readback fixture, not captured-room
+reconstruction, quality, performance or full M1 qualification. The helper reports
+no FPS pass; H_V/H_M still require actual 720p ≥30 FPS evidence. Native Windows/
+macOS fixture execution is **IMPLEMENTED_UNVERIFIED** until tested on those hosts.
+[Local verification](../validation/2026-10-15-viewer-fixture.md) records the tested
+compiler/device profile; dependency/release rights remain separately tracked.
+
 ## Synthetic floating origin
 
 `we_gpu_reference NEW_DIRECTORY --rebasing zero|positive|negative` selects a

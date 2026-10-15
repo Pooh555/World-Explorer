@@ -83,6 +83,11 @@ build/dev/we_viewer --scene artifacts/diagnostics/gaussian-fixture/scene.wexplor
 build/dev/we_gpu_smoke artifacts/diagnostics/gpu-overlap/readback.ppm
 ```
 
+A separate [frozen 250,000-splat portable fixture](docs/protocols/viewer.md#frozen-portable-viewer-fixture)
+is generated with `we_viewer_fixture` and checked with `we_gpu_portable_fixture`.
+It includes its MIT notice, fixed camera and asset hashes; all generated outputs
+belong under ignored `artifacts/`. Its load/readback check does not measure FPS.
+
 The fixture is synthetic and tests rendering only. For a real scene, `compile`
 accepts the explicitly annotated gsplat-1.5.3 ASCII PLY profile emitted by our worker:
 
