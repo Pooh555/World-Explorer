@@ -319,7 +319,9 @@ This freezes a reproducible viewer load/readback fixture, not captured-room
 reconstruction, quality, performance or full M1 qualification. The helper reports
 no FPS pass; H_V/H_M still require actual 720p ≥30 FPS evidence. Native Windows/
 macOS fixture execution is **IMPLEMENTED_UNVERIFIED** until tested on those hosts.
-[Local verification](../validation/2026-10-15-viewer-fixture.md) records the tested
+[ADR 012](../adr/012-m1-development-exit.md) schedules physical Windows/macOS
+viewer and reference-device FPS qualification in M4; M1 uses the available Linux
+load/readback evidence. [Local verification](../validation/2026-10-15-viewer-fixture.md) records the tested
 compiler/device profile; dependency/release rights remain separately tracked.
 
 ## Synthetic floating origin

@@ -3,6 +3,12 @@
 Updated 2026-10-15 (Asia/Hong_Kong). **M1: IN_PROGRESS. No M1–M6 milestone or
 Q/P/N/E requirement is fully certified. M7–M8: DEFERRED_BY_USER.**
 
+[User-approved plan v1.1](adr/012-m1-development-exit.md) changes M1 to a
+Linux development exit with hosted native CPU CI. Physical Windows/macOS viewer,
+GPU/display/input/HiDPI and the original ≤250k / 720p ≥30 FPS reference-device
+checks move to M4. Full Q/P/N/E and release requirements remain unchanged.
+M1 status stays IN_PROGRESS pending its remaining local checklist review.
+
 ## Implemented and checked
 
 Native SDL3/ImGui viewer/CLI, Vulkan anisotropic projection/radix/tile rendering,
@@ -422,17 +428,23 @@ pass. **2,088 protected / 1,936 prior evidence / 94 production files** unchanged
 This is a synthetic load fixture; Windows/macOS fixture execution remains
 IMPLEMENTED_UNVERIFIED, and no FPS, reconstruction or full gate is certified.
 
-Next executable step: run the [frozen fixture commands](protocols/viewer.md#frozen-portable-viewer-fixture)
-on native Windows/macOS viewer builds, retaining the same scene content hash
-`10ddfa905d3136ed8343d13393cfdab1c79cc23bfd846d23bc237793492b65ba`.
-The local bundle is `artifacts/validation/viewer-fixture-20261015/dev-checked/`;
-regenerate from source if transfer is unavailable. Record actual 720p ≥30 FPS on
-H_V/H_M separately; the load/readback helper does not measure it. Independently
-obtain the consented 20–30 s textured-room source and run the unchanged end-to-end
-pipeline on H_R. Reference machines/native GPU builds and remaining dependency
-rights are unavailable prerequisites here. Keep M1 IN_PROGRESS and M2–M6
-unadvanced; preserve both completed scenes and all failures. No refitting, solver
-reruns, downloads or unchanged sample_2 retries.
+Next executable step: review the retained real sample_1/sample_3 jobs against
+[plan §8.1's local M1 checklist](technical_plan.md#81-m1-development-exit-and-hardware-qualification).
+Verify the selected consented 20–30 s source/provenance, decode → poses → fit →
+bundle → Linux viewer evidence, current hosted CPU CI, four contracts/replay,
+version/license audit and reported local timings. Record satisfied items and
+precise remaining local gaps; reuse completed fits and frozen-fixture evidence.
+Mark M1 VERIFIED only after that review supports every development-exit item,
+then resume M2. Do not restart completed work to generate another success log.
+
+[Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
+for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/
+input/HiDPI and 720p ≥30 FPS on H_V/H_M. H_R P1 and other reference measurements
+stay with their assigned later gates. These remain unverified release obligations,
+not M1 hardware prerequisites. Preserve both completed scenes and all failures;
+no refitting, solver reruns, downloads or unchanged sample_2 retries. The
+[revision record](validation/2026-10-15-m1-exit-policy.md) retains authorized
+spec/runbook hash changes and the current preservation baseline.
 
 [Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
 latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /
