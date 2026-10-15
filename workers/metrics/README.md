@@ -26,8 +26,9 @@ backend or checkpoint. Parity rechecks the manifest against installed bytes befo
 loading selected tensors with `weights_only=True`, disables network connections
 and uses the explicitly selected cache. Synthetic RGB checks cover independent
 LPIPS feature/linear-weight calculations, normalization, per-image reduction and
-SSIM windows. No training, scene publication or GPU execution occurs. A real
-image-pair evaluator with predetermined dataset region/resolution is still needed.
+SSIM windows. No training, scene publication or GPU execution occurs. Retained
+real image-pair evaluation is described below; corpus and observed-region
+qualification remain pending.
 
 ## Retained image-pair evaluation
 
@@ -58,5 +59,7 @@ future checked corpus. Bounds: 120 pairs, 128 MiB encoded PNG, 16 Mi source
 pixels, 4 Mi rendered pixels and 2 GiB selected encoded bytes. Crop dimensions
 must be at least 63 for this AlexNet profile. Decoding rejects animated/alpha/
 palette/16-bit PNGs. No observed-region, independent inspection-path or Q gate
-qualification is inferred. [Real development results](../../docs/validation/2026-10-14-holdout-evaluation.md)
-record all 13 sample_1 frames and actual commands.
+qualification is inferred. [Sample_1 development results](../../docs/validation/2026-10-14-holdout-evaluation.md)
+record all 13 frames and actual commands; [replacement sample_3 checks](../../docs/validation/2026-10-15-sample3-evidence.md)
+reproduce all 16 saved scores with the current metric receipt and preserve the
+original report's separate receipt hash.

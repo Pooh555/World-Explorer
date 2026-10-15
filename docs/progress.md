@@ -52,7 +52,7 @@ source/result/scene identities and structural validation, without starting jobs.
 |---|---|
 | sample_1 | Completed 7k fit, **295,952 splats**; saved terminal/validation exits 0 and current native CLI bundle validation exit 0. Its previously inspected Source view remains available |
 | sample_2 | Saved terminal exit 2, **POSE_DISCONNECTED**, no scene. Retain failed stages; unchanged retries cannot meet registration from the retained match graph |
-| sample_3 | Source now hashes to `4448a1d9eb93f8b7fc787f9ea037d282128438a2512fad8eb8df8544f53906da`, replacing the older source identity. Saved **80 registered poses → 7k fit → 648,332 splats**, terminal/validation exits 0 and current native CLI bundle validation exit 0. This turn has not exercised its GPU viewer or evaluated its holdout |
+| sample_3 | Replacement source SHA `4448a1d9eb93f8b7fc787f9ea037d282128438a2512fad8eb8df8544f53906da`. Saved **80 registered poses → 7k fit → 648,332 splats**, terminal/validation and native bundle validation exits 0. [Current full-scene checks](validation/2026-10-15-sample3-evidence.md): native viewer 126 frames / zero Vulkan errors; three calibrated gsplat comparisons pass, maximum one RGB8 level; 16/16 offline holdout scores reproduce exactly, mean **20.8708 dB / 0.815687 SSIM / 0.253078 LPIPS**, Q3 remains blocked |
 
 The preceding sample_3 disconnected/recovery records describe the older source
 and attempt; they do not describe this completed replacement run. Historical
@@ -343,14 +343,29 @@ fails **2**; active `python3 tools/check_dependency_manifest.py --local-evidence
 passes **0**, strict closure remains **3**. No source/environment/fit changes or
 gate upgrade.
 
-Next executable task: M1 read-only verification of the completed replacement
-sample_3's retained native/reference/holdout evidence. Start with
-`artifacts/sample_3/logs/validation/{viewer.log,reference.log,holdout.json,pairs.json}`
-and bind them to the current source, fit and **648,332-splat** scene identities.
-Check existing data before generating more; report actual scope and per-frame
-results without upgrading Q/P/N/E gates. Preserve both completed scenes and all
-failed stages. No refitting, solver reruns, model downloads or unchanged sample_2
-retries; prescribed ≤250k fixture/platform/reference qualification stays open.
+[Replacement sample_3 verification](validation/2026-10-15-sample3-evidence.md)
+binds current source/fit/scene bytes to fresh native and offline checks. Saved
+reference readbacks lacked a comparison report; saved holdout's metric receipt
+is absent, although its metric identity matches the current pinned receipt.
+Fresh ignored outputs close those scoped provenance gaps: three **718×1280**
+full-scene comparisons pass at **63.08–63.13 dB / maximum one color level**,
+reference fixture/readbacks remain byte-identical, and all **16** CPU holdout
+metrics reproduce exactly. Current Source-view **126 frames / 648,332 resident
+splats / zero Vulkan errors**; screenshot inspected at **1428×868**. PSNR/LPIPS
+miss Q3 goals; independent inspection/observed regions remain absent. All
+**2,088 protected / 94 src/include files** unchanged; no refitting, solve,
+installation or download. No full gate or performance qualification change.
+
+Next executable task: strengthen M1's calibrated renderer diagnostic beyond its
+first/middle/last cameras. Extend `tests/gpu/reference.cpp` and
+`tests/gpu/compare_reference.py` to accept a bounded explicit list of original
+fit-camera indices while preserving the default three views and fixed tolerances.
+Check invalid/duplicate/out-of-range selections on CPU, then compare all **80**
+retained sample_3 cameras in fresh ignored outputs on the native device. Keep
+this separate from Q3 novelty and Q6 packing qualification. Preserve both
+completed scenes and all failed stages; no refitting, solver reruns, downloads
+or unchanged sample_2 retries. Prescribed ≤250k fixture, rights and reference/
+native platform qualification remain open.
 
 [Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
 latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /
