@@ -1,6 +1,9 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
+#if defined(WE_VULKAN_TEST_FAULTS)
+#include "vulkan_swapchain.hpp"
+#endif
 #include <SDL3/SDL.h>
 #include <fstream>
 #include <iostream>
@@ -92,12 +95,14 @@ int main(int argc, char** argv) {
         retained_camera.position = {0, 0, 4};
         const auto retained_draw = renderer->draw(retained_camera);
         require(retained_draw.has_value(), retained_draw ? "" : retained_draw.error().message);
-        SDL_SetWindowSize(window.get(), 768, 768);
+        require(SDL_SetWindowSize(window.get(), 768, 768), SDL_GetError());
+        require(SDL_SyncWindow(window.get()), SDL_GetError());
         const auto resize_rejected = renderer->draw(retained_camera);
         require(!resize_rejected &&
                     resize_rejected.error().message.find("budget") != std::string::npos,
                 "staged resize allocation failure was not reported");
-        SDL_SetWindowSize(window.get(), 512, 512);
+        require(SDL_SetWindowSize(window.get(), 512, 512), SDL_GetError());
+        require(SDL_SyncWindow(window.get()), SDL_GetError());
         require(renderer->draw(retained_camera).has_value(),
                 "previous swapchain did not render after rejected resize");
         require(renderer->updates().visible_snapshot()->revision.value == 1 &&
@@ -105,6 +110,61 @@ int main(int argc, char** argv) {
                     renderer->diagnostics().validation_errors == 0,
                 "rejected resize changed scene revision, residency or Vulkan validity");
         renderer.reset();
+#if defined(WE_VULKAN_TEST_FAULTS)
+        created = vulkan_renderer::create(window.get(), options);
+        require(created.has_value(), created ? "" : created.error().message);
+        renderer = std::move(*created);
+        auto recovery_scene = make_snapshot_batch(overlap_fixture(), {1}).value();
+        require(renderer->updates().enqueue(recovery_scene).has_value(),
+                "post-create failure fixture admission failed");
+        require(renderer->draw(retained_camera).has_value(),
+                "post-create failure fixture initial draw failed");
+        require(SDL_SetWindowSize(window.get(), 640, 360), SDL_GetError());
+        require(SDL_SyncWindow(window.get()), SDL_GetError());
+        detail::fail_next_swapchain_after_create();
+        const auto handoff_failed = renderer->draw(retained_camera);
+        require(!handoff_failed && handoff_failed.error().message.find("injected post-create") !=
+                                       std::string::npos,
+                "post-create failure was not observed");
+        require(renderer->overlay_context().image_count == 0 &&
+                    renderer->diagnostics().framebuffer_width == 0 &&
+                    renderer->updates().visible_snapshot()->revision.value == 1,
+                "retired presentation remained exposed or scene revision changed");
+        const auto recovered = renderer->draw(retained_camera);
+        require(recovered.has_value(), recovered ? "" : recovered.error().message);
+        require(renderer->diagnostics().framebuffer_width == 640 &&
+                    renderer->diagnostics().framebuffer_height == 360 &&
+                    renderer->diagnostics().resident_splat_count == 2 &&
+                    renderer->diagnostics().validation_errors == 0,
+                "post-create recovery did not render the retained scene cleanly");
+        require(SDL_ShowWindow(window.get()), SDL_GetError());
+        require(SDL_SyncWindow(window.get()), SDL_GetError());
+        require(renderer->draw(retained_camera).has_value(), "shown recovery scene draw failed");
+        require(SDL_MinimizeWindow(window.get()), SDL_GetError());
+        require(SDL_SyncWindow(window.get()), SDL_GetError());
+        SDL_PumpEvents();
+        const bool minimized_observed =
+            (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED) != 0;
+        const auto before_minimized_draw = renderer->diagnostics().submitted_frames;
+        require(renderer->draw(retained_camera).has_value(), "minimized draw failed");
+        if (minimized_observed) {
+            require(renderer->diagnostics().submitted_frames == before_minimized_draw,
+                    "minimized window submitted a GPU frame");
+            require(SDL_RestoreWindow(window.get()), SDL_GetError());
+            require(SDL_SyncWindow(window.get()), SDL_GetError());
+            SDL_PumpEvents();
+            require((SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED) == 0,
+                    "native compositor did not restore the window");
+        }
+        require(renderer->draw(retained_camera).has_value(), "restored scene draw failed");
+        require(renderer->diagnostics().validation_errors == 0 &&
+                    renderer->updates().visible_snapshot()->revision.value == 1,
+                "minimize/restore invalidated Vulkan or the retained scene");
+        require(renderer->wait_for_idle().has_value(), "post-create recovery completion failed");
+        renderer.reset();
+        require(SDL_HideWindow(window.get()), SDL_GetError());
+        require(SDL_SetWindowSize(window.get(), 512, 512), SDL_GetError());
+#endif
         created = vulkan_renderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().message);
         renderer = std::move(*created);
@@ -231,7 +291,12 @@ int main(int argc, char** argv) {
                   << static_cast<int>(pixel[1]) << ',' << static_cast<int>(pixel[2])
                   << "; replace/delete/resize passed; validation_errors=0; frames="
                   << stats.submitted_frames << "; framebuffer_bytes=" << stats.framebuffer_bytes
-                  << "; framebuffer, composition-scratch and tile-reference budgets rejected\n";
+                  << "; framebuffer, composition-scratch and tile-reference budgets rejected";
+#if defined(WE_VULKAN_TEST_FAULTS)
+        std::cout << "; post-create recovery passed; minimize/restore "
+                  << (minimized_observed ? "passed" : "denied by compositor");
+#endif
+        std::cout << '\n';
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "GPU verification failed: " << error.what() << '\n';

@@ -439,15 +439,22 @@ confirms a bounded native scratch-budget rejection preserves the previous scene
 revision and renderable swapchain; native 51-frame synthetic smoke, tile plans and
 full sample_1 windowed/4K/fullscreen/restore pass with zero Vulkan errors. The
 same-scene first full-scene attempt exposed transient scratch duplication at
-fullscreen and is retained as failing evidence. Successful `oldSwapchain` creation
-retires the old presentation before image-view/framebuffer setup finishes.
+fullscreen and is retained as failing evidence. The subsequent
+[post-create recovery](validation/2026-10-15-m2-postcreate-recovery.md) corrects
+the Vulkan rule: calling `vkCreateSwapchainKHR` with `oldSwapchain` retires the
+old presentation even on failure. An injected native post-create fault now clears
+retired handles; the next draw recreates presentation from the retained scene.
+Normal/timed smoke and full sample_1 windowed/4K/fullscreen/restore pass with
+zero Vulkan errors. This Wayland compositor denied minimization, so the
+minimized-frame skip remains IMPLEMENTED_UNVERIFIED.
 
-Next executable step: implement and inject a bounded failure **after** successful
-`vkCreateSwapchainKHR`, retain a recoverable replacement handle or recreate the
-renderer from the immutable CPU scene, then test minimize/restore and device-loss
-paths on native Vulkan. Keep current captured scenes and the frozen fixture
-untouched. VMA integration belongs later in M2's `render_vulkan` allocation work;
-pin it and preserve current byte budgets and retirement semantics.
+Next executable step: implement controlled `VK_ERROR_DEVICE_LOST` teardown and
+renderer recreation from the immutable CPU scene, then inject the loss at an
+owned GPU boundary and verify revision/readback recovery. Find a compositor that
+accepts minimize/restore for the native minimized-frame check; keep its status
+separate. Preserve current captured scenes and the frozen fixture. VMA integration
+belongs later in M2's `render_vulkan` allocation work; pin it and preserve current
+byte budgets and retirement semantics.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/
