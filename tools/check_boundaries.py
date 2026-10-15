@@ -28,7 +28,7 @@ for prefix in (ROOT / "include/world_explorer", ROOT / "src"):
                 dependency = header.split("/")[1]
                 if dependency not in ALLOWED.get(module, set()):
                     errors.append(f"{path.relative_to(ROOT)}: {module} cannot include {dependency}")
-            if module != "render_vulkan" and any(header.startswith(name) for name in ("vulkan/", "SDL3/", "torch/", "colmap/", "Jolt/")):
+            if module != "render_vulkan" and any(header.startswith(name) for name in ("vulkan/", "vk_mem_alloc.h", "SDL3/", "torch/", "colmap/", "Jolt/")):
                 errors.append(f"{path.relative_to(ROOT)}: forbidden external header {header}")
 if errors:
     print("\n".join(errors), file=sys.stderr)

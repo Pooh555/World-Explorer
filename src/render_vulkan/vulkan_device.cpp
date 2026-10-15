@@ -25,6 +25,8 @@ vulkan_device::~vulkan_device() {
         vkDeviceWaitIdle(device_);
     if (timeline_)
         vkDestroySemaphore(device_, timeline_, nullptr);
+    if (allocator_)
+        vmaDestroyAllocator(allocator_);
     if (device_)
         vkDestroyDevice(device_, nullptr);
     if (surface_)
@@ -227,7 +229,6 @@ void vulkan_device::select_physical_device() {
                     std::ranges::any_of(extensions, [](const auto& item) {
                         return std::strcmp(item.extensionName, "VK_KHR_portability_subset") == 0;
                     });
-                vkGetPhysicalDeviceMemoryProperties(physical_, &memory_properties_);
                 return;
             }
         }
@@ -275,6 +276,13 @@ void vulkan_device::create_logical_device() {
     semaphore.pNext = &type;
     detail::check(vkCreateSemaphore(device_, &semaphore, nullptr, &timeline_),
                   "create retirement timeline");
+
+    VmaAllocatorCreateInfo allocator_info{};
+    allocator_info.instance = instance_;
+    allocator_info.physicalDevice = physical_;
+    allocator_info.device = device_;
+    allocator_info.vulkanApiVersion = VK_API_VERSION_1_3;
+    detail::check(vmaCreateAllocator(&allocator_info, &allocator_), "create VMA allocator");
 }
 
 // Vulkan's distinct integer typedefs retain their native argument order at this boundary.
@@ -282,58 +290,46 @@ void vulkan_device::create_logical_device() {
 detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes, VkBufferUsageFlags usage,
                                            bool host_visible, std::size_t budget) {
     detail::gpu_buffer output;
-    output.device = device_;
     output.bytes = std::max<VkDeviceSize>(bytes, 16);
     auto info = detail::structure<VkBufferCreateInfo>(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
     info.size = output.bytes;
     info.usage = usage;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    detail::check(vkCreateBuffer(device_, &info, nullptr, &output.buffer), "create buffer");
-
-    VkMemoryRequirements requirements{};
-    vkGetBufferMemoryRequirements(device_, output.buffer, &requirements);
-    if (requirements.size > budget)
+    if (buffer_allocation_bytes({output.bytes, usage}) > budget)
         throw std::runtime_error("GPU buffer exceeds remaining residency budget");
-    const VkMemoryPropertyFlags required =
+
+    VmaAllocationCreateInfo allocation{};
+    allocation.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+    allocation.usage = VMA_MEMORY_USAGE_UNKNOWN;
+    allocation.requiredFlags =
         host_visible ? (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
                      : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    std::uint32_t memory_type = memory_properties_.memoryTypeCount;
-    for (std::uint32_t index = 0; index < memory_properties_.memoryTypeCount; ++index) {
-        if ((requirements.memoryTypeBits & (1U << index)) &&
-            (memory_properties_.memoryTypes[index].propertyFlags & required) == required) {
-            memory_type = index;
-            break;
-        }
-    }
-    if (memory_type == memory_properties_.memoryTypeCount)
-        throw std::runtime_error("no compatible Vulkan memory type");
-
-    auto allocation =
-        detail::structure<VkMemoryAllocateInfo>(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
-    allocation.allocationSize = requirements.size;
-    allocation.memoryTypeIndex = memory_type;
-    detail::check(vkAllocateMemory(device_, &allocation, nullptr, &output.memory),
-                  "allocate GPU memory");
-    output.allocation_bytes = requirements.size;
-    detail::check(vkBindBufferMemory(device_, output.buffer, output.memory, 0), "bind GPU memory");
     if (host_visible)
-        detail::check(vkMapMemory(device_, output.memory, 0, output.bytes, 0, &output.mapped),
-                      "map staging memory");
+        allocation.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    VmaAllocationInfo allocated{};
+    detail::check(vmaCreateBuffer(allocator_, &info, &allocation, &output.buffer,
+                                  &output.allocation, &allocated),
+                  "allocate GPU buffer");
+    output.allocator = allocator_;
+    output.allocation_bytes = allocated.size;
+    output.mapped = allocated.pMappedData;
+    if (host_visible && !output.mapped)
+        throw std::runtime_error("VMA did not map host-visible GPU buffer");
+    if (output.allocation_bytes > budget)
+        throw std::runtime_error("VMA allocation exceeds remaining residency budget");
     return output;
 }
 
 VkDeviceSize vulkan_device::buffer_allocation_bytes(buffer_allocation_request request) const {
-    detail::gpu_buffer buffer;
-    buffer.device = device_;
+    VkBuffer buffer{};
     auto info = detail::structure<VkBufferCreateInfo>(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
     info.size = request.bytes;
     info.usage = request.usage;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    detail::check(vkCreateBuffer(device_, &info, nullptr, &buffer.buffer),
-                  "query scratch allocation size");
+    detail::check(vkCreateBuffer(device_, &info, nullptr, &buffer), "query buffer allocation size");
     VkMemoryRequirements requirements{};
-    vkGetBufferMemoryRequirements(device_, buffer.buffer, &requirements);
+    vkGetBufferMemoryRequirements(device_, buffer, &requirements);
+    vkDestroyBuffer(device_, buffer, nullptr);
     return requirements.size;
 }
 

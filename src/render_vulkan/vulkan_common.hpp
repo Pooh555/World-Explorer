@@ -44,41 +44,6 @@ inline void check(VkResult status, const char* operation) {
         throw vulkan_error(status, operation);
 }
 
-struct gpu_buffer {
-    VkDevice device{};
-    VkBuffer buffer{};
-    VkDeviceMemory memory{};
-    VkDeviceSize bytes{};
-    VkDeviceSize allocation_bytes{};
-    void* mapped{};
-
-    gpu_buffer() = default;
-    gpu_buffer(const gpu_buffer&) = delete;
-    gpu_buffer& operator=(const gpu_buffer&) = delete;
-    gpu_buffer(gpu_buffer&& other) noexcept { swap(other); }
-    gpu_buffer& operator=(gpu_buffer&& other) noexcept {
-        gpu_buffer temporary(std::move(other));
-        swap(temporary);
-        return *this;
-    }
-    ~gpu_buffer() {
-        if (mapped)
-            vkUnmapMemory(device, memory);
-        if (buffer)
-            vkDestroyBuffer(device, buffer, nullptr);
-        if (memory)
-            vkFreeMemory(device, memory, nullptr);
-    }
-    void swap(gpu_buffer& other) noexcept {
-        std::swap(device, other.device);
-        std::swap(buffer, other.buffer);
-        std::swap(memory, other.memory);
-        std::swap(bytes, other.bytes);
-        std::swap(allocation_bytes, other.allocation_bytes);
-        std::swap(mapped, other.mapped);
-    }
-};
-
 struct gpu_splat {
     std::array<float, 4> mean_opacity, scale_degree, rotation, world_to_sh;
     std::array<float, 48> sh;

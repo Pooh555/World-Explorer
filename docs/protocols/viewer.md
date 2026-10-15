@@ -242,12 +242,18 @@ navigation state remain independent. One recreation is attempted per viewer run;
 a repeated loss ends with an explicit error. A Debug-testing-only hook reports a
 synthetic loss at the owned retirement-timeline query after draining real GPU
 submissions. It checks teardown and replay, not physical device-loss behavior.
-Actual Vulkan allocation requirements
-count toward residency; the
-reference admission calculation shares remaining capacity between frames and
-reserves one SDR screenshot readback allocation. `framebuffer_bytes` counts owned
-pixel buffers, `scratch_bytes` excludes pixels, and `allocated_bytes` includes
-tracked live/retired/staging buffers; these are not total process/device VRAM.
+VMA 3.1.0 owns each renderer buffer and its dedicated allocation through one
+allocator per Vulkan device; the allocator dies after all buffers. Host-visible
+coherent staging stays persistently mapped. Buffer requirements are checked
+before allocation and VMA's returned allocation size is charged to residency;
+an oversized allocation is freed and rejected. Dedicated memory preserves
+requirement-sized accounting while timeline retirement protects in-flight
+buffers. [ADR 013](../adr/013-vma-buffer-ownership.md) records the pooling
+trade-off. The reference admission calculation shares remaining capacity
+between frames and reserves one SDR screenshot readback allocation.
+`framebuffer_bytes` counts owned pixel buffers, `scratch_bytes` excludes pixels,
+and `allocated_bytes` includes tracked live/retired/staging buffers; these are
+not total process/device VRAM.
 Dimensions, storage/dispatch/shared-memory limits, 128-byte push constants and ten
 storage-buffer descriptors per stage/set are checked explicitly.
 

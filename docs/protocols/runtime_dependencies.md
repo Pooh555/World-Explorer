@@ -7,8 +7,12 @@ entries and seven selected worker extensions. The
 byte identities, DT_NEEDED/RPATH/RUNPATH/SONAME metadata, loader resolutions,
 dependency edges, system ownership/notices and local interpreter metadata.
 The full raw receipt and command outputs stay ignored under `artifacts/`.
-The [source gap inventory](../../third_party/dependency-audit-20261014.json) binds
+The [source gap inventory](../../third_party/dependency-audit-20261015.json) binds
 this supplement; original wheel, source, model and rights gaps remain open.
+The VMA viewer rebuild changed the two selected development binaries
+`build/dev/we_process` and `build/dev/we_viewer`; the retained runtime receipt
+predates those bytes, so its full local check currently exits 2. Refresh the
+runtime observation after the renderer implementation is frozen.
 
 Run from the repository root with a new output name:
 
@@ -16,9 +20,9 @@ Run from the repository root with a new output name:
 python3 tools/audit_runtime_dependencies.py \
   --selection third_party/runtime-selection-20261014.json \
   --output artifacts/runtime-audit/run-001.json --require-resolved
-python3 tools/check_dependency_manifest.py
-python3 tools/check_dependency_manifest.py --local-evidence
-python3 tools/check_dependency_manifest.py --local-evidence --require-closure
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-20261015.json
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-20261015.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-20261015.json --local-evidence --require-closure
 ```
 
 Capture requires Linux ELF64 x86-64, the selected GNU readelf/glibc loader and

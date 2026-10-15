@@ -1,6 +1,7 @@
 #ifndef WORLD_EXPLORER_RENDER_VULKAN_DEVICE_HPP
 #define WORLD_EXPLORER_RENDER_VULKAN_DEVICE_HPP
 
+#include "vulkan_buffer.hpp"
 #include "vulkan_common.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include <SDL3/SDL.h>
@@ -46,9 +47,6 @@ class vulkan_device {
     VkDevice device() const noexcept { return device_; }
     VkQueue queue() const noexcept { return queue_; }
     std::uint32_t queue_family() const noexcept { return queue_family_; }
-    VkPhysicalDeviceMemoryProperties memory_properties() const noexcept {
-        return memory_properties_;
-    }
     VkPhysicalDeviceProperties properties() const noexcept { return properties_; }
     VkSemaphore timeline() const noexcept { return timeline_; }
 
@@ -71,7 +69,7 @@ class vulkan_device {
     VkDevice device_{};
     VkQueue queue_{};
     std::uint32_t queue_family_{};
-    VkPhysicalDeviceMemoryProperties memory_properties_{};
+    VmaAllocator allocator_{};
     VkPhysicalDeviceProperties properties_{};
     VkSemaphore timeline_{};
 };
