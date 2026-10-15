@@ -434,13 +434,20 @@ pass. **2,088 protected / 1,936 prior evidence / 94 production files** unchanged
 This is a synthetic load fixture; Windows/macOS fixture execution remains
 IMPLEMENTED_UNVERIFIED, and no FPS, reconstruction or full gate is certified.
 
-Next executable step: M2 swapchain recovery. The [entry check](validation/2026-10-15-m2-swapchain-entry.md)
-confirms native replace/delete/resize at 51 frames/zero Vulkan errors, then finds
-that resize destroys the old presentation and scratch before the replacement is
-fully admitted. Stage replacement resources without losing the last renderable
-revision on failure; add bounded native failure injection and
-resize/minimize/restore checks. Keep current captured scenes and the frozen
-fixture untouched.
+M2 swapchain recovery is **IN_PROGRESS**. The [staged-resize check](validation/2026-10-15-m2-swapchain-recovery.md)
+confirms a bounded native scratch-budget rejection preserves the previous scene
+revision and renderable swapchain; native 51-frame synthetic smoke, tile plans and
+full sample_1 windowed/4K/fullscreen/restore pass with zero Vulkan errors. The
+same-scene first full-scene attempt exposed transient scratch duplication at
+fullscreen and is retained as failing evidence. Successful `oldSwapchain` creation
+retires the old presentation before image-view/framebuffer setup finishes.
+
+Next executable step: implement and inject a bounded failure **after** successful
+`vkCreateSwapchainKHR`, retain a recoverable replacement handle or recreate the
+renderer from the immutable CPU scene, then test minimize/restore and device-loss
+paths on native Vulkan. Keep current captured scenes and the frozen fixture
+untouched. VMA integration belongs later in M2's `render_vulkan` allocation work;
+pin it and preserve current byte budgets and retirement semantics.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

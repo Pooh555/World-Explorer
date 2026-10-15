@@ -80,6 +80,31 @@ int main(int argc, char** argv) {
         require(!scratch_rejected &&
                     scratch_rejected.error().message.find("buffer") != std::string::npos,
                 "composition scratch escaped the residency budget");
+        constrained = options;
+        constrained.residency_bytes = initial.allocated_bytes + std::size_t{8} * 1024 * 1024;
+        created = vulkan_renderer::create(window.get(), constrained);
+        require(created.has_value(), created ? "" : created.error().message);
+        renderer = std::move(*created);
+        auto retained = make_snapshot_batch(overlap_fixture(), {1}).value();
+        require(renderer->updates().enqueue(retained).has_value(),
+                "resize failure fixture admission failed");
+        camera_view retained_camera;
+        retained_camera.position = {0, 0, 4};
+        const auto retained_draw = renderer->draw(retained_camera);
+        require(retained_draw.has_value(), retained_draw ? "" : retained_draw.error().message);
+        SDL_SetWindowSize(window.get(), 768, 768);
+        const auto resize_rejected = renderer->draw(retained_camera);
+        require(!resize_rejected &&
+                    resize_rejected.error().message.find("budget") != std::string::npos,
+                "staged resize allocation failure was not reported");
+        SDL_SetWindowSize(window.get(), 512, 512);
+        require(renderer->draw(retained_camera).has_value(),
+                "previous swapchain did not render after rejected resize");
+        require(renderer->updates().visible_snapshot()->revision.value == 1 &&
+                    renderer->diagnostics().resident_splat_count == 2 &&
+                    renderer->diagnostics().validation_errors == 0,
+                "rejected resize changed scene revision, residency or Vulkan validity");
+        renderer.reset();
         created = vulkan_renderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().message);
         renderer = std::move(*created);

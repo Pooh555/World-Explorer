@@ -4,6 +4,7 @@
 #include <limits>
 #include <ranges>
 #include <stdexcept>
+#include <utility>
 
 namespace world_explorer {
 
@@ -12,29 +13,80 @@ vulkan_swapchain::vulkan_swapchain(vulkan_device& device, VkSurfaceKHR surface,
     : device_(device.device()), physical_device_(device.physical_device()), surface_(surface),
       preferred_format_(preferred_format) {}
 
+vulkan_swapchain::vulkan_swapchain(const vulkan_swapchain& source, bool /*staged*/)
+    : device_(source.device_), physical_device_(source.physical_device_), surface_(source.surface_),
+      render_pass_(source.render_pass_),
+      preferred_format_(source.format_ == VK_FORMAT_UNDEFINED ? source.preferred_format_
+                                                              : source.format_),
+      owns_render_pass_(source.render_pass_ == VK_NULL_HANDLE) {}
+
 vulkan_swapchain::~vulkan_swapchain() {
     cleanup();
-    if (render_pass_)
+    if (render_pass_ && owns_render_pass_)
         vkDestroyRenderPass(device_, render_pass_, nullptr);
 }
 
-bool vulkan_swapchain::create(SDL_Window* window) {
+VkExtent2D vulkan_swapchain::extent_for_window(SDL_Window* window) const {
     int width = 0, height = 0;
     if (!SDL_GetWindowSizeInPixels(window, &width, &height))
         throw std::runtime_error(SDL_GetError());
     if (width <= 0 || height <= 0)
-        return false;
-
-    if (swapchain_) {
-        detail::check(vkDeviceWaitIdle(device_), "wait for swapchain resize");
-        cleanup();
-    }
+        return {};
 
     // Vulkan fills every field before any enum is inspected.
     // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization)
     VkSurfaceCapabilitiesKHR supported{};
     detail::check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device_, surface_, &supported),
                   "query surface capabilities");
+    auto requested = supported.currentExtent;
+    if (requested.width == std::numeric_limits<std::uint32_t>::max()) {
+        requested = {std::clamp(static_cast<std::uint32_t>(width), supported.minImageExtent.width,
+                                supported.maxImageExtent.width),
+                     std::clamp(static_cast<std::uint32_t>(height), supported.minImageExtent.height,
+                                supported.maxImageExtent.height)};
+    }
+    return requested;
+}
+
+bool vulkan_swapchain::create(SDL_Window* window, std::optional<VkExtent2D> expected_extent) {
+    const auto requested_extent = extent_for_window(window);
+    if (!requested_extent.width || !requested_extent.height)
+        return false;
+    if (expected_extent && (requested_extent.width != expected_extent->width ||
+                            requested_extent.height != expected_extent->height))
+        throw std::runtime_error("surface extent changed during swapchain preparation");
+
+    if (swapchain_)
+        detail::check(vkDeviceWaitIdle(device_), "wait for swapchain resize");
+    vulkan_swapchain next(*this, true);
+    next.create_resources(requested_extent, swapchain_);
+    cleanup();
+    swapchain_ = std::exchange(next.swapchain_, VK_NULL_HANDLE);
+    format_ = next.format_;
+    extent_ = next.extent_;
+    minimum_images_ = next.minimum_images_;
+    screenshot_supported_ = next.screenshot_supported_;
+    images_.swap(next.images_);
+    views_.swap(next.views_);
+    framebuffers_.swap(next.framebuffers_);
+    present_semaphores_.swap(next.present_semaphores_);
+    if (!render_pass_) {
+        render_pass_ = std::exchange(next.render_pass_, VK_NULL_HANDLE);
+        owns_render_pass_ = true;
+    }
+    return true;
+}
+
+void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchainKHR old_swapchain) {
+    // Vulkan fills every field before any enum is inspected.
+    // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization)
+    VkSurfaceCapabilitiesKHR supported{};
+    detail::check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device_, surface_, &supported),
+                  "query surface capabilities");
+    if (supported.currentExtent.width != std::numeric_limits<std::uint32_t>::max() &&
+        (supported.currentExtent.width != requested_extent.width ||
+         supported.currentExtent.height != requested_extent.height))
+        throw std::runtime_error("surface extent changed during swapchain preparation");
 
     std::uint32_t count = 0;
     detail::check(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device_, surface_, &count, nullptr),
@@ -54,13 +106,7 @@ bool vulkan_swapchain::create(SDL_Window* window) {
             "surface has no SDR UNORM format for display-encoded Gaussian compositing");
 
     format_ = preferred_format_ == VK_FORMAT_UNDEFINED ? selected->format : preferred_format_;
-    extent_ = supported.currentExtent;
-    if (extent_.width == std::numeric_limits<std::uint32_t>::max()) {
-        extent_ = {std::clamp(static_cast<std::uint32_t>(width), supported.minImageExtent.width,
-                              supported.maxImageExtent.width),
-                   std::clamp(static_cast<std::uint32_t>(height), supported.minImageExtent.height,
-                              supported.maxImageExtent.height)};
-    }
+    extent_ = requested_extent;
     minimum_images_ = std::max(2U, supported.minImageCount);
     std::uint32_t image_count = minimum_images_ + 1;
     if (supported.maxImageCount)
@@ -93,6 +139,8 @@ bool vulkan_swapchain::create(SDL_Window* window) {
     }
     info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     info.clipped = VK_TRUE;
+    // This surface requires a handoff; a successful create retires old presentation.
+    info.oldSwapchain = old_swapchain;
     detail::check(vkCreateSwapchainKHR(device_, &info, nullptr, &swapchain_), "create swapchain");
 
     detail::check(vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, nullptr),
@@ -167,7 +215,6 @@ bool vulkan_swapchain::create(SDL_Window* window) {
                       "create per-image present semaphore");
         present_semaphores_.push_back(finished);
     }
-    return true;
 }
 
 void vulkan_swapchain::cleanup() {
