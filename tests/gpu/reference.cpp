@@ -1,5 +1,6 @@
 #include "clipping_fixture.hpp"
 #include "fit_view_selection.hpp"
+#include "rebasing_fixture.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
@@ -273,7 +274,10 @@ int main(int argc, char** argv) {
             --argc;
         const bool explicit_indices = argc == 7 && std::string_view(argv[5]) == "--fit-indices";
         const bool real = (argc == 5 || explicit_indices) && std::string_view(argv[2]) == "--real";
-        require(real || argc == 2 ||
+        const bool rebasing = argc == 4 && std::string_view(argv[2]) == "--rebasing";
+        auto offset = rebasing_offset(rebasing ? argv[3] : "zero");
+        require(offset.has_value(), offset ? "" : offset.error().message);
+        require(real || rebasing || argc == 2 ||
                     (argc == 3 && (std::string_view(argv[2]) == "--compositing" ||
                                    std::string_view(argv[2]) == "--termination" ||
                                    std::string_view(argv[2]) == "--batches" ||
@@ -281,6 +285,7 @@ int main(int argc, char** argv) {
                                    std::string_view(argv[2]) == "--batches-bounded")),
                 "usage: we_gpu_reference <new output directory> "
                 "[--compositing|--termination|--batches|--batches-bounded|--clipping] or "
+                "--rebasing zero|positive|negative or "
                 "we_gpu_reference <new output directory> --real <scene bundle> <completed fit>; "
                 "optionally --fit-indices 0,1,... for original fit cameras; "
                 "append --timings for completed GPU/CPU timing checks");
@@ -296,6 +301,11 @@ int main(int argc, char** argv) {
                                : batches     ? batch_fixture()
                                : compositing ? compositing_fixture(termination)
                                              : fixture();
+        if (rebasing) {
+            auto translated = rebasing_fixture(*offset);
+            require(translated.has_value(), translated ? "" : translated.error().message);
+            scene = *translated;
+        }
         std::uint32_t image_width = WIDTH, image_height = HEIGHT;
         json fit_frames, identity;
         std::vector<std::size_t> fit_indices;
@@ -448,6 +458,19 @@ int main(int argc, char** argv) {
                 camera.position = {0.2, 0.1, 2.8};
             if (clipping)
                 camera = clipping_camera();
+            if (rebasing) {
+                if (name == "translated")
+                    camera.position = {-0.25, 0.125, 6.5};
+                const auto translated = translated_diagnostic_position(camera.position, *offset);
+                require(translated.has_value(), translated ? "" : translated.error().message);
+                camera.position = *translated;
+                if (name == "translated") {
+                    // Cross the renderer's 10k reupload threshold, then return.
+                    auto excursion = camera;
+                    excursion.position.x += 16384;
+                    require(renderer->draw(excursion).has_value(), "rebase excursion failed");
+                }
+            }
             std::size_t fit_index = 0;
             if (real) {
                 fit_index = fit_indices[view_index];
@@ -514,6 +537,7 @@ int main(int argc, char** argv) {
         json diagnostic = {
             {"schema", real ? 2 : 1},
             {"label", real ? "real calibrated retained fit; no quality/performance certification"
+                      : rebasing ? "synthetic floating origin translation v1; not a capture"
                       : clipping ? "synthetic inclusive clipping float neighbors v1; not a capture"
                       : batches  ? "synthetic tile batches v1; not a capture"
                       : termination ? "synthetic exclusive termination v1; not a capture"
@@ -533,6 +557,12 @@ int main(int argc, char** argv) {
             diagnostic["render_origin"] = views.at(0).at("position");
             diagnostic["row_format"] =
                 "little-endian float32[60]: mean3,scale3,wxyz4,opacity,sh48,degree";
+        }
+        if (rebasing) {
+            diagnostic["rebasing_case"] = argv[3];
+            diagnostic["world_offset"] = vector(*offset);
+            diagnostic["render_origin"] = views.at(0).at("position");
+            diagnostic["rebase_excursion"] = 16384;
         }
         write_json(output / "fixture.json", diagnostic);
         write_json(output / "native.json",

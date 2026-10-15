@@ -391,16 +391,26 @@ pass. **2,088 protected / 1,206 preceding evidence / 94 src/include files**
 unchanged. No production renderer/shader, recipe, environment or fit changes;
 the diagnostic remains synthetic and no full gate is upgraded.
 
-Next executable task: verify M1's floating-origin coordinate promise with a
-separate labeled synthetic translation/rebase diagnostic. Inspect scene upload
-rebasing and affine camera push rows, then translate scene and cameras together
-by large finite double world offsets. Compare baseline/translated views and
-pinned gsplat with unchanged **≥45 dB / ≤8-level** limits; cover nonfinite/
-unrepresentable admission on CPU. Keep original fixtures and both completed
-scenes intact, use fresh ignored outputs, and retain every failure. This tests
-coordinate correctness, not M5 streaming or Q6 packing. No refitting, solver
-reruns, downloads or unchanged sample_2 retries. M1's prescribed ≤250k fixture,
-rights and reference/native platform qualification remain open.
+[Synthetic floating-origin evidence](validation/2026-10-15-floating-origin.md):
+12 new comparisons at zero/positive/negative billion-unit offsets pass at
+**≥72.9237 dB / maximum one RGB8 level**. Native and both reference image forms
+are byte-identical across offsets; a 16,384-unit excursion/return exercises
+accepted-scene rebasing. **2 C++ cases / 222 assertions**, **32 Python cases**,
+**265 dev / 247 C++23 CPU checks** pass. Default/clipping/full sample_3 regressions,
+format/tidy/docs/boundaries and preservation of **2,088 protected / 1,531 preceding
+evidence / 94 production files** pass. No renderer/shader, fit or environment change;
+no full gate upgrade.
+
+Next executable step: close M1's external qualification prerequisites, starting
+with the latest repaired native Windows CPU run (`cmake --build --preset
+compat-cxx23 -j 4`, then `ctest --preset compat-cxx23`; the local CPU profile now
+has 247 checks). Inspect actual new logs before declaring that platform repaired.
+The prescribed consented 20–30 s room fixture, ≤250k fixture/native 720p ≥30 FPS
+on H_V/H_M and H_R end-to-end measurements, native macOS/viewer results and
+remaining dependency rights are still unqualified. This host cannot certify those
+machines; additional synthetic tests cannot replace them. Keep M1 IN_PROGRESS
+and M2–M6 unadvanced. Preserve both completed scenes and all failures; no refitting,
+solver reruns, downloads or unchanged sample_2 retries.
 
 [Windows loader-path roundtrip repair](validation/2026-10-15-windows-runtime-roundtrip.md):
 latest supplied C++23 CPU run **240/241**, Python 3.14.7 worker suite seven errors /
