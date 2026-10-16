@@ -604,16 +604,25 @@ queued updates, frame slots and screenshots. A short native reproducer first
 fails with the original error; repaired GCC/Clang Debug and Release smoke plus
 full saved-scene resize regression pass with zero Vulkan errors. **273/273** dev
 CPU checks and format/tidy pass. **The user requested no two-hour rerun; none was
-started.** Packed two-hour qualification remains IMPLEMENTED_UNVERIFIED; the
-completed FP32 lifetime result retains its original scope.
+started.** The user subsequently accepted this evidence as **VERIFIED for the
+local packed lifetime development check**, per [ADR 015](adr/015-packed-lifetime-development-acceptance.md).
+The interrupted duration and exit remain recorded; the completed FP32 lifetime
+result retains its original scope. Full two-hour packed completion is not claimed.
 
-Next executable step: refresh selected runtime/owner receipts for the rebuilt
-renderer and changed package-query-tool bytes. The current local inventory check
-exits 2 at owner-tool identity; fresh `owners-current.json` confirms unchanged
-associations/ELF/notices with only the query-tool hash differing. Preserve all
-historical receipts, failed-run logs/captures and saved scenes. Q6's prescribed
-100-view captured-target fixture, scale/corpus/platforms and full gates remain
-open; do not rerun the long stress or reconstruction.
+[Current runtime refresh](validation/2026-10-16-acquire-runtime-refresh.md):
+new loader/native-viewer/owner receipts pass default and full local inventory
+checks. The viewer completes 900 frames with zero Vulkan errors. Current loader
+scope is 15 roots/213 files; five mapped contexts retain 208 files and 137 owner
+targets/16 groups/30 notices. FreeType/glycin and query-tool drift are recorded;
+old receipts remain intact. Strict closure still exits 3 for 253 source/rights gaps.
+
+Next executable step: instrument native SDL event-to-camera-state timing for N1,
+then measure compositor-delivered movement/look events on the full sample_1 scene
+with explicit clock/domain, event counts and p50/p95/p99. Inspect the current
+`apps/we_viewer/main.cpp` event loop and existing native-input evidence first;
+trace flush/readback timings cannot qualify latency. Q6's prescribed 100-view
+captured-target fixture, scale/corpus/platforms and full gates remain open. Preserve
+all saved runs and sources; do not rerun the long stress or reconstruction.
 Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
 other-scene/platform qualification remain open.
 

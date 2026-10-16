@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "loader": "/usr/lib/ld-linux-x86-64.so.2",
+  "readelf": "/usr/bin/readelf",
+  "package_tool": "/usr/bin/pacman",
+  "roots": [
+    {
+      "id": "viewer",
+      "path": "build/dev/we_viewer",
+      "sha256": "e1225120f890193bd7cfa49c4f963f83eb2a9b9006500b272d168f6967094dcc",
+      "scope": "native-default-loader",
+      "library_path": []
+    },
+    {
+      "id": "cli",
+      "path": "build/dev/we_process",
+      "sha256": "2310fcc3454afcd35250fc96f23302d2b4d114632e614d2d93fd49cc8b9f299b",
+      "scope": "native-default-loader",
+      "library_path": []
+    },
+    {
+      "id": "ffmpeg",
+      "path": "/usr/bin/ffmpeg",
+      "sha256": "ba5be4f60d2ec3ab668e3d60a1092f65ad2697957c2319dcbfb056ae58202c46",
+      "scope": "native-default-loader",
+      "library_path": []
+    },
+    {
+      "id": "ffprobe",
+      "path": "/usr/bin/ffprobe",
+      "sha256": "b9170e6e9da249120590cb6c76064d38295b3beb65615b73db7c1d9148884f99",
+      "scope": "native-default-loader",
+      "library_path": []
+    },
+    {
+      "id": "system-python",
+      "path": "/usr/bin/python3",
+      "sha256": "375532f83be620283ab780c14ca6bcc5907dc379d2b621de0c5d0a112cf5458b",
+      "scope": "native-default-loader",
+      "library_path": []
+    },
+    {
+      "id": "training-python",
+      "path": ".venv-train/bin/python",
+      "sha256": "473dd9c9a03e0b41ba35f986afd9bb13162d7ac7aa5d44d4dfdf75a2e19c9989",
+      "scope": "interpreter-default-loader",
+      "library_path": [],
+      "interpreter_metadata": {
+        "pyvenv_cfg": ".venv-train/pyvenv.cfg",
+        "build_stamp": ".deps/python/cpython-3.10.22-linux-x86_64-gnu/BUILD",
+        "notice": ".deps/python/cpython-3.10.22-linux-x86_64-gnu/lib/python3.10/LICENSE.txt"
+      }
+    },
+    {
+      "id": "poses-python",
+      "path": ".venv-worker/bin/python",
+      "sha256": "0886fb76ceec8ff568d23079b5da6342bb41675e216e11525d4d6a9e65988d10",
+      "scope": "interpreter-default-loader",
+      "library_path": [],
+      "interpreter_metadata": {
+        "pyvenv_cfg": ".venv-worker/pyvenv.cfg",
+        "build_stamp": ".deps/python/cpython-3.12.15-linux-x86_64-gnu/BUILD",
+        "notice": ".deps/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/LICENSE.txt"
+      }
+    },
+    {
+      "id": "metrics-cpu-python",
+      "path": ".venv-metrics/bin/python",
+      "sha256": "473dd9c9a03e0b41ba35f986afd9bb13162d7ac7aa5d44d4dfdf75a2e19c9989",
+      "scope": "interpreter-default-loader",
+      "library_path": [],
+      "interpreter_metadata": {
+        "pyvenv_cfg": ".venv-metrics/pyvenv.cfg",
+        "build_stamp": ".deps/python/cpython-3.10.22-linux-x86_64-gnu/BUILD",
+        "notice": ".deps/python/cpython-3.10.22-linux-x86_64-gnu/lib/python3.10/LICENSE.txt"
+      }
+    },
+    {
+      "id": "training-gsplat-csrc.so",
+      "path": ".venv-train/lib/python3.10/site-packages/gsplat/csrc.so",
+      "sha256": "0f7b08596b25643b92809d17f9d96494c3ce12f29c948c9b7034ba330999cfda",
+      "scope": "extension-with-declared-library-path",
+      "library_path": [
+        ".venv-train/lib/python3.10/site-packages/torch/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cublas/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cuda_cupti/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cuda_runtime/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cudnn/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cufft/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/curand/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cusolver/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cusparse/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/nccl/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/nvjitlink/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/nvtx/lib"
+      ]
+    },
+    {
+      "id": "training-pycolmap-_core.cpython-310-x86_64-linux-gnu.so",
+      "path": ".venv-train/lib/python3.10/site-packages/pycolmap/_core.cpython-310-x86_64-linux-gnu.so",
+      "sha256": "9c27e6272f8ecf726a6fc10b1e5f9d452774e561b97f0660731ff21381a90409",
+      "scope": "extension-with-declared-library-path",
+      "library_path": []
+    },
+    {
+      "id": "training-torch-_C.cpython-310-x86_64-linux-gnu.so",
+      "path": ".venv-train/lib/python3.10/site-packages/torch/_C.cpython-310-x86_64-linux-gnu.so",
+      "sha256": "1c5e0d6a312a59dc2c8587eac79ffa3eedcc416e79d1b688cbaf2fff02278472",
+      "scope": "extension-with-declared-library-path",
+      "library_path": [
+        ".venv-train/lib/python3.10/site-packages/torch/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cublas/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cuda_cupti/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cuda_runtime/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cudnn/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cufft/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/curand/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cusolver/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/cusparse/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/nccl/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/nvjitlink/lib",
+        ".venv-train/lib/python3.10/site-packages/nvidia/nvtx/lib"
+      ]
+    },
+    {
+      "id": "training-triton-libproton.so",
+      "path": ".venv-train/lib/python3.10/site-packages/triton/_C/libproton.so",
+      "sha256": "56b9f883c21b8b6f61d2fd7adc6dffa3c74e6f7450a0818946476f5febd5a433",
+      "scope": "extension-with-declared-library-path",
+      "library_path": []
+    },
+    {
+      "id": "training-triton-libtriton.so",
+      "path": ".venv-train/lib/python3.10/site-packages/triton/_C/libtriton.so",
+      "sha256": "c4fbb6dc0b671e87d481c603d04b5fdb77d61a4030c63723ffaa1b0c9f8589e5",
+      "scope": "extension-with-declared-library-path",
+      "library_path": []
+    },
+    {
+      "id": "poses-pycolmap-_core.cpython-312-x86_64-linux-gnu.so",
+      "path": ".venv-worker/lib/python3.12/site-packages/pycolmap/_core.cpython-312-x86_64-linux-gnu.so",
+      "sha256": "4dfff8d1530cb9c299b61988b4d265c0d0bef63b6aac8a800cb17601ecbf60b3",
+      "scope": "extension-with-declared-library-path",
+      "library_path": []
+    },
+    {
+      "id": "metrics-cpu-torch-_C.cpython-310-x86_64-linux-gnu.so",
+      "path": ".venv-metrics/lib/python3.10/site-packages/torch/_C.cpython-310-x86_64-linux-gnu.so",
+      "sha256": "e63a390eb8480ff250bdc5edefaed0bb6a00d902782b2611742cd6c6e03b333f",
+      "scope": "extension-with-declared-library-path",
+      "library_path": [
+        ".venv-metrics/lib/python3.10/site-packages/torch/lib"
+      ]
+    }
+  ],
+  "worker_receipts": [
+    {
+      "prefix": ".venv-train",
+      "receipt": "artifacts/validation/worker-identity-20261013/training-release.json"
+    },
+    {
+      "prefix": ".venv-worker",
+      "receipt": "artifacts/validation/worker-identity-20261013/poses-release.json"
+    },
+    {
+      "prefix": ".venv-metrics",
+      "receipt": "artifacts/validation/metric-identity-20261014/evaluation-metrics.json"
+    }
+  ]
+}

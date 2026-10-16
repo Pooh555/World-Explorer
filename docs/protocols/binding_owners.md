@@ -1,7 +1,7 @@
 # Installed ownership of newly observed libraries
 
-[Current owner summary](../../third_party/binding-owners-packing-20261016.json) associates the
-**160 `baseline_unseen` ELF files** from the [mapping supplement](backend_bindings.md)
+[Current owner summary](../../third_party/binding-owners-acquire-20261016.json) associates the
+**137 `baseline_unseen` ELF files** from the [mapping supplement](backend_bindings.md)
 with installed worker distributions or system packages. The preceding loader and
 mapping receipts remain historical, independently bound records. This supplement
 does not establish original archive/source identity, bundled-component terms or
@@ -11,14 +11,14 @@ From the repository root, using a fresh ignored output:
 
 ```sh
 python3 tools/audit_binding_owners.py \
-  --mapping third_party/backend-bindings-packing-20261016.json \
-  --selection third_party/runtime-selection-packing-20261016.json \
+  --mapping third_party/backend-bindings-acquire-20261016.json \
+  --selection third_party/runtime-selection-acquire-20261016.json \
   --output artifacts/binding-owners/run-001.json
 python3 tools/audit_binding_owners.py \
-  --summary third_party/binding-owners-packing-20261016.json
+  --summary third_party/binding-owners-acquire-20261016.json
 python3 tools/audit_binding_owners.py \
-  --summary third_party/binding-owners-packing-20261016.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-packing-20261016.json
+  --summary third_party/binding-owners-acquire-20261016.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-acquire-20261016.json
 ```
 
 Capture requires Linux and the selected Arch package database. It hashes exactly
@@ -68,8 +68,9 @@ The [runtime refresh](../validation/2026-10-15-runtime-refresh.md) now supplies
 those fresh observations. Active full local checking passes with its new records;
 the old summaries and raw receipts remain available with their historical scope.
 
-The [renderer refresh](../validation/2026-10-16-packing-runtime-refresh.md) records
-160 targets in 31 installed groups with 41 notices. Fresh local recapture checks
-all current associations; additional viewer mappings are retained. The original
-137-target/16-group/30-notice evidence stays historical, including its explicit
-archive/terms gaps. No native platform or redistribution qualification follows.
+The [current renderer refresh](../validation/2026-10-16-acquire-runtime-refresh.md)
+records 137 targets in 16 installed groups with 30 notices and freshly binds the
+package-query-tool bytes. Current local recapture checks all associations. The
+preceding [broader observation](../validation/2026-10-16-packing-runtime-refresh.md)
+retains its 160-target/31-group/41-notice scope. Archive/terms gaps stay explicit;
+no native platform or redistribution qualification follows.
