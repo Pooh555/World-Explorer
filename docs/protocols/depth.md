@@ -20,8 +20,10 @@ canonical pose-file SHA-256, original observation-image SHA-256, calibrated
 image SHA-256 and recipe SHA-256. The calibrated hash identifies the actual dense
 input image; it is distinct from the source observation. The expected grid,
 intrinsics, producer and recipe must come from checked dense-input preparation,
-independently of the asset being admitted. Such preparation remains pending;
-copying the asset's own metadata into the expectation proves no calibration.
+independently of the asset being admitted. The [native dense-input preparation](dense_inputs.md) now supplies that domain
+from retained inputs; copying the asset's own metadata into the expectation proves
+no calibration. Its preprocessing and full selected depth-recipe hashes are
+separate; only the latter becomes the expected depth recipe dependency.
 
 `admit_depth_asset` checks all metadata against this expectation. Wrong epoch
 returns `WRONG_EPOCH`, wrong revision `WRONG_BASE`, and a different pose-file hash

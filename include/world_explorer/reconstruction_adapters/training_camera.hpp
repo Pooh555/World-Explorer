@@ -12,6 +12,7 @@ struct training_camera {
     // from the distorted capture calibration and its image domain.
     pinhole_camera camera;
     std::uint32_t width{}, height{};
+    std::uint32_t backend_camera_id{};
 };
 // Checked, bounded COLMAP binary interchange: one SIMPLE_PINHOLE/PINHOLE
 // camera only. No solver/SDK linkage, side effects or fallback to capture intrinsics.

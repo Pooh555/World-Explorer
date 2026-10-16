@@ -227,3 +227,8 @@ links with `python3 tools/check_docs.py`.
 Depth interchange diagnostics: `build/dev/we_process inspect-depth INPUT.wedepth SHA256`
 checks format and provenance fields only. Dense reconstruction and walking remain
 unavailable; see the [depth contract](docs/protocols/depth.md).
+
+Retained calibrated inputs can be prepared with `we_process prepare-dense`; see
+the [native dense-input contract](docs/protocols/dense_inputs.md) for arguments,
+recipe pins and grid limits. This command verifies and publishes input metadata;
+it does not compute depth or change the saved scene.

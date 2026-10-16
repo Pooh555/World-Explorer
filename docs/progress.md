@@ -17,9 +17,8 @@ connection experiments. [Rescheduling checks](validation/2026-10-17-assets-befor
 do not qualify the pipeline; the [original planning report](validation/2026-10-17-offline-asset-planning.md)
 retains the superseded after-M6 schedule. No dependencies/models installed,
 reconstructions run or media uploaded. M1–M6 retain relative order and thresholds;
-native/reference release evidence remains due by M6. Next implementation work
-remains the M3 dense-input preparation specified below; this documentation task
-does not execute it.
+native/reference release evidence remains due by M6. M3 now includes the checked
+native dense-input preparation described below; the asset track remains unstarted.
 
 [User-approved plan v1.1](adr/012-m1-development-exit.md) changes M1 to a
 Linux development exit with hosted native CPU CI. Physical Windows/macOS viewer,
@@ -686,16 +685,29 @@ are unchanged. Shared file I/O moves into core with its package/update coverage
 scope preserved. Rebuilt binaries make the dated runtime receipt's current-byte
 check fail with exit 2; fresh runtime observation remains due.
 
-Next executable step (M3): implement checked dense-input preparation from saved
-sample_1 poses/undistorted images, emitting a pinned frame/calibration/image/recipe
-manifest that supplies `depth_asset_metadata` independently of depth output.
-Verify the grid's pixel-center/resize/undistortion correspondence before running
-an isolated, qualified MVS worker. Keep the existing CPU pose/training environments
-unchanged; current pycolmap's `has_cuda=false` is a package limit, not GPU absence.
-V1 depth interchange is uncompressed and arbitrary-scale; zstd scene storage,
-real MVS/fusion, measured scale, collision, walking and mesh export remain open.
-Preserve sample_2's failed stages and both frozen fixtures; no unchanged solve,
-refit or long-stress rerun.
+[Checked dense-input preparation](validation/2026-10-17-dense-inputs.md) now
+pins canonical/decode/model/image identities and the selected full depth recipe,
+checks native calibrated grids/poses, publishes exclusively, and independently
+reloads expectations for depth admission. All **63 sample_1 frames / 4104×2208**
+prepare without a solve or resample. Independent pycolmap/Pillow checks decode
+126 images and verify 7,623 sampled undistortion points at maximum **0.499913**
+RGB8 level error. GCC/Clang manifests match exactly. **303/303** dev checks,
+**279/279** earlier C++23 CPU checks and final **8 cases / 178 assertions** on
+GCC/Clang/native sanitizers pass. Saved runs, failures and frozen fixtures remain
+unchanged; no dependency provisioning or real depth output.
+
+Next executable step (M3): qualify a separate CUDA-enabled COLMAP dense worker,
+starting with exact source/build/rights and device-capability receipts; the current
+`.venv-worker` pycolmap 4.2.1 reports `has_cuda=false` and no `colmap` executable
+is installed. Do not change the existing pose/training environments. Use the checked
+sample_1 manifest in `artifacts/validation/m3-dense-input-20261017/` as input
+correspondence evidence; its explicitly unqualified recipe is **not runnable**.
+Pin the actual worker's complete recipe in a new manifest before executing MVS.
+Support the native 4104-wide grid with explicit bounded depth limits, or implement
+and verify actual resized bytes/calibration in a separate profile first. Preserve
+sample_2's failed stages and both frozen fixtures; no unchanged solve, refit or
+long-stress rerun. Real MVS/fusion, compressed depth storage, measured scale,
+collision/walking, mesh export and fresh runtime observations remain open.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/
