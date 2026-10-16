@@ -433,6 +433,23 @@ dependencies, outside the normal viewer build. The
 and run commands. This synthetic diagnostic does not qualify other window
 managers, physical desktops, performance or reference devices.
 
+## Resident-copy diagnostics
+
+`we_gpu_resident_reuse <new-output-directory>` compares CPU packing and resident
+reuse across 12 synthetic revisions in each mode. It checks exact readbacks,
+transfer-byte accounting, the 15 MiB frame cap, staging residency and atomic
+visibility during multi-frame copies. Cases cover changed chunks, insertion/
+deletion offsets, transforms, empty scenes and nearby/rebased cameras.
+
+`we_gpu_update_stream <scene> <new-dir> <seconds> [--no-resident-reuse]` retains
+the scheduled 10 Hz real-scene/synthetic-marker workload and records host versus
+resident copy bytes. Its thresholds are unchanged. `we_gpu_lifetime_stress
+<scene> <new-dir> <seconds>` retains the original full/empty workload; adding
+`--resident-reuse` selects a separately labeled full/full/empty cycle to exercise
+device copies, host uploads and deletion. That mode also collects bounded
+completed timings and requires observed device-copy bytes for runs ≥30 seconds.
+Neither synthetic diagnostic certifies reference hardware or a full gate.
+
 ## Optional stage timings
 
 `renderer_options.collect_timings` defaults off. It records CPU waits for frame

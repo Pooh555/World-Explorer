@@ -28,6 +28,7 @@ struct renderer_frame_timing {
     std::uint64_t count_submissions{}, tile_batches{};
     std::uint32_t tile_sort_passes{};
     std::uint32_t reused_tile_regions{};
+    std::size_t host_copy_bytes{}, resident_copy_bytes{};
 };
 // One wrap is representable; the measured interval must be shorter than the
 // device's counter range. Bits above valid_bits are intentionally ignored.

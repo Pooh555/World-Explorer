@@ -14,6 +14,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <span>
 #include <stdexcept>
 #include <utility>
@@ -86,10 +87,15 @@ struct vulkan_renderer::implementation {
     };
     std::array<frame, 2> frames;
     gpu_buffer scene_buffer;
+    struct upload_region {
+        std::size_t source_offset{}, target_offset{}, bytes{};
+        bool resident{};
+    };
     struct upload_resources {
         gpu_buffer staging, replacement;
         std::size_t bytes{}, copied{}, count{};
         vec3d origin{};
+        std::vector<upload_region> regions;
     };
     struct active_upload {
         admitted_update update;
@@ -186,8 +192,11 @@ struct vulkan_renderer::implementation {
         refresh_swapchain();
         create_pipelines();
         create_frames();
-        scene_buffer = allocate(
-            16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
+        scene_buffer =
+            allocate(16,
+                     VkBufferUsageFlags{VK_BUFFER_USAGE_STORAGE_BUFFER_BIT} |
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     false);
         diagnostics.scratch_bytes = scratch_allocation_bytes();
         diagnostics.allocated_bytes = live_buffer_bytes();
     }
@@ -452,12 +461,33 @@ struct vulkan_renderer::implementation {
                 "atomic replacement exceeds old + new + staging + scratch residency budget");
         auto staging = allocate(bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true);
         auto replacement =
-            allocate(bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            allocate(bytes,
+                     VkBufferUsageFlags{VK_BUFFER_USAGE_STORAGE_BUFFER_BIT} |
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                      false, staging.allocation_bytes);
+        std::map<chunk_id, std::size_t> resident_offsets;
+        if (options.reuse_resident_chunks && visible_scene && origin == scene_origin) {
+            std::size_t offset = 0;
+            for (const auto& [id, chunk] : visible_scene->chunks) {
+                resident_offsets.emplace(id, offset);
+                offset += chunk->splats.size() * sizeof(gpu_splat);
+            }
+        }
+        std::vector<upload_region> regions;
         auto* destination = static_cast<gpu_splat*>(staging.mapped);
         std::size_t index = 0;
         for (const auto& [id, chunk] : snapshot->chunks) {
-            static_cast<void>(id);
+            if (chunk->splats.empty())
+                continue;
+            const auto chunk_bytes = chunk->splats.size() * sizeof(gpu_splat);
+            const auto resident = resident_offsets.find(id);
+            if (resident != resident_offsets.end() && visible_scene->chunks.at(id) == chunk) {
+                regions.push_back({resident->second, index * sizeof(gpu_splat), chunk_bytes, true});
+                index += chunk->splats.size();
+                continue;
+            }
+            regions.push_back(
+                {index * sizeof(gpu_splat), index * sizeof(gpu_splat), chunk_bytes, false});
             const auto& transform = chunk->world_from_chunk;
             for (const auto& source : chunk->splats) {
                 auto& target = destination[index++];
@@ -481,7 +511,34 @@ struct vulkan_renderer::implementation {
                 target.sh = source.sh;
             }
         }
-        return {std::move(staging), std::move(replacement), bytes, 0, count, origin};
+        if (regions.empty())
+            regions.push_back({0, 0, bytes, false});
+        return {std::move(staging), std::move(replacement), bytes, 0, count, origin,
+                std::move(regions)};
+    }
+    void copy_upload(frame& current, upload_resources& resources, std::size_t limit) {
+        // The visible buffer's last writes may have been made visible only to
+        // compute. Also expose them to device-to-device transfer reads.
+        memory_barrier(current.command, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                       VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                       VK_ACCESS_2_TRANSFER_READ_BIT);
+        const auto end = resources.copied + std::min(resources.bytes - resources.copied, limit);
+        for (const auto& region : resources.regions) {
+            const auto first = std::max(resources.copied, region.target_offset);
+            const auto last = std::min(end, region.target_offset + region.bytes);
+            if (first >= last)
+                continue;
+            const VkBufferCopy copy{region.source_offset + first - region.target_offset, first,
+                                    last - first};
+            vkCmdCopyBuffer(current.command,
+                            region.resident ? scene_buffer.buffer : resources.staging.buffer,
+                            resources.replacement.buffer, 1, &copy);
+            if (region.resident)
+                current.timing.resident_copy_bytes += last - first;
+            else
+                current.timing.host_copy_bytes += last - first;
+        }
+        resources.copied = end;
     }
     void finish_upload(upload_resources& resources, std::uint64_t completion) {
         if (scene_buffer.buffer)
@@ -494,10 +551,8 @@ struct vulkan_renderer::implementation {
     void upload(frame& current, const scene_snapshot& snapshot, vec3d origin,
                 std::uint64_t completion) {
         auto resources = prepare_upload(snapshot, origin);
-        VkBufferCopy copy{0, 0, resources.bytes};
         begin_timing(current, gpu_timing_stage::UPLOAD);
-        vkCmdCopyBuffer(current.command, resources.staging.buffer, resources.replacement.buffer, 1,
-                        &copy);
+        copy_upload(current, resources, resources.bytes);
         memory_barrier(current.command, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                        VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
                        VK_ACCESS_2_SHADER_READ_BIT);
@@ -891,7 +946,11 @@ struct vulkan_renderer::implementation {
         if (!uploading)
             if (auto next = sink.take_next()) {
                 try {
-                    auto resources = prepare_upload(next->batch.snapshot, camera.position);
+                    const auto offset = camera.position - scene_origin;
+                    const auto origin = visible_scene && dot(offset, offset) <= 100000000
+                                            ? scene_origin
+                                            : camera.position;
+                    auto resources = prepare_upload(next->batch.snapshot, origin);
                     uploading.emplace(active_upload{std::move(*next), std::move(resources)});
                 } catch (const detail::vulkan_error& exception) {
                     if (exception.status() == VK_ERROR_DEVICE_LOST)
@@ -905,13 +964,8 @@ struct vulkan_renderer::implementation {
         if (uploading) {
             auto& resources = uploading->resources;
             constexpr std::size_t MAX_UPLOAD_BYTES_PER_FRAME = 15ULL * 1024 * 1024;
-            const auto copied =
-                std::min(resources.bytes - resources.copied, MAX_UPLOAD_BYTES_PER_FRAME);
-            const VkBufferCopy copy{resources.copied, resources.copied, copied};
             begin_timing(current, gpu_timing_stage::UPLOAD);
-            vkCmdCopyBuffer(current.command, resources.staging.buffer, resources.replacement.buffer,
-                            1, &copy);
-            resources.copied += copied;
+            copy_upload(current, resources, MAX_UPLOAD_BYTES_PER_FRAME);
             if (resources.copied == resources.bytes) {
                 // Prior copies are ordered on this queue; only the final frame
                 // publishes the replacement to compute and to the update sink.
@@ -1135,7 +1189,8 @@ struct vulkan_renderer::implementation {
         current.timing_finished = options.collect_timings;
         diagnostics.resident_splat_count = splat_count;
         diagnostics.allocated_bytes = live_buffer_bytes();
-        diagnostics.staging_bytes = 0;
+        diagnostics.staging_bytes =
+            uploading ? static_cast<std::size_t>(uploading->resources.staging.allocation_bytes) : 0;
         for (const auto& item : retired)
             if (item.buffer.mapped)
                 diagnostics.staging_bytes += static_cast<std::size_t>(item.buffer.allocation_bytes);

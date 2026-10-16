@@ -122,7 +122,9 @@ void produce(const std::stop_token& stop, renderer_update_sink& sink,
 } // namespace
 
 int main(int argc, char** argv) try {
-    require(argc == 4, "usage: we_gpu_update_stream <retained-scene> <new-output-dir> <seconds>");
+    require(argc == 4 || (argc == 5 && std::string_view(argv[4]) == "--no-resident-reuse"),
+            "usage: we_gpu_update_stream <retained-scene> <new-output-dir> <seconds> "
+            "[--no-resident-reuse]");
     const auto seconds = std::stoull(argv[3]);
     require(seconds >= 10 && seconds <= 120, "duration must be 10–120 seconds");
     const auto output = std::filesystem::path(argv[2]);
@@ -157,6 +159,7 @@ int main(int argc, char** argv) try {
     options.max_splats = std::max<std::size_t>(real_splats + marker.splats.size(), 1000000);
     options.shader_directory = WE_SHADER_DIRECTORY;
     options.collect_timings = true;
+    options.reuse_resident_chunks = argc == 4;
     auto created = vulkan_renderer::create(window.get(), options);
     require(created.has_value(), created ? "" : created.error().message);
     auto renderer = std::move(*created);
@@ -259,8 +262,11 @@ int main(int argc, char** argv) try {
                            {"schedule_lag_ms", sample.schedule_lag_ms},
                            {"would_block_retries", sample.would_block_retries}});
     }
+    std::size_t host_copy_bytes{}, resident_copy_bytes{};
     for (const auto& [sequence, sample] : timing_samples) {
         static_cast<void>(sequence);
+        host_copy_bytes += sample.host_copy_bytes;
+        resident_copy_bytes += sample.resident_copy_bytes;
         if (sample.gpu_valid &&
             sample.gpu_ms[static_cast<std::size_t>(gpu_timing_stage::UPLOAD)] > 0)
             upload_ms.push_back(sample.gpu_ms[static_cast<std::size_t>(gpu_timing_stage::UPLOAD)]);
@@ -289,6 +295,9 @@ int main(int argc, char** argv) try {
                  {"peak_owned_bytes", peak_owned_bytes},
                  {"validation_errors", final.validation_errors},
                  {"interactive_device_idle_waits", idle_waits},
+                 {"resident_reuse_enabled", options.reuse_resident_chunks},
+                 {"host_copy_bytes", host_copy_bytes},
+                 {"resident_copy_bytes", resident_copy_bytes},
                  {"would_block_retries", retries},
                  {"draw_ms",
                   {{"p50", percentile(draw_ms, 0.5)},

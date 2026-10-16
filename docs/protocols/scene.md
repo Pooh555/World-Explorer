@@ -86,14 +86,27 @@ complete. Timeline completion governs old resource retirement. Full snapshots us
 this same path for initial load/resync. No reconstruction GPU pointer crosses it.
 
 Large snapshots keep the previous GPU scene visible while at most 15 MiB of the
-new staging buffer is copied each render frame. The replacement becomes visible
-only after its final copy and transfer barrier are submitted. The staging and old
-scene buffers retire on the completion timeline; both are charged to residency
-while live. The initial scene uses this same path. Floating-origin rebasing of an
-already visible scene still uses a full copy when no update is active.
+replacement payload is copied each render frame. An unchanged immutable chunk
+at the same floating origin can copy its existing GPU bytes into the replacement;
+new/changed chunks are packed into CPU staging. Chunk ID plus shared immutable
+object identity must match; matching generations alone cannot enable reuse.
+Source/destination offsets are recomputed in each snapshot's chunk order, so
+insertion/deletion may move a reused region. The existing nearby floating origin
+is retained until rebasing is required. A changed origin disables resident reuse.
+
+All copies share the byte cap. Resident buffers carry transfer-source usage and
+a transfer-write-to-transfer-read dependency before reuse. The replacement
+becomes visible only after its final copy and transfer-to-compute barrier are
+submitted. Its source scene buffer and staging retire on that completion
+timeline. Staging remains full-sized and charged, including during an active
+multi-frame upload; residency budgets have not been reduced. The initial scene
+uses this same path. Floating-origin rebasing of an already visible scene still
+uses a full host copy when no update is active. Diagnostic
+`renderer_options.reuse_resident_chunks=false` forces CPU packing for comparison.
 
 Optional completed GPU timestamps include an upload pair around each frame's
-staging-to-replacement copy and final transfer-to-compute barrier. Frames without
+host/device-to-replacement copies and final transfer-to-compute barrier. Completed
+frame samples also expose `host_copy_bytes` and `resident_copy_bytes`. Frames without
 a copy report zero upload time. `interactive_device_idle_waits` counts device-idle calls in the
 swapchain refresh path; explicit shutdown/diagnostic idle calls are excluded.
 
