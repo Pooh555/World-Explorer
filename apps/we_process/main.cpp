@@ -1,4 +1,5 @@
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/dense_inputs.hpp"
 #include "world_explorer/application/depth_assets.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/pose_export.hpp"
@@ -48,6 +49,8 @@ int main(int argc, char** argv) {
                    "  we_process prepare-poses POSE_JOB VIDEO MAP_DIRECTORY [--decode-stage DIR]\n"
                    "  we_process inspect-poses INPUT.weposes SHA256 (checked JSON inspection)\n"
                    "  we_process inspect-depth INPUT.wedepth SHA256 (format inspection only)\n"
+                   "  we_process prepare-dense POSE_JOB SOURCE_SHA POSES.weposes POSE_SHA "
+                   "RECIPE.json RECIPE_SHA OUTPUT.json [--decode-stage DIR]\n"
                    "  we_process init-map MAP_DIRECTORY\n"
                    "  we_process import-map INPUT.weposes SHA256 MAP_DIRECTORY\n"
                    "  we_process inspect-map MAP_DIRECTORY (checked restart/recovery)\n"
@@ -142,6 +145,27 @@ int main(int argc, char** argv) {
             if ((*snapshot)->initial_pose_asset_sha256)
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*snapshot)->initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
+        if (command == "prepare-dense") {
+            if (argc != 9 && !(argc == 11 && std::string_view(argv[9]) == "--decode-stage")) {
+                std::cerr << "Usage: we_process prepare-dense POSE_JOB SOURCE_SHA POSES.weposes "
+                             "POSE_SHA RECIPE.json RECIPE_SHA OUTPUT.json [--decode-stage DIR]\n";
+                return 2;
+            }
+            const dense_input_request request{
+                {argv[2], argv[3], argc == 11 ? argv[10] : std::filesystem::path{}},
+                argv[4],
+                argv[5],
+                argv[6],
+                argv[7]};
+            const auto published = write_dense_inputs(request, argv[8], cancellation.get_token());
+            if (!published) {
+                std::cerr << published.error().message << '\n';
+                return published.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Dense input manifest (native grid; arbitrary scale; no depth produced): "
+                      << argv[8] << "\nSHA-256 " << *published << '\n';
             return 0;
         }
         if (command == "prepare-poses") {

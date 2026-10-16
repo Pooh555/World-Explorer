@@ -65,6 +65,6 @@ result<training_camera> read_colmap_training_camera(const std::filesystem::path&
         return fail(error_code::INVALID_DATA,
                     "Training camera parameters are nonfinite or invalid");
     return training_camera{camera, static_cast<std::uint32_t>(width),
-                           static_cast<std::uint32_t>(height)};
+                           static_cast<std::uint32_t>(height), static_cast<std::uint32_t>(id)};
 }
 } // namespace world_explorer
