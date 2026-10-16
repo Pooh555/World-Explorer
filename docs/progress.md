@@ -563,15 +563,24 @@ versions, synthetic numerical/admission checks and format/tidy pass. This is
 local captured-target evidence, not Q6's prescribed fixed 100-view corpus or
 scale/platform qualification. Saved reconstructions and user edits are preserved.
 
-Next executable step: create a fresh runtime selection from
-`third_party/runtime-selection-20261016.json`, changing only the actually rebuilt
-viewer/CLI hashes, then recapture the Linux loader and native empty-viewer mapping
-receipts using the runtime/binding protocols. The current local dependency check
-still exits 2 on stale executable bytes; preserve historical receipts and worker
-environments. Q6 still needs its prescribed fixed 100-view captured-target fixture
-and qualified scale/corpus; packed lifetime qualification also remains open.
-Preserve saved scenes, failures and both frozen comparisons; do not rerun
-reconstruction.
+[Renderer runtime refresh](validation/2026-10-16-packing-runtime-refresh.md)
+now restores the full local inventory check: **15 loader roots / 213 ELF files**,
+zero unresolved edges; fresh native empty viewer **900 frames / zero Vulkan
+errors**. Its broader mapping observation retains **237 ELF files**, with
+**160** beyond the loader baseline; fresh owner associations cover **31 groups /
+41 installed notices**. Four retained worker-import receipts are rechecked,
+not rerun. The new selected inventory passes default/local checks; strict closure
+still exits 3 for **253 profile source/rights gaps**, with owner terms separately
+unqualified. Historical receipts, all reconstructions and user edits are retained.
+
+Next executable step: extend `we_gpu_lifetime_stress` with an explicit experimental
+`--fp16-sh` option, retaining the full/full/empty resident-copy sequence and using
+the selected stride for byte accounting. Run a 60-second native packed pilot,
+then bind source/binary/shader/scene identities and actual exit for a 7,200-second
+packed update/resize stress; do not infer its result from the FP32 lifetime run.
+Q6 still needs the prescribed fixed 100-view captured-target fixture and qualified
+scale/corpus/platforms. Preserve saved scenes, failures and both frozen comparisons;
+do not rerun reconstruction.
 Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
 other-scene/platform qualification remain open.
 

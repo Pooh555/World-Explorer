@@ -1,6 +1,6 @@
 # Observed Linux backend and viewer mappings
 
-The [current summary](../../third_party/backend-bindings-refresh-20261015.json) supplements the
+The [current summary](../../third_party/backend-bindings-packing-20261016.json) supplements the
 [loader audit](runtime_dependencies.md) with actual fixed backend imports and an
 empty native viewer. Its five observations preserve profile, native/sandbox
 context, module versions, CUDA availability, exclusions and mapped ELF hashes.
@@ -11,9 +11,9 @@ established by a mapped-file observation.
 From the repository root:
 
 ```sh
-python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-refresh-20261015.json
-python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-refresh-20261015.json --local-evidence
-python3 tools/check_dependency_manifest.py --local-evidence
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-packing-20261016.json
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-packing-20261016.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-packing-20261016.json --local-evidence
 ```
 
 Default checks bind the observer/baseline source, complete profile/node inventories,
@@ -79,12 +79,17 @@ relocated/private memory contents, every lazy kernel/provider/codec path, render
 scene fidelity or reference performance. The tested viewer's generic
 `fixture: user-selected` output is labeled **empty viewer** in this evidence.
 
-The [installed owner supplement](binding_owners.md) associates the 137 newly
-observed ELF files with current worker/system metadata and notice bytes. It checks
-that subset independently; it does not upgrade stale overlapping runtime evidence.
+The current [installed owner supplement](binding_owners.md) associates the
+160 ELF files beyond the current loader baseline with worker/system metadata and
+notice bytes. Its [fresh capture](../validation/2026-10-16-packing-runtime-refresh.md)
+retains 237 mapped ELF files in five contexts, including 76 in the empty viewer.
+Mapped EGL/Mesa files do not establish which device/backend executed rendering.
+Four prior import receipts remain byte-checked; only the viewer is re-observed.
+The earlier 137-file owner scope and raw mappings remain historical.
 
 The [fresh capture](../validation/2026-10-15-runtime-refresh.md) re-observes all
-five contexts with current zlib bytes. The comparison baseline intentionally
-remains the historical loader summary, so the changed overlap is explicit.
+five contexts with current zlib bytes. That historical comparison baseline intentionally
+remains its original loader summary, so its changed overlap is explicit. The current
+renderer refresh uses its own fresh loader baseline and retains zero changed overlap.
 The tool's original default summary remains available for historical replay;
 use the explicit current path above or the active dependency-manifest check.
