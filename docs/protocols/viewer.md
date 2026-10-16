@@ -27,6 +27,24 @@ other applications or inject events. Use a dedicated ignored artifact directory
 and isolated `--settings`; traces/readbacks are local diagnostic data. Per-frame
 JSON flushing/readbacks alter timing, so these runs cannot certify N1 latency.
 
+`--input-latency NEW.json` records CPU input timing separately. It reserves room
+for at most 4,096 navigation-relevant SDL events and their camera-update rows;
+there is no JSON serialization or file write inside the interactive loop.
+Reports are written after shutdown/idle, with exclusive creation preserving an
+existing path. This option cannot be combined with either `--input-trace` or `--screenshot`.
+Use isolated settings and an ignored output directory.
+
+Each row retains the polling frame, preceding/current CPU update times, input
+gates, actual movement and before/after pose/speed. Event timestamps, poll times
+and post-update times use SDL's `SDL_GetTicksNS` domain. Zero, future or reversed
+timestamps produce null durations and an explicit invalid count. Nonfinite event
+values and storage overflow are counted; a truncated/invalid report cannot certify
+latency. Events older than the preceding update remain visible. Platform input
+timestamps may have lower precision than the nanosecond fields; synthetic
+compositor commands can also supply stale timestamps. Validate the source before
+interpreting event-to-state durations. This measures CPU camera state, not physical
+input onset, display presentation or photodiode/high-speed-camera latency.
+
 Synthetic labels follow the active snapshot's [scene provenance](scene.md), not
 the launch option. Toolbar and ready status identify synthetic scenes even with
 side panels hidden; imported/replaced scenes and terminal diagnostics use the same

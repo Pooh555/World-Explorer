@@ -1,6 +1,6 @@
 # Observed Linux backend and viewer mappings
 
-The [current summary](../../third_party/backend-bindings-acquire-20261016.json) supplements the
+The [current summary](../../third_party/backend-bindings-input-20261016.json) supplements the
 [loader audit](runtime_dependencies.md) with actual fixed backend imports and an
 empty native viewer. Its five observations preserve profile, native/sandbox
 context, module versions, CUDA availability, exclusions and mapped ELF hashes.
@@ -11,9 +11,9 @@ established by a mapped-file observation.
 From the repository root:
 
 ```sh
-python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-acquire-20261016.json
-python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-acquire-20261016.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-acquire-20261016.json --local-evidence
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-input-20261016.json
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-input-20261016.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-input-20261016.json --local-evidence
 ```
 
 Default checks bind the observer/baseline source, complete profile/node inventories,
@@ -81,10 +81,10 @@ scene fidelity or reference performance. The tested viewer's generic
 
 The current [installed owner supplement](binding_owners.md) associates the
 137 ELF files beyond the current loader baseline with worker/system metadata and
-notice bytes. Its [fresh capture](../validation/2026-10-16-acquire-runtime-refresh.md)
+notice bytes. Its [fresh capture](../validation/2026-10-16-m2-input-latency.md)
 retains 208 mapped ELF files in five contexts, including 47 in the empty viewer.
-Compared with the preceding packing observation, 30 files are absent and one
-is newly observed. These are actual startup mappings, not an exhaustive library
+The node set matches the preceding acquisition-repair observation; only the
+viewer changes bytes. The earlier packing observation had 29 more files. These are actual startup mappings, not an exhaustive library
 or backend inventory. Four prior import receipts remain byte-checked; only the
 viewer is re-observed. The broader 160-target/237-file observation stays historical.
 

@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| M2 native input timing | [Buffered CPU event/camera observations](2026-10-16-m2-input-latency.md): three GCC and one Clang full-scene runs each pass 134 polling-frame control checks with zero Vulkan errors; visible-scene p95 7.70–8.09 ms, startup burst/stale injection/clock precision retained; 278 dev CPU checks, format/tidy and fresh runtime inventory pass, full N1 open |
 | Acquisition-repair runtime refresh | [Current loader/native viewer/owner receipts](2026-10-16-acquire-runtime-refresh.md): 900 frames/zero Vulkan errors, 15 roots/213 loader files, 208 mapped files and 137 owner targets/16 groups/30 notices; current default/local inventory passes, strict closure remains 3; prior observations preserved |
 | Packed lifetime acceptance | [ADR 015](../adr/015-packed-lifetime-development-acceptance.md): user accepts retained interrupted-run evidence as VERIFIED for the local packed lifetime development check, without a rerun or a claim of completed two-hour packed execution; full gates remain open |
 | M2 interrupted packed stress / acquisition retry | [Retained-prefix audit and short native repair](2026-10-16-m2-acquire-timeout.md): exit 2 on acquisition timeout after 4,019.936 s; 267 updates/200 resizes/seven identical captures/66 zero-error samples; short GCC/Clang/Release and full-scene resize regressions pass after retry repair, 273 dev CPU checks pass; no two-hour rerun per user, full qualification unverified |
