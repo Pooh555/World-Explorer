@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| M3 depth interchange / admission | [Axial depth and immutable pose dependencies](2026-10-17-depth-assets.md): explicit validity/confidence/support/optional uncertainty, stale/invalidated-pose rejection and synthetic inspection; 295 dev checks, 15 final cases / 772 assertions across GCC/Clang/native sanitizers, 18 independent CLI probes and 1,509 preserved files; real MVS/fusion/scale/walking remain open |
 | M3 recovery admission / graph | [Read-only retained inspection](2026-10-16-m3-recovery-analysis.md): verified input binding, bounded graphs, private-copy SQLite and exclusive reports; sample_2 remains 79/90, weak existing-point support, no unchanged retry; 17 new cases / 280 dev checks / 166 worker cases per interpreter and 1,509 preserved files |
 | M2 development exit review | [Six local items verified](2026-10-16-m2-exit-review.md): scoped Linux/NVIDIA closure; new full sample_1 63-camera reference pass, retained artifact/current runtime audit, no full gate or other-platform upgrade |
 | M2 development exit scheduling | [User-approved local scope](2026-10-16-m2-development-exit.md): six Linux/NVIDIA exit items; external native/reference qualification assigned to M4 or later, full thresholds unchanged; M2 remains IN_PROGRESS pending review |

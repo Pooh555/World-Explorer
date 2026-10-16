@@ -8,7 +8,7 @@ Read by task; do not load the entire directory for routine work.
 | Agent execution rules | [Runbook](execution_prompt.md), repository [AGENTS.md](../AGENTS.md) |
 | Product, thresholds, architecture, roadmap | [Technical plan](technical_plan.md); controlling specification |
 | Write/update documentation | [Documentation protocol](protocols/documentation.md) |
-| Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/camera/handoff](protocols/viewer.md) |
+| Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [depth](protocols/depth.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/camera/handoff](protocols/viewer.md) |
 | Organize outputs / add a local video | [Artifact layout and request helper](protocols/artifacts.md) |
 | Audit local worker/metric identities | [Installed identity receipts](protocols/worker_identity.md), [isolated CPU metric profile](../workers/metrics/README.md) |
 | Check selected dependency provenance gaps | [Source/archive/notice inventory](protocols/dependency_sources.md) |

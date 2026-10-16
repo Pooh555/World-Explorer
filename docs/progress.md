@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-16 (Asia/Hong_Kong). **M1: VERIFIED for the Linux development
+Updated 2026-10-17 (Asia/Hong_Kong). **M1: VERIFIED for the Linux development
 exit. M2: VERIFIED for the Linux/NVIDIA development exit. M3: IN_PROGRESS.
 No full Q/P/N/E gate is certified. M7–M8:
 DEFERRED_BY_USER.**
@@ -659,14 +659,27 @@ Private-copy SQLite reads preserve WAL-mode inputs. **280/280** dev checks and
 remain unchanged. The current pose package exposes dense APIs but reports
 `has_cuda=false`; this is a package capability limit, not GPU absence.
 
-Next executable step (M3): implement the versioned axial camera-z depth,
-invalid-mask/confidence and pose-revision admission contract (§4.4/§5.1), with
-bounded roundtrip/rejection tests. Qualify an isolated dense MVS/fusion worker
-separately from the current CPU pose environment before claiming real geometry;
-preserve valid appearance on geometry failure. Saved sample_1 provides a complete
-real pose input, at arbitrary scale. Keep sample_2's failed stages and both frozen
-fixtures; a recovery needs changed observations/triangulation evidence rather than
-an unchanged retry. Metric scale, collision, walking and mesh export remain open.
+[Depth interchange/admission](validation/2026-10-17-depth-assets.md) now checks
+axial camera-Z, explicit validity/confidence/support/optional uncertainty and
+exact pose/image/recipe dependencies. The shared application loader rejects
+invalidated or lost poses; `we_process inspect-depth` reports format scope and
+synthetic provenance. **295/295** dev checks, **272/272** C++23 CPU checks before
+the final pose guard, final **15 cases / 772 assertions** on GCC/Clang/native
+sanitizers and **18** independent CLI probes pass. All **1,509** protected files
+are unchanged. Shared file I/O moves into core with its package/update coverage
+scope preserved. Rebuilt binaries make the dated runtime receipt's current-byte
+check fail with exit 2; fresh runtime observation remains due.
+
+Next executable step (M3): implement checked dense-input preparation from saved
+sample_1 poses/undistorted images, emitting a pinned frame/calibration/image/recipe
+manifest that supplies `depth_asset_metadata` independently of depth output.
+Verify the grid's pixel-center/resize/undistortion correspondence before running
+an isolated, qualified MVS worker. Keep the existing CPU pose/training environments
+unchanged; current pycolmap's `has_cuda=false` is a package limit, not GPU absence.
+V1 depth interchange is uncompressed and arbitrary-scale; zstd scene storage,
+real MVS/fusion, measured scale, collision, walking and mesh export remain open.
+Preserve sample_2's failed stages and both frozen fixtures; no unchanged solve,
+refit or long-stress rerun.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

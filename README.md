@@ -214,3 +214,7 @@ The full design and acceptance gates are in [the specification](docs/technical_p
 Use the [documentation map](docs/README.md) for contracts, historical evidence and
 [documentation standards](docs/protocols/documentation.md). Check local documentation
 links with `python3 tools/check_docs.py`.
+
+Depth interchange diagnostics: `build/dev/we_process inspect-depth INPUT.wedepth SHA256`
+checks format and provenance fields only. Dense reconstruction and walking remain
+unavailable; see the [depth contract](docs/protocols/depth.md).

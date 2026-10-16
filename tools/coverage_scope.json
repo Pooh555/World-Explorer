@@ -7,7 +7,8 @@
   "package_update_modules": ["scene_store", "map_store", "reconstruction_adapters"],
   "package_update_files": [
     "src/render_core/update_sink.cpp",
-    "include/world_explorer/render_core/update_sink.hpp"
+    "include/world_explorer/render_core/update_sink.hpp",
+    "src/core/asset_files.cpp"
   ],
   "outside_roots": {
     "apps": "Executable entry points and viewer UI are outside the non-GPU core library measurement.",
