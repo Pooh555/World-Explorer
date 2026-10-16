@@ -1,12 +1,25 @@
 # World Explorer — implementation plan
 
-**Research cutoff: 10 October 2026, UTC. Version 1.2; milestone scheduling revised 16 October 2026, Asia/Hong_Kong.**
+**Version 1.3; expanded product direction planned 17 October 2026, Asia/Hong_Kong.**
+Phase 1 research cutoff remains 10 October 2026 UTC. The separate
+[offline asset research](research/offline_asset_pipeline.md) was checked on
+17 October 2026; it does not refresh every historical dependency observation.
 
-User-approved [M1 development-exit decision](adr/012-m1-development-exit.md): available Linux hardware and hosted native CPU CI support M1; physical Windows/macOS viewer qualification moves to M4. The [M2 development-exit decision](adr/016-m2-development-exit.md) scopes M2 to the available Linux/NVIDIA host and assigns other native-machine renderer qualification to M4 or later (§8.2). The research cutoff and §3 acceptance targets are unchanged.
+User-approved [M1 development-exit decision](adr/012-m1-development-exit.md): available Linux hardware and hosted native CPU CI support M1; physical Windows/macOS viewer qualification moves to M4. The [M2 development-exit decision](adr/016-m2-development-exit.md) scopes M2 to the available Linux/NVIDIA host and assigns other native-machine renderer qualification to M4 or later (§8.2). The [expanded offline asset decision](adr/018-offline-asset-production.md) adds Phase 2 after M6 (§11). All §3 acceptance targets remain unchanged; M7–M8 live work remains DEFERRED_BY_USER.
 
 ## 1. Vision and scope
 
 Build a desktop application that converts a completed camera video into a persistent scene that the user can explore with a responsive, unrestricted fly camera. Add walking only where reconstructed geometry supports it. The initial product is an offline reconstruction application and a standalone C++/Vulkan viewer; its data and update contracts also support a future continuously changing map.
+
+The approved final goal additionally produces an editable environment of reusable
+static game assets: separate objects with stable identities/pivots; clean meshes,
+UVs, detail bakes, collision and LODs; plausible hidden surfaces and backgrounds;
+relightable PBR materials; architectural structure and portable glTF/GLB assembly.
+Moving/removing an object must expose completed surroundings. Individual exports
+and the assembled environment use the same asset definitions. Phase 2 (§11) owns
+these capabilities, followed by its engine adapter. Default processing is fully
+automatic and local; artist cleanup/replacement/review is optional and reported.
+Stronger local hardware is allowed; model installation is explicit.
 
 **Recommended path:** C++26-targeted application code using a tested C++20/23 feature subset; Vulkan 1.4-targeted rendering with a portability profile; COLMAP for poses; a separate gsplat worker for optimized appearance; and independently reconstructed, confidence-tagged geometry. Persist both Gaussian splats and triangle meshes. Use Brush as the qualification candidate for local non-CUDA splat training. Do not make a feed-forward foundation model, a NeRF renderer, or Gaussian SLAM a Phase 1 dependency.
 
@@ -16,10 +29,10 @@ Target users are developers, researchers, designers, and people documenting room
 
 - The initial scene is predominantly static. Moving people, screens, foliage, vehicles, mirrors, glass, water, textureless walls, and severe rolling shutter are explicitly difficult cases.
 - Monocular video does not establish absolute scale from geometry alone. Store arbitrary scale unless a measured distance, calibrated depth/stereo, or another independently validated scale source is supplied.
-- A free camera can travel anywhere. Reconstruction quality cannot be promised anywhere: unseen backsides and occluded rooms remain unknown. Display a coverage/confidence overlay and provide a return-to-capture-path command.
+- A free camera can travel anywhere. Phase 1 leaves unseen backsides and occluded rooms unknown. Phase 2 may complete them, retaining observed/inferred/generated/manual provenance; plausibility is not historical accuracy. Display coverage/confidence and provide return-to-capture-path in both phases.
 - Phase 1 assumes a commercially distributable product is desirable. This is a technical license screen, not a claim that every dependency or checkpoint has received a completed legal review.
 - C++ applies to the application, viewer, storage, scheduling, and public contracts. Existing Python/CUDA and optional Rust reconstruction engines run as isolated workers. An all-C++ reconstruction implementation would materially change the schedule.
-- No generative completion, dynamic 4D replay, multiplayer, VR, architectural certification, surveying guarantees, automatic physically correct relighting, or unrestricted city-scale mapping in v1.
+- “v1” means the Phase 1/M6 reconstruction release: generative completion and automatic material/light recovery remain excluded there. Phase 2 explicitly adds completion and evaluated PBR relighting; it does not promise physically unique recovery from monocular video. Dynamic 4D replay, multiplayer, VR, architectural certification, surveying guarantees and unrestricted city-scale mapping remain outside the approved scope. M7–M8 live reconstruction stays deferred.
 
 These boundaries are design decisions and inferences, supported by the distinct geometry, appearance, and tracking responsibilities demonstrated in COLMAP, Open3D, 3DGS, and SLAM implementations [S01–S04, S28–S40].
 
@@ -48,6 +61,11 @@ All architecture, thresholds, budgets, effort estimates, and recommendations bel
 | Tooling | CLI and GUI share job API; logs and stage timings; cancellation; reproducible build presets; platform CI; renderer validation; benchmark harness; license inventory | Headless rendering; golden scenes; fault injection; diagnostic archive excluding raw images by default | Remote worker orchestration and distributed reconstruction |
 
 “MUST” reconstruction quality is certified first on the NVIDIA reference pipeline. Other platforms must open the same packages and expose their actual local-processing capability. They must not silently substitute a sparse cloud for a completed dense scene.
+
+This table describes Phase 1 priorities. Its later completion/material-recovery
+items are now assigned to Phase 2 §11, rather than optional substitutes for the
+approved final goal. Phase 1 textured-mesh export remains baked appearance;
+existing reconstruction evidence does not certify Phase 2 asset production.
 
 Capture guidance: translate around surfaces rather than only pan; maintain overlapping views; lock lens/focus/exposure where possible; avoid digital zoom and aggressive stabilization; revisit the starting area; capture doorways from both sides. These are operating recommendations, not guaranteed numeric capture rules.
 
@@ -341,7 +359,7 @@ Walk mode: Jolt kinematic capsule, fixed 120 Hz simulation with a capped catch-u
 | **09 Storage/updates** | Single PLY; in-place mutable buffer; immutable chunks and revisions | Versioned hybrid chunks with transactional updates and deferred GPU reclamation | Index/schema overhead. Revisit chunk sizing after W3/W4 traces; retain revision semantics |
 | **10 Live path** | Adopt Gaussian SLAM now; replay-only batches forever; separate tracking/mapping | Offline contracts now; future tracking frontend plus revisioned submaps and slower appearance refinement | More lifecycle design in Phase 1. Revisit backend choice at live milestone using L1/Q4 and checkpoint licensing |
 | **11 Build/dependencies** | Arch rolling packages only; multiple package managers; pinned manifests | CMake/Ninja, vcpkg baseline, isolated worker locks/images, exact CI compiler versions | Periodic upgrade work. Revisit only for a demonstrated packaging limitation |
-| **12 Unknown content** | Fill holes automatically; suppress uncertainty; preserve unknown regions | Explicit coverage and confidence, bounded walking, unrestricted fly with diagnostics | Less visually complete results. Revisit generative completion only as separately labeled content |
+| **12 Unknown content** | Fill holes automatically; suppress uncertainty; preserve unknown regions | Phase 1 preserves unknown regions and bounded walking. Phase 2 adds separately labeled completion under [ADR 018](adr/018-offline-asset-production.md) | Generated/inferred content never substitutes for measured Q5 geometry or N2 walking support; §11 owns asset-production requirements |
 
 ## 5. Workflows
 
@@ -456,7 +474,7 @@ License entries are **S**, based on the controlling sources listed; they do not 
 | Pose/map | COLMAP 4.2.1 worker, incremental and integrated global mapping | BSD-3 core; optional/transitive components must be audited [S01–S04] | Mature; CPU sparse path, CUDA accelerated paths; HIP MVS added 4.2.0; 4.2.1 dated 2026-09-29 | Incremental/global cross-fallback; reviewable manual calibration; graceful component failure |
 | Learned matching | Optional ALIKED + LightGlue, integrated through a pinned adapter | ALIKED BSD-3; LightGlue Apache-2 code/weights; do not substitute SuperPoint without separate terms [S05] | Research-derived and widely integrated; COLMAP 4.0 added ONNX support; exact model performance here U | SIFT with geometric verification |
 | Appearance | gsplat worker; export canonical representation rather than runtime training tensors | Apache-2 code; default SfM initialization needs no downloaded learned checkpoint [S06] | Established research/software toolkit; Python/PyTorch/CUDA; latest verified tag 1.5.3, exact tag date U | Qualified Brush worker |
-| Portable appearance | Brush 0.3.0 qualification track | Apache-2 [S10, S11] | Rust/Burn/WebGPU; repo supports macOS/Linux/Windows and multiple GPU vendors; exact device performance U; release date year U | Import a scene from a qualified worker; optional explicitly configured remote worker |
+| Portable appearance | Brush 0.3.0 qualification track | Apache-2 [S10, S11] | Rust/Burn/WebGPU; repo supports macOS/Linux/Windows and multiple GPU vendors; exact device performance U; release date year U | Import an authorized local scene from a qualified worker; remote transport outside approved scope |
 | Geometry | Consistent MVS depth + Open3D TSDF/extraction worker | Open3D MIT; selected third-party modules audited [S40] | Established fusion; Open3D 0.20 announcement 2026-09-24; CPU path available; no automatic “Intel support” guarantee for every operation | Imported RGB-D or validated mesh; retain splat scene with walk disabled |
 | Mesh processing | meshoptimizer, xatlas, fastgltf | MIT [S67, S68] | Established focused libraries; CPU preprocessing; exact latest activity U | Simple unsimplified mesh, per-view texture projection, restricted glTF subset |
 | Collision | Jolt Physics character controller and static triangle shapes | MIT [S69] | Mature native library; CPU; exact current release U | Fly-only; never approximate missing floors as safe collision |
@@ -580,13 +598,17 @@ MoltenVK 1.4.2 translates Vulkan to Metal and advertises an almost-complete subs
 | Platform/device | Phase 1 local reconstruction | Native viewer policy | Failure/degradation path |
 |---|---|---|---|
 | Arch + NVIDIA | Certified COLMAP CUDA + gsplat; MVS/proxy; isolated pinned worker environment | Native Vulkan 1.4 profile; P2 on H_V | Smaller recipe after explicit OOM notice; CPU sparse recovery |
-| Arch + AMD | CPU sparse COLMAP; Brush qualification. COLMAP HIP MVS and AMD gsplat fork only for individually qualified ROCm/GPU tuples | Native Vulkan, same file format; P3 on H_A | Brush/CPU stages or explicitly configured external worker; MI300X results do not certify consumer Radeon |
+| Arch + AMD | CPU sparse COLMAP; Brush qualification. COLMAP HIP MVS and AMD gsplat fork only for individually qualified ROCm/GPU tuples | Native Vulkan, same file format; P3 on H_A | Brush/CPU stages or qualified local worker; MI300X results do not certify consumer Radeon |
 | Arch + Intel | CPU sparse COLMAP; Brush candidate | Native Vulkan if required feature/limit profile passes | Reduced LOD/resolution; full pipeline performance U |
 | Windows + NVIDIA | Native worker package where qualified; optional WSL2 worker via same protocol if necessary | Native Win32 Vulkan viewer; never require WSL for rendering | Keep WSL filesystem transfers explicit; validate native/WSL outputs against canonical schema |
-| Windows + AMD/Intel | CPU poses; Brush qualification; do not presume Linux HIP recipes work here | Native Vulkan profile and device qualification | Import processed package or explicit external worker |
+| Windows + AMD/Intel | CPU poses; Brush qualification; do not presume Linux HIP recipes work here | Native Vulkan profile and device qualification | Import authorized local package or qualify a local worker |
 | macOS Apple Silicon | CPU poses; Brush can be qualified for local splat fitting. No CUDA. Default dense MVS/collision parity is not promised | MoltenVK, portable raster/compute; H_M smaller residency/sort budget | Scene from qualified worker or imported valid depth/mesh; splat-only local output keeps walk disabled if geometry unavailable |
 
-Remote processing is a separately enabled transport with explicit endpoint, authentication, cost and retention policy. It must never be the silent response to a missing GPU. A Mac can remain a complete viewer even when a particular local reconstruction recipe is unavailable.
+The approved workflow processes locally. Earlier remote-worker extension ideas
+are outside the current scope; no missing-device fallback may upload media or use
+remote inference. A Mac can remain a complete viewer even when a particular local
+reconstruction recipe is unavailable. Stronger hardware means a separately
+qualified local machine, not authorization for hosted compute or media transfer.
 
 ### 6.8 Cross-validation ledger
 
@@ -692,8 +714,8 @@ All effort and schedule figures are **D/T estimates**, assuming three full-time 
 | **M4 — platform qualification** | Native Windows and macOS packages; MoltenVK profile; AMD viewer qualification; Brush adapter and bounded local Mac recipe if it passes | Inherited M2 reference-device P2/P4/P6, physical N1, per-device Q6 and recovery qualification (§8.2); physical Windows/macOS viewer, GPU/display/input/HiDPI qualification; the former M1 ≤250k fixture opens on Arch/Windows/macOS and reaches ≥30 FPS at 720p on H_V/H_M. P3/P4/P5/E2 and identical scene/camera semantics remain required. Brush promoted only after Q3/Q6 and checkpoint/cancel tests; otherwise experimental | M2; access to physical platform/reference devices; M3 canonical outputs | 8–11 person-weeks; roughly weeks 8–13 | Platform-specific shader/compiler behavior and training memory; native worker packaging |
 | **M5 — larger scenes and operation** | Spatial chunks, measured LOD hierarchy, prefetch/eviction, collision residency, W3/W4 handling, coarse-first loading; crash-safe publish | P4/P5/P6 under memory pressure; W3 fly path stays within P2/P3 budgets through declared LOD; Q6 per supported packing mode; unknown/collision boundaries remain safe | M2/M3 and profiling traces | 8–11 person-weeks; roughly weeks 12–17 | Chunk overlap/opacity errors, global ordering and LOD quality, bad large-scene poses |
 | **M6 — Phase 1 release candidate** | Sealed corpus report, reproducible recipes, user capture/error guidance, privacy/retention controls, signed packages, rights/SBOM review | Q1–Q6, P1–P6, N1–N2, E1–E2 for explicitly certified profiles; every failing platform/preset removed from certification or fixed. Full 30k Q2 quality run separate from standard P1 | M1–M5; benchmark rights and release devices | 7–10 person-weeks; roughly weeks 18–23 plus contingency | Targets inconsistent with real capture distribution; release packaging and rights gaps |
-| **M7 — future tracking and incremental map pilot** | Camera/replay source, DPVO/alternative tracker, bounded keyframes/submaps, relocalization, pose revisions and loop correction | L1 capture-to-pose and Q4; 20-minute replay with loss/relocalization, no unlimited memory growth; spectator camera unaffected; permission/weight gate resolved | Phase 1 contracts; licensed tracker; chosen sensor | Additional 10–14 person-weeks | Drift, tracking loss, timestamp calibration, checkpoint rights |
-| **M8 — future live appearance and geometry pilot** | Time-budgeted refinement, progressive chunks, depth-backed geometry where available, background rebuild after correction | Full L1 including preview/render rate; P4/P6; N2 only on validated metric collision regions; compare quality against offline result after capture ends | M7; chosen live sensor and GPU budget | Additional 12–18 person-weeks | Mapping/render contention, non-rigid correction, catastrophic optimizer drift |
+| **M7 — future tracking and incremental map pilot (DEFERRED_BY_USER)** | Camera/replay source, DPVO/alternative tracker, bounded keyframes/submaps, relocalization, pose revisions and loop correction | L1 capture-to-pose and Q4; 20-minute replay with loss/relocalization, no unlimited memory growth; spectator camera unaffected; permission/weight gate resolved | Phase 1 contracts; licensed tracker; chosen sensor | Additional 10–14 person-weeks | Drift, tracking loss, timestamp calibration, checkpoint rights |
+| **M8 — future live appearance and geometry pilot (DEFERRED_BY_USER)** | Time-budgeted refinement, progressive chunks, depth-backed geometry where available, background rebuild after correction | Full L1 including preview/render rate; P4/P6; N2 only on validated metric collision regions; compare quality against offline result after capture ends | M7; chosen live sensor and GPU budget | Additional 12–18 person-weeks | Mapping/render contention, non-rigid correction, catastrophic optimizer drift |
 
 ### 8.1 M1 development exit and hardware qualification
 
@@ -725,7 +747,7 @@ M2 closure requires a dated checklist review linking actual evidence and unresol
 
 **M4 or later:** M4 owns the deferred renderer qualification on other native machines: H_V P2/P4/P6, AMD/H_A and Apple Silicon/H_M/MoltenVK, Windows/macOS native GPU/display/input/HiDPI, physical recovery and N1 input-to-display measurements, plus per-device packing/Q6 checks. Use §3 workloads, frame/presentation definitions and Appendix B procedures, including P2's 30-second warmup, 120-second measurement and five runs. Missing access remains an explicit M4 blocker. Corpus-wide Q6, metric-scale and full Q/P/N/E release certification remain required by M6; no claimed release profile may bypass its prescribed evidence. M3's reconstruction/geometry requirements and H_R P1 schedule are unchanged. No external native-machine M2 task is a prerequisite before M4.
 
-The Phase 1 person-week range is rounded; milestone estimates total 50–68 before small contingency. Calendar windows overlap only where engineers and interfaces allow it. Advanced relighting, ray-traced Gaussian effects, custom foundation-model training and unrestricted city-scale reconstruction are separate proposals after M6, not hidden critical-path work.
+The Phase 1 person-week range is rounded; milestone estimates total 50–68 before small contingency. Calendar windows overlap only where engineers and interfaces allow it. Approved offline completion/material recovery is assigned to the new Phase 2 (§11), after M6, with separate resources and gates. Ray-traced Gaussian effects, custom foundation-model training and unrestricted city-scale reconstruction remain separate proposals, not hidden critical-path work.
 
 **First ten working days:** freeze camera/color/schema conventions; configure three-platform native builds and feature probes; validate one permissively usable pipeline recipe; run the tiny COLMAP→gsplat fixture; implement imported splat rendering and fly controls; publish the first scene through the update queue; capture baseline timing and one deliberate failure/retry. Do not spend M1 building a general editor or porting the optimizer to Vulkan.
 
@@ -751,10 +773,10 @@ Likelihood/impact are qualitative planning estimates **D**, before mitigations. 
 | Captured interiors reveal people, screens, documents, valuables or access/security details | High / high | Local processing by default; no telemetry images; trim/mask before reconstruction; consent guidance; preview export contents; keep source media out of default scene export | Product + systems / privacy acceptance tests |
 | Deleting raw video leaves sensitive appearance in textures/splats/caches | High / high | Retention policy covers derivatives and checkpoints; per-job purge, export warning and cache inventory; redact before processing or refit affected regions after redaction | Systems / deletion and export tests |
 | Untrusted video, scene archive or checkpoint exploits decoder/parser | Medium / high | Size/count limits, checked arithmetic, traversal-safe extraction, worker isolation and timeouts; only trusted model checkpoints; prefer non-executable weight formats when backend supports them | Systems / fuzz, dependency updates, E1 |
-| Remote worker exposes private data or unexpected cost | Medium / high if enabled | Explicit opt-in endpoint, encrypted authenticated transport, job/retention limits and deletion confirmation; no automatic cloud fallback | Product + systems / optional remote milestone |
+| Upstream installer/demo uploads data or downloads models implicitly | High / high | Local workers with outbound network disabled after explicit provisioning; replace remote upstream stages, fail clearly on missing weights; no cloud fallback | Systems / AP0; remote transport remains outside scope |
 | Walk collision holes, stale shapes or bad scale cause confusing navigation | High / medium | Separate conservative collision coverage; swept capsule; unknown blocked; recover/fly button; invalidate on revision | Graphics + systems / N2 |
 | Metrics improve while completion or user experience worsens | Medium / high | Report failures, time/memory and per-scene results beside PSNR; fixed holdouts and fly paths; no post-hoc exclusions | Research / Q1–Q6 |
-| Scope expands into editing, relighting, SLAM and surveying before a reliable slice | High / high | M1 first; explicit non-goals; separate experimental backends; new ADR and measurable gate for scope additions | Tech lead / milestone reviews |
+| Asset completion/relighting displaces Phase 1 or conceals failures | High / high | Complete M1–M6 in order; Phase 2 §11/ADR 018 adds distinct gates and worker recipes; keep M7–M8 deferred and manual assistance visible | Tech lead / milestone reviews |
 
 Privacy behavior should be testable: processing works with outbound network disabled after installation; diagnostic archives omit raw imagery by default; users can inspect/delete source frames, trained assets and caches; exports list whether source images, timestamps or location metadata are included. Disable GPS/location export by default. Face blurring alone does not remove room identity or sensitive objects, and reconstructed appearance can retain removed details unless rebuilt. These are design recommendations, not claims of regulatory certification.
 
@@ -769,18 +791,335 @@ None of these blocks starting M1 under the stated defaults. Record changes as AD
 | Initial capture category | Static rooms and bounded objects, W1/W2 | Large landscapes/cities or dynamic scenes require different scale, priors and data regimes |
 | Metric scale / depth availability | Accept optional measured distance, calibration and RGB-D; monocular alone defaults to arbitrary scale | Requiring reliable metric geometry pushes toward a sensor/capture application and calibration workflow |
 | “C++ project” interpretation | Native application and interfaces in C++; existing reconstruction engines in isolated Python/CUDA or Rust workers | All-C++ training/model inference would be a separate implementation effort, not a small packaging choice |
-| User-facing visual goal | Captured appearance with explicit coverage; hybrid package | Physically correct relighting requires material/light estimation or additional capture, not just a Vulkan RT toggle |
+| User-facing visual goal | Phase 1 captured appearance with explicit coverage; Phase 2 reusable completed PBR assets and assembled environment (§11) | Inverse rendering/additional calibration and novel-light tests are required; a Vulkan RT toggle or named PBR maps is insufficient |
 | Walk mode release priority | Ship after metric collision passes N2; fly is always the core experience | Mandatory walking on all captures would sharply reduce accepted input scope |
 | Minimum Apple support | Apple Silicon, macOS 15+, exact supported release tuples tested; Intel Mac best effort | Older hardware/OS support can constrain shader/library/deployment choices |
 | Video color / HDR | SDR input and SDR display certified first; preserve source metadata; HDR conversion explicit | Native HDR capture/training/display requires additional color calibration and evaluation |
-| Remote processing | Disabled by default; explicit configured worker only | Hosted service adds identity, billing, retention, security and operational ownership |
+| Remote processing | Outside approved scope; all processing local, explicit offline model provisioning | Any future hosted service would require a separate product/privacy decision and authorization |
 | Source retention | Keep resumable sources locally until user purge; exclude sources from export by default | Aggressive deletion saves space/privacy exposure but prevents faithful rebuilding after pose or mask changes |
 | Budget and staffing | Three engineers plus part-time QA; 5–7 months Phase 1 planning range | A single engineer should reduce optional geometry/export/platform-processing scope or extend schedule |
 | Benchmark usage rights | Clear each public corpus; maintain an owned, consented release corpus | If a benchmark is unavailable, replace its gate explicitly and recalibrate thresholds; do not assert incomparable numbers |
 | Foundation-model policy | Experimental opt-in after checkpoint-specific review; no default NC weights | Research-only distribution may allow broader evaluation, but does not establish deployability or universal quality |
 
-The immediate development commitment is M1's complete video-to-fly-viewer path plus the four live-compatible contracts. The larger architecture earns its complexity through revision replay, measured rendering budgets and validated geometry, rather than through early adoption of every research model.
+Resume the first incomplete Phase 1 milestone from [progress](progress.md), then
+complete M1–M6 in order. The final product direction includes Phase 2 below;
+planning it does not start its implementation or activate M7–M8.
 
+## 11. Phase 2: offline asset production
+
+**Approved product direction; A0–A6 and AP0–AP9: NOT_STARTED.** Implementation
+follows M6; these are new identifiers, not renamed M7/M8 milestones. The latter
+remain DEFERRED_BY_USER. [ADR 018](adr/018-offline-asset-production.md) records
+the scope/architecture decision. The [dated research assessment](research/offline_asset_pipeline.md)
+owns candidate facts, licenses and comparisons; all architecture and targets here
+are **D/T**, with no implementation or qualification implied.
+
+### 11.1 Deliverable and bounded first scope
+
+The default command consumes a completed local capture and installed recipe,
+automatically discovers/decomposes static objects and architectural structure,
+and produces reusable editable static assets plus their assembled environment.
+Objects have stable identities, sensible pivots, clean triangle meshes, usable
+UVs, high-to-low detail bakes, PBR materials, collision and measured LODs.
+Complete hidden object surfaces and the surrounding shell so move/remove
+operations expose plausible surfaces with materials, rather than black holes,
+photographic billboards or residual object shadows. Recompute scene lighting
+visibility after edits. A later A6 adapter produces engine prefabs/scenes from
+these same definitions; it must not reconstruct a second asset set.
+
+Start with opaque rigid props in static rooms: boxes/cabinets, tables/chairs and
+simple curved props, floors/walls/ceilings, door/window openings and support
+surfaces. Cover non-Manhattan rooms eventually; do not force right angles where
+observations disagree. Glass, mirrors, translucent/thin fabric, articulated
+characters, dynamic reconstruction and physically unique material recovery are
+outside the first qualified capture envelope. Record exclusions before solving;
+still report all submitted captures and detected unsupported content. A bounded
+first envelope does not remove the final room/prop objective.
+
+Static-asset topology means valid, economical render triangles with preserved
+silhouette, seams, normals and material boundaries. Mixed triangles/quads in an
+editable source are allowed. All-quads, skeletal rigs, deformation loops, skinning
+and animation-ready topology are not requirements; adding them needs separate
+evidence and scope. A generated model advertised as “game ready” must still pass
+our mesh, bake, collision, export and runtime gates.
+
+### 11.2 Default pipeline and bounded alternatives
+
+Use the common calibrated original-image domain; do not make splats a mandatory
+intermediate for geometry, completion or material fitting. Keep Phase 1 captured
+appearance as a source-view reference. Candidate names below specify experiments,
+not installed dependencies or a claim of cleared commercial use.
+
+| Stage / owner | Inputs and automatic work | Outputs / fallback policy |
+|---|---|---|
+| Capture/geometry worker | Immutable decoded RGB, calibration/pose snapshot; masks for dynamic regions; optional independently calibrated depth/scale. Check parallax, exposure, focus, rolling shutter and coverage. Dense MVS consistency → confidence-aware fusion | Observed mesh/depth/normal/free-space products tied to poses. Learned depth is a prior with explicit units/support, never measured scale by assertion. Retain unknowns on failure; qualify direct-view versus surface-aware gsplat 2DGS separately |
+| Instance worker | SAM 2 automatic proposals/propagation as reference; fixed prompt/category SAM 3.1 discovery as challenger, Grounding DINO fallback. Associate via valid 3D tracks/depth and cross-view occlusion/reprojection | Persistent object inventory/mask revisions, uncertain/unassigned pixels, split/merge lineage. Re-detect on re-entry; reject unresolved merged/missing required objects rather than manufacturing inventory success |
+| Structure/layout worker | Separate shell from objects. Robust plane/patch fitting with optional normal/vanishing-line priors; detect openings using rays and image evidence. Infer containment/contact/support; jointly refine object pose/scale and structural bounds against all views | Structural surfaces, openings, room connectivity and support graph with residuals. Manhattan, symmetry and hidden plane extensions are explicitly inferred. An occluder's silhouette is not a door opening |
+| Completion worker | Preserve observed anchors; try bounded extrusion/symmetry and licensed local retrieval. For unresolved regions compare SAM 3D Objects/TRELLIS.2 proposals and GenRecon scene completion against all calibrated views, free space and support constraints | Completed candidate geometry plus masks/alternatives/seed and rejection reasons. Bounded candidate count (initially 3/object); no silent unbounded prompt retries. No acceptable candidate → partial observed assets. Stock 3D-RE-GEN's remote stages are ineligible |
+| Mesh production worker | Repair normals/duplicates/degenerates/intersections within declared displacement bounds; preserve real holes/thin parts. Decimate/remesh as necessary; xatlas UV; bake high-to-low detail; build error-bounded LOD, convex prop colliders/static shell triangles | Editable high source + runtime mesh/UV/material slots, bakes, LOD/collider definitions and correspondence maps. meshoptimizer/xatlas baseline; headless Blender bake; CoACD candidate. Failed repair preserves prior mesh and reports failure |
+| Material/light worker | Original calibrated views/masks, geometry+UVs, exposure metadata. Joint fit shared asset materials and scene lights/visibility, including indirect-light treatment. Mitsuba + project objective baseline; TensoIR/prior experiments separately | Shared base color/roughness/metallic/normal estimates, emission where justified, lighting estimate, uncertainty and residuals. Generated priors regularize unobserved texels. Unknown/captured-only material remains partial; do not relabel baked RGB as albedo |
+| Scene compiler/export worker | Asset definitions + instance/layout revisions, mesh/material validation and budget profile. Compile shared resources, portable assembly and optional self-contained GLB | Atomic asset catalog/environment export with semantic/provenance sidecar. Local validator and engine import. Viewer consumes immutable compiled updates; no solver/model framework enters rendering |
+
+Completion precedes final UVs/bakes. Material fitting may use a provisional UV,
+but any topology/UV change requires rebaking/refitting the affected maps. Alternate
+layout/material refinement is bounded by iteration/time limits and must preserve
+observed geometry; image improvement cannot justify unsupported pose drift.
+Do not independently inpaint each camera view: complete one shared object/shell
+geometry and material domain and reproject it. Use observed views of an area
+whenever available, even if the selected anchor image occludes that area.
+
+An automatic baseline with constrained completion/local retrieval is the first
+executable control. Generic object completion and robust relighting remain research
+risks; a partial output is a valid failure outcome, not fulfillment of the final
+goal. Restricted generative/renderer dependencies stay in research-only recipes
+until rights are obtained or affected paths are replaced and the result requalified.
+The [research connection table](research/offline_asset_pipeline.md#how-the-components-connect)
+defines adapter experiments that must precede promotion.
+
+### 11.3 Process architecture, revisions and recovery
+
+Extend the existing coordinator/worker contracts; this is proposed Phase 2
+behavior, not the implemented protocol described in `protocols/`. Native
+`application` owns CLI/GUI commands, `map_store` owns observation/pose snapshots,
+and a proposed `asset_catalog` owns immutable definitions and semantic lineage.
+`scene_store` owns assembled instances and transactions; `scene_compiler` converts
+definitions into immutable viewer resources/export files. Each algorithm above
+runs in an isolated worker with its own pinned environment/device budgets.
+Workers exchange project-owned schemas and hashed file references through the
+existing local transport, never training tensors or framework pointers. A
+headless DCC is a worker tool; the product does not require a general editor.
+
+```mermaid
+flowchart LR
+    views["Original calibrated views / map revision"] --> obs["Observed geometry + masks"]
+    obs --> layout["Structure, identity and support graph"]
+    layout --> complete["Constrained / generated completion"]
+    complete --> mesh["Mesh, UV, bake, LOD and collision"]
+    views --> material["Shared materials + scene lighting"]
+    mesh --> material
+    mesh --> catalog["Immutable asset definitions"]
+    material --> catalog
+    layout --> instances["Scene instances"]
+    catalog --> export["Scene compiler / portable export"]
+    instances --> export
+    export --> viewer["Viewer / selected engine import"]
+```
+
+Cache identity includes source/frame list, decode/color/preprocess transforms,
+calibration, pose/scale/world epoch, mask/inventory/layout revisions, upstream
+asset/UV/material hashes, code/environment/model hashes, license receipt, prompt,
+seed and algorithm limits. Explicit dependency lists determine invalidation:
+
+| Change | Invalidate or reuse |
+|---|---|
+| Poses/intrinsics/nonrigid map correction | Dependent depth, masks mapped into 3D, association, structure/layout, completion alignment, mesh/material fits, collision and exports. Preserve unrelated assets only with proved dependency independence |
+| Global rigid/Sim(3) frame change | Atomic consistent transform/scale update only where representation permits; rescale collision tolerances and light units; revalidate. Uncertain dependencies rebuild, never silently retain stale products |
+| Mask split/merge/identity correction | New inventory revision and lineage/tombstones; recompute affected object/shell support, completion, geometry, materials and assembly. Do not reuse an old ID for an unrelated object |
+| Geometry/topology/UV/pivot definition | Invalidate correspondence, dependent bakes/materials/LODs/collision/export and all instances of that definition. Pivot-only rebasing must preserve world placement by an atomic compensating instance transform |
+| Material edit / model or prompt change | New immutable material/completion revision; invalidate downstream bakes/export and scene lighting solution as appropriate. Captured observations stay immutable |
+| Instance move/remove or asset replacement | Preserve reusable definition bytes; invalidate affected support/contact/visibility, shadow/AO/light caches, scene collision placement and assembly export. Completed background already exists; otherwise this scene edit test fails |
+| Display preference / engine-specific packaging | No reconstruction invalidation. Recompile only relevant render/export products; record conversion losses |
+
+Each stage writes owned temporary output, validates hashes/sizes/schema/finite
+values/bounds and publishes immutable blobs before an atomic completion record.
+Worker crash, disk-full, OOM or cancellation leaves the last valid revision intact.
+Resume reuses only matching input/config/environment/checkpoint identities; no
+inference output masquerades as an optimizer checkpoint. Wrong base/epoch asks for
+resync; same operation ID is idempotent. Bounds cover candidate count, model batch,
+resolution, bytes, time, threads and queued jobs. OOM can yield a separately labeled
+lower-budget retry; never present it as the requested recipe. Unknown/stale
+collision is disabled even while a retained internally consistent visual snapshot
+remains inspectable.
+
+### 11.4 Proposed data contracts
+
+Use additive, versioned project-owned schemas with explicit converters; do not
+silently extend current v1 manifests or claim these fields already exist. IDs are
+not array indices, class labels, filenames or tracker-local IDs. Keep immutable
+content hashes separate from semantic identity. World/camera/unit conventions
+remain §4.4; backend normalized coordinates need explicit conversion evidence.
+
+| Record | Required fields and invariants |
+|---|---|
+| `asset_definition` | Stable `asset_id`, immutable revision/hash, kind (prop/structural), source identities/dependencies, local geometry/material/LOD/collider references, units/scale status, bounds, pivot basis/offset/policy, provenance and rights receipt. Definition excludes placement and capture lighting |
+| `scene_instance` | Stable `instance_id`, exact `asset_id`+revision, `world_from_asset`, permitted material variant, visibility, room/support references and source-instance lineage. Identical-looking objects retain distinct identities; deduplicate definitions only with evidence or explicit replacement intent |
+| `object_observation` | Frame/calibration/pose/image/mask revision, image-grid transform, visible/occluded/unknown masks, track association, class hypothesis/confidence and accepted/rejected evidence. Never infer full object extent from visible pixels without labeling it |
+| `geometry_product` | High/source and runtime triangle mesh; indices, winding/normals/tangents, material groups, topology/UV validation, original-to-new surface correspondence, observed support and uncertainty, geometry/pose revision. Intentional open/thin surfaces explicit; collision references a distinct product |
+| `material_product` | Lighting mode (`CAPTURED_APPEARANCE` / `ESTIMATED_PBR` / `GENERATED_PBR`), BRDF/profile, channel roles/ranges/color spaces, normal basis/handedness, UV set, sampler/mip policy, texel provenance/confidence, fit-light/exposure dependencies and relighting validation scope. Mixed generated/estimated regions require masks; no pure estimated label hiding generated texels |
+| `region_provenance` | Geometry face/patch and material texel masks distinguish `OBSERVED`, `INFERRED`, `GENERATED`, `MANUALLY_EDITED`, plus unknown coverage. Store source views/support, algorithm/model/hash/seed, transformation history, parent IDs and manual-ancestor flag. Confidence is separate from evidence class; automated descendants retain manual ancestry |
+| `structure_graph` | Stable surface/opening/room IDs, bounded plane or nonplanar patch, oriented boundary loops, opening polygon, thickness source, room adjacency, support/contact/containment relations and residuals. Inferred extensions/ceilings/wall thickness remain distinguishable from observed patches |
+| `completion_product` | Object/shell dependency revisions; observed anchors protected by correspondence; completion region, method/seed/prompt/library asset and rights, alternative rank/rejection reasons, consistency checks and confidence. Reconstructed surface support cannot be assigned merely because it looks plausible |
+| `export_manifest` | Schema/profile, exact catalog/scene revisions, canonical asset→mesh/material/node mapping, byte hashes, instance transforms, units, collider/LOD/provenance/rights sidecars, feature losses, validator/import identities and outcomes. No source images/location/credentials by default |
+
+Pivot policy is deterministic and overrideable: support-plane base center for a
+standing prop, attachment origin for wall/ceiling-mounted assets, stable local
+frame for structural patches; retain geometric center/bounds separately. Estimate
+orientation from observations/support with an ambiguity flag for symmetric shapes.
+Do not claim observed gravity from a semantic “floor” prediction. Ordinary RGB
+input may complete geometry in arbitrary units; metric colliders and centimetre
+claims require independent scale. A game collider on generated geometry is labeled
+synthetic gameplay collision and cannot satisfy Q5/N2 or enable measured walk mode.
+
+PBR core profile: shared base color, metallic, roughness, tangent normal and optional
+emission/occlusion. Base color/emission use declared sRGB encoding; numeric maps
+are linear. Specify normal convention and tangent construction; glTF metallic/
+roughness channels follow the normative format. Keep AO separate from base color
+and invalidate scene-dependent occlusion after movement. Fit lights/exposure in
+linear space with a fixed response policy and calibrated references where
+available. Preserve capture radiance/unlit textures separately. Relighting is an
+evaluated behavior, not a filename or shader toggle; material/light ambiguity and
+spatially varying illumination may force partial status.
+
+### 11.5 Reusable export and optional workflows
+
+glTF 2.0/GLB is the engine-neutral deliverable. The directory package contains a
+catalog, `assets/<asset_id>/asset.gltf` with mesh buffers/textures, and an assembled
+`environment.gltf` referencing those **same buffers/textures** and compiling the
+same mesh/material definitions. Multiple scene nodes reference one mesh definition
+per asset revision. Core glTF does not instance an external `.gltf`/`.glb` document;
+the compiler expands catalog references, not a fictitious cross-file node feature.
+No scene-specific remeshing or material refit is allowed during this expansion.
+
+Individual `asset.glb` and assembled `environment.glb` are optional self-contained
+compilations of that catalog. Embed each distinct definition once per GLB and retain
+a manifest mapping to canonical hashes; verify decoded geometry/material/image
+equivalence across individual and assembled exports. Packaging may copy bytes,
+but it must not fork asset identity. Replacing a definition and rebuilding assembly
+updates all intended instances deterministically. Avoid negative-scale surprises;
+validate normal/tangent/handedness and camera conversions independently. Convert
+canonical wxyz quaternions explicitly to glTF xyzw ordering at the exporter.
+
+Baseline export uses core metallic-roughness materials, PNG/JPEG textures and
+triangles; compression, transparency and advanced material extensions require a
+declared supported profile. Collision, LOD selection, provenance and semantic
+identity have an authoritative companion manifest; custom extras may mirror it but
+must not be the only copy. Engine importers need not retain extras. Validate paths,
+URI containment, buffers/accessors, texture sizes and required extensions locally.
+
+Choose Godot as the first import-test engine (version pinned at A1). A1 uses its
+ordinary glTF import for evidence; A6 later adds reusable PackedScene/prefab and
+environment-scene packaging, collider/LOD mapping and resource reuse. Unity/Unreal
+adapters are later alternatives, not simultaneous critical-path commitments.
+No engine dependency enters canonical asset contracts.
+
+Optional review shows source comparisons, masks/provenance, ambiguous identities,
+generated coverage and gate failures. Allow rename, split/merge correction,
+pivot/transform override, accept/reject candidate and local replacement of mesh or
+material using stable IDs. For detailed cleanup export to a DCC and reimport an
+explicit new asset revision with provenance/rights checks; no general modeling
+editor is required. Replacement invalidates affected fits/collision/exports. Every
+manual selection, mask, touchup, alignment or approval used to choose an output is
+logged with time and manual ancestry. An independently annotated evaluation set is
+allowed; its labels must never enter automatic inference or candidate selection.
+
+### 11.6 Evaluation and acceptance gates
+
+Define **AUTOMATIC_SUCCESS** only when every required product and per-job check for
+the declared recipe passes without per-capture human assistance. Selecting input/installed
+recipe and supplying independently measured capture metadata is setup; per-object
+clicks, hand masks, candidate selection or repair is assisted. Record all actions.
+**REJECTED** means preflight/rights/capability or input validity prevents this recipe;
+retain diagnostics and count it. **PARTIAL** means useful observed/assets exist but
+one or more required outputs/gates failed. **ASSISTED_SUCCESS** is separately
+reported with manual time/edits and must never enter the automatic numerator.
+Technical failure/cancellation preserves partial results with a failed/cancelled
+job state. These result classes are proposed product fields; documentation status
+still uses the repository status vocabulary.
+
+AP gates qualify a recipe/profile over fixtures and a corpus; production jobs run
+their frozen machine checks without waiting for an artist or evaluator. Blinded
+ratings below are offline quality evaluation, never per-job approval or candidate
+selection. Report recipe qualification separately from a new job's automatic
+completion; semantic plausibility on an unevaluated capture remains unscored.
+An unqualified recipe can produce an automatic experimental output, but cannot
+claim the qualified final-product success rate.
+
+Before tuning, freeze a pilot and release manifest: source rights/hashes, capture
+envelope, object/structure inventory and visibility annotation, calibration/scale,
+training temporal blocks, held-out inspection path, backside/empty-background
+captures and lighting measurements where feasible. Evaluation poses never update
+training geometry/material/light/exposure. A separate **completed environment**
+track evaluates inferred/generated content; it cannot inflate observed Q5/N2
+coverage. No Phase 1 pass, synthetic metric test or valid GLB certifies this phase.
+
+All new numeric targets below are initial **T**, independent of unchanged §3.
+Use plan §3.3 metric definitions where applicable; freeze UV/geometry sampling,
+surface masks, renderer/tone mapping, lights, seeds and reviewer rubric at A0.
+Record every object/capture, including rejected/partial outputs; no post-hoc scope
+or threshold changes to obtain a pass. Changes require an ADR retaining failures.
+
+| Gate | Proposed acceptance and measurement | Deliverable / assigned milestone |
+|---|---|---|
+| **AP0 local reproducibility / provenance / rights** | Outbound network disabled during full run after explicit installation; exact code/env/model/input hashes and terms; all outputs carry evidence classes/manual ancestry; cancellation/crash/resume preserves committed bytes, stale dependency rejected; no restricted/uncleared component in distribution recipe | A0 conformance fixtures, A1 real pilot, A5 final closure |
+| **AP1 visible fidelity** | Real independent held-out inspection plus temporal blocks: per-scene PSNR ≥25 dB, SSIM ≥0.80, AlexNet LPIPS ≤0.25 on declared observed valid mask, ≥90% eligible visible-pixel coverage. Report full image and object/boundary scores and pose uncertainty; no fitted test exposure | A1 pilot report; A2/A5 corpus; separate captured versus PBR render columns |
+| **AP2 object separation / identity / pivot** | All required pilot props/structural elements separate. Corpus object precision/recall ≥0.90, median instance mask IoU ≥0.85 across held-out views; zero ID reuse/switches in frozen revisit tests; no fused required props. Deterministic pivots within 2 cm of annotated support/attachment reference after independent scale; symmetric orientation ambiguity explicit | A1 initial inventory and edit test; A2 corpus association |
+| **AP3 observed geometry and layout/support** | Q5 remains required on measured observed surfaces under its original procedure. Phase 2 additionally: structural plane normal error ≤3°, opening boundary p90 ≤5 cm, support gap/penetration ≤2 cm for ≥95% declared contacts, zero blocked required openings. Report unobserved layout separately; no forced Manhattan alignment | A1 small shell, A2 structure refinement, A5 qualification |
+| **AP4 completion / move-remove** | Every required prop removed and moved ≥one object width; inspect backside, under-object region, exposed walls/floor and new shadows from fixed paths/lights. ≥99% required revealed surface render coverage, zero residual duplicate object surfaces/shadows from source bake. Blinded ≥3 reviewers score geometry/material/scene plausibility ≥4/5 median, no required object median <3; report disagreement and hidden-GT fidelity separately | A1 end-to-end pilot, A3 completed room. Human evaluation does not authorize manual inference edits |
+| **AP5 topology / UV / bake** | Finite valid indices/normals/tangents, zero unintended degenerate/nonmanifold/self-intersecting elements; intentional sheets/open boundaries declared. UVs finite/in range, zero unintended overlaps, ≥99% surface texel coverage, padding ≥8 texels at 2K baseline (scale per texture). Bake reprojection hit rate ≥99% of required surface; normal angular p95 ≤10° to high source; report seams/stretch and excluded area | A1 basic assets, A4 production quality |
+| **AP6 material / novel lighting** | With frozen geometry/materials, evaluate ≥3 unseen light environments/directions including near light on real controlled fixtures where feasible. Synthetic known-material and real calibrated-light tracks reported separately: PSNR ≥23 dB, SSIM ≥0.80, LPIPS ≤0.25 on valid surface mask; report shadows/highlights and per-light failure. No source shadow in base color; no test-time material/light refit. Missing real novel-light evidence leaves real relighting unqualified | A1 controlled prop test, A4 inverse fit, A5 release |
+| **AP7 reusable export / import integrity** | Zero validator errors (warnings triaged); individual/assembly canonical mesh/material/image hash equivalence; instance transforms preserved (≤1 mm / ≤0.1° on metric fixture); two instances reuse same engine resource; move/remove/replace survives save/reimport. Ordinary Godot import + independent glTF inspection, missing-sidecar/URI failure checks | A1 portable pilot, A4 final exporter; A6 packaging additionally |
+| **AP8 resource / game budgets** | Initial 3-prop pilot ≤300k scene render triangles and ≤256 MiB resident textures; props ≤50k LOD0 triangles, LOD1/2 targets 50%/20% with ≤1/2 px p95 silhouette error on frozen paths. Collider ≤16 hulls ×64 vertices/prop unless recorded exception. H_AP48 pilot ≤2 h end-to-end, ≤40 GiB device peak /96 GiB RSS, ≤100 GiB job scratch. H_V engine test 1080p ≥60 presented FPS on frozen path without processing contention, 30 s warmup/120 s ×5 runs; record p95/p99, lights/shadows, loads and process/device memory | A1 measures actual cost; A4 budgets; A5 certifies. These do not replace Phase 1 P1/P2/P4 or imply full-room timing |
+| **AP9 automatic yield / honest assistance** | Frozen additional 10-room consented static corpus, 3–10 required props/room; ≥8/10 automatic full outputs passing AP0–AP8 within predeclared per-room budget envelope. Report each gate and object, all submissions/preflight exclusions, partials, rejects, manual minutes and seeds. Assisted runs separate; bounded automatic recovery cost included | A5; complex-room expansion only after A1 succeeds |
+
+AP4 plausibility does not claim historical authenticity. Withheld true backsides/
+empty backgrounds provide an additional fidelity column when obtainable; do not
+select the best seed using those views. AP6 map agreement alone cannot prove
+relighting: material/geometry/lighting ambiguity requires image behavior under
+changed illumination. Roughness/metallic errors on known synthetic/physical
+references are diagnostic columns alongside the image gate. Unsupported real
+lighting calibration is an explicit qualification gap, not an inferred pass.
+
+For AP9, A1 measures costs and A2 freezes a 3–10 prop room budget profile before
+running that corpus: the pilot H_AP48 memory ceiling remains the cap, initial room
+time ceiling 8 h and scratch 300 GiB **T**. Asset/render/texture budgets are allocated
+per room and reported before execution; no scene reduction hidden in a pass.
+Do not extrapolate pilot time linearly. Exceeding any requested profile limit is
+PARTIAL or failure; resource exceptions are separately named profiles with their
+own qualification. Preserve individual gate failures even if aggregate yield passes.
+
+### 11.7 Hardware and milestone plan
+
+The available development host remains the §8.2 RTX 4060 Laptop 8 GiB / approximately
+16 GiB RAM profile. It can support contract/CPU/export work and later bounded
+experiments; it is **not qualified for Phase 2 inference**. Upstream requirements
+include SAM 3D Objects ≥32 GB NVIDIA and TRELLIS.2 ≥24 GB NVIDIA, not evidence of
+8 GB operation. SAM 3.1/GenRecon full-room minimums and CPU/RAM/storage/runtime
+remain unresolved in the [candidate assessment](research/offline_asset_pipeline.md).
+
+| Profile **D/T** | Intended allocation and qualification limit |
+|---|---|
+| **H_AP24** | Local Linux/NVIDIA 24 GiB, ≥64 GiB host RAM, 200 GiB free scratch plus separately inventoried environments/models; serial bounded mesh/material/TRELLIS experiments only after rights/fit checks. Cannot run official SAM 3D ≥32 GB recipe by assumption |
+| **H_AP48** | Preferred advanced pilot fixture: local Linux/NVIDIA 48 GiB, 128 GiB RAM, 1 TB free NVMe; exact device/driver/toolchain frozen before measurements. Capacity allowance, not a verified requirement or guarantee that every full-room method fits |
+| **H_V / other viewers** | Existing §3 profiles unchanged. Assets should be reusable on mainstream viewers/engine targets; offline production hardware does not dictate runtime hardware. Windows/macOS/AMD advanced workers stay unqualified until separately tested |
+
+Reserve disk from an explicit installer manifest of model/env/archive sizes plus
+job limits; unknown download size is a provisioning blocker. Do not invent precise
+weight sizes. Sequential workers unload models between stages and share no GPU
+contexts with the Vulkan viewer; heavy work pauses for interactive use on a shared
+device. No cloud inference, implicit downloads or hardware purchases. Native
+platform support for a framework does not certify a complete worker recipe.
+
+| Milestone / all NOT_STARTED | Deliverable and dependencies | Exit evidence / main risk | Conditional effort |
+|---|---|---|---|
+| **A0 contracts, capture and recipe freeze** | After M6: project schemas, dependency DAG, rights/resource lock proposal, fixture/evaluation manifests, explicit installation plan and synthetic admission/recovery fixtures | AP0 contract checks and exact candidate rights/device gaps; no “pipeline complete” claim. Must resolve or substitute restricted renderer/checkpoint paths before distributable recipe use | 3–5 person-weeks |
+| **A1 small real end-to-end pilot** | A0 + explicit local provisioning + consented capture: one room corner with floor/two walls/ceiling segment/opening and 3 distinct opaque props, one partly occluded. Capture orbit/revisit and independent scale, held-out path, empty background and changed-light prop evidence. Automatic masks→observed mesh→completion→UV/bake→PBR→catalog/assembly→ordinary Godot import | Exercise AP0–AP8 end-to-end, all 3 props individually exported, one reused twice, each moved/removed. Record automatic/assisted status and actual resources. No expansion on synthetic-only, captured-only or manually repaired success; unresolved gates remain open | 6–10 person-weeks; material/completion failure can add 4–8 before a usable pilot |
+| **A2 identity and architectural reconstruction** | A1 pass; rooms with 3–10 props, revisits/repeated objects, ceilings/doors/windows and non-Manhattan example; support/layout refinement, bounded room profile freeze | AP1–AP3 plus object inventory and pose-change invalidation; ground-truth/occlusion ambiguity risk | 6–10 person-weeks |
+| **A3 object and background completion** | A1/A2 evidence, fixed challenger comparison and cleared local assets/models; shared scene constraints rather than independent image inpainting | AP4, observed-anchor fidelity retained and no unexplained free-space violations; generated/manually derived masks maintained. No plausible-corner demo substitutes for all required move/remove cases | 8–14 person-weeks |
+| **A4 production meshes, materials and portable export** | A2/A3; quality-bounded repair/UV/bake/LOD/collision, shared materials/joint lights, revisioned export and optional DCC replacement loop | AP5–AP8 on real + known synthetic/controlled-light references; AP1 regressions checked. Main risks intrinsic ambiguity, GPU memory, seams and exporter loss | 10–18 person-weeks |
+| **A5 automatic room qualification** | A2–A4; sealed additional corpus, repeatable offline installation, rights/SBOM/retention review and failure/resume/engine runs | AP0–AP9 on declared profiles; per-gate/capture failures visible. No new Phase 1 certification inferred | 6–10 person-weeks |
+| **A6 engine packaging adapter** | A5 portable assets; chosen Godot version/prefab policy and exact resource mappings | Reusable PackedScenes + assembled scene, LOD/collider/material mapping, replacement/reimport/deterministic resource reuse; repeat AP7/AP8 for engine package | 3–6 person-weeks; each additional engine estimated separately |
+
+The 42–73 person-week total is incremental after M6, assuming three experienced
+engineers (vision/materials, geometry/assets, systems/export), part-time QA/artist
+evaluation, reusable Phase 1 inputs and access to local H_AP48. Allow 25–50%
+contingency for research/rights/capture failures: approximately 53–110 person-weeks,
+roughly 6–12 calendar months with stage overlap and those staff. These are planning
+ranges, not delivery commitments. A single engineer should budget approximately
+12–24+ months after M6; commercial licensing/major model replacement can add an
+unbounded external delay. No foundation-model training from scratch is assumed.
+Re-estimate after A1 measurements; never buy hardware or broaden models merely
+to preserve this schedule. Independent evaluation/manual artist hours are real
+project costs but cannot be counted as automatic inference success.
 
 ## Appendix A. Dated source register
 

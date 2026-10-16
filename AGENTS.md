@@ -4,6 +4,7 @@
 - Read `docs/progress.md` and `docs/requirements.md` before resuming.
 - `docs/technical_plan.md` is the specification; `docs/execution_prompt.md` is the runbook.
 - Complete Phase 1 M1–M6 in order. M7–M8 remain deferred by the user.
+- The expanded final goal is Phase 2 offline asset production after M6 (plan §11 / ADR 018); A0–A6 remain NOT_STARTED. Respect research-only task limits.
 - A partial implementation or synthetic scene never completes a real reconstruction gate.
 - Preserve existing user edits. In particular, the execution prompt had an uncommitted user edit at bootstrap.
 - Local commits are authorized. Remote pushes and publishing are not.
@@ -47,7 +48,7 @@
 - Avoid shell command construction. Child processes use argument arrays.
 - Keep processing local; no implicit model downloads or remote fallback.
 - Write immutable assets first, then atomically publish the manifest.
-- Keep arbitrary monocular scale explicit. No invented floors or collision.
+- Keep arbitrary monocular scale explicit. Phase 2 completion is labeled separately; generated floors/collision never satisfy measured Q5/N2 or enable measured walking.
 - World is right-handed, +Y up; optical cameras +X right/+Y down/+Z forward.
 - Store world-from-camera, wxyz quaternions and integer pixel centers.
 - Preserve backend color/SH conventions; captured radiance is not relightable albedo.
