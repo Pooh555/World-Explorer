@@ -436,10 +436,12 @@ managers, physical desktops, performance or reference devices.
 ## Resident-copy diagnostics
 
 `we_gpu_resident_reuse <new-output-directory>` compares CPU packing and resident
-reuse across 12 synthetic revisions in each mode. It checks exact readbacks,
+reuse across 12 synthetic revisions in each mode and each FP32/packed-SH profile
+(48 phases). It checks exact readbacks,
 transfer-byte accounting, the 15 MiB frame cap, staging residency and atomic
 visibility during multi-frame copies. Cases cover changed chunks, insertion/
-deletion offsets, transforms, empty scenes and nearby/rebased cameras.
+deletion offsets, transforms, empty scenes and nearby/rebased cameras. Packed SH
+overflow must preserve the prior scene/pixels and permit a valid full resync.
 
 `we_gpu_update_stream <scene> <new-dir> <seconds> [--no-resident-reuse]` retains
 the scheduled 10 Hz real-scene/synthetic-marker workload and records host versus
@@ -449,6 +451,30 @@ resident copy bytes. Its thresholds are unchanged. `we_gpu_lifetime_stress
 device copies, host uploads and deletion. That mode also collects bounded
 completed timings and requires observed device-copy bytes for runs ≥30 seconds.
 Neither synthetic diagnostic certifies reference hardware or a full gate.
+
+## Local packing comparison
+
+`we_gpu_packing <scene.wexplore> <new-output-directory>` loads the complete
+retained scene, freezes `path.json` before rendering and saves 100 RGB8 PPMs per
+GPU profile. `source_view_local_loop_v1` uses the source spectator basis, a
+0.1/0.05/0.05 canonical-unit position loop and 0.15/0.1 radian yaw/pitch variation,
+1280×720, evenly spaced phases and the source-view FOV. Scale may be arbitrary.
+This is a local inspection path, without captured target images. It checks full
+splat count, validation and allocation limits, and records profile/stride, scene/
+manifest/path/image hashes and sampled allocation counts in `comparison.json`.
+
+`tools/evaluate_packing.py` takes `--comparison`, `--metric-manifest`,
+`--requirements`, `--ssim-implementation`, `--alexnet-weights` and a new
+`--output` under ignored artifacts. Use the explicitly provisioned
+[CPU metric environment](../../workers/metrics/README.md). It checks all 200
+readbacks and the fixed path before model loading, disables network access and
+rechecks identities before atomic publication. Full-image, display-encoded
+RGB [0,1] PSNR/SSIM use float64; pinned AlexNet LPIPS uses float32 and
+`normalize=True`. No crop, resize, exposure correction or view exclusion occurs.
+Scores report pairwise packing distortion, per image then per scene, including
+explicit infinite PSNR handling. They do not report ground-truth PSNR loss or
+LPIPS increase and cannot certify Q6. Canonical assets remain FP32; packing is
+an explicit renderer option, outside the normal viewer controls until qualified.
 
 ## Optional stage timings
 

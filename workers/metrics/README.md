@@ -63,3 +63,13 @@ qualification is inferred. [Sample_1 development results](../../docs/validation/
 record all 13 frames and actual commands; [replacement sample_3 checks](../../docs/validation/2026-10-15-sample3-evidence.md)
 reproduce all 16 saved scores with the current metric receipt and preserve the
 original report's separate receipt hash.
+
+## GPU packing distortion
+
+`tools/evaluate_packing.py` reuses this pinned offline loader for all 100 pairs
+from `we_gpu_packing`, checking both profiles' RGB8 PPMs and frozen camera path.
+It reports full-image pairwise distortion, separately from captured-target quality
+loss; Q6 remains unqualified. The [comparison protocol](../../docs/protocols/viewer.md#local-packing-comparison)
+and [two-scene evidence/commands](../../docs/validation/2026-10-16-m2-sh-packing.md)
+define its bounded inputs, source guards and exact metric profile. No conversion,
+model download, reconstruction or environment modification is required.

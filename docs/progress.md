@@ -540,10 +540,25 @@ now passes the bound exit/source/binary and independent event/readback audit:
 **304,047 frames**, zero Vulkan errors and **520,936,256** peak tracked bytes.
 Both host and resident copy totals match the full/full/empty revision sequence.
 
-Next executable step: implement/check Q6's fixed 100-view packing comparison.
-Rebuilt executables invalidate the historical dependency receipt's current-byte
-check (exit 2); fresh runtime observation is also due. Preserve saved scenes,
-failures and the frozen fixture; do not rerun reconstruction.
+[Optional SH packing](validation/2026-10-16-m2-sh-packing.md) now compares both
+GPU profiles along a frozen **100-view local path per full saved scene**.
+The experimental profile reduces splat records **256→160 bytes**; default and
+canonical storage remain FP32. All 400 final readbacks match the scored bytes,
+with maximum one RGB8 level difference and mean pairwise PSNR **76.29/77.93 dB**.
+GCC/Clang each pass 48 synthetic phases, including rejection/preservation/repair;
+**273 dev / 255 C++23 CPU checks**, **139 worker checks** on Python 3.10/3.14,
+format/tidy and **2,088 protected files unchanged** pass. This is pairwise
+packing distortion, without ground-truth PSNR loss or LPIPS increase; Q6 remains
+**IN_PROGRESS**.
+
+Next executable step: add a ground-truth-bound before/after packing quality
+request for retained calibrated cameras, using identical targets and crops in
+both profiles and retaining actual available camera counts. Report PSNR loss/
+LPIPS increase before qualifying the prescribed fixed 100-view corpus path;
+the existing local loop has no captured targets. Rebuilt executables also leave
+the historical runtime receipt's current-byte check stale; fresh loader/native
+viewer observation is due. Preserve saved scenes, failures and the frozen fixture;
+do not rerun reconstruction.
 Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
 other-scene/platform qualification remain open.
 

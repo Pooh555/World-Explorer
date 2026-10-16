@@ -3,6 +3,7 @@
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
 #include "world_explorer/render_core/radix.hpp"
+#include "world_explorer/render_core/sh_packing.hpp"
 #include "world_explorer/render_core/tile_plan.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -172,6 +173,17 @@ struct vulkan_renderer::implementation {
     }
 
     void initialize() {
+        switch (options.splat_storage) {
+        case gpu_splat_storage::FP32:
+            capabilities.splat_stride_bytes = sizeof(gpu_splat);
+            break;
+        case gpu_splat_storage::FP32_GEOMETRY_FP16_SH:
+            capabilities.splat_stride_bytes = sizeof(detail::gpu_splat_packed_sh);
+            break;
+        default:
+            throw std::invalid_argument("unknown GPU splat storage profile");
+        }
+        capabilities.splat_storage = options.splat_storage;
         if (!window || !options.max_splats || options.max_splats > 10000000)
             throw std::runtime_error(
                 "invalid renderer window or splat budget (maximum 10 million)");
@@ -202,7 +214,9 @@ struct vulkan_renderer::implementation {
     }
     void create_pipelines() {
         project_pipeline = device_backend->create_compute_pipeline(
-            "project.comp", bindings.pipeline_layout, options.shader_directory);
+            options.splat_storage == gpu_splat_storage::FP32 ? "project.comp"
+                                                             : "project_packed.comp",
+            bindings.pipeline_layout, options.shader_directory);
         histogram_pipeline = device_backend->create_compute_pipeline(
             "radix_histogram.comp", bindings.pipeline_layout, options.shader_directory);
         scan_pipeline = device_backend->create_compute_pipeline(
@@ -454,7 +468,8 @@ struct vulkan_renderer::implementation {
         }
         if (count > options.max_splats)
             throw std::runtime_error("scene exceeds configured Gaussian count");
-        const auto bytes = std::max<std::size_t>(count * sizeof(gpu_splat), 16);
+        const auto stride = capabilities.splat_stride_bytes;
+        const auto bytes = std::max<std::size_t>(count * stride, 16);
         const auto live = live_buffer_bytes();
         if (live > options.residency_bytes || bytes > (options.residency_bytes - live) / 2)
             throw std::runtime_error(
@@ -470,27 +485,26 @@ struct vulkan_renderer::implementation {
             std::size_t offset = 0;
             for (const auto& [id, chunk] : visible_scene->chunks) {
                 resident_offsets.emplace(id, offset);
-                offset += chunk->splats.size() * sizeof(gpu_splat);
+                offset += chunk->splats.size() * stride;
             }
         }
         std::vector<upload_region> regions;
-        auto* destination = static_cast<gpu_splat*>(staging.mapped);
+        auto* destination = static_cast<std::byte*>(staging.mapped);
         std::size_t index = 0;
         for (const auto& [id, chunk] : snapshot->chunks) {
             if (chunk->splats.empty())
                 continue;
-            const auto chunk_bytes = chunk->splats.size() * sizeof(gpu_splat);
+            const auto chunk_bytes = chunk->splats.size() * stride;
             const auto resident = resident_offsets.find(id);
             if (resident != resident_offsets.end() && visible_scene->chunks.at(id) == chunk) {
-                regions.push_back({resident->second, index * sizeof(gpu_splat), chunk_bytes, true});
+                regions.push_back({resident->second, index * stride, chunk_bytes, true});
                 index += chunk->splats.size();
                 continue;
             }
-            regions.push_back(
-                {index * sizeof(gpu_splat), index * sizeof(gpu_splat), chunk_bytes, false});
+            regions.push_back({index * stride, index * stride, chunk_bytes, false});
             const auto& transform = chunk->world_from_chunk;
             for (const auto& source : chunk->splats) {
-                auto& target = destination[index++];
+                gpu_splat target{};
                 const auto point =
                     transform_point(transform, {source.mean[0], source.mean[1], source.mean[2]}) -
                     origin;
@@ -509,6 +523,18 @@ struct vulkan_renderer::implementation {
                 target.world_to_sh = floats(quatd{transform.rotation.w, -transform.rotation.x,
                                                   -transform.rotation.y, -transform.rotation.z});
                 target.sh = source.sh;
+                if (options.splat_storage == gpu_splat_storage::FP32) {
+                    std::memcpy(destination + index * stride, &target, sizeof(target));
+                } else {
+                    const auto sh = pack_sh_binary16(source.sh);
+                    if (!sh)
+                        throw std::invalid_argument(sh.error().message);
+                    const detail::gpu_splat_packed_sh packed{target.mean_opacity,
+                                                             target.scale_degree, target.rotation,
+                                                             target.world_to_sh, *sh};
+                    std::memcpy(destination + index * stride, &packed, sizeof(packed));
+                }
+                ++index;
             }
         }
         if (regions.empty())
@@ -956,6 +982,9 @@ struct vulkan_renderer::implementation {
                     if (exception.status() == VK_ERROR_DEVICE_LOST)
                         throw;
                     sink.fail_update(next->ticket, {error_code::BACKEND_FAILURE, exception.what()});
+                } catch (const std::invalid_argument& exception) {
+                    sink.fail_update(next->ticket,
+                                     {error_code::INVALID_ARGUMENT, exception.what()});
                 } catch (const std::exception& exception) {
                     sink.fail_update(next->ticket,
                                      {error_code::RESOURCE_EXHAUSTED, exception.what()});

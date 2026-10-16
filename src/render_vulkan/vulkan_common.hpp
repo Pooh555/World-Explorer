@@ -49,6 +49,12 @@ struct gpu_splat {
     std::array<float, 48> sh;
 };
 static_assert(sizeof(gpu_splat) == 256);
+struct gpu_splat_packed_sh {
+    std::array<float, 4> mean_opacity, scale_degree, rotation, world_to_sh;
+    std::array<std::uint32_t, 24> sh;
+};
+static_assert(sizeof(gpu_splat_packed_sh) == 160);
+static_assert(offsetof(gpu_splat, sh) == 64 && offsetof(gpu_splat_packed_sh, sh) == 64);
 
 struct push_parameters {
     std::array<float, 4> right, down, forward, camera_position, intrinsics, viewport_clip;

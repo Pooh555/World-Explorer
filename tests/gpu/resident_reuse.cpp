@@ -104,94 +104,148 @@ int main(int argc, char** argv) try {
     std::vector<std::string> references;
     nlohmann::json report{{"scope", "synthetic resident-copy versus CPU-pack parity"},
                           {"runs", nlohmann::json::array()}};
-    for (const bool reuse : {false, true}) {
-        renderer_options options;
-        options.max_splats = 100000;
-        options.shader_directory = WE_SHADER_DIRECTORY;
-        options.collect_timings = true;
-        options.reuse_resident_chunks = reuse;
-        auto created = vulkan_renderer::create(window.get(), options);
-        require(created.has_value(), created ? "" : created.error().message);
-        auto renderer = std::move(*created);
-        require(renderer->capabilities().validation_enabled, "Vulkan validation is required");
-        report["device"] = renderer->capabilities().device_name;
-        for (std::size_t index = 0; index < cases.size(); ++index) {
-            const auto& test = cases[index];
-            camera_view camera;
-            camera.position = test.camera;
-            auto batch = make_snapshot_batch(test.snapshot, {index + 1}).value();
-            const auto ticket = renderer->updates().enqueue(batch);
-            require(ticket.has_value(), "synthetic scene admission failed");
-            const auto before = renderer->diagnostics().submitted_frames;
-            std::map<std::uint64_t, renderer_frame_timing> samples;
-            auto collect = [&] {
-                const auto stats = renderer->diagnostics();
-                require(stats.validation_errors == 0 &&
-                            stats.allocated_bytes <= options.residency_bytes,
-                        "Vulkan validation or residency error");
-                for (const auto& sample : stats.completed_timings)
-                    if (sample.sequence > before)
-                        samples.try_emplace(sample.sequence, sample);
-            };
-            bool visible = false;
-            for (int frame = 0; frame < 30 && !visible; ++frame) {
-                SDL_PumpEvents();
-                const auto drawn = renderer->draw(camera);
-                require(drawn.has_value(), drawn ? "" : drawn.error().message);
+    for (const auto profile : {gpu_splat_storage::FP32, gpu_splat_storage::FP32_GEOMETRY_FP16_SH}) {
+        references.clear();
+        const bool packed = profile == gpu_splat_storage::FP32_GEOMETRY_FP16_SH;
+        const std::size_t stride = packed ? 160 : 256;
+        for (const bool reuse : {false, true}) {
+            renderer_options options;
+            options.max_splats = 100000;
+            options.splat_storage = profile;
+            options.shader_directory = WE_SHADER_DIRECTORY;
+            options.collect_timings = true;
+            options.reuse_resident_chunks = reuse;
+            auto created = vulkan_renderer::create(window.get(), options);
+            require(created.has_value(), created ? "" : created.error().message);
+            auto renderer = std::move(*created);
+            require(renderer->capabilities().validation_enabled, "Vulkan validation is required");
+            report["device"] = renderer->capabilities().device_name;
+            for (std::size_t index = 0; index < cases.size(); ++index) {
+                const auto& test = cases[index];
+                camera_view camera;
+                camera.position = test.camera;
+                auto batch = make_snapshot_batch(test.snapshot, {index + 1}).value();
+                const auto ticket = renderer->updates().enqueue(batch);
+                require(ticket.has_value(), "synthetic scene admission failed");
+                const auto before = renderer->diagnostics().submitted_frames;
+                std::map<std::uint64_t, renderer_frame_timing> samples;
+                auto collect = [&] {
+                    const auto stats = renderer->diagnostics();
+                    require(stats.validation_errors == 0 &&
+                                stats.allocated_bytes <= options.residency_bytes,
+                            "Vulkan validation or residency error");
+                    for (const auto& sample : stats.completed_timings)
+                        if (sample.sequence > before)
+                            samples.try_emplace(sample.sequence, sample);
+                };
+                bool visible = false;
+                for (int frame = 0; frame < 30 && !visible; ++frame) {
+                    SDL_PumpEvents();
+                    const auto drawn = renderer->draw(camera);
+                    require(drawn.has_value(), drawn ? "" : drawn.error().message);
+                    collect();
+                    const auto progress = renderer->updates().query_progress(*ticket);
+                    require(progress && progress->state != update_state::FAILED,
+                            "GPU upload failed");
+                    visible = progress->state == update_state::RENDER_VISIBLE;
+                    const auto snapshot = renderer->updates().visible_snapshot();
+                    require((snapshot ? snapshot->revision.value : 0) ==
+                                (visible ? index + 1 : index),
+                            "partial upload advanced the visible revision");
+                    if (!visible)
+                        require(renderer->diagnostics().staging_bytes > 0,
+                                "active staging allocation was absent from diagnostics");
+                }
+                require(visible, "synthetic revision did not become visible");
+                const auto path =
+                    output / ((packed ? std::string("packed-") : std::string()) +
+                              (reuse ? "resident-" : "cpu-") + std::to_string(index) + ".ppm");
+                require(renderer->request_screenshot(path).has_value(), "readback request failed");
+                require(renderer->draw(camera).has_value(), "readback draw failed");
                 collect();
+                require(renderer->wait_for_idle().has_value(), "GPU drain failed");
+                collect();
+                const auto hash = sha256_file(path, std::size_t{4} * 1024 * 1024);
+                require(hash.has_value(), "cannot hash synthetic readback");
+                if (reuse)
+                    require(*hash == references[index],
+                            "resident copy differs from CPU-packed pixels");
+                else
+                    references.push_back(*hash);
+                std::size_t host{}, resident{}, splats{};
+                for (const auto& [id, chunk] : test.snapshot->chunks) {
+                    static_cast<void>(id);
+                    splats += chunk->splats.size();
+                }
+                for (const auto& [sequence, sample] : samples) {
+                    static_cast<void>(sequence);
+                    host += sample.host_copy_bytes;
+                    resident += sample.resident_copy_bytes;
+                    require(sample.host_copy_bytes + sample.resident_copy_bytes <=
+                                15ULL * 1024 * 1024,
+                            "per-frame copy byte cap exceeded");
+                }
+                const auto expected_resident = reuse ? test.reused_splats * stride : 0;
+                require(resident == expected_resident &&
+                            host == std::max<std::size_t>(16, splats * stride) - expected_resident,
+                        "resident/host transfer bytes differ from the fixture contract");
+                report["runs"].push_back({{"reuse", reuse},
+                                          {"stride", stride},
+                                          {"revision", index + 1},
+                                          {"host_bytes", host},
+                                          {"resident_bytes", resident},
+                                          {"sha256", *hash}});
+            }
+            if (packed && reuse) {
+                auto invalid = std::make_shared<scene_state>(*cases.back().snapshot);
+                invalid->revision = {13};
+                auto replacement = std::make_shared<scene_chunk>(*invalid->chunks.at({4}));
+                replacement->splats.front().sh[47] = 65505.F;
+                invalid->chunks[{4}] = replacement;
+                const auto original_hash = scene_content_hash(*invalid);
+                auto batch = make_snapshot_batch(invalid, {13}).value();
+                const auto ticket = renderer->updates().enqueue(batch);
+                require(ticket.has_value(), "finite canonical scene should pass CPU admission");
+                camera_view camera;
+                camera.position = cases.back().camera;
+                require(renderer->draw(camera).has_value(), "packing rejection draw failed");
+                require(renderer->wait_for_idle().has_value(), "packing rejection drain failed");
                 const auto progress = renderer->updates().query_progress(*ticket);
-                require(progress && progress->state != update_state::FAILED, "GPU upload failed");
-                visible = progress->state == update_state::RENDER_VISIBLE;
-                const auto snapshot = renderer->updates().visible_snapshot();
-                require((snapshot ? snapshot->revision.value : 0) == (visible ? index + 1 : index),
-                        "partial upload advanced the visible revision");
-                if (!visible)
-                    require(renderer->diagnostics().staging_bytes > 0,
-                            "active staging allocation was absent from diagnostics");
+                require(progress && progress->state == update_state::FAILED && progress->failure &&
+                            progress->failure->code == error_code::INVALID_ARGUMENT,
+                        "binary16 overflow did not fail explicitly");
+                require(renderer->updates().visible_snapshot()->revision.value == 12 &&
+                            scene_content_hash(*invalid) == original_hash,
+                        "packing rejection changed visible scene or caller data");
+                const auto path = output / "rejected-packed.ppm";
+                require(renderer->request_screenshot(path).has_value(), "rejection capture failed");
+                require(renderer->draw(camera).has_value() && renderer->wait_for_idle().has_value(),
+                        "rejection redraw failed");
+                require(sha256_file(path, 4ULL * 1024 * 1024).value() == references.back(),
+                        "packing rejection changed prior pixels");
+                auto repaired = std::make_shared<scene_state>(*cases.back().snapshot);
+                repaired->revision = {14};
+                auto repair_batch = make_snapshot_batch(repaired, {14}).value();
+                const auto repair_ticket = renderer->updates().enqueue(repair_batch);
+                require(repair_ticket.has_value(), "repair full snapshot was rejected");
+                bool visible = false;
+                for (int frame = 0; frame < 30 && !visible; ++frame) {
+                    require(renderer->draw(camera).has_value(), "repair draw failed");
+                    visible = renderer->updates().query_progress(*repair_ticket)->state ==
+                              update_state::RENDER_VISIBLE;
+                }
+                require(visible && renderer->diagnostics().validation_errors == 0,
+                        "valid full snapshot could not recover after packing failure");
+                report["packed_overflow_preservation_and_repair"] = true;
             }
-            require(visible, "synthetic revision did not become visible");
-            const auto path =
-                output / ((reuse ? "resident-" : "cpu-") + std::to_string(index) + ".ppm");
-            require(renderer->request_screenshot(path).has_value(), "readback request failed");
-            require(renderer->draw(camera).has_value(), "readback draw failed");
-            collect();
-            require(renderer->wait_for_idle().has_value(), "GPU drain failed");
-            collect();
-            const auto hash = sha256_file(path, std::size_t{4} * 1024 * 1024);
-            require(hash.has_value(), "cannot hash synthetic readback");
-            if (reuse)
-                require(*hash == references[index], "resident copy differs from CPU-packed pixels");
-            else
-                references.push_back(*hash);
-            std::size_t host{}, resident{}, splats{};
-            for (const auto& [id, chunk] : test.snapshot->chunks) {
-                static_cast<void>(id);
-                splats += chunk->splats.size();
-            }
-            for (const auto& [sequence, sample] : samples) {
-                static_cast<void>(sequence);
-                host += sample.host_copy_bytes;
-                resident += sample.resident_copy_bytes;
-                require(sample.host_copy_bytes + sample.resident_copy_bytes <= 15ULL * 1024 * 1024,
-                        "per-frame copy byte cap exceeded");
-            }
-            const auto expected_resident = reuse ? test.reused_splats * 256 : 0;
-            require(resident == expected_resident &&
-                        host == std::max<std::size_t>(16, splats * 256) - expected_resident,
-                    "resident/host transfer bytes differ from the fixture contract");
-            report["runs"].push_back({{"reuse", reuse},
-                                      {"revision", index + 1},
-                                      {"host_bytes", host},
-                                      {"resident_bytes", resident},
-                                      {"sha256", *hash}});
         }
+        require(references[0] != references[9],
+                "near and rebased views did not exercise distinct pixels");
     }
-    require(references[0] != references[9],
-            "near and rebased views did not exercise distinct pixels");
     std::ofstream stream(output / "summary.json", std::ios::binary);
     stream << report.dump(2) << '\n';
     require(static_cast<bool>(stream), "cannot write resident-copy report");
-    std::cout << "24 synthetic resident/CPU phases passed; validation_errors=0\n";
+    std::cout << "48 synthetic resident/CPU/profile phases passed; validation_errors=0\n";
     return 0;
 } catch (const std::exception& exception) {
     std::cerr << "Resident reuse verification failed: " << exception.what() << '\n';
