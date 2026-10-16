@@ -476,6 +476,43 @@ explicit infinite PSNR handling. They do not report ground-truth PSNR loss or
 LPIPS increase and cannot certify Q6. Canonical assets remain FP32; packing is
 an explicit renderer option, outside the normal viewer controls until qualified.
 
+### Captured-target packing quality
+
+`we_gpu_reference NEW_DIRECTORY --real BUNDLE COMPLETED_FIT --fit-indices CSV`
+can append `--fp16-sh` (before optional `--timings`) to select experimental SH
+storage at the original calibrated cameras. The default remains FP32. Real
+fixtures record storage/stride and the scene-manifest hash; `native.json` binds
+the fixture and every readback hash. This option requires the real fit profile.
+
+`tools/evaluate_packing_quality.py prepare` requires `--fit`, `--scene`,
+`--target` (the original undistorted training-image directory), separate `--fp32`
+and `--fp16-sh` native export directories, `--metric-manifest`, `--crop-margin`
+and a new `--output` under ignored artifacts. Export **every** available original
+camera with `--fit-indices 0,1,...` in temporal order in both profiles. Preparation
+checks full scene/fit identities, original calibrated camera matrices, admission
+origin, clipping, dimensions, identical canonical payloads/background, profile
+strides, zero validation errors and captured-target/readback bytes. It records
+the actual available count; fewer than 100 cameras are never padded or relabeled.
+
+Run `evaluate --request REQUEST --requirements LOCK --ssim-implementation SOURCE
+--alexnet-weights WEIGHTS --output NEW_RECEIPT` with the pinned CPU metric Python.
+It revalidates inputs before model loading and after scoring, disables networking
+and checks implementation/environment bytes before atomic publication. Targets
+use the recorded fitter bicubic RGB8 resize. The same predetermined rectangular
+crop applies to target and both render profiles; excluded area and cropped image
+hashes are retained. No exposure/color fitting or per-profile crop is supported.
+
+Each view reports both PSNR/SSIM/AlexNet LPIPS scores against the **same captured
+target**, FP32-minus-packed PSNR loss and packed-minus-FP32 LPIPS increase.
+PSNR/SSIM use float64 and LPIPS float32 with `normalize=True`. Means use per-image
+scores, then equal-weight scene means; training, guard and holdout subsets stay
+separate. Infinite PSNR is explicit and its quality delta/limit result is undefined,
+never silently zero. Numeric ≤0.2 dB / ≤0.01 comparisons are development evidence.
+All-camera results include training observations and are not independent Q3
+evidence. Q6 remains unqualified without its prescribed fixed 100-view corpus,
+scale/geometry qualification and required platforms. This workflow reads existing
+fits without loading optimizer checkpoints or rerunning reconstruction.
+
 ## Optional stage timings
 
 `renderer_options.collect_timings` defaults off. It records CPU waits for frame
