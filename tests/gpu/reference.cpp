@@ -272,8 +272,14 @@ int main(int argc, char** argv) {
             arguments.size() > 2 && std::string_view(arguments.back()) == "--timings";
         if (timings)
             --argc;
+        const auto render_arguments = timings ? arguments.first(arguments.size() - 1) : arguments;
+        const bool packed =
+            render_arguments.size() > 2 && std::string_view(render_arguments.back()) == "--fp16-sh";
+        if (packed)
+            --argc;
         const bool explicit_indices = argc == 7 && std::string_view(argv[5]) == "--fit-indices";
         const bool real = (argc == 5 || explicit_indices) && std::string_view(argv[2]) == "--real";
+        require(!packed || real, "--fp16-sh requires a real calibrated fit");
         const bool rebasing = argc == 4 && std::string_view(argv[2]) == "--rebasing";
         auto offset = rebasing_offset(rebasing ? argv[3] : "zero");
         require(offset.has_value(), offset ? "" : offset.error().message);
@@ -288,6 +294,7 @@ int main(int argc, char** argv) {
                 "--rebasing zero|positive|negative or "
                 "we_gpu_reference <new output directory> --real <scene bundle> <completed fit>; "
                 "optionally --fit-indices 0,1,... for original fit cameras; "
+                "append --fp16-sh for experimental SH storage; "
                 "append --timings for completed GPU/CPU timing checks");
         const bool clipping = argc == 3 && std::string_view(argv[2]) == "--clipping";
         const bool compositing = argc == 3 && !clipping;
@@ -374,6 +381,9 @@ int main(int argc, char** argv) {
                 fit_cameras.push_back(camera);
             }
             identity = {{"fit_identity", result.at("identity")},
+                        {"scene_manifest_sha256",
+                         file_hash(std::filesystem::path(argv[3]) / "manifest.json",
+                                   std::size_t{4} * 1024 * 1024)},
                         {"source_sha256", result.at("source_sha256")},
                         {"ply_sha256", result.at("ply_sha256")},
                         {"fit_input_sha256",
@@ -400,6 +410,8 @@ int main(int argc, char** argv) {
             SDL_DestroyWindow);
         require(window != nullptr, SDL_GetError());
         renderer_options options;
+        if (packed)
+            options.splat_storage = gpu_splat_storage::FP32_GEOMETRY_FP16_SH;
         options.collect_timings = timings;
         options.max_splats = real ? 1000000 : 250000;
         if (bounded)
@@ -421,6 +433,7 @@ int main(int argc, char** argv) {
                     unchanged->state == update_state::ACCEPTED,
                 "invalid camera consumed the pending scene update");
         json views = json::array();
+        json images = json::array();
         std::vector<std::string> names{"centered", "off_center", "rolled", "translated"};
         if (compositing)
             names.insert(names.end(), {"orbit_left", "orbit_right", "close_up"});
@@ -511,6 +524,9 @@ int main(int argc, char** argv) {
             }
             require(captured && std::filesystem::exists(output / (name + ".ppm")),
                     "scene never became visible/captured");
+            images.push_back(
+                {{"file", name + ".ppm"},
+                 {"sha256", file_hash(output / (name + ".ppm"), std::size_t{64} * 1024 * 1024)}});
         }
         require(renderer->wait_for_idle().has_value(), "GPU completion failed");
         const auto stats = renderer->diagnostics();
@@ -550,6 +566,8 @@ int main(int argc, char** argv) {
             {"views", views},
             {"scene_content_sha256", scene_content_hash(*scene)}};
         if (real) {
+            diagnostic["gpu_storage"] = packed ? "fp16_sh" : "fp32";
+            diagnostic["splat_stride_bytes"] = renderer->capabilities().splat_stride_bytes;
             if (explicit_indices)
                 diagnostic["fit_frame_indices"] = fit_indices;
             diagnostic["identity"] = identity;
@@ -565,19 +583,22 @@ int main(int argc, char** argv) {
             diagnostic["rebase_excursion"] = 16384;
         }
         write_json(output / "fixture.json", diagnostic);
-        write_json(output / "native.json",
-                   {{"device", renderer->capabilities().device_name},
-                    {"timing_collection", timings},
-                    {"gpu_timestamps_supported", renderer->capabilities().gpu_timestamps_supported},
-                    {"timestamp_valid_bits", renderer->capabilities().timestamp_valid_bits},
-                    {"timestamp_period_ns", renderer->capabilities().timestamp_period_ns},
-                    {"fp32_compositing", renderer->capabilities().fp32_compositing},
-                    {"framebuffer_bytes", stats.framebuffer_bytes},
-                    {"allocated_bytes", stats.allocated_bytes},
-                    {"validation_errors", stats.validation_errors},
-                    {"splat_count", stats.resident_splat_count},
-                    {"tile_references", stats.tile_reference_count},
-                    {"submitted_frames", stats.submitted_frames}});
+        write_json(
+            output / "native.json",
+            {{"device", renderer->capabilities().device_name},
+             {"fixture_sha256", file_hash(output / "fixture.json", std::size_t{4} * 1024 * 1024)},
+             {"images", images},
+             {"timing_collection", timings},
+             {"gpu_timestamps_supported", renderer->capabilities().gpu_timestamps_supported},
+             {"timestamp_valid_bits", renderer->capabilities().timestamp_valid_bits},
+             {"timestamp_period_ns", renderer->capabilities().timestamp_period_ns},
+             {"fp32_compositing", renderer->capabilities().fp32_compositing},
+             {"framebuffer_bytes", stats.framebuffer_bytes},
+             {"allocated_bytes", stats.allocated_bytes},
+             {"validation_errors", stats.validation_errors},
+             {"splat_count", stats.resident_splat_count},
+             {"tile_references", stats.tile_reference_count},
+             {"submitted_frames", stats.submitted_frames}});
         std::cout << (real ? "Real calibrated retained fit: " : "Synthetic fixed-camera fixture: ")
                   << stats.resident_splat_count << " splats, " << names.size() << " views, "
                   << image_width << 'x' << image_height << ", validation_errors=0\n";

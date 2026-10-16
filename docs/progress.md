@@ -551,14 +551,27 @@ format/tidy and **2,088 protected files unchanged** pass. This is pairwise
 packing distortion, without ground-truth PSNR loss or LPIPS increase; Q6 remains
 **IN_PROGRESS**.
 
-Next executable step: add a ground-truth-bound before/after packing quality
-request for retained calibrated cameras, using identical targets and crops in
-both profiles and retaining actual available camera counts. Report PSNR loss/
-LPIPS increase before qualifying the prescribed fixed 100-view corpus path;
-the existing local loop has no captured targets. Rebuilt executables also leave
-the historical runtime receipt's current-byte check stale; fresh loader/native
-viewer observation is due. Preserve saved scenes, failures and the frozen fixture;
-do not rerun reconstruction.
+[Captured-target packing quality](validation/2026-10-16-m2-packing-quality.md)
+now pins and scores every retained calibrated camera: **63 sample_1 / 80 sample_3**,
+both full scenes and identical captured targets/crops. Mean PSNR loss is
+**0.00001164 / 0.00000528 dB**; LPIPS increase **0.000000740 / 0.000000189**.
+All 143 individual comparisons meet the unchanged numeric limits. Training,
+guard and holdout scores remain separate; Q3 still fails locally. The final
+parser-clean binary reproduces all **286 readbacks** exactly, with zero Vulkan
+errors. **273 dev / 255 C++23 CPU checks**, **149 worker checks** on three Python
+versions, synthetic numerical/admission checks and format/tidy pass. This is
+local captured-target evidence, not Q6's prescribed fixed 100-view corpus or
+scale/platform qualification. Saved reconstructions and user edits are preserved.
+
+Next executable step: create a fresh runtime selection from
+`third_party/runtime-selection-20261016.json`, changing only the actually rebuilt
+viewer/CLI hashes, then recapture the Linux loader and native empty-viewer mapping
+receipts using the runtime/binding protocols. The current local dependency check
+still exits 2 on stale executable bytes; preserve historical receipts and worker
+environments. Q6 still needs its prescribed fixed 100-view captured-target fixture
+and qualified scale/corpus; packed lifetime qualification also remains open.
+Preserve saved scenes, failures and both frozen comparisons; do not rerun
+reconstruction.
 Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
 other-scene/platform qualification remain open.
 
