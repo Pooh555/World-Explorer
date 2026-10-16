@@ -1,5 +1,9 @@
 # ADR 018: add offline reusable asset production after M6
 
+Scheduling and the reconstruction-only M6 boundary are superseded by
+[ADR 019](019-assets-before-platforms.md). The original decision below is retained
+as history; its asset architecture, provenance and local-processing rules remain.
+
 Date: 17 October 2026, Asia/Hong_Kong. Decision: user-approved product direction;
 implementation NOT_STARTED. Supersedes only the final-goal completion/relighting
 exclusion in plan v1.2; Phase 1 exclusions and all existing gates remain intact.

@@ -5,17 +5,21 @@ exit. M2: VERIFIED for the Linux/NVIDIA development exit. M3: IN_PROGRESS.
 No full Q/P/N/E gate is certified. M7–M8:
 DEFERRED_BY_USER.**
 
-The [approved expanded final goal](adr/018-offline-asset-production.md) is now
-planned as [Phase 2 after M6](technical_plan.md#11-phase-2-offline-asset-production):
+The [revised product sequence](adr/019-assets-before-platforms.md) places the
+[local asset workflow](technical_plan.md#11-offline-asset-production-track) after
+M3 and before M4:
 reusable objects/structure, labeled completion, PBR materials and shared glTF/GLB
-assembly, with a small automatic pilot before complex rooms. **A0–A6/AP0–AP9:
+assembly, first visualized end-to-end in A1, then validated locally through A5.
+A6 engine packaging stays after M6. **A0–A6/AP0–AP9:
 NOT_STARTED.** [Dated research](research/offline_asset_pipeline.md) compares
 calibrated-view and splat-derived paths, model/dependency rights, resources and
-connection experiments. [Planning checks](validation/2026-10-17-offline-asset-planning.md)
-do not qualify the pipeline. No dependencies/models installed, reconstructions
-run or local media uploaded. M1–M6 order, thresholds and historical evidence stay
-unchanged. Next implementation work remains the M3 dense-input preparation
-specified below; this research/documentation-only task does not execute it.
+connection experiments. [Rescheduling checks](validation/2026-10-17-assets-before-platforms.md)
+do not qualify the pipeline; the [original planning report](validation/2026-10-17-offline-asset-planning.md)
+retains the superseded after-M6 schedule. No dependencies/models installed,
+reconstructions run or media uploaded. M1–M6 retain relative order and thresholds;
+native/reference release evidence remains due by M6. Next implementation work
+remains the M3 dense-input preparation specified below; this documentation task
+does not execute it.
 
 [User-approved plan v1.1](adr/012-m1-development-exit.md) changes M1 to a
 Linux development exit with hosted native CPU CI. Physical Windows/macOS viewer,

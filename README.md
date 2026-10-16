@@ -5,11 +5,13 @@ Native C++/Vulkan scene viewer and local video reconstruction work in progress.
 development exits. See [progress](docs/progress.md)
 and the [requirement matrix](docs/requirements.md) for verified behavior and gaps.
 
-The [approved final goal](docs/technical_plan.md#11-phase-2-offline-asset-production)
+The [approved final goal](docs/technical_plan.md#11-offline-asset-production-track)
 adds reusable objects, architectural structure, completed hidden surfaces and
-relightable PBR environments exported as glTF/GLB after M6. This asset-production
-phase is planned and NOT_STARTED; current splat/captured-appearance reconstruction
-does not provide it. M7–M8 live work remains deferred.
+relightable PBR environments exported as glTF/GLB. The local asset workflow now
+follows M3 and precedes M4 platform qualification, with the first visible result
+in A1; A6 engine packaging stays after M6. This work is planned and NOT_STARTED;
+current splat/captured-appearance reconstruction does not provide it. M7–M8 live
+work remains deferred.
 
 ## Build on the tested Arch development host
 
