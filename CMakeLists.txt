@@ -101,7 +101,7 @@ endfunction()
 # -----------------------------------------------------------------------------
 # Core Libraries & Application Targets
 # -----------------------------------------------------------------------------
-add_library(core src/core/hash.cpp src/core/file_lock.cpp)
+add_library(core src/core/hash.cpp src/core/file_lock.cpp src/core/asset_files.cpp)
 we_target(core)
 target_link_libraries(core PRIVATE OpenSSL::Crypto PUBLIC Threads::Threads)
 
@@ -163,14 +163,15 @@ add_custom_command(OUTPUT "${WE_POSE_DIRECTORY}/checkpoint_generated.h"
   DEPENDS ${WE_FLATC} schemas/map/checkpoint.fbs schemas/map/poses.fbs
   VERBATIM)
 add_library(map_store src/map_store/map_store.cpp src/map_store/pose_asset.cpp
-  src/map_store/map_codec.cpp src/map_store/map_files.cpp src/map_store/map_persistence.cpp
+  src/map_store/map_codec.cpp src/map_store/map_persistence.cpp
   "${WE_POSE_DIRECTORY}/poses_generated.h" "${WE_POSE_DIRECTORY}/checkpoint_generated.h")
 we_target(map_store)
 target_include_directories(map_store SYSTEM PRIVATE "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
 target_link_libraries(map_store PUBLIC reconstruction_api)
 target_link_libraries(map_store PRIVATE nlohmann_json::nlohmann_json)
 
-add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp)
+add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp
+  src/scene_store/depth_asset.cpp)
 we_target(scene_store)
 target_link_libraries(scene_store PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 
@@ -196,6 +197,7 @@ we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
 add_library(application src/application/commands.cpp src/application/scenes.cpp
+  src/application/depth_assets.cpp
   src/application/reconstruction_progress.cpp
   src/application/scene_import.cpp src/application/source_view.cpp
   src/application/reconstruction_job.cpp src/application/job_validation.cpp src/application/pose_replay.cpp

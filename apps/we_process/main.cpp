@@ -1,4 +1,5 @@
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/depth_assets.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/pose_export.hpp"
 #include "world_explorer/application/pose_preparation.hpp"
@@ -46,6 +47,7 @@ int main(int argc, char** argv) {
                    "  we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]\n"
                    "  we_process prepare-poses POSE_JOB VIDEO MAP_DIRECTORY [--decode-stage DIR]\n"
                    "  we_process inspect-poses INPUT.weposes SHA256 (checked JSON inspection)\n"
+                   "  we_process inspect-depth INPUT.wedepth SHA256 (format inspection only)\n"
                    "  we_process init-map MAP_DIRECTORY\n"
                    "  we_process import-map INPUT.weposes SHA256 MAP_DIRECTORY\n"
                    "  we_process inspect-map MAP_DIRECTORY (checked restart/recovery)\n"
@@ -178,6 +180,19 @@ int main(int argc, char** argv) {
             }
             std::cout << "Canonical poses (arbitrary scale, unknown gravity): " << argv[4]
                       << "\nSHA-256 " << *hash << '\n';
+            return 0;
+        }
+        if (command == "inspect-depth") {
+            if (argc != 4) {
+                std::cerr << "Usage: we_process inspect-depth INPUT.wedepth SHA256\n";
+                return 2;
+            }
+            const auto summary = inspect_depth_file(argv[2], argv[3], {}, cancellation.get_token());
+            if (!summary) {
+                std::cerr << summary.error().message << '\n';
+                return summary.error().code == error_code::CANCELLED ? 130 : 2;
+            }
+            std::cout << *summary << '\n';
             return 0;
         }
         if (command == "inspect-poses") {
