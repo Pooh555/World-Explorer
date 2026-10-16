@@ -92,11 +92,12 @@ retrying. Atomic manifest replacement remains a separate owning-store operation.
 ## Diagnostic command
 
 ```sh
-build/dev/we_process inspect-depth INPUT.wedepth SHA256
+build/dev/we_process inspect-depth INPUT.wedepth SHA256 [--max-dimension N]
 ```
 
 This shared application command validates format/checksum and prints metadata,
-valid/unknown counts and uncertainty availability. It labels synthetic input and
+valid/unknown counts and uncertainty availability. The optional dimension limit is explicit and bounded to 1–16,384; other byte/pixel
+bounds stay unchanged. It labels synthetic input and
 states that pose-context/calibration/geometry quality remain unverified. It does
 not run a decoder, solver, optimizer or GPU, or enable walking. Bad input exits 2;
 observed cancellation exits 130. [Initial evidence](../validation/2026-10-17-depth-assets.md)

@@ -1,0 +1,102 @@
+{
+  "archives": [
+    {
+      "bytes": 2431,
+      "name": "cuda-toolkit",
+      "notices": [],
+      "sha256": "b54b8f2fd4200090b44843d48fc5411198e8b3e47a3db56e2518ab588c0ef1e0",
+      "url": "https://files.pythonhosted.org/packages/51/7e/f61db087382a2114a93abc0b38f7872f86f2c7c36839da7f9403c9044b47/cuda_toolkit-12.9.2.0-py2.py3-none-any.whl",
+      "version": "12.9.2.0"
+    },
+    {
+      "bytes": 16527618,
+      "name": "numpy",
+      "notices": [
+        {
+          "path": "numpy/ma/LICENSE",
+          "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
+        },
+        {
+          "path": "numpy/random/LICENSE.md",
+          "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
+        },
+        {
+          "path": "numpy/_core/include/numpy/random/LICENSE.txt",
+          "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
+        },
+        {
+          "path": "numpy-2.2.6.dist-info/LICENSE.txt",
+          "sha256": "c002bd26de7dc7aa464250a0de063d58fe55974452e4389e5c21c350a820bf06"
+        }
+      ],
+      "sha256": "fd83c01228a688733f1ded5201c678f0c53ecc1006ffbc404db9f7a899ac6249",
+      "url": "https://files.pythonhosted.org/packages/8c/3d/1e1db36cfd41f895d266b103df00ca5b3cbe965184df824dec5c08c6b803/numpy-2.2.6-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "version": "2.2.6"
+    },
+    {
+      "bytes": 3493179,
+      "name": "nvidia-cuda-runtime-cu12",
+      "notices": [
+        {
+          "path": "nvidia_cuda_runtime_cu12-12.9.79.dist-info/licenses/License.txt",
+          "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+        }
+      ],
+      "sha256": "25bba2dfb01d48a9b59ca474a1ac43c6ebf7011f1b0b8cc44f54eb6ac48a96c3",
+      "url": "https://files.pythonhosted.org/packages/bc/46/a92db19b8309581092a3add7e6fceb4c301a3fd233969856a8cbf042cd3c/nvidia_cuda_runtime_cu12-12.9.79-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "version": "12.9.79"
+    },
+    {
+      "bytes": 68295626,
+      "name": "nvidia-curand-cu12",
+      "notices": [
+        {
+          "path": "nvidia_curand_cu12-10.3.10.19.dist-info/License.txt",
+          "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+        }
+      ],
+      "sha256": "49b274db4780d421bd2ccd362e1415c13887c53c214f0d4b761752b8f9f6aa1e",
+      "url": "https://files.pythonhosted.org/packages/31/44/193a0e171750ca9f8320626e8a1f2381e4077a65e69e2fb9708bd479e34a/nvidia_curand_cu12-10.3.10.19-py3-none-manylinux_2_27_x86_64.whl",
+      "version": "10.3.10.19"
+    },
+    {
+      "bytes": 6645236,
+      "name": "pillow",
+      "notices": [
+        {
+          "path": "pillow-11.3.0.dist-info/licenses/LICENSE",
+          "sha256": "2c40a7d8894126ff7a993a752505b915694aafe7a620889ef368acbf54b87144"
+        }
+      ],
+      "sha256": "676b2815362456b5b3216b4fd5bd89d362100dc6f4945154ff172e206a22c024",
+      "url": "https://files.pythonhosted.org/packages/e4/c9/06dd4a38974e24f932ff5f98ea3c546ce3f8c995d3f0985f8e5ba48bba19/pillow-11.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "version": "11.3.0"
+    },
+    {
+      "bytes": 72891756,
+      "name": "pycolmap-cuda12",
+      "notices": [
+        {
+          "path": "pycolmap_cuda12-4.2.1.dist-info/licenses/COPYING.txt",
+          "sha256": "ab30dabb4f0a6731f980108f57aa160cc8f5cebae6984e01a5d109df99669233"
+        }
+      ],
+      "sha256": "5d9b4ecd575481a03827586b4829fff1857dc6fd3aa63b2d60be590d84ac77dc",
+      "url": "https://files.pythonhosted.org/packages/98/20/3adf3bb7ba0172d0957d588e2223b4f5d17ce5e9839e51c064b074cc2381/pycolmap_cuda12-4.2.1-cp312-cp312-manylinux_2_28_x86_64.whl",
+      "version": "4.2.1"
+    }
+  ],
+  "backend": "pycolmap-cuda12==4.2.1",
+  "installed_receipt_sha256": "5075ccbbd5825b3b5555635752e92c5b97fe3d175fa21b82dcd7fd21db2f3454",
+  "installer_lock_sha256": "94c18a3946fd95b1a22bdd07fe7f09729e44b870e2850d3d74ddb4204970c730",
+  "listed_bytes": 432780736,
+  "listed_files": 1188,
+  "provenance_scope": "PyPI-published provenance; no independent Sigstore verification",
+  "published_commit": "bd1fcf654d2dd8fefa1466999c190a246f83f4b9",
+  "published_provenance_url": "https://pypi.org/project/pycolmap-cuda12/4.2.1/",
+  "redistribution_qualified": false,
+  "requirements_sha256": "bdba13c6236e5aa606fa6323c5f294e7a74b5b779f8103b22f2ebe4a7a8a68e0",
+  "rights_clearance": "NOT_PERFORMED",
+  "schema_version": 1,
+  "scope": "Linux CPython 3.12.15 isolated COLMAP CUDA development pilot; not redistribution or geometry qualification"
+}

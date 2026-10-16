@@ -15,8 +15,8 @@ NOT_STARTED.** [Dated research](research/offline_asset_pipeline.md) compares
 calibrated-view and splat-derived paths, model/dependency rights, resources and
 connection experiments. [Rescheduling checks](validation/2026-10-17-assets-before-platforms.md)
 do not qualify the pipeline; the [original planning report](validation/2026-10-17-offline-asset-planning.md)
-retains the superseded after-M6 schedule. No dependencies/models installed,
-reconstructions run or media uploaded. M1–M6 retain relative order and thresholds;
+retains the superseded after-M6 schedule. Those planning tasks installed no
+dependencies/models, ran no reconstructions and uploaded no media. M1–M6 retain relative order and thresholds;
 native/reference release evidence remains due by M6. M3 now includes the checked
 native dense-input preparation described below; the asset track remains unstarted.
 
@@ -696,18 +696,31 @@ RGB8 level error. GCC/Clang manifests match exactly. **303/303** dev checks,
 GCC/Clang/native sanitizers pass. Saved runs, failures and frozen fixtures remain
 unchanged; no dependency provisioning or real depth output.
 
-Next executable step (M3): qualify a separate CUDA-enabled COLMAP dense worker,
-starting with exact source/build/rights and device-capability receipts; the current
-`.venv-worker` pycolmap 4.2.1 reports `has_cuda=false` and no `colmap` executable
-is installed. Do not change the existing pose/training environments. Use the checked
-sample_1 manifest in `artifacts/validation/m3-dense-input-20261017/` as input
-correspondence evidence; its explicitly unqualified recipe is **not runnable**.
-Pin the actual worker's complete recipe in a new manifest before executing MVS.
-Support the native 4104-wide grid with explicit bounded depth limits, or implement
-and verify actual resized bytes/calibration in a separate profile first. Preserve
-sample_2's failed stages and both frozen fixtures; no unchanged solve, refit or
-long-stress rerun. Real MVS/fusion, compressed depth storage, measured scale,
-collision/walking, mesh export and fresh runtime observations remain open.
+[Isolated CUDA dense pilot](validation/2026-10-17-dense-worker.md) now runs
+COLMAP **4.2.1** in separate `.venv-dense` with six archive-pinned/RECORD-checked
+packages; existing pose/training environments are preserved. Native RTX 4060 /
+driver 615.78.08 runs a known-Z synthetic fixture and a **172.083 s**, three-view
+sample_1 pilot (frames 1/5/9, unchanged 4104×2208 grids). Three `.wedepth` assets
+pass independent native C++ pose-bound admission and wrong-frame rejection.
+Valid coverage is only **0.789% / 1.042% / 2.095%**; missing pixels stay unknown.
+This is backend/interchange evidence, not completed room geometry or Q5/N2.
+The cancellation probe requires SIGKILL after a six-second grace; partial work
+retains no terminal result and preserves the completed pilot. Worker-protocol
+cancellation, redistribution rights and fresh runtime observations remain open.
+
+Next executable step (M3): implement and verify a **separate checked resized
+input profile**, binding actual resized image bytes and per-axis half-pixel
+calibration, before broadening real MVS to a bounded overlapping-neighbor recipe.
+Use `artifacts/validation/m3-dense-worker-20261017/real-pilot/result.json` and
+`workers/dense/README.md` for the recorded operational profile; `final-preflight.json` pins the current
+entry guard without another GPU solve. Do not retry
+the unchanged three-view configuration to claim coverage completion. The native
+4104-wide pilot needs explicit `max_dimension=8192`; default limits stay unchanged.
+Preserve saved runs, failures and both frozen fixtures, plus this pilot. Keep the
+CPU pose/training environments unchanged; no solve/refit or long-stress rerun.
+Production job/protocol integration must supply bounded cancellation/kill/reap;
+resume, real fusion, compressed storage, measured scale, collision/walking and
+mesh export remain open. A0–A6/AP gates remain unstarted; M4 has not begun.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

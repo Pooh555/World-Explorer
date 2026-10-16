@@ -224,9 +224,10 @@ Use the [documentation map](docs/README.md) for contracts, historical evidence a
 [documentation standards](docs/protocols/documentation.md). Check local documentation
 links with `python3 tools/check_docs.py`.
 
-Depth interchange diagnostics: `build/dev/we_process inspect-depth INPUT.wedepth SHA256`
-checks format and provenance fields only. Dense reconstruction and walking remain
-unavailable; see the [depth contract](docs/protocols/depth.md).
+Depth interchange diagnostics: `build/dev/we_process inspect-depth INPUT.wedepth SHA256 [--max-dimension N]`
+checks format and provenance fields only. Production dense reconstruction and walking remain
+unavailable; the separate [three-view CUDA development pilot](workers/dense/README.md)
+produces partial checked depth only. See the [depth contract](docs/protocols/depth.md).
 
 Retained calibrated inputs can be prepared with `we_process prepare-dense`; see
 the [native dense-input contract](docs/protocols/dense_inputs.md) for arguments,

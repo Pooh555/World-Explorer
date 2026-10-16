@@ -10,6 +10,7 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
+#include <charconv>
 #include <chrono>
 #include <csignal>
 #include <iostream>
@@ -48,7 +49,8 @@ int main(int argc, char** argv) {
                    "  we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]\n"
                    "  we_process prepare-poses POSE_JOB VIDEO MAP_DIRECTORY [--decode-stage DIR]\n"
                    "  we_process inspect-poses INPUT.weposes SHA256 (checked JSON inspection)\n"
-                   "  we_process inspect-depth INPUT.wedepth SHA256 (format inspection only)\n"
+                   "  we_process inspect-depth INPUT.wedepth SHA256 [--max-dimension N] (format "
+                   "inspection only)\n"
                    "  we_process prepare-dense POSE_JOB SOURCE_SHA POSES.weposes POSE_SHA "
                    "RECIPE.json RECIPE_SHA OUTPUT.json [--decode-stage DIR]\n"
                    "  we_process init-map MAP_DIRECTORY\n"
@@ -207,11 +209,24 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (command == "inspect-depth") {
-            if (argc != 4) {
-                std::cerr << "Usage: we_process inspect-depth INPUT.wedepth SHA256\n";
+            if (argc != 4 && !(argc == 6 && std::string_view(argv[4]) == "--max-dimension")) {
+                std::cerr << "Usage: we_process inspect-depth INPUT.wedepth SHA256 "
+                             "[--max-dimension N]\n";
                 return 2;
             }
-            const auto summary = inspect_depth_file(argv[2], argv[3], {}, cancellation.get_token());
+            depth_asset_limits limits;
+            if (argc == 6) {
+                const std::string_view selected(argv[5]);
+                const auto parsed = std::from_chars(
+                    selected.data(), selected.data() + selected.size(), limits.max_dimension);
+                if (parsed.ec != std::errc{} || parsed.ptr != selected.data() + selected.size() ||
+                    !limits.max_dimension || limits.max_dimension > 16384) {
+                    std::cerr << "Depth dimension limit must be an integer in [1,16384]\n";
+                    return 2;
+                }
+            }
+            const auto summary =
+                inspect_depth_file(argv[2], argv[3], limits, cancellation.get_token());
             if (!summary) {
                 std::cerr << summary.error().message << '\n';
                 return summary.error().code == error_code::CANCELLED ? 130 : 2;
