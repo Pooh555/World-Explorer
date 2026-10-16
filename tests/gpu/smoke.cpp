@@ -1,4 +1,5 @@
 #include "world_explorer/application/scenes.hpp"
+#include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
 #if defined(WE_VULKAN_TEST_FAULTS)
@@ -37,11 +38,83 @@ scene_snapshot overlap_fixture() {
     scene->chunks.emplace(chunk->id, chunk);
     return scene;
 }
+bool wait_for_window_flag(SDL_Window* window, SDL_WindowFlags flag, bool enabled) {
+    const auto deadline = SDL_GetTicks() + 2000;
+    do {
+        SDL_PumpEvents();
+        if (((SDL_GetWindowFlags(window) & flag) != 0) == enabled)
+            return true;
+        SDL_Delay(10);
+    } while (SDL_GetTicks() < deadline);
+    return false;
+}
+bool check_minimize(vulkan_renderer& renderer, SDL_Window* window, const camera_view& camera,
+                    const std::filesystem::path& output, bool required) {
+    require(SDL_ShowWindow(window), "cannot show minimize fixture");
+    require(wait_for_window_flag(window, SDL_WINDOW_HIDDEN, false),
+            "native compositor did not show minimize fixture");
+    const auto baseline_path = output.parent_path() / "minimize-baseline.ppm";
+    require(renderer.request_screenshot(baseline_path).has_value(),
+            "minimize baseline readback request failed");
+    const auto shown = renderer.draw(camera);
+    require(shown.has_value(), shown ? "" : shown.error().message);
+    const auto baseline_hash = sha256_file(baseline_path, std::size_t{64} * 1024 * 1024);
+    require(baseline_hash.has_value(), "cannot hash minimize baseline");
+    require(SDL_MinimizeWindow(window), "native minimize request failed");
+    // SyncWindow can return false while MINIMIZED is already reported. Check
+    // the actual asynchronous window state used by the renderer.
+    const bool observed = wait_for_window_flag(window, SDL_WINDOW_MINIMIZED, true);
+    require(observed || !required, "native compositor did not accept required minimize");
+    if (observed) {
+        const auto before = renderer.diagnostics().submitted_frames;
+        auto replacement = std::make_shared<scene_state>(*renderer.updates().visible_snapshot());
+        replacement->revision = {2};
+        auto batch = make_snapshot_batch(replacement, {2}).value();
+        const auto ticket = renderer.updates().enqueue(batch);
+        require(ticket.has_value(), "minimized update admission failed");
+        for (int index = 0; index < 3; ++index)
+            require(renderer.draw(camera).has_value(), "minimized draw failed");
+        const auto progress = renderer.updates().query_progress(*ticket);
+        require(renderer.diagnostics().submitted_frames == before && progress &&
+                    progress->state == update_state::ACCEPTED &&
+                    renderer.updates().visible_snapshot()->revision.value == 1,
+                "minimized draw submitted work or advanced the queued scene");
+        require(SDL_RestoreWindow(window), "native restore request failed");
+        require(wait_for_window_flag(window, SDL_WINDOW_MINIMIZED, false) &&
+                    wait_for_window_flag(window, SDL_WINDOW_HIDDEN, false),
+                "native compositor did not restore the window");
+        require(renderer.draw(camera).has_value(), "restored scene draw failed");
+        const auto restored = renderer.updates().query_progress(*ticket);
+        require(renderer.diagnostics().submitted_frames > before && restored &&
+                    restored->state == update_state::RENDER_VISIBLE &&
+                    renderer.updates().visible_snapshot()->revision.value == 2 &&
+                    renderer.diagnostics().resident_splat_count == 2 &&
+                    renderer.diagnostics().validation_errors == 0,
+                "restore did not resume rendering and publish the queued scene");
+        const auto restored_path = output.parent_path() / "minimize-restored.ppm";
+        require(renderer.request_screenshot(restored_path).has_value(),
+                "minimize restored readback request failed");
+        require(renderer.draw(camera).has_value(), "restored readback draw failed");
+        const auto restored_hash = sha256_file(restored_path, std::size_t{64} * 1024 * 1024);
+        require(restored_hash && *restored_hash == *baseline_hash,
+                "minimize/restore changed the overlap readback");
+    }
+    require(SDL_HideWindow(window), "cannot hide minimize fixture");
+    return observed;
+}
 } // namespace
 int main(int argc, char** argv) {
     try {
-        const bool timings = argc == 3 && std::string_view(argv[2]) == "--timings";
-        require(argc <= 2 || timings, "usage: we_gpu_smoke [output.ppm] [--timings]");
+        bool timings = false, require_minimize = false;
+        for (int index = 2; index < argc; ++index) {
+            const auto option = std::string_view(argv[index]);
+            if (option == "--timings")
+                timings = true;
+            else if (option == "--require-minimize")
+                require_minimize = true;
+            else
+                require(false, "usage: we_gpu_smoke [output.ppm] [--timings] [--require-minimize]");
+        }
         const auto output = argc > 1
                                 ? std::filesystem::path(argv[1])
                                 : std::filesystem::temp_directory_path() / "world_explorer_gpu.ppm";
@@ -138,29 +211,6 @@ int main(int argc, char** argv) {
                     renderer->diagnostics().resident_splat_count == 2 &&
                     renderer->diagnostics().validation_errors == 0,
                 "post-create recovery did not render the retained scene cleanly");
-        require(SDL_ShowWindow(window.get()), SDL_GetError());
-        require(SDL_SyncWindow(window.get()), SDL_GetError());
-        require(renderer->draw(retained_camera).has_value(), "shown recovery scene draw failed");
-        require(SDL_MinimizeWindow(window.get()), SDL_GetError());
-        require(SDL_SyncWindow(window.get()), SDL_GetError());
-        SDL_PumpEvents();
-        const bool minimized_observed =
-            (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED) != 0;
-        const auto before_minimized_draw = renderer->diagnostics().submitted_frames;
-        require(renderer->draw(retained_camera).has_value(), "minimized draw failed");
-        if (minimized_observed) {
-            require(renderer->diagnostics().submitted_frames == before_minimized_draw,
-                    "minimized window submitted a GPU frame");
-            require(SDL_RestoreWindow(window.get()), SDL_GetError());
-            require(SDL_SyncWindow(window.get()), SDL_GetError());
-            SDL_PumpEvents();
-            require((SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED) == 0,
-                    "native compositor did not restore the window");
-        }
-        require(renderer->draw(retained_camera).has_value(), "restored scene draw failed");
-        require(renderer->diagnostics().validation_errors == 0 &&
-                    renderer->updates().visible_snapshot()->revision.value == 1,
-                "minimize/restore invalidated Vulkan or the retained scene");
         require(renderer->wait_for_idle().has_value(), "post-create recovery completion failed");
         const auto replay = renderer->updates().visible_snapshot();
         require(replay && replay->revision.value == 1,
@@ -332,16 +382,41 @@ int main(int argc, char** argv) {
         require(renderer->wait_for_idle().has_value(), "overflow GPU completion failed");
         require(renderer->diagnostics().validation_errors == 0,
                 "reference overflow caused a Vulkan validation error");
+        renderer.reset();
+        // A shown window may be resized by a tiling compositor. Isolate this
+        // lifecycle from the hidden-window resize and budget-rejection fixtures.
+        std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> minimize_window(
+            SDL_CreateWindow("World Explorer minimize verification", 512, 512,
+                             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
+            SDL_DestroyWindow);
+        require(minimize_window != nullptr, "cannot create minimize fixture window");
+        renderer_options minimize_options;
+        minimize_options.max_splats = 1024;
+        minimize_options.collect_timings = timings;
+        minimize_options.shader_directory = WE_SHADER_DIRECTORY;
+        auto minimize_created = vulkan_renderer::create(minimize_window.get(), minimize_options);
+        require(minimize_created.has_value(),
+                minimize_created ? "" : minimize_created.error().message);
+        auto minimize_renderer = std::move(*minimize_created);
+        auto minimize_scene = make_snapshot_batch(overlap_fixture(), {1}).value();
+        require(minimize_renderer->updates().enqueue(minimize_scene).has_value(),
+                "minimize fixture admission failed");
+        require(minimize_renderer->draw(retained_camera).has_value(),
+                "minimize fixture initial draw failed");
+        const bool minimized_observed = check_minimize(*minimize_renderer, minimize_window.get(),
+                                                       retained_camera, output, require_minimize);
+        const auto minimize_device = minimize_renderer->capabilities().device_name;
+        minimize_renderer.reset(); // Destroy the Vulkan surface before its SDL window.
         std::cout << "GPU verification: overlap pixel=" << static_cast<int>(pixel[0]) << ','
                   << static_cast<int>(pixel[1]) << ',' << static_cast<int>(pixel[2])
                   << "; replace/delete/resize passed; validation_errors=0; frames="
                   << stats.submitted_frames << "; framebuffer_bytes=" << stats.framebuffer_bytes
                   << "; framebuffer, composition-scratch and tile-reference budgets rejected";
 #if defined(WE_VULKAN_TEST_FAULTS)
-        std::cout << "; post-create recovery passed; minimize/restore "
-                  << (minimized_observed ? "passed" : "denied by compositor");
+        std::cout << "; post-create recovery passed";
 #endif
-        std::cout << '\n';
+        std::cout << "; minimize_device=" << minimize_device << "; minimize/restore "
+                  << (minimized_observed ? "passed" : "denied by compositor") << '\n';
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "GPU verification failed: " << error.what() << '\n';
