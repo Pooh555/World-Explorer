@@ -60,3 +60,17 @@ continuation](validation/2026-10-13-pose-continuation.md) reuses saved matches;
 24 worker checks pass. Real recovery could not join sample_2 models; 57 connected
 frames are below its required 58, and no fit/scene was published. Canonical world axes and unknown gravity/scale
 remain explicit; no Q/P/N/E gate is newly certified.
+
+On 2026-10-16 the user replaced sample_2 and authorized removal of its old
+artifacts and a fresh run. [Replacement evidence](validation/2026-10-16-sample2-replacement.md)
+records terminal exit 2 / POSE_DISCONNECTED after 1,254.710 s: 88 decoded
+frames, largest model 75 versus 80 required; no fitting or scene publication.
+The earlier 57/64 result belongs to the deleted source. Failed stages are retained;
+qualified pose recovery remains pending. Gate statuses remain unchanged.
+
+A second replacement on 2026-10-16 supersedes that sample_2 source and its raw
+artifacts: [latest reset/run](validation/2026-10-16-sample2-second-replacement.md)
+terminated with exit 2 / POSE_DISCONNECTED after 1,137.473 s: 90 decoded
+frames, largest connected model 79 versus 81 required. No fit or scene; failed
+stages retained. Q1 remains BLOCKED; the preceding disconnected result remains
+historical evidence.
