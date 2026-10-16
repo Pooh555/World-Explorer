@@ -1,7 +1,8 @@
 # Current handoff
 
 Updated 2026-10-16 (Asia/Hong_Kong). **M1: VERIFIED for the Linux development
-exit. M2: IN_PROGRESS. No full Q/P/N/E gate is certified. M7–M8:
+exit. M2: VERIFIED for the Linux/NVIDIA development exit. M3: IN_PROGRESS.
+No full Q/P/N/E gate is certified. M7–M8:
 DEFERRED_BY_USER.**
 
 [User-approved plan v1.1](adr/012-m1-development-exit.md) changes M1 to a
@@ -16,7 +17,7 @@ hardware, corpus, benchmark and distribution obligations keep their later gate
 statuses open.
 
 [User-approved M2 development exit](adr/016-m2-development-exit.md) now uses the
-current Linux/NVIDIA host and the six-item [plan §8.2 checklist](technical_plan.md#82-m2-development-exit-and-deferred-hardware-qualification). Other native-machine renderer qualification starts at M4; full release gates remain due by M6. M2 stays IN_PROGRESS pending its scoped checklist review.
+current Linux/NVIDIA host and the six-item [plan §8.2 checklist](technical_plan.md#82-m2-development-exit-and-deferred-hardware-qualification). Other native-machine renderer qualification starts at M4; full release gates remain due by M6. The [six-item exit review](validation/2026-10-16-m2-exit-review.md) closes that local development exit; M3 is active.
 
 ## Implemented and checked
 
@@ -645,14 +646,19 @@ artifact audit pass; **1,513 protected files unchanged**. Selected production
 binaries and current runtime receipts remain unchanged/current. This verifies
 local synthetic capacity, not full P2/P4 or reconstruction.
 
-Next executable step: audit all six plan §8.2 local M2 exit items against the
-retained evidence, binding fixture/source/toolchain identities and recording any
-missing local checks in a dated exit review. Close only that scoped development
-exit when supported, then continue M3. Reference-device presented-FPS replay,
-physical input/display/recovery and other native-machine qualification belong to
-M4 or later and do not block M2. Preserve saved runs, sources and both frozen
-fixtures; do not rerun the two-hour stress or reconstruction. Full Q/P/N/E,
-release-vcpkg, corpus/scale and platform qualification remain open.
+[M2 exit review](validation/2026-10-16-m2-exit-review.md) verifies all six local
+items. A missing current sample_1 reference report is now filled: all **63**
+calibrated cameras / **295,952** splats pass, maximum two RGB8 levels, zero Vulkan
+errors. Independent retained-artifact and current runtime checks pass; **1,509**
+protected non-document files remain unchanged. Full gates and M4 hardware duties
+remain open; no long stress or reconstruction was rerun.
+
+Next executable step (M3): inspect the latest sample_2 sparse memberships and
+verified match graph, binding the current source/decode/database identities before
+choosing a changed, disjoint recovery recipe. Preserve all stages and both frozen
+fixtures. Do not rerun the unchanged solve, reduce registration thresholds or
+start training before a valid pose solution. Geometry, measured scale, collision
+and mesh export remain unimplemented; walking stays unavailable.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/
