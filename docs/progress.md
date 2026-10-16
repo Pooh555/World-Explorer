@@ -512,12 +512,26 @@ not the H_V/corpus P6 gate. A fresh two-hour update/resize lifetime run for the
 changed ownership path is **in progress** under
 `artifacts/validation/m2-p6-staged15-full-20261016/`.
 
-Next executable step: collect the running 7,200-second stress exit, audit its
-summary/events/readback hashes and record the outcome. Then rerun the final
-rebuilt Release P6 diagnostic on the saved scene, and check a compositor that
-accepts minimize/restore. Do not rerun reconstruction or change saved scenes or
-the frozen fixture. Physical device loss, release-vcpkg, reference Q/P/N/E and
-other-scene/platform qualification remain open.
+[Accepted X11 minimize/restore](validation/2026-10-16-m2-minimize.md) now passes
+on native Debug C++26 and Release C++23 using a separate rootful Xwayland display
+and an owned test window manager. Three minimized draws submit no frames and
+preserve an ACCEPTED update; restore publishes it with identical pixels and zero
+Vulkan errors. Strict mode rejects denied minimize; ordinary Wayland smoke still
+reports denial. The test no longer mistakes `SDL_SyncWindow=false` for absence
+of an already observed minimized state. **270/270 dev CPU checks**, format/tidy
+and **2,088 unchanged protected files** pass. This synthetic controlled-X11
+result leaves physical-desktop/Wayland qualification open.
+
+Next executable step: collect the still-running 7,200-second stress at
+`artifacts/validation/m2-p6-staged15-full-20261016/`, audit its exit,
+summary/events/readback hashes and record the outcome. It had reached 2,280 s
+with zero sampled Vulkan errors during the latest audit; no completion is
+claimed. After it finishes, rebuild the diagnostic with
+`cmake --build build/m2-no-fault -j 4 --target we_gpu_update_stream`, then run
+`build/m2-no-fault/we_gpu_update_stream artifacts/sample_1/scene.wexplore artifacts/validation/m2-p6-staged15-rebuilt-final-20261016 10`.
+Do not rerun reconstruction or change saved scenes or the frozen fixture.
+Physical device loss, desktop/Wayland minimize, Q6 packing, release-vcpkg,
+reference Q/P/N/E and other-scene/platform qualification remain open.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

@@ -415,6 +415,24 @@ uncompressed renderers, not captured-image quality or Q6 packing fidelity.
 records the actual tested scope. Native Vulkan/CUDA device access is required;
 synthetic fixtures retain their labels and existing modes.
 
+## Native minimize diagnostic
+
+`we_gpu_smoke <output.ppm> --require-minimize` requires an observed SDL minimized
+state within two seconds. Three minimized draws must submit no frames or consume
+an admitted revision. Restore must resume rendering, publish that revision and
+produce a byte-identical overlap readback. Both Debug and Release run this check;
+it does not use the renderer's fault hooks. Without the strict option, denied
+minimize is explicitly reported and supplies no minimize coverage.
+
+The optional Linux `tools/check_native_minimize.py <smoke> <test-wm> <new-dir>`
+uses an owned rootful Xwayland display and real X11/EWMH map/unmap notifications.
+It refuses existing output, records binary/exit/readback hashes and cleans up its
+processes. Xwayland and the standalone libX11 test manager are optional test
+dependencies, outside the normal viewer build. The
+[native check report](../validation/2026-10-16-m2-minimize.md) gives the compile
+and run commands. This synthetic diagnostic does not qualify other window
+managers, physical desktops, performance or reference devices.
+
 ## Optional stage timings
 
 `renderer_options.collect_timings` defaults off. It records CPU waits for frame
