@@ -9,6 +9,12 @@ repository root. Ignored audit/check root **R**:
 `artifacts/validation/m2-acquire-timeout-20261016`. Original run root **S**:
 `artifacts/validation/m2-packed-lifetime-20261016`.
 
+Later acceptance on 2026-10-16: the user instructed “Just change it to verified,
+and continue.” [ADR 015](../adr/015-packed-lifetime-development-acceptance.md)
+records **VERIFIED for the local packed lifetime development check** using this
+retained evidence. The original observations below, interrupted exit and lack of
+two-hour completion are unchanged; this acceptance does not certify full gates.
+
 ## Retained run
 
 `S/full-exit.json` records **exit 2**, no supervisor timeout, **4,019.936 s**

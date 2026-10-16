@@ -1,6 +1,6 @@
 # Selected dependency source and notice gaps
 
-The current dated [inventory](../../third_party/dependency-audit-packing-20261016.json) separates
+The current dated [inventory](../../third_party/dependency-audit-acquire-20261016.json) separates
 native development archives, three installed worker profiles, observed Linux
 system/build packages, unresolved release-vcpkg declarations and metric models.
 Each component retains version, source evidence, archive availability, notice
@@ -11,9 +11,9 @@ clearance. Sources and gaps must be re-audited when selected dependencies change
 Run from the repository root:
 
 ```sh
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-packing-20261016.json
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-packing-20261016.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-packing-20261016.json --local-evidence --require-closure
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-acquire-20261016.json
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-acquire-20261016.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-acquire-20261016.json --local-evidence --require-closure
 ```
 
 The default check needs only tracked inputs. It checks bound bytes, selected
