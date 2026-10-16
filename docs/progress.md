@@ -616,13 +616,26 @@ scope is 15 roots/213 files; five mapped contexts retain 208 files and 137 owner
 targets/16 groups/30 notices. FreeType/glycin and query-tool drift are recorded;
 old receipts remain intact. Strict closure still exits 3 for 253 source/rights gaps.
 
-Next executable step: instrument native SDL event-to-camera-state timing for N1,
-then measure compositor-delivered movement/look events on the full sample_1 scene
-with explicit clock/domain, event counts and p50/p95/p99. Inspect the current
-`apps/we_viewer/main.cpp` event loop and existing native-input evidence first;
-trace flush/readback timings cannot qualify latency. Q6's prescribed 100-view
-captured-target fixture, scale/corpus/platforms and full gates remain open. Preserve
-all saved runs and sources; do not rerun the long stress or reconstruction.
+[Buffered native input timing](validation/2026-10-16-m2-input-latency.md): the
+new `--input-latency NEW.json` records bounded SDL timestamps and before/after
+camera state in memory, serializing after shutdown. Three GCC C++26 and one Clang
+C++23 full sample_1 runs each pass **48 movement / 48 release / 16 look / 16 wheel /
+6 blocked-input** checks in the polling frame, with zero Vulkan errors. Visible-scene
+event-to-state p95 is **7.70–8.09 ms**; one startup burst reaches **587.407 ms**
+before scene visibility/capture. Stale compositor-command timestamps are retained
+separately; millisecond source precision and physical/reference display latency
+prevent a full N1 claim. **278/278** dev CPU checks, five timing cases per compiler
+and format/tidy pass; **1,382 protected files unchanged**. Fresh runtime receipts
+for this viewer pass default/local inventory checking; strict rights closure stays 3.
+
+Next executable step: inspect P2/P4's prescribed scale and current fixture limits,
+then add a separate deterministic synthetic admission/memory fixture for **2M
+resident degree-3 splats / ≤1M contributing / ≤8M tile references**. Preserve the
+frozen 250k M1 fixture. Exercise the full count at 1920×1080 with explicit budgets
+and actual allocation/RSS observations on this development host; H_V performance
+qualification remains separate. Q6's prescribed captured-target path, scale/corpus/
+platforms and full gates remain open. Preserve saved runs and sources; do not rerun
+the long stress or reconstruction.
 Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
 other-scene/platform qualification remain open.
 

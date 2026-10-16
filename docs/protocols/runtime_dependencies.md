@@ -1,30 +1,30 @@
 # Selected Linux runtime dependency receipts
 
-[Selection](../../third_party/runtime-selection-acquire-20261016.json) pins fifteen local
+[Selection](../../third_party/runtime-selection-input-20261016.json) pins fifteen local
 ELF roots: viewer/CLI, FFmpeg/ffprobe, system Python, three worker interpreter
 entries and seven selected worker extensions. The
-[current summary](../../third_party/runtime-audit-acquire-20261016.json) records normalized paths,
+[current summary](../../third_party/runtime-audit-input-20261016.json) records normalized paths,
 byte identities, DT_NEEDED/RPATH/RUNPATH/SONAME metadata, loader resolutions,
 dependency edges, system ownership/notices and local interpreter metadata.
 The full raw receipt and command outputs stay ignored under `artifacts/`.
-The [source gap inventory](../../third_party/dependency-audit-acquire-20261016.json) binds
+The [source gap inventory](../../third_party/dependency-audit-input-20261016.json) binds
 this supplement; original wheel, source, model and rights gaps remain open.
-The [acquisition-repair runtime refresh](../validation/2026-10-16-acquire-runtime-refresh.md)
-recaptures the rebuilt viewer, current FreeType/glycin loader bytes and native
-empty-viewer mappings. Fresh owner receipts bind the current package-query tool.
+The [input-timing refresh](../validation/2026-10-16-m2-input-latency.md)
+recaptures the rebuilt viewer, loader contexts and native empty-viewer mappings,
+then rechecks installed owners/notices. Only viewer bytes change from the
+[preceding acquisition-repair records](../validation/2026-10-16-acquire-runtime-refresh.md).
 The complete local inventory check passes; strict source/rights closure still
-exits 3. The preceding [packing receipts](../validation/2026-10-16-packing-runtime-refresh.md)
-remain historical.
+exits 3. All earlier receipts remain historical.
 
 Run from the repository root with a new output name:
 
 ```sh
 python3 tools/audit_runtime_dependencies.py \
-  --selection third_party/runtime-selection-acquire-20261016.json \
+  --selection third_party/runtime-selection-input-20261016.json \
   --output artifacts/runtime-audit/run-001.json --require-resolved
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-acquire-20261016.json
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-acquire-20261016.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-acquire-20261016.json --local-evidence --require-closure
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-input-20261016.json
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-input-20261016.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-input-20261016.json --local-evidence --require-closure
 ```
 
 Capture requires Linux ELF64 x86-64, the selected GNU readelf/glibc loader and

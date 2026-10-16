@@ -1,3 +1,4 @@
+#include "input_latency.hpp"
 #include "job_state.hpp"
 #include "preferences.hpp"
 #include "world_explorer/application/commands.hpp"
@@ -43,7 +44,7 @@ template <class handle_type> handle_type native(std::uintptr_t value) {
 }
 int viewer_main(int argc, char** argv) {
     std::filesystem::path scene_path, reconstruction_request, review_request, screenshot,
-        settings_path, input_trace_path, shader_path = WE_SHADER_DIRECTORY;
+        settings_path, input_trace_path, input_latency_path, shader_path = WE_SHADER_DIRECTORY;
     worker_configuration worker{WE_WORKER_SCRIPT};
     std::size_t max_splats = 250000;
     std::size_t residency_mib = 512;
@@ -67,6 +68,7 @@ int viewer_main(int argc, char** argv) {
                 << "          [--reconstruction-request JOB.json] [--review-request JOB.json]\n";
             std::cout << "          [--input-trace FILE.jsonl] (bounded native input diagnostics; "
                          "F12 readback)\n";
+            std::cout << "          [--input-latency NEW.json] (buffered CPU input timing)\n";
 #if defined(WE_VULKAN_TEST_FAULTS)
             std::cout << "          [--inject-device-loss-frame N] (synthetic Debug diagnostic)\n";
 #endif
@@ -92,6 +94,8 @@ int viewer_main(int argc, char** argv) {
                 settings_path = value;
             else if (option == "--input-trace")
                 input_trace_path = value;
+            else if (option == "--input-latency")
+                input_latency_path = value;
             else if (option == "--shader-dir")
                 shader_path = value;
             else if (option == "--worker-python")
@@ -113,6 +117,8 @@ int viewer_main(int argc, char** argv) {
         } else
             throw std::runtime_error("Missing option value: " + option);
     }
+    if (!input_latency_path.empty() && (!input_trace_path.empty() || !screenshot.empty()))
+        throw std::runtime_error("Input latency requires traces and screenshots disabled");
     if (!SDL_Init(SDL_INIT_VIDEO))
         throw std::runtime_error(SDL_GetError());
     const bool require_reconstruction_success = !reconstruction_request.empty();
@@ -226,6 +232,9 @@ int viewer_main(int argc, char** argv) {
     std::ofstream input_trace;
     unsigned input_readbacks{};
     unsigned device_recoveries{};
+    std::unique_ptr<viewer::input_latency_recorder> input_latency;
+    if (!input_latency_path.empty())
+        input_latency = std::make_unique<viewer::input_latency_recorder>(input_latency_path);
     nlohmann::json input_widgets = nlohmann::json::object();
     if (!input_trace_path.empty()) {
         if (std::filesystem::exists(std::filesystem::symlink_status(input_trace_path)))
@@ -257,6 +266,8 @@ int viewer_main(int argc, char** argv) {
         fly_input movement;
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+            if (input_latency)
+                input_latency->observe(event, SDL_GetTicksNS(), settings.keys);
             ImGui_ImplSDL3_ProcessEvent(&event);
             if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
                 running = false;
@@ -317,7 +328,12 @@ int viewer_main(int argc, char** argv) {
         movement.up =
             static_cast<int>(keys[settings.keys[4]]) - static_cast<int>(keys[settings.keys[5]]);
         movement.accelerate = keys[settings.keys[6]];
+        const auto camera_before = camera;
         camera.update(movement, elapsed);
+        if (input_latency)
+            input_latency->finish_frame(frames + 1, SDL_GetTicksNS(), camera_before, camera,
+                                        movement,
+                                        current && !pending_ticket && !state.processing.load());
         scene_snapshot loaded;
         {
             std::lock_guard lock(state.mutex);
@@ -862,6 +878,11 @@ int viewer_main(int argc, char** argv) {
     if (const auto saved = save_preferences(settings_path, settings); !saved)
         std::cerr << "Settings not saved: " << saved.error().message << '\n';
     const auto stats = renderer->diagnostics();
+    if (input_latency)
+        input_latency->write({.video_driver = SDL_GetCurrentVideoDriver(),
+                              .device = renderer->capabilities().device_name.c_str(),
+                              .resident_splats = stats.resident_splat_count,
+                              .validation_errors = stats.validation_errors});
     std::cout << nlohmann::json{{"device", renderer->capabilities().device_name},
                                 {"frames", stats.submitted_frames},
                                 {"resident_splats", stats.resident_splat_count},

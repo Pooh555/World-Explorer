@@ -1,0 +1,1240 @@
+{
+  "date": "2026-10-16",
+  "groups": {
+    "system:libdecor": {
+      "declared_license": "MIT",
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "system-package",
+      "name": "libdecor",
+      "notices": [
+        {
+          "bytes": 1036,
+          "path": "system:/usr/share/licenses/libdecor/LICENSE",
+          "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1"
+        }
+      ],
+      "source_url": "https://gitlab.freedesktop.org/libdecor/libdecor",
+      "version": "0.2.5-1"
+    },
+    "system:libxcb": {
+      "declared_license": "X11",
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "system-package",
+      "name": "libxcb",
+      "notices": [
+        {
+          "bytes": 1337,
+          "path": "system:/usr/share/licenses/libxcb/COPYING",
+          "sha256": "c5ffbfeaa501071ceeb97b7de2c0d703fdaa35de01c0fb6cbac1c28453a3e9fd"
+        }
+      ],
+      "source_url": "https://gitlab.freedesktop.org/xorg/lib/libxcb",
+      "version": "1.17.0-1"
+    },
+    "system:libxkbcommon": {
+      "declared_license": "MIT",
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "system-package",
+      "name": "libxkbcommon",
+      "notices": [
+        {
+          "bytes": 12820,
+          "path": "system:/usr/share/licenses/libxkbcommon/LICENSE",
+          "sha256": "967e97b28658f0037bbe164a237bdfb0c3ec790e67f6c29372ea5b09306f61f3"
+        }
+      ],
+      "source_url": "https://xkbcommon.org/",
+      "version": "1.13.2-1"
+    },
+    "system:nvidia-utils": {
+      "declared_license": "LicenseRef-NVIDIA-Driver-License-Agreement",
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "system-package",
+      "name": "nvidia-utils",
+      "notices": [
+        {
+          "bytes": 22653,
+          "path": "system:/usr/share/licenses/nvidia-utils/LICENSE",
+          "sha256": "c692fb14ad4f499c6aee1b9e144e6905148c420e6225b17cb2937366c1e507ad"
+        }
+      ],
+      "source_url": "https://www.nvidia.com/",
+      "version": "615.78.08-1"
+    },
+    "system:vulkan-validation-layers": {
+      "declared_license": "Apache-2.0",
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED",
+        "SEPARATE_INSTALLED_NOTICE_ABSENT"
+      ],
+      "kind": "system-package",
+      "name": "vulkan-validation-layers",
+      "notices": [],
+      "source_url": "https://www.vulkan.org/",
+      "version": "1.4.363.0-1"
+    },
+    "system:wayland": {
+      "declared_license": "MIT",
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "system-package",
+      "name": "wayland",
+      "notices": [
+        {
+          "bytes": 1340,
+          "path": "system:/usr/share/licenses/wayland/COPYING",
+          "sha256": "6eefcb023622a463168a5c20add95fd24a38c7482622a9254a23b99b7c153061"
+        }
+      ],
+      "source_url": "https://wayland.freedesktop.org/",
+      "version": "1.26.0-1"
+    },
+    "worker:.venv-metrics:numpy": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 61041,
+        "path": "repo:.venv-metrics/lib/python3.10/site-packages/numpy-1.26.4.dist-info/METADATA",
+        "sha256": "b09734a7fed44e84b4c8161934ce532dff1e779ec6822d415644d117f6381070"
+      },
+      "name": "numpy",
+      "notices": [
+        {
+          "bytes": 47721,
+          "path": "repo:.venv-metrics/lib/python3.10/site-packages/numpy-1.26.4.dist-info/LICENSE.txt",
+          "sha256": "1107b0c831e918d4f1dbc28a33190c77215ef278d4a4c4009572088770d4334a"
+        },
+        {
+          "bytes": 1018,
+          "path": "repo:.venv-metrics/lib/python3.10/site-packages/numpy/core/include/numpy/random/LICENSE.txt",
+          "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
+        },
+        {
+          "bytes": 1593,
+          "path": "repo:.venv-metrics/lib/python3.10/site-packages/numpy/ma/LICENSE",
+          "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
+        },
+        {
+          "bytes": 3511,
+          "path": "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/LICENSE.md",
+          "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
+        }
+      ],
+      "prefix": ".venv-metrics",
+      "receipt": "artifacts/validation/metric-identity-20261014/evaluation-metrics.json",
+      "record": {
+        "bytes": 84692,
+        "path": "repo:.venv-metrics/lib/python3.10/site-packages/numpy-1.26.4.dist-info/RECORD",
+        "sha256": "313b671b4a7e18b8f0e710eaaedde1c0a7e0bce92193f61cad475984711aeb22"
+      },
+      "version": "1.26.4"
+    },
+    "worker:.venv-metrics:pillow": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 9023,
+        "path": "repo:.venv-metrics/lib/python3.10/site-packages/pillow-11.3.0.dist-info/METADATA",
+        "sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73"
+      },
+      "name": "pillow",
+      "notices": [
+        {
+          "bytes": 66498,
+          "path": "repo:.venv-metrics/lib/python3.10/site-packages/pillow-11.3.0.dist-info/licenses/LICENSE",
+          "sha256": "2c40a7d8894126ff7a993a752505b915694aafe7a620889ef368acbf54b87144"
+        }
+      ],
+      "prefix": ".venv-metrics",
+      "receipt": "artifacts/validation/metric-identity-20261014/evaluation-metrics.json",
+      "record": {
+        "bytes": 11137,
+        "path": "repo:.venv-metrics/lib/python3.10/site-packages/pillow-11.3.0.dist-info/RECORD",
+        "sha256": "783a9d304f7aa7057e36f4d2dff3356f97207c55b21aa64812e4b25fd49e2c1e"
+      },
+      "version": "11.3.0"
+    },
+    "worker:.venv-metrics:torch": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 25373,
+        "path": "repo:.venv-metrics/lib/python3.10/site-packages/torch-2.4.1+cpu.dist-info/METADATA",
+        "sha256": "03c747e217a76a8cb173860987ec3f4197ea21d97fbd1caef6bcba1d8b14dc22"
+      },
+      "name": "torch",
+      "notices": [
+        {
+          "bytes": 483736,
+          "path": "repo:.venv-metrics/lib/python3.10/site-packages/torch-2.4.1+cpu.dist-info/LICENSE",
+          "sha256": "605a7dd8648cf774e407b2fef9a09ce4271bc45b692e18d5bd047b268c2d8768"
+        },
+        {
+          "bytes": 23632,
+          "path": "repo:.venv-metrics/lib/python3.10/site-packages/torch-2.4.1+cpu.dist-info/NOTICE",
+          "sha256": "c2cc7bf0caec7652c2b460a8a470bea1677f241e4ab8e431df34cf17f5a9fec0"
+        }
+      ],
+      "prefix": ".venv-metrics",
+      "receipt": "artifacts/validation/metric-identity-20261014/evaluation-metrics.json",
+      "record": {
+        "bytes": 1133174,
+        "path": "repo:.venv-metrics/lib/python3.10/site-packages/torch-2.4.1+cpu.dist-info/RECORD",
+        "sha256": "24706b6bf5c80af2c95604cbbe4d029fc7ff9fba1111c30b60b707050a429fc7"
+      },
+      "version": "2.4.1+cpu"
+    },
+    "worker:.venv-metrics:torchvision": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 6006,
+        "path": "repo:.venv-metrics/lib/python3.10/site-packages/torchvision-0.19.1+cpu.dist-info/METADATA",
+        "sha256": "13bbb2546108281ce16eacecde942bf0cc33c5d352762cedce4341b3f2527dbb"
+      },
+      "name": "torchvision",
+      "notices": [
+        {
+          "bytes": 1517,
+          "path": "repo:.venv-metrics/lib/python3.10/site-packages/torchvision-0.19.1+cpu.dist-info/LICENSE",
+          "sha256": "6502f676851cfe25f8af75531dfb32375b7325b73c37e7b43741fa422893e71d"
+        }
+      ],
+      "prefix": ".venv-metrics",
+      "receipt": "artifacts/validation/metric-identity-20261014/evaluation-metrics.json",
+      "record": {
+        "bytes": 18231,
+        "path": "repo:.venv-metrics/lib/python3.10/site-packages/torchvision-0.19.1+cpu.dist-info/RECORD",
+        "sha256": "1109e73f8695de7bac47ac3927cddca01d73e21886194ce0597ea1b246a6bfab"
+      },
+      "version": "0.19.1+cpu"
+    },
+    "worker:.venv-train:numpy": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 61041,
+        "path": "repo:.venv-train/lib/python3.10/site-packages/numpy-1.26.4.dist-info/METADATA",
+        "sha256": "b09734a7fed44e84b4c8161934ce532dff1e779ec6822d415644d117f6381070"
+      },
+      "name": "numpy",
+      "notices": [
+        {
+          "bytes": 47721,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/numpy-1.26.4.dist-info/LICENSE.txt",
+          "sha256": "1107b0c831e918d4f1dbc28a33190c77215ef278d4a4c4009572088770d4334a"
+        },
+        {
+          "bytes": 1018,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/numpy/core/include/numpy/random/LICENSE.txt",
+          "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
+        },
+        {
+          "bytes": 1593,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/numpy/ma/LICENSE",
+          "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
+        },
+        {
+          "bytes": 3511,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/numpy/random/LICENSE.md",
+          "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
+        }
+      ],
+      "prefix": ".venv-train",
+      "receipt": "artifacts/validation/worker-identity-20261013/training-release.json",
+      "record": {
+        "bytes": 84692,
+        "path": "repo:.venv-train/lib/python3.10/site-packages/numpy-1.26.4.dist-info/RECORD",
+        "sha256": "8cc123ac0bfcb4f5fb144e8263987697d11012d75051ab0a2fea492bad93eceb"
+      },
+      "version": "1.26.4"
+    },
+    "worker:.venv-train:pillow": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 9023,
+        "path": "repo:.venv-train/lib/python3.10/site-packages/pillow-11.3.0.dist-info/METADATA",
+        "sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73"
+      },
+      "name": "pillow",
+      "notices": [
+        {
+          "bytes": 66498,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/pillow-11.3.0.dist-info/licenses/LICENSE",
+          "sha256": "2c40a7d8894126ff7a993a752505b915694aafe7a620889ef368acbf54b87144"
+        }
+      ],
+      "prefix": ".venv-train",
+      "receipt": "artifacts/validation/worker-identity-20261013/training-release.json",
+      "record": {
+        "bytes": 11137,
+        "path": "repo:.venv-train/lib/python3.10/site-packages/pillow-11.3.0.dist-info/RECORD",
+        "sha256": "783a9d304f7aa7057e36f4d2dff3356f97207c55b21aa64812e4b25fd49e2c1e"
+      },
+      "version": "11.3.0"
+    },
+    "worker:.venv-train:scipy": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 61956,
+        "path": "repo:.venv-train/lib/python3.10/site-packages/scipy-1.15.3.dist-info/METADATA",
+        "sha256": "c75caf32b67a13a9fc16aacf993a8bb883b7a69744ffe77cbbd4f3bfbad28f3d"
+      },
+      "name": "scipy",
+      "notices": [
+        {
+          "bytes": 46845,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/scipy-1.15.3.dist-info/LICENSE.txt",
+          "sha256": "828cb9a7369c0a9f633ce7c10023f8d822f0f76b54ce25c723361d45b088879a"
+        },
+        {
+          "bytes": 1514,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/scipy/_lib/_uarray/LICENSE",
+          "sha256": "c80c39b5fce06ba4897e14e0b0a88b54458334d951eb1361402ffad2cfb863b4"
+        },
+        {
+          "bytes": 1498,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/scipy/fft/_pocketfft/LICENSE.md",
+          "sha256": "c254b2b5fd30ae3c89d36ba061730563b9760fca04f1b746a1b2c3157da2c789"
+        },
+        {
+          "bytes": 1892,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/linalg/_eigen/arpack/COPYING",
+          "sha256": "0926566f9f406178d1214f8cc796e166b1213dd7c05e0c5b461a8b8ac9e50bbe"
+        },
+        {
+          "bytes": 1635,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/scipy/spatial/qhull_src/COPYING.txt",
+          "sha256": "34db0c0c4f931861d720555c9cd7a2e228d1290ba29af0f2ee80c41bb2038afb"
+        }
+      ],
+      "prefix": ".venv-train",
+      "receipt": "artifacts/validation/worker-identity-20261013/training-release.json",
+      "record": {
+        "bytes": 135622,
+        "path": "repo:.venv-train/lib/python3.10/site-packages/scipy-1.15.3.dist-info/RECORD",
+        "sha256": "cdb5b36a168f9580b58a363ab6a08f4b51c4fdc645c61abc744a07ed6d7b4c8d"
+      },
+      "version": "1.15.3"
+    },
+    "worker:.venv-train:torch": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 26820,
+        "path": "repo:.venv-train/lib/python3.10/site-packages/torch-2.4.1+cu124.dist-info/METADATA",
+        "sha256": "9b7822fa34b9aaaed6dfb823a91e2928a7255ad9db590e1c195090e59e085bbd"
+      },
+      "name": "torch",
+      "notices": [
+        {
+          "bytes": 483736,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/torch-2.4.1+cu124.dist-info/LICENSE",
+          "sha256": "605a7dd8648cf774e407b2fef9a09ce4271bc45b692e18d5bd047b268c2d8768"
+        },
+        {
+          "bytes": 23632,
+          "path": "repo:.venv-train/lib/python3.10/site-packages/torch-2.4.1+cu124.dist-info/NOTICE",
+          "sha256": "c2cc7bf0caec7652c2b460a8a470bea1677f241e4ab8e431df34cf17f5a9fec0"
+        }
+      ],
+      "prefix": ".venv-train",
+      "receipt": "artifacts/validation/worker-identity-20261013/training-release.json",
+      "record": {
+        "bytes": 1123964,
+        "path": "repo:.venv-train/lib/python3.10/site-packages/torch-2.4.1+cu124.dist-info/RECORD",
+        "sha256": "40ef79cf13d10f0ab7dcdaf60e4a6b3c677f176da393eb8f62e5f198333670cd"
+      },
+      "version": "2.4.1+cu124"
+    },
+    "worker:.venv-worker:numpy": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 62026,
+        "path": "repo:.venv-worker/lib/python3.12/site-packages/numpy-2.2.6.dist-info/METADATA",
+        "sha256": "22d648f53848429464ca643b40d73b49a920d47876fc77c395d4dca4e834904a"
+      },
+      "name": "numpy",
+      "notices": [
+        {
+          "bytes": 47755,
+          "path": "repo:.venv-worker/lib/python3.12/site-packages/numpy-2.2.6.dist-info/LICENSE.txt",
+          "sha256": "c002bd26de7dc7aa464250a0de063d58fe55974452e4389e5c21c350a820bf06"
+        },
+        {
+          "bytes": 1018,
+          "path": "repo:.venv-worker/lib/python3.12/site-packages/numpy/_core/include/numpy/random/LICENSE.txt",
+          "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
+        },
+        {
+          "bytes": 1593,
+          "path": "repo:.venv-worker/lib/python3.12/site-packages/numpy/ma/LICENSE",
+          "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
+        },
+        {
+          "bytes": 3511,
+          "path": "repo:.venv-worker/lib/python3.12/site-packages/numpy/random/LICENSE.md",
+          "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
+        }
+      ],
+      "prefix": ".venv-worker",
+      "receipt": "artifacts/validation/worker-identity-20261013/poses-release.json",
+      "record": {
+        "bytes": 81177,
+        "path": "repo:.venv-worker/lib/python3.12/site-packages/numpy-2.2.6.dist-info/RECORD",
+        "sha256": "57a6ce5815ae3486c9773a8c91c4b733a342b284a7d56305c1211bdb2aaa4fa6"
+      },
+      "version": "2.2.6"
+    },
+    "worker:.venv-worker:pillow": {
+      "gaps": [
+        "ORIGINAL_ARCHIVES_NOT_BOUND_IN_THIS_ASSOCIATION",
+        "SOURCE_BINARY_BINDING_UNVERIFIED",
+        "BUNDLED_AND_TRANSITIVE_TERMS_UNREVIEWED"
+      ],
+      "kind": "installed-distribution",
+      "metadata": {
+        "bytes": 9023,
+        "path": "repo:.venv-worker/lib/python3.12/site-packages/pillow-11.3.0.dist-info/METADATA",
+        "sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73"
+      },
+      "name": "pillow",
+      "notices": [
+        {
+          "bytes": 66498,
+          "path": "repo:.venv-worker/lib/python3.12/site-packages/pillow-11.3.0.dist-info/licenses/LICENSE",
+          "sha256": "2c40a7d8894126ff7a993a752505b915694aafe7a620889ef368acbf54b87144"
+        }
+      ],
+      "prefix": ".venv-worker",
+      "receipt": "artifacts/validation/worker-identity-20261013/poses-release.json",
+      "record": {
+        "bytes": 11137,
+        "path": "repo:.venv-worker/lib/python3.12/site-packages/pillow-11.3.0.dist-info/RECORD",
+        "sha256": "5950f5575759239d32ed1b7e67f3706febe5dee3fb365fcd5f35327c5b83c936"
+      },
+      "version": "11.3.0"
+    }
+  },
+  "installed_receipts": [
+    {
+      "bytes": 5132917,
+      "path": "artifacts/validation/worker-identity-20261013/training-release.json",
+      "prefix": ".venv-train",
+      "sha256": "f4f2fed0c788216a33537ab2e6802536a0264e6333ddabb624231b3f0b62f6c9"
+    },
+    {
+      "bytes": 266401,
+      "path": "artifacts/validation/worker-identity-20261013/poses-release.json",
+      "prefix": ".venv-worker",
+      "sha256": "497537df30b2a9c01a314b1e78f96a5b9f8c560a7f6b7ba47abbc192492afb51"
+    },
+    {
+      "bytes": 4260484,
+      "path": "artifacts/validation/metric-identity-20261014/evaluation-metrics.json",
+      "prefix": ".venv-metrics",
+      "sha256": "28c7227425c810245e4b340af2a8d5a107ae87355b348c97da6da00b5470cbf8"
+    }
+  ],
+  "listed_bytes": 579037910,
+  "mapping": {
+    "bytes": 100003,
+    "path": "third_party/backend-bindings-input-20261016.json",
+    "sha256": "6b0e18f8c8a40858722d46d7317f6d2818b384cd164202a3ec33d17e8fe949b2"
+  },
+  "nodes": {
+    "repo:.venv-metrics/lib/python3.10/site-packages/PIL/_imaging.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 3345225,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "a98a5a999a98a80b5fc983c5d1e7c3b908bb7bb2fd63e958f798f337f318844c"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/PIL/_imagingft.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 298297,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "edbd7b4ebdb256658faee76146f44bba3b01123be80c423ed812be531446b45e"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy.libs/libgfortran-040039e1.so.5.0.0": {
+      "bytes": 2686065,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "14afb3129b1a8b50bc40a3b0820c7f1152ea9bc10121aab152943f7057472886"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy.libs/libopenblas64_p-r0-0cf96a72.3.23.dev.so": {
+      "bytes": 35123345,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "9254d0854dd7615e11de28d771ae408878ca8123a7ac204f21e4cc7a376cc2e5"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy.libs/libquadmath-96973f99.so.0.0.0": {
+      "bytes": 247609,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "934c22ded0e7d169c4d4678876c96051adf3d94545da962f60b41659b075da3b"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/core/_multiarray_tests.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 175912,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "0de46f5496fc26171572adc200ca54ac5ee4703fc4cd9f6173e38eb2ee21c20b"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/core/_multiarray_umath.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 7426841,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "fe5efe31c55326b072c8fb239a225819211826cb45cd3c74ed0af0030e70f3a1"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/fft/_pocketfft_internal.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 97008,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "5f36850f3c48eacf11a9d1e3b5957a36b2b7dd3eb7d21f68c1017cfab4fd0006"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/linalg/_umath_linalg.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 216793,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "0587df84ed9751090867a4a1441d2c394c39735420aa388b8bf698b7255f24bd"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/_bounded_integers.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 379216,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "cc009884164d0c98b9ad76d899d8318cb2436e4caaa0034b48b6607b70efa5ad"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/_common.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 276192,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "31a0a5cd1d83014366047940ae5a6c5466ebe0d6515d2e5e2311258f748d1706"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/_generator.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 976328,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "605a4ece82853cac92e920eb9a8a6da2c4ef739e6f96e3cc1bf4aed71fe14e5f"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/_mt19937.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 120224,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "d30bd4b7d986fc29800bd588c70d3223143932ddc802bdc46d72197fbc096c11"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/_pcg64.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 126400,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "646d4a06bdf86066d285398a89f1f610601d755f9a774b25c7316db9ec404eab"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/_philox.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 107384,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "278070939f2017a7ed1ae91833add65251e6f70e72b9d37964eb30bc383f6b05"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/_sfc64.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 76712,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "339ec2d6621414d1abdf444acc43ccf2a1b683aa41fedeec3dc60b4c3e271df3"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/bit_generator.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 246536,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "d4ee3d720f9eee0541548507dc7fe2f323ea481cdc33e37906fe78bc2e981a0d"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/numpy/random/mtrand.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 783752,
+      "group": "worker:.venv-metrics:numpy",
+      "sha256": "b917e2f0ada2ef00b0cc509b76f14d8bce4815e3643abd58481803bbb6b585fe"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libXau-154567c4.so.6.0.0": {
+      "bytes": 22081,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "05484d24bf78cb8ed03169f1cb067204d829cb7af21de8820400d29d115e4320"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libbrotlicommon-c55a5f7a.so.1.1.0": {
+      "bytes": 144425,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "1da2db326dd87a15fbe7dc2017b654d2457085d817e2e91fbd034acada1aaf0f"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libbrotlidec-2ced2f3a.so.1.1.0": {
+      "bytes": 62337,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "04ec1e9154e2462a6462eb270579b31868623ec070048e830d63cb92fc406d11"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libfreetype-083ff72c.so.6.20.2": {
+      "bytes": 1430825,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "9d1ed08fcbc7998985a8f2ae755fee5888c6dcda18dd91081aac92b81dc5c62d"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libharfbuzz-fe5b8f8d.so.0.61121.0": {
+      "bytes": 908081,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "ec1618623334334acdc44a35775caaa92a0e18b09c6ecf89aa2d4a5aac6fa263"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libjpeg-8a13c6e0.so.62.4.0": {
+      "bytes": 832177,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "2fd2cd3b79617a40ff920815e83ae0b25788fe05df97711f5b0029891c31cbd9"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/liblzma-64b7ab39.so.5.8.1": {
+      "bytes": 266369,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "84dd81d913c433ac0e82f111fe0e377cd8db350fd2b2b7a75f6c2501f1d6fa70"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libopenjp2-56811f71.so.2.5.3": {
+      "bytes": 585849,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "686f62cbed321379e3e38be7ae94c56411d4345bde8d54e557b40472d9a7693a"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libpng16-d00bd151.so.16.49.0": {
+      "bytes": 278001,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "558882880a0307a7675a595b712a4ebbd0eb1ca4374e1e2d7a9896761760fe6c"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libtiff-13a02c81.so.6.1.0": {
+      "bytes": 746233,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "007f36ed9297e1fffe0e962feba0442dcce486455d6cd98b2c58a57bcbd15605"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/pillow.libs/libxcb-64009ff3.so.1.1.0": {
+      "bytes": 251425,
+      "group": "worker:.venv-metrics:pillow",
+      "sha256": "b7437ed16bae7ac4498049fd14e10d1bd1c3e7d15d0e5eab1d2ead42a83a49d1"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/torch/lib/libtorch_global_deps.so": {
+      "bytes": 8769,
+      "group": "worker:.venv-metrics:torch",
+      "sha256": "89a9e7da4aa9b29c6b8d6adb3d0e1228d0435068d4252760c390828360e6c9af"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/torchvision.libs/libjpeg.ceea7512.so.62": {
+      "bytes": 285328,
+      "group": "worker:.venv-metrics:torchvision",
+      "sha256": "43436dd54ee4bf238f387dfba3d1321fdeb004415c807d4d3490c368bd5e5dec"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/torchvision.libs/libpng16.7f72a3c5.so.16": {
+      "bytes": 1079081,
+      "group": "worker:.venv-metrics:torchvision",
+      "sha256": "2d88f1f40e7f159288e6351aa72055044007f02bb80bb54b7b1d15346d75e363"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/torchvision.libs/libz.2fd3c0b3.so.1": {
+      "bytes": 124744,
+      "group": "worker:.venv-metrics:torchvision",
+      "sha256": "0b0e682a9dc7fd4895a6783288f851b793dc89633f28714027974fa4d66f3914"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/torchvision/_C.so": {
+      "bytes": 1288832,
+      "group": "worker:.venv-metrics:torchvision",
+      "sha256": "f88eef8e1c61b8a0ba1ec31e6eae2da98daf2815e94333228404d46de67d2fe1"
+    },
+    "repo:.venv-metrics/lib/python3.10/site-packages/torchvision/image.so": {
+      "bytes": 331985,
+      "group": "worker:.venv-metrics:torchvision",
+      "sha256": "a44f6448464698686ce6b05bbaae358f11db504cda5b989d4a3c24b4f45e57f6"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/PIL/_imaging.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 3345225,
+      "group": "worker:.venv-train:pillow",
+      "sha256": "a98a5a999a98a80b5fc983c5d1e7c3b908bb7bb2fd63e958f798f337f318844c"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy.libs/libgfortran-040039e1.so.5.0.0": {
+      "bytes": 2686065,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "14afb3129b1a8b50bc40a3b0820c7f1152ea9bc10121aab152943f7057472886"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy.libs/libopenblas64_p-r0-0cf96a72.3.23.dev.so": {
+      "bytes": 35123345,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "9254d0854dd7615e11de28d771ae408878ca8123a7ac204f21e4cc7a376cc2e5"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy.libs/libquadmath-96973f99.so.0.0.0": {
+      "bytes": 247609,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "934c22ded0e7d169c4d4678876c96051adf3d94545da962f60b41659b075da3b"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/core/_multiarray_tests.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 175912,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "0de46f5496fc26171572adc200ca54ac5ee4703fc4cd9f6173e38eb2ee21c20b"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/core/_multiarray_umath.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 7426841,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "fe5efe31c55326b072c8fb239a225819211826cb45cd3c74ed0af0030e70f3a1"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/fft/_pocketfft_internal.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 97008,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "5f36850f3c48eacf11a9d1e3b5957a36b2b7dd3eb7d21f68c1017cfab4fd0006"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/linalg/_umath_linalg.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 216793,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "0587df84ed9751090867a4a1441d2c394c39735420aa388b8bf698b7255f24bd"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/random/_bounded_integers.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 379216,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "cc009884164d0c98b9ad76d899d8318cb2436e4caaa0034b48b6607b70efa5ad"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/random/_common.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 276192,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "31a0a5cd1d83014366047940ae5a6c5466ebe0d6515d2e5e2311258f748d1706"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/random/_generator.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 976328,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "605a4ece82853cac92e920eb9a8a6da2c4ef739e6f96e3cc1bf4aed71fe14e5f"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/random/_mt19937.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 120224,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "d30bd4b7d986fc29800bd588c70d3223143932ddc802bdc46d72197fbc096c11"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/random/_pcg64.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 126400,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "646d4a06bdf86066d285398a89f1f610601d755f9a774b25c7316db9ec404eab"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/random/_philox.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 107384,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "278070939f2017a7ed1ae91833add65251e6f70e72b9d37964eb30bc383f6b05"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/random/_sfc64.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 76712,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "339ec2d6621414d1abdf444acc43ccf2a1b683aa41fedeec3dc60b4c3e271df3"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/random/bit_generator.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 246536,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "d4ee3d720f9eee0541548507dc7fe2f323ea481cdc33e37906fe78bc2e981a0d"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/numpy/random/mtrand.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 783752,
+      "group": "worker:.venv-train:numpy",
+      "sha256": "b917e2f0ada2ef00b0cc509b76f14d8bce4815e3643abd58481803bbb6b585fe"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/pillow.libs/libXau-154567c4.so.6.0.0": {
+      "bytes": 22081,
+      "group": "worker:.venv-train:pillow",
+      "sha256": "05484d24bf78cb8ed03169f1cb067204d829cb7af21de8820400d29d115e4320"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/pillow.libs/libjpeg-8a13c6e0.so.62.4.0": {
+      "bytes": 832177,
+      "group": "worker:.venv-train:pillow",
+      "sha256": "2fd2cd3b79617a40ff920815e83ae0b25788fe05df97711f5b0029891c31cbd9"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/pillow.libs/liblzma-64b7ab39.so.5.8.1": {
+      "bytes": 266369,
+      "group": "worker:.venv-train:pillow",
+      "sha256": "84dd81d913c433ac0e82f111fe0e377cd8db350fd2b2b7a75f6c2501f1d6fa70"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/pillow.libs/libopenjp2-56811f71.so.2.5.3": {
+      "bytes": 585849,
+      "group": "worker:.venv-train:pillow",
+      "sha256": "686f62cbed321379e3e38be7ae94c56411d4345bde8d54e557b40472d9a7693a"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/pillow.libs/libtiff-13a02c81.so.6.1.0": {
+      "bytes": 746233,
+      "group": "worker:.venv-train:pillow",
+      "sha256": "007f36ed9297e1fffe0e962feba0442dcce486455d6cd98b2c58a57bcbd15605"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/pillow.libs/libxcb-64009ff3.so.1.1.0": {
+      "bytes": 251425,
+      "group": "worker:.venv-train:pillow",
+      "sha256": "b7437ed16bae7ac4498049fd14e10d1bd1c3e7d15d0e5eab1d2ead42a83a49d1"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy.libs/libgfortran-040039e1-0352e75f.so.5.0.0": {
+      "bytes": 2833617,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "c6090048eccc763522c12ef016f81da6b627cb3a044f55cf0479a839c41c0980"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy.libs/libquadmath-96973f99-934c22de.so.0.0.0": {
+      "bytes": 250985,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "6ed5137f412781ad7863439fb543613f620b43c32b63292a0029246162f5bbc6"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy.libs/libscipy_openblas-68440149.so": {
+      "bytes": 22211841,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "3e739a2435af49d2d938749f316aa338c65f41c9ae6615406e7cf83feb662f46"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/_lib/_ccallback_c.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 110176,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "72f5b59eddc1e471739db67ab9fb91f2a93df5d12ce5235771371b606bfe8769"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/_lib/messagestream.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 85760,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "37c5ede0148563ec82a8063c09da8eb18d1f588671825a9188b448d428048204"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/_cythonized_array_utils.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 629104,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "8e839f2c461a3ac515aeab1c91336ae012878b6b0323e88f83e8fdf52966a897"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/_decomp_lu_cython.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 270816,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "eb9182c7f7185adbd8d6e2c8cba225265c39841c51f5ce748dcf6caaa6b4fda9"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/_decomp_update.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 368608,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "6c64451a3dd61c66b620aa0e0a0700df041ecdb6409070176ea99dfd075ebee3"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/_fblas.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 1032545,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "d2bc0b8127ab14cf1df3ae8fe4242829830ef54cc00ceafd720e68ef7e67f495"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/_flapack.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 2478641,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "11742f3f308733322369de8ef867af6aaf8c3b001d61005632dff37b3a4161ee"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/_linalg_pythran.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 140520,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "5b4228e644528d0195d8d2785973637be5c41408166e1e2e9417902b346720f7"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/_matfuncs_expm.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 511433,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "9888525263eabf8c3a67386e81e95d5c0b492eda8d9b760fdcb9b7f11eef4e0f"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/_matfuncs_sqrtm_triu.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 280968,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "2f626635294596acca06c371a1312462b11e6cd919678eb3e244d61d4e0a2db5"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/_solve_toeplitz.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 300512,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "00a16df76cb2ba5d643c2536ffa3a63735da528cc101cbfd3f87ec553ae37efe"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/cython_blas.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 353945,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "cbeee12108547548491631792503858f707181310061d6d62981847fb87de2ca"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/linalg/cython_lapack.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 879585,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "810f0dfc3bbab5e92180d1946197af5b51e956bd9ff27a24d5a2881b0cab3ed2"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/_csparsetools.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 839504,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "809bfee38f82fe6319cd5b57a8eac48e1872be242c36976f40e68d48ea02ca98"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/_sparsetools.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 4560912,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "dde4efc97631ffb3b348260a62b5601e48c56257cc3b6a43841c5ca5d78f8bd7"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/csgraph/_flow.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 354320,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "4239de96773a37e2874fd38becafee81909702e58f06eb9c932a683d47a6946a"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/csgraph/_matching.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 357288,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "13d00d9fc36c898b8a056ea2fc5370ab10edc5f18828aeeee2a248b728ad4f4b"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/csgraph/_min_spanning_tree.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 268568,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "be1854d97abde2893d98c81b5d5bdce510b12436f6602fe8028128f688f426f1"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/csgraph/_reordering.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 331928,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "73fb6a31adbe9e0b4d63cf0981fbfbc7ce53b030751cf47d123c34f9f936d787"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/csgraph/_shortest_path.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 576328,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "9ed4b4373dce636ead027ad1db453ba4788d4db0e6ab7f38f189b3eabe6810bc"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/csgraph/_tools.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 218744,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "b31b2fc93c9688a6b2b7a3507325c20635f82b84ccbe8c2dbf7f474ddf0f0362"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/csgraph/_traversal.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 658864,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "23df762f0a6c6e0fef1e4fbff7b48e716d7da912db365ddca93c5e93aa2ee2f8"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/linalg/_dsolve/_superlu.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 811113,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "4358374c599427b08746241c6294a33661daf0fc5c421a6cafb69d0c4b7b3354"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/linalg/_eigen/arpack/_arpack.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 877177,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "268b3962f3432f29f714afba67c2c142782726012599ee7d52e2e44cf0daaa40"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/linalg/_propack/_cpropack.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 566049,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "baaa21cecf3265bf358d983a006d3be2bfc75805925cccc81426a67286a7924e"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/linalg/_propack/_dpropack.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 533201,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "d90e4b9d209ba4ef15bab2aa609aca692f1e186d69927de9ef2867c03b67e2d7"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/linalg/_propack/_spropack.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 533201,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "3ce13f8a49cee23b85221d6202c04f2acc7f5ebf414b8aedb4b702a461da186a"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/sparse/linalg/_propack/_zpropack.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 557857,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "f9c9db99b0f747156a6b849c12976ffe40f6a1420f35664f1390723cd7e9ce70"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/spatial/_ckdtree.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 1023728,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "bd94fbbd3dab6a9bf9c3e30052bd23fcecd9bc9101d31f2c92eb2ba4c2115df5"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/spatial/_distance_pybind.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 641424,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "23ad15c563088e19c218dd3cb8e4c22548e20422480b508cede8b0acca7bc227"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/spatial/_distance_wrap.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 113256,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "cc50ceaffe3c8fcdb3066310456a4c77655f809fa27203dedd51fc012e2282a5"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/spatial/_hausdorff.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 250248,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "e444004d5ab19a37bd134d36dfc867d9e91e7d9dac176d415f26a51584fe5624"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/spatial/_qhull.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 1189720,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "4debf991f72c01bf77ff1c4135a1fb5efc18c743538dc64974d39b91cd5b9b3a"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/spatial/_voronoi.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 240968,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "20cbbd4495f9d90afb1bebdd44cc50e3319c1068124e38de4e2881cc206f563f"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/spatial/transform/_rotation.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 1043312,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "2528479ef10305bbb64b263dd44f85530028554c41451d53231839e2f0a9ab4c"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/special/_comb.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 63456,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "8cd9d97db92dca65c12615d587f7a7ed5f89d3b4b5bae3d5a8d4263aad35951e"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/special/_ellip_harm_2.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 138273,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "d6c59efae8add1fbaa406a1007eca03df58ac39e657b175d7cb82682ce37369f"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/special/_gufuncs.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 753248,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "b0dcb85c17e1f35a460118de33ee035ed288899f2a982f9ec6d5a9c96525fd40"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/special/_specfun.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 296576,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "5dd4491c6c8e8aba2910a779ed53a66b52e3dcd527307833b8e07c7cfff6371b"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/special/_special_ufuncs.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 1464544,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "d45be6bf592c88a6cd24910bb2ea3f254bbdac51e9edcfd1a3e3a43370d8b3c5"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/special/_ufuncs.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 1626249,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "d1efe233bd4d377b622ad09f65035bf89e2dfcbec5a0b0444c2e235c5773acd7"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/special/_ufuncs_cxx.cpython-310-x86_64-linux-gnu.so": {
+      "bytes": 1855408,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "db8e1becc2f6b5fb6395c5201e9658833405ca3e7da13451f59e024d953ba869"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/scipy/special/libsf_error_state.so": {
+      "bytes": 15840,
+      "group": "worker:.venv-train:scipy",
+      "sha256": "7d540654cdcc4e8ed9ceacdf9e203210f80f902cdb2c98fab90234f97f938ac0"
+    },
+    "repo:.venv-train/lib/python3.10/site-packages/torch/lib/libtorch_global_deps.so": {
+      "bytes": 21177,
+      "group": "worker:.venv-train:torch",
+      "sha256": "af8def4939b2e6c1d42c180a8d8e7a88f8f1d958370cecc063660f844bafbe04"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/PIL/_imaging.cpython-312-x86_64-linux-gnu.so": {
+      "bytes": 3382089,
+      "group": "worker:.venv-worker:pillow",
+      "sha256": "227d6ee05532c6461b5d6de055b8feeeaae2716a805bf83ea5ca1e1cec1cc3a7"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/numpy.libs/libgfortran-040039e1-0352e75f.so.5.0.0": {
+      "bytes": 2833617,
+      "group": "worker:.venv-worker:numpy",
+      "sha256": "c6090048eccc763522c12ef016f81da6b627cb3a044f55cf0479a839c41c0980"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/numpy.libs/libquadmath-96973f99-934c22de.so.0.0.0": {
+      "bytes": 250985,
+      "group": "worker:.venv-worker:numpy",
+      "sha256": "6ed5137f412781ad7863439fb543613f620b43c32b63292a0029246162f5bbc6"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so": {
+      "bytes": 25021457,
+      "group": "worker:.venv-worker:numpy",
+      "sha256": "0bd815d04b6b54990e3cccc7528fbb696456d09569f533d0390c13f0cdc4dd4a"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/numpy/_core/_multiarray_umath.cpython-312-x86_64-linux-gnu.so": {
+      "bytes": 10510625,
+      "group": "worker:.venv-worker:numpy",
+      "sha256": "e6241082eaab01d0f68b2b661522ecb9d5d2160915104df8b112cc161dfa18b4"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/numpy/linalg/_umath_linalg.cpython-312-x86_64-linux-gnu.so": {
+      "bytes": 227657,
+      "group": "worker:.venv-worker:numpy",
+      "sha256": "cc26f067e35c99248f354652fb7a941fd6c60823bb100524d245f6a54fbceba6"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/pillow.libs/libXau-154567c4.so.6.0.0": {
+      "bytes": 22081,
+      "group": "worker:.venv-worker:pillow",
+      "sha256": "05484d24bf78cb8ed03169f1cb067204d829cb7af21de8820400d29d115e4320"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/pillow.libs/libjpeg-8a13c6e0.so.62.4.0": {
+      "bytes": 832177,
+      "group": "worker:.venv-worker:pillow",
+      "sha256": "2fd2cd3b79617a40ff920815e83ae0b25788fe05df97711f5b0029891c31cbd9"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/pillow.libs/liblzma-64b7ab39.so.5.8.1": {
+      "bytes": 266369,
+      "group": "worker:.venv-worker:pillow",
+      "sha256": "84dd81d913c433ac0e82f111fe0e377cd8db350fd2b2b7a75f6c2501f1d6fa70"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/pillow.libs/libopenjp2-56811f71.so.2.5.3": {
+      "bytes": 585849,
+      "group": "worker:.venv-worker:pillow",
+      "sha256": "686f62cbed321379e3e38be7ae94c56411d4345bde8d54e557b40472d9a7693a"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/pillow.libs/libtiff-13a02c81.so.6.1.0": {
+      "bytes": 746233,
+      "group": "worker:.venv-worker:pillow",
+      "sha256": "007f36ed9297e1fffe0e962feba0442dcce486455d6cd98b2c58a57bcbd15605"
+    },
+    "repo:.venv-worker/lib/python3.12/site-packages/pillow.libs/libxcb-64009ff3.so.1.1.0": {
+      "bytes": 251425,
+      "group": "worker:.venv-worker:pillow",
+      "sha256": "b7437ed16bae7ac4498049fd14e10d1bd1c3e7d15d0e5eab1d2ead42a83a49d1"
+    },
+    "system:/usr/lib/libGLX_nvidia.so.615.78.08": {
+      "bytes": 1211968,
+      "group": "system:nvidia-utils",
+      "sha256": "c095abee1e8a13f3bbe5a4001373be4f0eb45ac4cab1dd2b972658d105bd7e59"
+    },
+    "system:/usr/lib/libVkLayer_khronos_validation.so": {
+      "bytes": 33421536,
+      "group": "system:vulkan-validation-layers",
+      "sha256": "edb0a6d53749cef523ae54c142012f626dd5c683b92e66eb7a2d66bcb5487ae1"
+    },
+    "system:/usr/lib/libcuda.so.615.78.08": {
+      "bytes": 112668520,
+      "group": "system:nvidia-utils",
+      "sha256": "f73320931be3c4eabc120a1a7fea25f34f324c0f93e35891f98e81a722b5dfc3"
+    },
+    "system:/usr/lib/libdecor-0.so.0.200.5": {
+      "bytes": 35200,
+      "group": "system:libdecor",
+      "sha256": "60ceaa7076a0571cc9074d811b20190f19773c100cdb36c3e53fcf792a4bf934"
+    },
+    "system:/usr/lib/libnvidia-allocator.so.615.78.08": {
+      "bytes": 152904,
+      "group": "system:nvidia-utils",
+      "sha256": "2e6cf918d19c5bf9ef38f1ab710cfddae3ead882ae8d7867bbc4beb57b7f3015"
+    },
+    "system:/usr/lib/libnvidia-glcore.so.615.78.08": {
+      "bytes": 41902312,
+      "group": "system:nvidia-utils",
+      "sha256": "0431aee1c9d26b85c9a4a3724de4445113273c31b94229b39ba364988ffe491a"
+    },
+    "system:/usr/lib/libnvidia-glsi.so.615.78.08": {
+      "bytes": 603080,
+      "group": "system:nvidia-utils",
+      "sha256": "da8c4e3c527e0fc454e725d10a35c4c420c41a24810675fd7d66d6645f632e83"
+    },
+    "system:/usr/lib/libnvidia-glvkspirv.so.615.78.08": {
+      "bytes": 10454384,
+      "group": "system:nvidia-utils",
+      "sha256": "322122fabcab5df8b2e278f316ae5a07143b15123ddd04684984f9f665fc15c4"
+    },
+    "system:/usr/lib/libnvidia-gpucomp.so.615.78.08": {
+      "bytes": 121572536,
+      "group": "system:nvidia-utils",
+      "sha256": "1350b9e1c3e631c5b0088561540423d7a7d9a75c73242ac2881f94bc64dd6d73"
+    },
+    "system:/usr/lib/libnvidia-ml.so.615.78.08": {
+      "bytes": 2958776,
+      "group": "system:nvidia-utils",
+      "sha256": "3007b7a1714c4be9e7ff4c484bed786c1da220a1f9e78bbc5b394bb2502f2d1d"
+    },
+    "system:/usr/lib/libnvidia-rtcore.so.615.78.08": {
+      "bytes": 36387808,
+      "group": "system:nvidia-utils",
+      "sha256": "6e576cd99121245063e4f8bd0618039ed4fdbc3468667a396146407be52658f2"
+    },
+    "system:/usr/lib/libnvidia-tls.so.615.78.08": {
+      "bytes": 18632,
+      "group": "system:nvidia-utils",
+      "sha256": "4ffeae16c5dd3f524fa91ff530ae5b978390615d9a99ffb0700d4ca47f9bc92e"
+    },
+    "system:/usr/lib/libwayland-client.so.0.26.0": {
+      "bytes": 60168,
+      "group": "system:wayland",
+      "sha256": "39c83ae7b73d22f18b4f81da14749c4535c304b7e62910a2f1aae682f279cc9d"
+    },
+    "system:/usr/lib/libwayland-cursor.so.0.26.0": {
+      "bytes": 31200,
+      "group": "system:wayland",
+      "sha256": "9bf05b4e53f00d46590c241c501d1d1711e99fb8106eb6f0654084c69072c2e5"
+    },
+    "system:/usr/lib/libwayland-egl.so.1.26.0": {
+      "bytes": 14136,
+      "group": "system:wayland",
+      "sha256": "3186e3235d617307bf457ac2da1dc5c52ab984e69135326558f7d33d7aaaee4d"
+    },
+    "system:/usr/lib/libxcb-glx.so.0.0.0": {
+      "bytes": 116704,
+      "group": "system:libxcb",
+      "sha256": "4159b3dc104d899fcb92c8d237620474c193748f1c289e6cb61a2f4f1bc8591e"
+    },
+    "system:/usr/lib/libxcb-present.so.0.0.0": {
+      "bytes": 14312,
+      "group": "system:libxcb",
+      "sha256": "d9f47da0e4925c706e83c1ea7572b2660c74a22b01c0f2b95723cc96a258f7c7"
+    },
+    "system:/usr/lib/libxcb-randr.so.0.1.0": {
+      "bytes": 71648,
+      "group": "system:libxcb",
+      "sha256": "5db40f22bfc3a142d653d69669f509b971dc8cd36215e90f977158d109b3dbf5"
+    },
+    "system:/usr/lib/libxcb-sync.so.1.0.0": {
+      "bytes": 34784,
+      "group": "system:libxcb",
+      "sha256": "e5e6f35089a65d0d34761fdfb6ea9c74a86b9c7e57ab6fc56e1282491ad6bbd0"
+    },
+    "system:/usr/lib/libxkbcommon.so.0.13.2": {
+      "bytes": 383144,
+      "group": "system:libxkbcommon",
+      "sha256": "e475adbf5abd181b1bdfdeba70ad4d501cb296bbf05b13e8649fd71b3989ee07"
+    }
+  },
+  "package_tool": {
+    "bytes": 157872,
+    "path": "system:/usr/bin/pacman",
+    "sha256": "590759eddb4c0cac6c5ad66f0f9bc093e15529675c0aa909eea396af5b07459d"
+  },
+  "parent_commit": "fc62257",
+  "receipt": {
+    "bytes": 400933,
+    "path": "artifacts/validation/m2-input-latency-20261016/runtime/owners.json",
+    "sha256": "ee41f2a27e640040c789964bb47be8d035e580aa0bf33cdf67d4c63d20db63ed"
+  },
+  "rights_qualified": false,
+  "schema_version": 1,
+  "scope": "installed ownership/notices for baseline_unseen mapped ELF files; not archive, bundled-term or rights closure",
+  "selection": {
+    "bytes": 7381,
+    "path": "third_party/runtime-selection-input-20261016.json",
+    "sha256": "ee009fd864555eec7bca0756608942885661f97e269a18ee2c2eb549cdc6b479"
+  },
+  "sources": [
+    {
+      "bytes": 19593,
+      "path": "tools/audit_binding_owners.py",
+      "sha256": "2002faa6b93998176ddc82ef54796c3e8dcb1890be0ca282d5dcc7348c5aea83"
+    },
+    {
+      "bytes": 19252,
+      "path": "tools/audit_runtime_dependencies.py",
+      "sha256": "077807b2619fadd0660287cda8b6742b0c8dbd17714c3b32a21a12a71b4fff44"
+    },
+    {
+      "bytes": 13271,
+      "path": "tools/audit_worker_environment.py",
+      "sha256": "7a86651196d40950c75cda8ef4ae5ced5ca6c8fcb7e702e6ab7561b317a47385"
+    },
+    {
+      "bytes": 10388,
+      "path": "tools/check_backend_bindings.py",
+      "sha256": "71eac593311e6b3275cbab27740c4a273903778a1de0147981a3aea981e442e7"
+    },
+    {
+      "bytes": 23810,
+      "path": "tools/check_dependency_manifest.py",
+      "sha256": "87792eabbf4735f1fd7508e25ee66bf0d08343e3b144c34389dc9d4509a88369"
+    }
+  ],
+  "status": "IMPLEMENTED_UNVERIFIED",
+  "timezone": "Asia/Hong_Kong"
+}
