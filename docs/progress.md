@@ -590,18 +590,30 @@ packed pilot passes: three visible updates, two resizes, two matching readbacks,
 and independent Clang C++23 packed/default regressions also pass; **273/273** dev
 CPU checks and format/tidy pass. The refreshed runtime inventory remains current.
 
-A separately supervised **7,200-second packed full/full/empty stress is running**,
-started **2026-10-16 18:34 Asia/Hong_Kong**. Launch/source/binary/shader/scene hashes
-are in `artifacts/validation/m2-packed-lifetime-20261016/full-launch.json`;
-`full-exit.json` will record its actual termination. **No long packed pass is
-claimed.** Next executable step: inspect that exit receipt, then run
-`python3 artifacts/validation/m2-packed-lifetime-20261016/audit_run.py full` after
-exit 0. The independent audit checks all visible revisions, profile/stride,
-copy totals, captures, memory/validation results and bound file identities.
-While running, preserve its bound executable/source/shaders and saved scenes;
-do not restart it or rebuild those files. Q6 still needs its prescribed fixed
-100-view captured-target fixture and qualified scale/corpus/platforms. Preserve
-all failures and both frozen comparisons; do not rerun reconstruction.
+[Interrupted packed-run audit and acquire repair](validation/2026-10-16-m2-acquire-timeout.md):
+the run terminated at **19:41:11 Asia/Hong_Kong**, exit **2**, after **4,019.936 s**
+on `VK_TIMEOUT` during swapchain acquisition. Retained evidence verifies **267
+visible updates / 200 resizes / seven identical captures / 66 zero-error samples**,
+with exact sampled transfer totals. Last sampled cumulative tracked peak is
+**435,702,080 bytes**; final-frame counts/peaks and two-hour completion are unavailable.
+All launch-bound bytes matched at audit before code changes; original binaries
+are retained. The unrelated crash's role is unestablished by these logs.
+
+The renderer now retries `VK_TIMEOUT`/`VK_NOT_READY` on later draws, preserving
+queued updates, frame slots and screenshots. A short native reproducer first
+fails with the original error; repaired GCC/Clang Debug and Release smoke plus
+full saved-scene resize regression pass with zero Vulkan errors. **273/273** dev
+CPU checks and format/tidy pass. **The user requested no two-hour rerun; none was
+started.** Packed two-hour qualification remains IMPLEMENTED_UNVERIFIED; the
+completed FP32 lifetime result retains its original scope.
+
+Next executable step: refresh selected runtime/owner receipts for the rebuilt
+renderer and changed package-query-tool bytes. The current local inventory check
+exits 2 at owner-tool identity; fresh `owners-current.json` confirms unchanged
+associations/ELF/notices with only the query-tool hash differing. Preserve all
+historical receipts, failed-run logs/captures and saved scenes. Q6's prescribed
+100-view captured-target fixture, scale/corpus/platforms and full gates remain
+open; do not rerun the long stress or reconstruction.
 Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
 other-scene/platform qualification remain open.
 

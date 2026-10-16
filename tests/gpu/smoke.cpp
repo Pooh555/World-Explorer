@@ -38,6 +38,59 @@ scene_snapshot overlap_fixture() {
     scene->chunks.emplace(chunk->id, chunk);
     return scene;
 }
+#if defined(WE_VULKAN_TEST_FAULTS)
+void verify_acquire_deferral(SDL_Window* window, const renderer_options& options,
+                             const std::filesystem::path& output) {
+    auto created = vulkan_renderer::create(window, options);
+    require(created.has_value(), created ? "" : created.error().message);
+    auto renderer = std::move(*created);
+    camera_view camera;
+    camera.position = {0, 0, 4};
+    auto initial = make_snapshot_batch(overlap_fixture(), {1}).value();
+    require(renderer->updates().enqueue(initial).has_value(), "acquire fixture admission failed");
+    require(renderer->draw(camera).has_value(), "acquire fixture initial draw failed");
+    const auto baseline_path = output.parent_path() / "acquire-baseline.ppm";
+    require(renderer->request_screenshot(baseline_path).has_value(),
+            "acquire baseline request failed");
+    require(renderer->draw(camera).has_value(), "acquire baseline capture failed");
+    const auto baseline = sha256_file(baseline_path, std::size_t{4} * 1024 * 1024);
+    require(baseline.has_value(), "acquire baseline missing");
+    const auto before = renderer->diagnostics().submitted_frames;
+    auto replacement = std::make_shared<scene_state>(*renderer->updates().visible_snapshot());
+    replacement->revision = {2};
+    auto batch = make_snapshot_batch(replacement, {2}).value();
+    const auto ticket = renderer->updates().enqueue(batch);
+    require(ticket.has_value(), "deferred-acquire update admission failed");
+    const auto pending_path = output.parent_path() / "acquire-recovered.ppm";
+    require(!std::filesystem::exists(pending_path), "deferred-acquire capture must be new");
+    require(renderer->request_screenshot(pending_path).has_value(),
+            "deferred capture request failed");
+    for (const auto delay :
+         {detail::frame_acquire_delay::TIMEOUT, detail::frame_acquire_delay::NOT_READY,
+          detail::frame_acquire_delay::TIMEOUT, detail::frame_acquire_delay::NOT_READY}) {
+        detail::defer_next_frame_acquisition(delay);
+        const auto deferred = renderer->draw(camera);
+        require(deferred.has_value(), deferred ? "" : deferred.error().message);
+        const auto progress = renderer->updates().query_progress(*ticket);
+        require(progress && progress->state == update_state::ACCEPTED &&
+                    renderer->updates().visible_snapshot()->revision.value == 1 &&
+                    renderer->diagnostics().submitted_frames == before &&
+                    !std::filesystem::exists(pending_path),
+                "deferred acquisition consumed update, frame or screenshot");
+    }
+    for (int frame = 0; frame < 120 && !std::filesystem::exists(pending_path); ++frame) {
+        SDL_PumpEvents();
+        require(renderer->draw(camera).has_value(), "deferred acquisition did not resume");
+    }
+    const auto progress = renderer->updates().query_progress(*ticket);
+    const auto recovered = sha256_file(pending_path, std::size_t{4} * 1024 * 1024);
+    require(progress && progress->state == update_state::RENDER_VISIBLE && recovered &&
+                *recovered == *baseline && renderer->diagnostics().validation_errors == 0,
+            "deferred acquisition lost update, pixels or semaphore validity");
+    std::cout << "Acquire retry: 4 deferred draws preserve update/readback; exact recovery; "
+                 "validation_errors=0\n";
+}
+#endif
 bool wait_for_window_flag(SDL_Window* window, SDL_WindowFlags flag, bool enabled) {
     const auto deadline = SDL_GetTicks() + 2000;
     do {
@@ -185,6 +238,7 @@ int main(int argc, char** argv) {
                 "rejected resize changed scene revision, residency or Vulkan validity");
         renderer.reset();
 #if defined(WE_VULKAN_TEST_FAULTS)
+        verify_acquire_deferral(window.get(), options, output);
         created = vulkan_renderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().message);
         renderer = std::move(*created);

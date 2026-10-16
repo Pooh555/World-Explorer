@@ -27,6 +27,8 @@ namespace world_explorer {
 namespace detail {
 thread_local bool inject_device_loss_on_next_frame{};
 void fail_next_frame_with_device_loss() { inject_device_loss_on_next_frame = true; }
+thread_local frame_acquire_delay inject_acquire_delay{frame_acquire_delay::NONE};
+void defer_next_frame_acquisition(frame_acquire_delay delay) { inject_acquire_delay = delay; }
 } // namespace detail
 #endif
 using detail::check;
@@ -943,9 +945,21 @@ struct vulkan_renderer::implementation {
         const auto acquire_begin = options.collect_timings
                                        ? std::chrono::steady_clock::now()
                                        : std::chrono::steady_clock::time_point{};
-        const auto acquired = vkAcquireNextImageKHR(device, swapchain, 5'000'000'000ULL,
-                                                    current.acquired, VK_NULL_HANDLE, &image_index);
+        VkResult acquired{};
+#if defined(WE_VULKAN_TEST_FAULTS)
+        const auto delay =
+            std::exchange(detail::inject_acquire_delay, detail::frame_acquire_delay::NONE);
+        if (delay != detail::frame_acquire_delay::NONE)
+            acquired = delay == detail::frame_acquire_delay::TIMEOUT ? VK_TIMEOUT : VK_NOT_READY;
+        else
+#endif
+            acquired = vkAcquireNextImageKHR(device, swapchain, 5'000'000'000ULL, current.acquired,
+                                             VK_NULL_HANDLE, &image_index);
         const auto acquire_ms = options.collect_timings ? elapsed_ms(acquire_begin) : 0;
+        // No image or semaphore signal was acquired. Retain the frame slot,
+        // queued update and screenshot request for a later draw.
+        if (acquired == VK_TIMEOUT || acquired == VK_NOT_READY)
+            return;
         if (acquired == VK_ERROR_OUT_OF_DATE_KHR) {
             refresh_swapchain();
             return;

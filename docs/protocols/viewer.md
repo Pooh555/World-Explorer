@@ -242,6 +242,13 @@ navigation state remain independent. One recreation is attempted per viewer run;
 a repeated loss ends with an explicit error. A Debug-testing-only hook reports a
 synthetic loss at the owned retirement-timeline query after draining real GPU
 submissions. It checks teardown and replay, not physical device-loss behavior.
+Swapchain acquisition returning `VK_TIMEOUT` or `VK_NOT_READY` skips that draw
+without consuming a frame slot, queued update or pending screenshot. The next
+draw retries acquisition; no invalid image index or unsignaled semaphore is used
+for submission. The existing finite five-second acquire timeout remains; this
+does not certify input latency during a presentation stall. Debug-only one-shot
+faults bypass acquisition entirely to check both deferred statuses, retention
+and subsequent exact readback recovery without fabricating a semaphore signal.
 VMA 3.1.0 owns each renderer buffer and its dedicated allocation through one
 allocator per Vulkan device; the allocator dies after all buffers. Host-visible
 coherent staging stays persistently mapped. Buffer requirements are checked
