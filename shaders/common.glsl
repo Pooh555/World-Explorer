@@ -3,7 +3,11 @@ struct splat_data {
     vec4 scale_degree;
     vec4 rotation;
     vec4 world_to_sh;
+#ifdef WE_PACKED_SH
+    uint sh[24];
+#else
     float sh[48];
+#endif
 };
 struct projected_data {
     vec4 center_radius;

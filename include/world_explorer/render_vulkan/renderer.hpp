@@ -9,6 +9,7 @@
 #include <string>
 
 namespace world_explorer {
+enum class gpu_splat_storage : std::uint8_t { FP32, FP32_GEOMETRY_FP16_SH };
 struct renderer_options {
     std::size_t max_splats{250000};
     std::size_t residency_bytes{512ULL * 1024 * 1024};
@@ -20,6 +21,9 @@ struct renderer_options {
     bool collect_timings{};
     bool reuse_tile_plans{true};
     bool reuse_resident_chunks{true};
+    // Explicit opt-in until the packing profile is qualified; canonical assets
+    // remain unchanged. No FP16 arithmetic or storage feature is required.
+    gpu_splat_storage splat_storage{gpu_splat_storage::FP32};
 };
 // Adapter-only handles. Public scene/core APIs never carry graphics objects.
 struct vulkan_overlay_context {
@@ -36,6 +40,8 @@ struct renderer_capabilities {
     bool gpu_timestamps_supported{};
     std::uint32_t timestamp_valid_bits{};
     double timestamp_period_ns{};
+    gpu_splat_storage splat_storage{gpu_splat_storage::FP32};
+    std::size_t splat_stride_bytes{256};
 };
 class vulkan_renderer {
   public:

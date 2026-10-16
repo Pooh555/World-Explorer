@@ -2,8 +2,15 @@
 #extension GL_GOOGLE_include_directive : require
 #include "common.glsl"
 layout(local_size_x=256) in;
+float sh_value(uint id,uint index) {
+#ifdef WE_PACKED_SH
+    return unpackHalf2x16(splats[id].sh[index/2])[index%2];
+#else
+    return splats[id].sh[index];
+#endif
+}
 vec3 coefficient(uint id,uint index) {
-    return vec3(splats[id].sh[index*3],splats[id].sh[index*3+1],splats[id].sh[index*3+2]);
+    return vec3(sh_value(id,index*3),sh_value(id,index*3+1),sh_value(id,index*3+2));
 }
 vec3 evaluate_sh(uint id,vec3 direction) {
     float x=direction.x,y=direction.y,z=direction.z;

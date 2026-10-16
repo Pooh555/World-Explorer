@@ -104,6 +104,24 @@ uses this same path. Floating-origin rebasing of an already visible scene still
 uses a full host copy when no update is active. Diagnostic
 `renderer_options.reuse_resident_chunks=false` forces CPU packing for comparison.
 
+GPU storage is selected explicitly when creating a renderer. The default
+`gpu_splat_storage::FP32` uses 256 bytes per splat. Experimental
+`FP32_GEOMETRY_FP16_SH` uses 160: the same four FP32 geometry/opacity/rotation
+vectors followed by 24 uint32 pairs of binary16 SH coefficients. Capabilities
+report the selected profile and stride. Canonical scene assets, content hashes,
+SH degree and coefficient-major RGB order stay unchanged. Profiles cannot change
+within a renderer, so resident-copy offsets always use one declared stride.
+
+Binary16 conversion rounds to nearest with ties to even, preserves signed zero
+and supports subnormals. All 48 coefficients must be finite and within ±65504;
+overflow fails the update with `INVALID_ARGUMENT`, retaining the visible scene
+and caller snapshot. A valid full resync can recover. GLSL
+[`unpackHalf2x16`](https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.60.html)
+decodes low/high halves to FP32; projection, SH evaluation and composition remain
+FP32. No FP16 arithmetic/storage feature is enabled. The optional profile needs
+Q6 qualification before promotion to the default. Identical GPU geometry bytes
+do not establish millimetre accuracy for an arbitrary-scale reconstruction.
+
 Optional completed GPU timestamps include an upload pair around each frame's
 host/device-to-replacement copies and final transfer-to-compute barrier. Completed
 frame samples also expose `host_copy_bytes` and `resident_copy_bytes`. Frames without

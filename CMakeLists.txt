@@ -247,6 +247,14 @@ if(WE_BUILD_VIEWER)
     list(APPEND WE_SHADER_OUTPUTS "${output}")
   endforeach()
 
+  set(WE_PACKED_PROJECT_SHADER "${PROJECT_BINARY_DIR}/shaders/project_packed.comp.spv")
+  add_custom_command(OUTPUT "${WE_PACKED_PROJECT_SHADER}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
+    COMMAND Vulkan::glslc --target-env=vulkan1.3 --target-spv=spv1.3 -DWE_PACKED_SH=1 -I "${PROJECT_SOURCE_DIR}/shaders" "${PROJECT_SOURCE_DIR}/shaders/project.comp" -o "${WE_PACKED_PROJECT_SHADER}"
+    DEPENDS shaders/project.comp shaders/common.glsl
+    VERBATIM
+  )
+  list(APPEND WE_SHADER_OUTPUTS "${WE_PACKED_PROJECT_SHADER}")
   add_custom_target(we_shaders DEPENDS ${WE_SHADER_OUTPUTS})
 
   add_executable(we_viewer apps/we_viewer/main.cpp apps/we_viewer/job_state.cpp
@@ -287,6 +295,12 @@ if(WE_BUILD_VIEWER)
   target_link_libraries(we_gpu_resident_reuse PRIVATE render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
   target_compile_definitions(we_gpu_resident_reuse PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
   add_dependencies(we_gpu_resident_reuse we_shaders)
+
+  add_executable(we_gpu_packing tests/gpu/packing.cpp)
+  we_target(we_gpu_packing)
+  target_link_libraries(we_gpu_packing PRIVATE application render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_gpu_packing PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
+  add_dependencies(we_gpu_packing we_shaders)
 
   add_executable(we_gpu_portable_fixture tests/gpu/portable_fixture.cpp)
   we_target(we_gpu_portable_fixture)
