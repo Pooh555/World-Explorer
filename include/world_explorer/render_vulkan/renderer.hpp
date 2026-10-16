@@ -19,6 +19,7 @@ struct renderer_options {
     // Opt-in diagnostics; fixed query pools, no extra completion waits.
     bool collect_timings{};
     bool reuse_tile_plans{true};
+    bool reuse_resident_chunks{true};
 };
 // Adapter-only handles. Public scene/core APIs never carry graphics objects.
 struct vulkan_overlay_context {

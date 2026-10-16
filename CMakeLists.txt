@@ -282,6 +282,12 @@ if(WE_BUILD_VIEWER)
   target_compile_definitions(we_gpu_update_stream PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
   add_dependencies(we_gpu_update_stream we_shaders)
 
+  add_executable(we_gpu_resident_reuse tests/gpu/resident_reuse.cpp)
+  we_target(we_gpu_resident_reuse)
+  target_link_libraries(we_gpu_resident_reuse PRIVATE render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_gpu_resident_reuse PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
+  add_dependencies(we_gpu_resident_reuse we_shaders)
+
   add_executable(we_gpu_portable_fixture tests/gpu/portable_fixture.cpp)
   we_target(we_gpu_portable_fixture)
   target_link_libraries(we_gpu_portable_fixture PRIVATE render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)

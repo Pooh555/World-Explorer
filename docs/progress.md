@@ -508,9 +508,11 @@ marker: 15 MiB/frame staging, visible **10.011/10.008 updates/s**, enqueue p95
 interactive idle waits and Vulkan errors. The 60-second full-scene VMA pilot,
 native smoke and windowed/4K/fullscreen/restore pass; 270/270 C++26 and 252/252
 C++23 CPU checks plus focused TSan pass. This is local development evidence,
-not the H_V/corpus P6 gate. A fresh two-hour update/resize lifetime run for the
-changed ownership path is **in progress** under
-`artifacts/validation/m2-p6-staged15-full-20261016/`.
+not the H_V/corpus P6 gate. The [staged-upload completion audit](validation/2026-10-16-m2-staged-lifetime.md)
+now checks the finished 7,200.518-second run: 480 visible updates, 359 resizes,
+13 identical readbacks, 313,366 frames and zero reported Vulkan errors. Its
+original launch-time binary digest/process exit were not retained; the audit
+does not reconstruct them from the successful completion artifacts.
 
 [Accepted X11 minimize/restore](validation/2026-10-16-m2-minimize.md) now passes
 on native Debug C++26 and Release C++23 using a separate rootful Xwayland display
@@ -522,16 +524,27 @@ of an already observed minimized state. **270/270 dev CPU checks**, format/tidy
 and **2,088 unchanged protected files** pass. This synthetic controlled-X11
 result leaves physical-desktop/Wayland qualification open.
 
-Next executable step: collect the still-running 7,200-second stress at
-`artifacts/validation/m2-p6-staged15-full-20261016/`, audit its exit,
-summary/events/readback hashes and record the outcome. It had reached 2,280 s
-with zero sampled Vulkan errors during the latest audit; no completion is
-claimed. After it finishes, rebuild the diagnostic with
-`cmake --build build/m2-no-fault -j 4 --target we_gpu_update_stream`, then run
-`build/m2-no-fault/we_gpu_update_stream artifacts/sample_1/scene.wexplore artifacts/validation/m2-p6-staged15-rebuilt-final-20261016 10`.
-Do not rerun reconstruction or change saved scenes or the frozen fixture.
-Physical device loss, desktop/Wayland minimize, Q6 packing, release-vcpkg,
-reference Q/P/N/E and other-scene/platform qualification remain open.
+[Resident chunk reuse](validation/2026-10-16-m2-resident-reuse.md) addresses the
+rebuilt replay's **2.090 ms** upload-frame miss by copying unchanged immutable
+chunks from GPU memory. Atomic visibility, the 15 MiB frame cap and retirement
+remain intact. Final **100/600-revision** local replays sustain 10 Hz, enqueue
+p95 ≤0.008283 ms and upload maximum **0.194/0.229 ms**, with zero idle waits or
+Vulkan errors. GCC/Clang native **24-phase** synthetic comparisons each match CPU
+packing exactly across replacements, offsets, transforms and origin changes;
+the full real 4K regression and strict X11 smoke pass. **270 dev / 252 C++23 CPU
+checks**, format/tidy and **2,088 protected files unchanged** pass.
+
+Next executable step: collect
+`artifacts/validation/m2-completion-20261016/resident-full-exit.json` after the
+new 7,200-second full/full/empty stress finishes. Check exit 0 and its bound
+launch hashes, then audit `resident-full/summary.json`, events, observed resident
+copy bytes, allocation cap and readbacks. Its 60-second pilot passes; the long
+run is **IN_PROGRESS**, not a pass. Then implement/check Q6's fixed 100-view
+packing comparison. Rebuilt executables invalidate the historical dependency
+receipt's current-byte check (exit 2); fresh runtime observation is also due.
+Preserve saved scenes, failures and the frozen fixture; do not rerun reconstruction.
+Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
+other-scene/platform qualification remain open.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

@@ -56,10 +56,14 @@ void write_event(std::ofstream& stream, const json& event) {
     require(static_cast<bool>(stream), "stress event log write failed");
 }
 
-scene_snapshot revision_of(const scene_snapshot& original, std::uint64_t revision) {
+bool full_revision(std::uint64_t revision, bool resident_mode) {
+    return resident_mode ? revision % 3 != 0 : revision % 2 != 0;
+}
+scene_snapshot revision_of(const scene_snapshot& original, std::uint64_t revision,
+                           bool resident_mode) {
     auto copy = std::make_shared<scene_state>(*original);
     copy->revision = {revision};
-    if (revision % 2 == 0)
+    if (!full_revision(revision, resident_mode))
         copy->chunks.clear();
     return copy;
 }
@@ -94,6 +98,9 @@ struct stress_context {
     std::size_t full_splats;
     std::size_t& peak_owned_bytes;
     std::uint64_t& frames;
+    bool resident_mode{};
+    std::uint64_t last_timing{};
+    std::size_t host_copy_bytes{}, resident_copy_bytes{};
 };
 
 void check_frame(stress_context& context) {
@@ -107,10 +114,20 @@ void check_frame(stress_context& context) {
     const auto visible = context.renderer.updates().visible_snapshot();
     if (visible)
         require(stats.resident_splat_count ==
-                    (visible->revision.value % 2 ? context.full_splats : 0),
+                    (full_revision(visible->revision.value, context.resident_mode)
+                         ? context.full_splats
+                         : 0),
                 "resident splat count differs from visible revision");
     context.peak_owned_bytes = std::max(context.peak_owned_bytes, stats.allocated_bytes);
     context.frames = stats.submitted_frames;
+    auto latest = context.last_timing;
+    for (const auto& sample : stats.completed_timings)
+        if (sample.sequence > context.last_timing) {
+            context.host_copy_bytes += sample.host_copy_bytes;
+            context.resident_copy_bytes += sample.resident_copy_bytes;
+            latest = std::max(latest, sample.sequence);
+        }
+    context.last_timing = latest;
 }
 
 void wait_for_revision(stress_context& context, update_ticket ticket) {
@@ -142,7 +159,10 @@ std::string capture(stress_context& context, const std::filesystem::path& path) 
 } // namespace
 
 int main(int argc, char** argv) try {
-    require(argc == 4, "usage: we_gpu_lifetime_stress <retained-scene> <new-output-dir> <seconds>");
+    require(argc == 4 || (argc == 5 && std::string_view(argv[4]) == "--resident-reuse"),
+            "usage: we_gpu_lifetime_stress <retained-scene> <new-output-dir> <seconds> "
+            "[--resident-reuse]");
+    const bool resident_mode = argc == 5;
     const auto duration = std::stoull(argv[3]);
     require(duration >= 10 && duration <= 7200, "stress duration must be 10–7200 seconds");
     const std::filesystem::path output(argv[2]);
@@ -173,6 +193,7 @@ int main(int argc, char** argv) try {
     renderer_options options;
     options.max_splats = 1000000;
     options.shader_directory = WE_SHADER_DIRECTORY;
+    options.collect_timings = resident_mode;
     auto created = vulkan_renderer::create(window.get(), options);
     require(created.has_value(), created ? "" : created.error().message);
     auto renderer = std::move(*created);
@@ -183,8 +204,8 @@ int main(int argc, char** argv) try {
     std::size_t peak_owned_bytes{};
     std::uint64_t frames{}, revision = 1, updates{}, resizes{}, captures{};
     stress_context context{*renderer,   window.get(),     camera, options.residency_bytes,
-                           full_splats, peak_owned_bytes, frames};
-    auto initial = make_snapshot_batch(revision_of(original, revision), {revision});
+                           full_splats, peak_owned_bytes, frames, resident_mode};
+    auto initial = make_snapshot_batch(revision_of(original, revision, resident_mode), {revision});
     require(initial.has_value(), initial ? "" : initial.error().message);
     const auto initial_ticket = renderer->updates().enqueue(*initial);
     require(initial_ticket.has_value(), initial_ticket ? "" : initial_ticket.error().message);
@@ -197,6 +218,7 @@ int main(int argc, char** argv) try {
                          {"scene_splats", full_splats},
                          {"device", renderer->capabilities().device_name},
                          {"duration_seconds", duration},
+                         {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
                          {"process_rss_bytes", process_status_bytes("VmRSS:")},
                          {"baseline_readback_sha256", baseline}});
     struct extent {
@@ -220,16 +242,17 @@ int main(int argc, char** argv) try {
             if (progress->state == update_state::RENDER_VISIBLE) {
                 pending.reset();
                 ++updates;
-                write_event(events, {{"event", "revision"},
-                                     {"elapsed_seconds",
-                                      std::chrono::duration<double>(now - start).count()},
-                                     {"revision", revision},
-                                     {"splats", revision % 2 ? full_splats : 0}});
+                write_event(
+                    events,
+                    {{"event", "revision"},
+                     {"elapsed_seconds", std::chrono::duration<double>(now - start).count()},
+                     {"revision", revision},
+                     {"splats", full_revision(revision, resident_mode) ? full_splats : 0}});
             }
         }
         if (!pending && now >= next_update) {
             const auto next_revision = revision + 1;
-            auto batch = make_snapshot_batch(revision_of(original, next_revision),
+            auto batch = make_snapshot_batch(revision_of(original, next_revision, resident_mode),
                                              operation_id{next_revision});
             require(batch.has_value(), batch ? "" : batch.error().message);
             batch->full_snapshot = false;
@@ -254,7 +277,8 @@ int main(int argc, char** argv) try {
                          {"width", extent.width},
                          {"height", extent.height}});
         }
-        const bool take_capture = now >= next_capture && !pending && revision % 2 == 1;
+        const bool take_capture =
+            now >= next_capture && !pending && full_revision(revision, resident_mode);
         if (take_capture) {
             const auto path = output / ("capture-" + std::to_string(captures) + ".ppm");
             const auto hash = capture(context, path);
@@ -278,6 +302,8 @@ int main(int argc, char** argv) try {
                          {"completed_timeline", stats.completed_timeline},
                          {"owned_bytes", stats.allocated_bytes},
                          {"peak_owned_bytes", peak_owned_bytes},
+                         {"host_copy_bytes", context.host_copy_bytes},
+                         {"resident_copy_bytes", context.resident_copy_bytes},
                          {"process_rss_bytes", process_status_bytes("VmRSS:")},
                          {"process_peak_rss_bytes", process_status_bytes("VmHWM:")},
                          {"validation_errors", stats.validation_errors}});
@@ -285,11 +311,19 @@ int main(int argc, char** argv) try {
         }
         SDL_Delay(20);
     }
-    if (pending)
+    if (pending) {
         wait_for_revision(context, *pending);
-    if (revision % 2 == 0) {
-        auto final =
-            make_snapshot_batch(revision_of(original, revision + 1), operation_id{revision + 1});
+        ++updates;
+        write_event(events, {{"event", "revision"},
+                             {"elapsed_seconds",
+                              std::chrono::duration<double>(steady_clock::now() - start).count()},
+                             {"revision", revision},
+                             {"splats", full_revision(revision, resident_mode) ? full_splats : 0},
+                             {"awaited_after_duration", true}});
+    }
+    if (!full_revision(revision, resident_mode)) {
+        auto final = make_snapshot_batch(revision_of(original, revision + 1, resident_mode),
+                                         operation_id{revision + 1});
         require(final.has_value(), final ? "" : final.error().message);
         final->full_snapshot = false;
         final->base_revision = {revision};
@@ -306,11 +340,15 @@ int main(int argc, char** argv) try {
     require(idle.has_value(), idle ? "" : idle.error().message);
     const auto stats = renderer->diagnostics();
     require(stats.validation_errors == 0, "Vulkan validation error at stress completion");
+    require(updates + 1 == revision, "stress visible revision/update counts disagree");
+    require(!resident_mode || duration < 30 || context.resident_copy_bytes > 0,
+            "resident stress did not observe a device-to-device copy");
     const auto elapsed = std::chrono::duration<double>(steady_clock::now() - start).count();
     json summary{{"passed", true},
                  {"scope", "native read-only retained-scene update/resize stress"},
                  {"elapsed_seconds", elapsed},
                  {"requested_seconds", duration},
+                 {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
                  {"scene_content_sha256", scene_hash},
                  {"scene_splats", full_splats},
                  {"device", renderer->capabilities().device_name},
@@ -321,6 +359,8 @@ int main(int argc, char** argv) try {
                  {"readback_sha256", baseline},
                  {"submitted_frames", frames},
                  {"peak_owned_bytes", peak_owned_bytes},
+                 {"host_copy_bytes", context.host_copy_bytes},
+                 {"resident_copy_bytes", context.resident_copy_bytes},
                  {"process_rss_bytes", process_status_bytes("VmRSS:")},
                  {"process_peak_rss_bytes", process_status_bytes("VmHWM:")},
                  {"validation_errors", stats.validation_errors}};

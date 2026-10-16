@@ -52,8 +52,11 @@ unresolved; this inventory grants no redistribution clearance. See the
 [protocol](../docs/protocols/dependency_sources.md) for scope and checks.
 The [VMA runtime refresh](../docs/validation/2026-10-16-vma-runtime-refresh.md)
 recaptures both rebuilt development executables and the empty native viewer.
-The full current `--local-evidence` check passes; strict closure exits 3 for
-253 explicit source and rights gaps.
+That capture's full `--local-evidence` check passed; strict closure exited 3 for
+253 explicit source and rights gaps. Subsequent
+[resident-upload builds](../docs/validation/2026-10-16-m2-resident-reuse.md)
+invalidate the recorded executable bytes: the current check exits 2. Fresh loader
+and native viewer observations remain due; these historical receipts are retained.
 
 The [runtime supplement](runtime-audit-20261016.json) records fifteen selected
 Linux loader contexts, 213 ELF fingerprints, 123 system package owners and 96
