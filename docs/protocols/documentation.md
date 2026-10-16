@@ -7,6 +7,7 @@ Use the [documentation map](../README.md). Keep one authoritative home per fact:
 | Record | Contains | Update rule |
 |---|---|---|
 | `technical_plan.md` | Product specification, targets, roadmap, research provenance | Change only for a necessary specification decision; never to obtain a pass |
+| `research/` | Dated primary-source comparisons, component terms/availability and evidence limits | Link from specification; keep proposed contracts/targets in the plan and qualification results in validation; do not duplicate candidate facts |
 | `execution_prompt.md` / `AGENTS.md` | Execution policy / concise repository rules | Reference specification/protocols; no milestone history |
 | `progress.md` | Current milestone, usable behavior, blockers, next executable step | Replace stale handoff text after each coherent slice; link historical evidence |
 | `requirements.md` | Gate → implementation → status → evidence | Update affected rows; retain original thresholds and approved deviations |

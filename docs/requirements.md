@@ -35,6 +35,31 @@ release profiles. [ADR 016](adr/016-m2-development-exit.md) scopes M2 to the Lin
 | M4 physical Windows/macOS qualification | Fixed ≤250k fixture opens on native platform viewers; ≥30 FPS at 720p on H_V/H_M; GPU/display/input/HiDPI and portable package checks, plus existing P3/P4/P5/E2 | NOT_STARTED | [ADR 012](adr/012-m1-development-exit.md): rescheduled from M1; user currently has no physical Windows/macOS devices. Access is needed for M4 qualification, not M1 development. No device run or platform pass is inferred from hosted CPU CI |
 | L1 / M7–M8 | Only future-compatible contracts in Phase 1 | DEFERRED_BY_USER | No live reconstruction implementation |
 
+## Planned offline asset production after M6
+
+[ADR 018](adr/018-offline-asset-production.md) adds the approved final product
+direction in [plan §11](technical_plan.md#11-phase-2-offline-asset-production).
+The original matrix above, M1–M6 order and §3 thresholds are unchanged. The
+following rows track new capabilities, not work completed by research. Detailed
+targets live only in [§11.6](technical_plan.md#116-evaluation-and-acceptance-gates);
+milestones A0–A6 live only in §11.7. M7–M8 retain their live scope and deferral.
+
+| Requirement | Implementation / checks | Status | Evidence / dependency |
+|---|---|---|---|
+| A0–A6 Phase 2 delivery | Proposed worker/data architecture, real pilot, expanded room production, qualification and later engine adapter | NOT_STARTED | [Research/planning review](validation/2026-10-17-offline-asset-planning.md) checks documents only; implementation follows M6 |
+| AP0 local reproducibility, provenance and rights | Proposed input/model/environment receipts, evidence/manual ancestry, bounded resume/invalidation and offline recipe | NOT_STARTED | No asset worker/model provisioning or operational/rights qualification |
+| AP1 visible fidelity | Proposed real held-out object/environment renders with coverage accounting | NOT_STARTED | Existing Q3 reconstruction evidence does not certify asset fidelity |
+| AP2 separation, identities and pivots | Proposed automatic inventory, multiview association, lineage and deterministic local pivots | NOT_STARTED | No automatic editable-object pipeline or identity benchmark |
+| AP3 structure, observed geometry and support | Proposed room surfaces/openings/support graph and constrained joint layout | NOT_STARTED | M3 depth interchange is narrower; Q5/N2 and real structure qualification remain open |
+| AP4 completion and move/remove | Proposed object backsides, completed shell and exposed-background tests | NOT_STARTED | Generated/inferred regions excluded from measured reconstruction/navigation gates |
+| AP5 topology, UVs and baking | Proposed static-asset meshes, UV validation and high-to-low detail transfer | NOT_STARTED | No asset-production evidence; all-quads/animation topology not required |
+| AP6 PBR and novel lighting | Proposed shared materials, light recovery and real changed-light evaluation | NOT_STARTED | Captured RGB/SH and named PBR maps do not prove relighting |
+| AP7 reusable export/import | Proposed shared catalog, individual/assembled glTF/GLB equivalence and Godot import | NOT_STARTED | Current scene bundles do not certify portable reusable assets; A6 packaging follows qualification |
+| AP8 resource/game budgets | Proposed geometry/texture/LOD/collider, local production and engine runtime profiles | NOT_STARTED | H_AP24/H_AP48 are proposed capacities, no benchmark or supported low-memory inference claimed |
+| AP9 automatic yield/assistance accounting | Proposed sealed room corpus, automatic/partial/rejected/assisted outcomes | NOT_STARTED | Manual assistance never enters automatic numerator; no new corpus executed |
+
+## Existing qualification context
+
 Each gate requires the measurement scope prescribed by the specification. A local
 synthetic smoke test does not satisfy quality, performance, capture completion or
 another operating system's native qualification.

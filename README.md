@@ -1,8 +1,15 @@
 # World Explorer
 
 Native C++/Vulkan scene viewer and local video reconstruction work in progress.
-**M1 is incomplete; this is not a Phase 1 release.** See [progress](docs/progress.md)
+**M3 is active; this is not a Phase 1 release.** M1/M2 have scoped Linux
+development exits. See [progress](docs/progress.md)
 and the [requirement matrix](docs/requirements.md) for verified behavior and gaps.
+
+The [approved final goal](docs/technical_plan.md#11-phase-2-offline-asset-production)
+adds reusable objects, architectural structure, completed hidden surfaces and
+relightable PBR environments exported as glTF/GLB after M6. This asset-production
+phase is planned and NOT_STARTED; current splat/captured-appearance reconstruction
+does not provide it. M7–M8 live work remains deferred.
 
 ## Build on the tested Arch development host
 
