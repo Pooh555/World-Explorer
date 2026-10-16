@@ -80,6 +80,7 @@ struct scene_limits {
 result<std::size_t> validate_scene(const scene_state& scene, scene_limits limits = {});
 result<std::size_t> validate_chunk(const scene_chunk& chunk, scene_limits limits = {});
 std::string scene_content_hash(const scene_state& scene);
+std::string scene_chunk_content_hash(const scene_chunk& chunk);
 result<scene_delta_batch> make_snapshot_batch(scene_snapshot snapshot, operation_id operation);
 } // namespace world_explorer
 

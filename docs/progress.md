@@ -501,14 +501,23 @@ outside the sink mutex; exact SHA batching preserves the saved scene hash.
 **269/269 C++26 / 251/251 C++23 CPU checks**, focused TSan and timed native
 smoke pass. The release-vcpkg and H_V gate remain unqualified.
 
-Next executable step: add bounded producer-side scene preparation so expensive
-validation/hash finish before measured sink admission, preserving immutable
-ownership, duplicate-operation comparison and failed admission semantics.
-Then stage large uploads over multiple frames under the unchanged P6 2 ms/frame
-budget and rerun the 10 Hz native replay. Do not rerun reconstruction or change
-saved scenes/frozen fixture. Find a compositor that accepts minimize/restore for
-its separate native check. Physical device loss, release-vcpkg and reference
-Q/P/N/E gates remain open.
+[Prepared admission and staged uploads](validation/2026-10-16-m2-p6-staged-uploads.md)
+now pass **two** local 100-update replays on that same saved scene plus a synthetic
+marker: 15 MiB/frame staging, visible **10.011/10.008 updates/s**, enqueue p95
+**0.015/0.010 ms**, per-frame GPU upload maximum **1.795/1.890 ms**, zero
+interactive idle waits and Vulkan errors. The 60-second full-scene VMA pilot,
+native smoke and windowed/4K/fullscreen/restore pass; 270/270 C++26 and 252/252
+C++23 CPU checks plus focused TSan pass. This is local development evidence,
+not the H_V/corpus P6 gate. A fresh two-hour update/resize lifetime run for the
+changed ownership path is **in progress** under
+`artifacts/validation/m2-p6-staged15-full-20261016/`.
+
+Next executable step: collect the running 7,200-second stress exit, audit its
+summary/events/readback hashes and record the outcome. Then rerun the final
+rebuilt Release P6 diagnostic on the saved scene, and check a compositor that
+accepts minimize/restore. Do not rerun reconstruction or change saved scenes or
+the frozen fixture. Physical device loss, release-vcpkg, reference Q/P/N/E and
+other-scene/platform qualification remain open.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

@@ -86,6 +86,18 @@ struct vulkan_renderer::implementation {
     };
     std::array<frame, 2> frames;
     gpu_buffer scene_buffer;
+    struct upload_resources {
+        gpu_buffer staging, replacement;
+        std::size_t bytes{}, copied{}, count{};
+        vec3d origin{};
+    };
+    struct active_upload {
+        admitted_update update;
+        upload_resources resources;
+    };
+    // The old scene remains renderable until the final transfer is submitted.
+    // This owner keeps staging and replacement alive across frame completions.
+    std::optional<active_upload> uploading;
     scene_snapshot visible_scene;
     vec3d scene_origin{};
     std::size_t splat_count{};
@@ -104,6 +116,7 @@ struct vulkan_renderer::implementation {
         if (device)
             vkDeviceWaitIdle(device);
         retired.clear();
+        uploading.reset();
         scene_buffer = {};
         for (auto& current : frames) {
             current.projected = {};
@@ -404,6 +417,9 @@ struct vulkan_renderer::implementation {
     std::size_t live_buffer_bytes() const {
         std::size_t bytes =
             static_cast<std::size_t>(scene_buffer.allocation_bytes) + scratch_allocation_bytes();
+        if (uploading)
+            bytes += static_cast<std::size_t>(uploading->resources.staging.allocation_bytes +
+                                              uploading->resources.replacement.allocation_bytes);
         for (const auto& current : frames)
             bytes += static_cast<std::size_t>(current.captured.allocation_bytes);
         for (const auto& item : retired)
@@ -421,8 +437,7 @@ struct vulkan_renderer::implementation {
                 current.references_a.allocation_bytes + current.references_b.allocation_bytes);
         return bytes;
     }
-    void upload(frame& current, const scene_snapshot& snapshot, vec3d origin,
-                std::uint64_t completion) {
+    upload_resources prepare_upload(const scene_snapshot& snapshot, vec3d origin) {
         std::size_t count = 0;
         for (const auto& [id, chunk] : snapshot->chunks) {
             static_cast<void>(id);
@@ -466,19 +481,28 @@ struct vulkan_renderer::implementation {
                 target.sh = source.sh;
             }
         }
-        VkBufferCopy copy{0, 0, bytes};
+        return {std::move(staging), std::move(replacement), bytes, 0, count, origin};
+    }
+    void finish_upload(upload_resources& resources, std::uint64_t completion) {
+        if (scene_buffer.buffer)
+            retired.push_back({completion, std::move(scene_buffer)});
+        retired.push_back({completion, std::move(resources.staging)});
+        scene_buffer = std::move(resources.replacement);
+        splat_count = resources.count;
+        scene_origin = resources.origin;
+    }
+    void upload(frame& current, const scene_snapshot& snapshot, vec3d origin,
+                std::uint64_t completion) {
+        auto resources = prepare_upload(snapshot, origin);
+        VkBufferCopy copy{0, 0, resources.bytes};
         begin_timing(current, gpu_timing_stage::UPLOAD);
-        vkCmdCopyBuffer(current.command, staging.buffer, replacement.buffer, 1, &copy);
+        vkCmdCopyBuffer(current.command, resources.staging.buffer, resources.replacement.buffer, 1,
+                        &copy);
         memory_barrier(current.command, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                        VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
                        VK_ACCESS_2_SHADER_READ_BIT);
         end_timing(current, gpu_timing_stage::UPLOAD);
-        if (scene_buffer.buffer)
-            retired.push_back({completion, std::move(scene_buffer)});
-        retired.push_back({completion, std::move(staging)});
-        scene_buffer = std::move(replacement);
-        splat_count = count;
-        scene_origin = origin;
+        finish_upload(resources, completion);
     }
     push_parameters parameters(const camera_view& camera,
                                const std::array<float, 4>& intrinsics) const {
@@ -863,21 +887,43 @@ struct vulkan_renderer::implementation {
         command_begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         check(vkBeginCommandBuffer(current.command, &command_begin), "begin frame commands");
         auto completion = submitted_timeline + 1;
-        auto update = sink.take_next();
-        if (update) {
-            try {
-                upload(current, update->batch.snapshot, camera.position, completion);
-                sink.acknowledge_uploaded(update->ticket, completion);
-            } catch (const detail::vulkan_error& exception) {
-                if (exception.status() == VK_ERROR_DEVICE_LOST)
-                    throw;
-                sink.fail_update(update->ticket, {error_code::BACKEND_FAILURE, exception.what()});
-                update.reset();
-            } catch (const std::exception& exception) {
-                sink.fail_update(update->ticket,
-                                 {error_code::RESOURCE_EXHAUSTED, exception.what()});
-                update.reset();
+        std::optional<admitted_update> completed_update;
+        if (!uploading)
+            if (auto next = sink.take_next()) {
+                try {
+                    auto resources = prepare_upload(next->batch.snapshot, camera.position);
+                    uploading.emplace(active_upload{std::move(*next), std::move(resources)});
+                } catch (const detail::vulkan_error& exception) {
+                    if (exception.status() == VK_ERROR_DEVICE_LOST)
+                        throw;
+                    sink.fail_update(next->ticket, {error_code::BACKEND_FAILURE, exception.what()});
+                } catch (const std::exception& exception) {
+                    sink.fail_update(next->ticket,
+                                     {error_code::RESOURCE_EXHAUSTED, exception.what()});
+                }
             }
+        if (uploading) {
+            auto& resources = uploading->resources;
+            constexpr std::size_t MAX_UPLOAD_BYTES_PER_FRAME = 15ULL * 1024 * 1024;
+            const auto copied =
+                std::min(resources.bytes - resources.copied, MAX_UPLOAD_BYTES_PER_FRAME);
+            const VkBufferCopy copy{resources.copied, resources.copied, copied};
+            begin_timing(current, gpu_timing_stage::UPLOAD);
+            vkCmdCopyBuffer(current.command, resources.staging.buffer, resources.replacement.buffer,
+                            1, &copy);
+            resources.copied += copied;
+            if (resources.copied == resources.bytes) {
+                // Prior copies are ordered on this queue; only the final frame
+                // publishes the replacement to compute and to the update sink.
+                memory_barrier(current.command, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                               VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                               VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+                finish_upload(resources, completion);
+                sink.acknowledge_uploaded(uploading->update.ticket, completion);
+                completed_update.emplace(std::move(uploading->update));
+                uploading.reset();
+            }
+            end_timing(current, gpu_timing_stage::UPLOAD);
         } else if (visible_scene &&
                    dot(camera.position - scene_origin, camera.position - scene_origin) > 100000000)
             upload(current, visible_scene, camera.position, completion);
@@ -1064,9 +1110,9 @@ struct vulkan_renderer::implementation {
         }
         submitted_timeline = completion;
         current.completion = completion;
-        if (update) {
-            visible_scene = update->batch.snapshot;
-            sink.acknowledge_visible(update->ticket, visible_scene, completion);
+        if (completed_update) {
+            visible_scene = completed_update->batch.snapshot;
+            sink.acknowledge_visible(completed_update->ticket, visible_scene, completion);
         }
         auto presentation = structure<VkPresentInfoKHR>(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR);
         presentation.waitSemaphoreCount = 1;

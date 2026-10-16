@@ -50,7 +50,7 @@ camera_view source_camera(const scene_state& scene) {
 
 struct enqueue_sample {
     std::uint64_t revision{};
-    double enqueue_ms{}, schedule_lag_ms{};
+    double prepare_ms{}, enqueue_ms{}, schedule_lag_ms{};
     std::uint64_t would_block_retries{};
 };
 
@@ -82,17 +82,21 @@ void produce(const std::stop_token& stop, renderer_update_sink& sink,
     try {
         for (std::uint64_t index = 0; index < count && !stop.stop_requested(); ++index) {
             const auto scheduled = start + std::chrono::milliseconds(100 * index);
-            std::this_thread::sleep_until(scheduled);
             const auto revision = index + 2;
             auto batch = make_update(original, marker_source, marker_id, revision);
+            const auto preparation_started = clock::now();
+            auto prepared = sink.prepare(batch);
+            require(prepared.has_value(), prepared ? "" : prepared.error().message);
+            const auto prepare_ms = milliseconds(clock::now() - preparation_started);
+            std::this_thread::sleep_until(scheduled);
             std::uint64_t retries{};
             while (!stop.stop_requested()) {
                 const auto began = clock::now();
-                const auto ticket = sink.enqueue(batch);
+                const auto ticket = sink.enqueue(*prepared);
                 const auto ended = clock::now();
                 if (ticket) {
                     std::lock_guard lock(state.mutex);
-                    state.samples.push_back({revision, milliseconds(ended - began),
+                    state.samples.push_back({revision, prepare_ms, milliseconds(ended - began),
                                              milliseconds(began - scheduled), retries});
                     break;
                 }
@@ -241,14 +245,16 @@ int main(int argc, char** argv) try {
     for (const auto& sample : final.completed_timings)
         if (sample.sequence > baseline.submitted_frames)
             timing_samples.try_emplace(sample.sequence, sample);
-    std::vector<double> enqueue_ms, schedule_lag_ms, upload_ms;
+    std::vector<double> prepare_ms, enqueue_ms, schedule_lag_ms, upload_ms;
     std::uint64_t retries{};
     json updates = json::array();
     for (const auto& sample : producer_state.samples) {
+        prepare_ms.push_back(sample.prepare_ms);
         enqueue_ms.push_back(sample.enqueue_ms);
         schedule_lag_ms.push_back(sample.schedule_lag_ms);
         retries += sample.would_block_retries;
         updates.push_back({{"revision", sample.revision},
+                           {"prepare_ms", sample.prepare_ms},
                            {"enqueue_ms", sample.enqueue_ms},
                            {"schedule_lag_ms", sample.schedule_lag_ms},
                            {"would_block_retries", sample.would_block_retries}});
@@ -260,7 +266,7 @@ int main(int argc, char** argv) try {
             upload_ms.push_back(sample.gpu_ms[static_cast<std::size_t>(gpu_timing_stage::UPLOAD)]);
     }
     if (renderer->capabilities().gpu_timestamps_supported)
-        require(upload_ms.size() == producer_state.samples.size(),
+        require(upload_ms.size() >= producer_state.samples.size(),
                 "completed GPU upload timing samples were lost");
     const auto idle_waits =
         final.interactive_device_idle_waits - baseline.interactive_device_idle_waits;
@@ -292,6 +298,10 @@ int main(int argc, char** argv) try {
                   {{"p50", percentile(enqueue_ms, 0.5)},
                    {"p95", percentile(enqueue_ms, 0.95)},
                    {"p99", percentile(enqueue_ms, 0.99)}}},
+                 {"prepare_ms",
+                  {{"p50", percentile(prepare_ms, 0.5)},
+                   {"p95", percentile(prepare_ms, 0.95)},
+                   {"p99", percentile(prepare_ms, 0.99)}}},
                  {"schedule_lag_ms",
                   {{"p50", percentile(schedule_lag_ms, 0.5)},
                    {"p95", percentile(schedule_lag_ms, 0.95)},

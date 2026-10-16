@@ -5,14 +5,72 @@
 #include <set>
 
 namespace world_explorer {
-std::string scene_content_hash(const scene_state& scene) {
+namespace {
+// Scene hashes append millions of fixed-width fields. Buffer those fields before
+// passing them to OpenSSL while retaining the exact canonical byte stream.
+struct scene_hash_writer {
     sha256_builder hash;
-    const auto add = [&](std::uint64_t value) {
-        std::array<std::byte, 8> bytes{};
+    std::array<std::byte, 16384> pending{};
+    std::size_t used{};
+
+    void flush() {
+        if (used)
+            hash.update(std::span(pending.data(), used));
+        used = 0;
+    }
+    void add(std::uint64_t value) {
+        if (used == pending.size())
+            flush();
         for (unsigned index = 0; index < 8; ++index)
-            bytes[index] = static_cast<std::byte>((value >> (8U * index)) & 255U);
+            pending[used++] = static_cast<std::byte>((value >> (8U * index)) & 255U);
+    }
+    void add_bytes(std::span<const std::byte> bytes) {
+        flush();
         hash.update(bytes);
-    };
+    }
+    std::string finish() {
+        flush();
+        return hash.finish();
+    }
+};
+void append_chunk(scene_hash_writer& hash, chunk_id id, const scene_chunk& chunk) {
+    const auto add = [&](std::uint64_t value) { hash.add(value); };
+    add(id.value);
+    add(chunk.generation);
+    add(chunk.pose_revision.value);
+    add(chunk.geometry_valid);
+    const auto& t = chunk.world_from_chunk;
+    for (double value : {t.rotation.w, t.rotation.x, t.rotation.y, t.rotation.z, t.translation.x,
+                         t.translation.y, t.translation.z, t.scale, chunk.bounds.minimum.x,
+                         chunk.bounds.minimum.y, chunk.bounds.minimum.z, chunk.bounds.maximum.x,
+                         chunk.bounds.maximum.y, chunk.bounds.maximum.z})
+        add(std::bit_cast<std::uint64_t>(value));
+    add(chunk.source_frames.size());
+    for (const auto frame : chunk.source_frames)
+        add(frame.value);
+    add(chunk.splats.size());
+    for (const auto& splat : chunk.splats) {
+        for (float value : splat.mean)
+            add(std::bit_cast<std::uint32_t>(value));
+        for (float value : splat.scale)
+            add(std::bit_cast<std::uint32_t>(value));
+        for (float value : splat.rotation)
+            add(std::bit_cast<std::uint32_t>(value));
+        add(std::bit_cast<std::uint32_t>(splat.opacity));
+        add(splat.sh_degree);
+        for (float value : splat.sh)
+            add(std::bit_cast<std::uint32_t>(value));
+    }
+}
+} // namespace
+std::string scene_chunk_content_hash(const scene_chunk& chunk) {
+    scene_hash_writer hash;
+    append_chunk(hash, chunk.id, chunk);
+    return hash.finish();
+}
+std::string scene_content_hash(const scene_state& scene) {
+    scene_hash_writer hash;
+    const auto add = [&](std::uint64_t value) { hash.add(value); };
     add(scene.id.value);
     add(scene.epoch.value);
     add(scene.revision.value);
@@ -20,39 +78,13 @@ std::string scene_content_hash(const scene_state& scene) {
     add(scene.provenance.size());
     for (const auto& [key, value] : scene.provenance) {
         add(key.size());
-        hash.update(std::as_bytes(std::span(key.data(), key.size())));
+        hash.add_bytes(std::as_bytes(std::span(key.data(), key.size())));
         add(value.size());
-        hash.update(std::as_bytes(std::span(value.data(), value.size())));
+        hash.add_bytes(std::as_bytes(std::span(value.data(), value.size())));
     }
     add(scene.chunks.size());
     for (const auto& [id, chunk] : scene.chunks) {
-        add(id.value);
-        add(chunk->generation);
-        add(chunk->pose_revision.value);
-        add(chunk->geometry_valid);
-        const auto& t = chunk->world_from_chunk;
-        for (double value :
-             {t.rotation.w, t.rotation.x, t.rotation.y, t.rotation.z, t.translation.x,
-              t.translation.y, t.translation.z, t.scale, chunk->bounds.minimum.x,
-              chunk->bounds.minimum.y, chunk->bounds.minimum.z, chunk->bounds.maximum.x,
-              chunk->bounds.maximum.y, chunk->bounds.maximum.z})
-            add(std::bit_cast<std::uint64_t>(value));
-        add(chunk->source_frames.size());
-        for (const auto frame : chunk->source_frames)
-            add(frame.value);
-        add(chunk->splats.size());
-        for (const auto& splat : chunk->splats) {
-            for (float value : splat.mean)
-                add(std::bit_cast<std::uint32_t>(value));
-            for (float value : splat.scale)
-                add(std::bit_cast<std::uint32_t>(value));
-            for (float value : splat.rotation)
-                add(std::bit_cast<std::uint32_t>(value));
-            add(std::bit_cast<std::uint32_t>(splat.opacity));
-            add(splat.sh_degree);
-            for (float value : splat.sh)
-                add(std::bit_cast<std::uint32_t>(value));
-        }
+        append_chunk(hash, id, *chunk);
     }
     return hash.finish();
 }
