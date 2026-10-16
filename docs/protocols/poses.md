@@ -115,6 +115,30 @@ other candidate's registered frames as strict subsets. It never merges poses,
 accepts separate coverage, or lowers the existing 90% registration requirement.
 Selection metadata is an immutable pose-stage asset.
 
+Before choosing a recovery, run the read-only diagnostic in the pinned pose
+environment:
+
+```sh
+.venv-worker/bin/python tools/inspect_pose_recovery.py --request BATCH_REQUEST --failed-stage FAILED_POSE_STAGE --output NEW_REPORT.json
+```
+
+The report must be outside the retained pose job. It binds the verified committed
+decode, original solver command, database and sparse-model hashes; rejects input
+changes; and publishes exclusively without replacing existing files. SQLite reads
+use a private bounded copy, since even a read-only WAL connection can create
+bookkeeping files. Existing WAL/shared-memory/journal sidecars require an offline
+review before inspection. The diagnostic admits at most 120 frames, 7,140 pairs,
+50 models and 1 GiB each of database/sparse assets.
+
+Reports retain model memberships, the unchanged integer-ceiling 90% registration
+requirement, missing-frame neighbors/configurations and connected components at
+positive-inlier and installed mapper count thresholds. These are two-view pair
+counts, including planar/panoramic configurations; they do not establish PnP
+correspondences, triangulation, parallax or successful registration. Incomparable
+models remain ambiguous; their coverage is never summed. No solver, matching,
+decoding or training runs during inspection. A changed recovery still needs its
+own disjoint output, recipe identity, measured cost and normal pose admission.
+
 For a retained failed solve, `tools/recover_video_poses.py --request BATCH_REQUEST
 --failed-stage FAILED_POSE_STAGE --output NEW_POSE_JOB` verifies the original
 committed decode and its recorded solver input, copies the native RGB journal

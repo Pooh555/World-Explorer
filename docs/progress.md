@@ -98,13 +98,12 @@ refused; `--name VIDEO_retry_2` selects a separate attempt. Full SHA-256 stays i
 [layout protocol](protocols/artifacts.md).
 
 The latest sample_2 replacement has terminated with POSE_DISCONNECTED.
-Next recovery step: inspect sparse-model image memberships and the verified
-match graph in `artifacts/sample_2/poses/stages/.poses-1_k2am3l/` before
-selecting a disjoint recovery attempt capable of connecting at least 81/90
-frames. Preserve the failed stages and decoded data; do not restart the
-unchanged solve or lower registration thresholds. The prior replacement's
-raw stages were deleted under the explicit second reset request; its dated
-report retains historical results.
+[Recovery analysis](validation/2026-10-16-m3-recovery-analysis.md) now binds the
+failed stages and verified decode: the four-image model is a subset of model 1's
+79/90 images; 81 remain required. Missing frames 50–60 have weak/absent connections;
+frames 50/60 reference only 7/12 existing map points against the mapper's 30-inlier
+minimum. No changed recovery has been run. Preserve failed/decoded stages; no
+unchanged solve retry or threshold reduction.
 
 ## Next executable work and blockers
 
@@ -653,12 +652,21 @@ errors. Independent retained-artifact and current runtime checks pass; **1,509**
 protected non-document files remain unchanged. Full gates and M4 hardware duties
 remain open; no long stress or reconstruction was rerun.
 
-Next executable step (M3): inspect the latest sample_2 sparse memberships and
-verified match graph, binding the current source/decode/database identities before
-choosing a changed, disjoint recovery recipe. Preserve all stages and both frozen
-fixtures. Do not rerun the unchanged solve, reduce registration thresholds or
-start training before a valid pose solution. Geometry, measured scale, collision
-and mesh export remain unimplemented; walking stays unavailable.
+[M3 recovery diagnostic](validation/2026-10-16-m3-recovery-analysis.md) adds
+bounded, input-bound graph inspection and exclusive reports without solving.
+Private-copy SQLite reads preserve WAL-mode inputs. **280/280** dev checks and
+**166/166** worker cases on Python 3.10/3.12 pass; all **1,509** protected files
+remain unchanged. The current pose package exposes dense APIs but reports
+`has_cuda=false`; this is a package capability limit, not GPU absence.
+
+Next executable step (M3): implement the versioned axial camera-z depth,
+invalid-mask/confidence and pose-revision admission contract (§4.4/§5.1), with
+bounded roundtrip/rejection tests. Qualify an isolated dense MVS/fusion worker
+separately from the current CPU pose environment before claiming real geometry;
+preserve valid appearance on geometry failure. Saved sample_1 provides a complete
+real pose input, at arbitrary scale. Keep sample_2's failed stages and both frozen
+fixtures; a recovery needs changed observations/triangulation evidence rather than
+an unchanged retry. Metric scale, collision, walking and mesh export remain open.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/

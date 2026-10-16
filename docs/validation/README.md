@@ -7,6 +7,7 @@ are recipes, not passes. All private artifacts remain local/ignored.
 
 | Slice | Report: observed behavior / commands |
 |---|---|
+| M3 recovery admission / graph | [Read-only retained inspection](2026-10-16-m3-recovery-analysis.md): verified input binding, bounded graphs, private-copy SQLite and exclusive reports; sample_2 remains 79/90, weak existing-point support, no unchanged retry; 17 new cases / 280 dev checks / 166 worker cases per interpreter and 1,509 preserved files |
 | M2 development exit review | [Six local items verified](2026-10-16-m2-exit-review.md): scoped Linux/NVIDIA closure; new full sample_1 63-camera reference pass, retained artifact/current runtime audit, no full gate or other-platform upgrade |
 | M2 development exit scheduling | [User-approved local scope](2026-10-16-m2-development-exit.md): six Linux/NVIDIA exit items; external native/reference qualification assigned to M4 or later, full thresholds unchanged; M2 remains IN_PROGRESS pending review |
 | M2 maximum-scale synthetic fixture | [2M admission, bank switching and memory](2026-10-16-m2-scale-fixture.md): three byte-identical CPU publications; four native compiler/storage runs at 1080p retain all 2M splats/exact 1,561,248 references/identical pixels/zero errors, peak tracked FP32/packed allocation 1,090,486,384/709,618,112 bytes; sampled RSS maxima corrected, constrained rejection preserves baseline; 280 dev checks, independent audit and 1,513 protected files pass, full P2/P4 open |
