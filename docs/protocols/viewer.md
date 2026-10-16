@@ -450,7 +450,14 @@ resident copy bytes. Its thresholds are unchanged. `we_gpu_lifetime_stress
 `--resident-reuse` selects a separately labeled full/full/empty cycle to exercise
 device copies, host uploads and deletion. That mode also collects bounded
 completed timings and requires observed device-copy bytes for runs ≥30 seconds.
-Neither synthetic diagnostic certifies reference hardware or a full gate.
+Adding `--fp16-sh` selects experimental SH storage; the default remains FP32.
+Both flags may appear in either order; duplicates, unknown flags and invalid
+integer durations fail before SDL/output creation. Start/summary metadata record
+the actual storage profile, stride and full-scene payload bytes. Resident-mode
+completion checks exact host/device copy totals against the full/full/empty
+revision sequence, including each empty revision's 16-byte zero sentinel.
+Neither synthetic diagnostic certifies reference hardware or a full gate. A
+packed pilot does not replace the required separately bound long lifetime run.
 
 ## Local packing comparison
 

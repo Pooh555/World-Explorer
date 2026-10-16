@@ -4,6 +4,7 @@
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -13,6 +14,7 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -159,11 +161,26 @@ std::string capture(stress_context& context, const std::filesystem::path& path) 
 } // namespace
 
 int main(int argc, char** argv) try {
-    require(argc == 4 || (argc == 5 && std::string_view(argv[4]) == "--resident-reuse"),
+    require(argc >= 4 && argc <= 6,
             "usage: we_gpu_lifetime_stress <retained-scene> <new-output-dir> <seconds> "
-            "[--resident-reuse]");
-    const bool resident_mode = argc == 5;
-    const auto duration = std::stoull(argv[3]);
+            "[--resident-reuse] [--fp16-sh]");
+    const std::span<char*> arguments(argv, static_cast<std::size_t>(argc));
+    bool resident_mode = false, packed = false;
+    for (const auto* argument : arguments.subspan(4)) {
+        const std::string_view option(argument);
+        if (option == "--resident-reuse" && !resident_mode)
+            resident_mode = true;
+        else if (option == "--fp16-sh" && !packed)
+            packed = true;
+        else
+            throw std::runtime_error("unknown or duplicate stress option");
+    }
+    const std::string_view duration_text(arguments[3]);
+    std::uint64_t duration{};
+    const auto parsed = std::from_chars(duration_text.data(),
+                                        duration_text.data() + duration_text.size(), duration);
+    require(parsed.ec == std::errc{} && parsed.ptr == duration_text.data() + duration_text.size(),
+            "stress duration must be an integer");
     require(duration >= 10 && duration <= 7200, "stress duration must be 10–7200 seconds");
     const std::filesystem::path output(argv[2]);
     require(!std::filesystem::exists(output), "stress output directory already exists");
@@ -191,6 +208,8 @@ int main(int argc, char** argv) try {
         SDL_DestroyWindow);
     require(window != nullptr, SDL_GetError());
     renderer_options options;
+    if (packed)
+        options.splat_storage = gpu_splat_storage::FP32_GEOMETRY_FP16_SH;
     options.max_splats = 1000000;
     options.shader_directory = WE_SHADER_DIRECTORY;
     options.collect_timings = resident_mode;
@@ -198,6 +217,9 @@ int main(int argc, char** argv) try {
     require(created.has_value(), created ? "" : created.error().message);
     auto renderer = std::move(*created);
     require(renderer->capabilities().validation_enabled, "stress requires Vulkan validation");
+    const auto stride = renderer->capabilities().splat_stride_bytes;
+    require(stride == (packed ? 160U : 256U), "stress storage stride differs from selection");
+    const auto payload_bytes = full_splats * stride;
     std::filesystem::create_directory(output);
     std::ofstream events(output / "events.jsonl", std::ios::binary);
     require(static_cast<bool>(events), "cannot open stress event log");
@@ -216,6 +238,9 @@ int main(int argc, char** argv) try {
     write_event(events, {{"event", "start"},
                          {"scene_content_sha256", scene_hash},
                          {"scene_splats", full_splats},
+                         {"gpu_storage", packed ? "fp16_sh" : "fp32"},
+                         {"splat_stride_bytes", stride},
+                         {"scene_payload_bytes", payload_bytes},
                          {"device", renderer->capabilities().device_name},
                          {"duration_seconds", duration},
                          {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
@@ -343,6 +368,12 @@ int main(int argc, char** argv) try {
     require(updates + 1 == revision, "stress visible revision/update counts disagree");
     require(!resident_mode || duration < 30 || context.resident_copy_bytes > 0,
             "resident stress did not observe a device-to-device copy");
+    // Empty revisions still transfer the renderer's 16-byte zero sentinel.
+    const auto expected_host_bytes = ((revision + 2) / 3) * payload_bytes + (revision / 3) * 16;
+    const auto expected_resident_bytes = ((revision + 1) / 3) * payload_bytes;
+    require(!resident_mode || (context.host_copy_bytes == expected_host_bytes &&
+                               context.resident_copy_bytes == expected_resident_bytes),
+            "stress transfer byte totals differ from the full/full/empty sequence");
     const auto elapsed = std::chrono::duration<double>(steady_clock::now() - start).count();
     json summary{{"passed", true},
                  {"scope", "native read-only retained-scene update/resize stress"},
@@ -351,6 +382,9 @@ int main(int argc, char** argv) try {
                  {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
                  {"scene_content_sha256", scene_hash},
                  {"scene_splats", full_splats},
+                 {"gpu_storage", packed ? "fp16_sh" : "fp32"},
+                 {"splat_stride_bytes", stride},
+                 {"scene_payload_bytes", payload_bytes},
                  {"device", renderer->capabilities().device_name},
                  {"updates_visible", updates},
                  {"last_visible_revision", renderer->updates().visible_snapshot()->revision.value},

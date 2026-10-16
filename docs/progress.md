@@ -573,14 +573,26 @@ not rerun. The new selected inventory passes default/local checks; strict closur
 still exits 3 for **253 profile source/rights gaps**, with owner terms separately
 unqualified. Historical receipts, all reconstructions and user edits are retained.
 
-Next executable step: extend `we_gpu_lifetime_stress` with an explicit experimental
-`--fp16-sh` option, retaining the full/full/empty resident-copy sequence and using
-the selected stride for byte accounting. Run a 60-second native packed pilot,
-then bind source/binary/shader/scene identities and actual exit for a 7,200-second
-packed update/resize stress; do not infer its result from the FP32 lifetime run.
-Q6 still needs the prescribed fixed 100-view captured-target fixture and qualified
-scale/corpus/platforms. Preserve saved scenes, failures and both frozen comparisons;
-do not rerun reconstruction.
+[Packed lifetime pilot](validation/2026-10-16-m2-packed-lifetime-pilot.md)
+adds explicit `--fp16-sh` selection and exact resident-mode transfer accounting,
+including empty sentinels. The full retained sample_1 **60.314-second** native
+packed pilot passes: three visible updates, two resizes, two matching readbacks,
+**310,904,640** peak tracked bytes and zero Vulkan errors. FP32 resident/default
+and independent Clang C++23 packed/default regressions also pass; **273/273** dev
+CPU checks and format/tidy pass. The refreshed runtime inventory remains current.
+
+A separately supervised **7,200-second packed full/full/empty stress is running**,
+started **2026-10-16 18:34 Asia/Hong_Kong**. Launch/source/binary/shader/scene hashes
+are in `artifacts/validation/m2-packed-lifetime-20261016/full-launch.json`;
+`full-exit.json` will record its actual termination. **No long packed pass is
+claimed.** Next executable step: inspect that exit receipt, then run
+`python3 artifacts/validation/m2-packed-lifetime-20261016/audit_run.py full` after
+exit 0. The independent audit checks all visible revisions, profile/stride,
+copy totals, captures, memory/validation results and bound file identities.
+While running, preserve its bound executable/source/shaders and saved scenes;
+do not restart it or rebuild those files. Q6 still needs its prescribed fixed
+100-view captured-target fixture and qualified scale/corpus/platforms. Preserve
+all failures and both frozen comparisons; do not rerun reconstruction.
 Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
 other-scene/platform qualification remain open.
 
