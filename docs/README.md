@@ -7,7 +7,7 @@ Read by task; do not load the entire directory for routine work.
 | Resume development | [Progress](progress.md) → [requirements](requirements.md) → relevant code/evidence |
 | Agent execution rules | [Runbook](execution_prompt.md), repository [AGENTS.md](../AGENTS.md) |
 | Product, thresholds, architecture, roadmap | [Technical plan](technical_plan.md); controlling specification |
-| Planned reusable objects, completed environments and PBR assets | [Plan §11](technical_plan.md#11-phase-2-offline-asset-production), [scope decision](adr/018-offline-asset-production.md); all new capabilities NOT_STARTED |
+| Planned reusable objects, completed environments and PBR assets | [Plan §11](technical_plan.md#11-offline-asset-production-track), [assets-before-platforms decision](adr/019-assets-before-platforms.md); A0–A5 after M3/before M4, all new capabilities NOT_STARTED |
 | Asset-pipeline candidate evidence, licenses and connection experiments | [Dated research assessment](research/offline_asset_pipeline.md); external facts only, no installed recipe or qualification |
 | Write/update documentation | [Documentation protocol](protocols/documentation.md) |
 | Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [depth](protocols/depth.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/camera/handoff](protocols/viewer.md) |

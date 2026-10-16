@@ -1,10 +1,14 @@
 # Offline asset production: research assessment
 
 Checked 17 October 2026, Asia/Hong_Kong. This is the dated evidence supplement to
-[technical plan §11](../technical_plan.md#11-phase-2-offline-asset-production).
+[technical plan §11](../technical_plan.md#11-offline-asset-production-track).
 The specification owns scope, contracts, gates and milestones; this file owns
 candidate comparisons and external sources. Nothing here is an installed lock,
 independent reproduction, product qualification or permission to provision models.
+
+[ADR 019](../adr/019-assets-before-platforms.md) changes execution timing to local
+A0–A5 after M3/before M4, with A6 later. Candidate/source observations below retain
+their original research scope; rescheduling is not a new model evaluation.
 
 ## Recommendation and evidence limits
 
@@ -147,7 +151,7 @@ Run comparisons only after explicit model installation and rights screening:
 1. **Observed surfaces:** direct MVS/TSDF versus gsplat 2DGS with the same original
    calibration/training frames/masks and separately reported per-method costs.
    Existing 3D splats are an appearance control, not a conversion shortcut. Apply
-   Q5 only on measured observed surfaces; use Phase 2 gates separately.
+   Q5 only on measured observed surfaces; use asset-track gates separately.
 2. **Identity:** SAM 2 automatic proposals/propagation versus fixed-category SAM
    3.1, with the same geometry association. Score masks, missed objects, split/merge
    errors, ID switches across occlusion/re-entry, runtime and memory. Hand clicks

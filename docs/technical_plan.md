@@ -1,11 +1,11 @@
 # World Explorer — implementation plan
 
-**Version 1.3; expanded product direction planned 17 October 2026, Asia/Hong_Kong.**
+**Version 1.4; local asset production moved before M4 on 17 October 2026, Asia/Hong_Kong.**
 Phase 1 research cutoff remains 10 October 2026 UTC. The separate
 [offline asset research](research/offline_asset_pipeline.md) was checked on
 17 October 2026; it does not refresh every historical dependency observation.
 
-User-approved [M1 development-exit decision](adr/012-m1-development-exit.md): available Linux hardware and hosted native CPU CI support M1; physical Windows/macOS viewer qualification moves to M4. The [M2 development-exit decision](adr/016-m2-development-exit.md) scopes M2 to the available Linux/NVIDIA host and assigns other native-machine renderer qualification to M4 or later (§8.2). The [expanded offline asset decision](adr/018-offline-asset-production.md) adds Phase 2 after M6 (§11). All §3 acceptance targets remain unchanged; M7–M8 live work remains DEFERRED_BY_USER.
+User-approved [M1 development-exit decision](adr/012-m1-development-exit.md): available Linux hardware and hosted native CPU CI support M1; physical Windows/macOS viewer qualification moves to M4. The [M2 development-exit decision](adr/016-m2-development-exit.md) scopes M2 to the available Linux/NVIDIA host and assigns other native-machine renderer qualification to M4 or later (§8.2). [ADR 018](adr/018-offline-asset-production.md) introduced the expanded asset goal; [ADR 019](adr/019-assets-before-platforms.md) now schedules its local A0–A5 workflow after M3 and before M4 (§11). A6 engine packaging remains after M6. All §3 acceptance targets remain unchanged; M7–M8 live work remains DEFERRED_BY_USER.
 
 ## 1. Vision and scope
 
@@ -16,12 +16,13 @@ static game assets: separate objects with stable identities/pivots; clean meshes
 UVs, detail bakes, collision and LODs; plausible hidden surfaces and backgrounds;
 relightable PBR materials; architectural structure and portable glTF/GLB assembly.
 Moving/removing an object must expose completed surroundings. Individual exports
-and the assembled environment use the same asset definitions. Phase 2 (§11) owns
-these capabilities, followed by its engine adapter. Default processing is fully
-automatic and local; artist cleanup/replacement/review is optional and reported.
+and the assembled environment use the same asset definitions. The asset track
+(§11) delivers these locally before M4, followed later by its engine adapter.
+Default processing is fully automatic and local; artist cleanup/replacement/review
+is optional and reported.
 Stronger local hardware is allowed; model installation is explicit.
 
-**Recommended path:** C++26-targeted application code using a tested C++20/23 feature subset; Vulkan 1.4-targeted rendering with a portability profile; COLMAP for poses; a separate gsplat worker for optimized appearance; and independently reconstructed, confidence-tagged geometry. Persist both Gaussian splats and triangle meshes. Use Brush as the qualification candidate for local non-CUDA splat training. Do not make a feed-forward foundation model, a NeRF renderer, or Gaussian SLAM a Phase 1 dependency.
+**Recommended reconstruction baseline:** C++26-targeted application code using a tested C++20/23 feature subset; Vulkan 1.4-targeted rendering with a portability profile; COLMAP for poses; a separate gsplat worker for optimized appearance; and independently reconstructed, confidence-tagged geometry. Persist both Gaussian splats and triangle meshes. Use Brush as the qualification candidate for local non-CUDA splat training. Do not make a feed-forward foundation model, a NeRF renderer, or Gaussian SLAM an M1–M3 dependency. The following asset track has its own qualified local recipes (§11).
 
 Target users are developers, researchers, designers, and people documenting rooms, objects, buildings, and outdoor locations. Prioritize one room and object captures first, several connected rooms next, and bounded outdoor captures after that. A cityscape video is accepted as input, but city-scale completeness is a later capability, not an initial promise.
 
@@ -29,10 +30,10 @@ Target users are developers, researchers, designers, and people documenting room
 
 - The initial scene is predominantly static. Moving people, screens, foliage, vehicles, mirrors, glass, water, textureless walls, and severe rolling shutter are explicitly difficult cases.
 - Monocular video does not establish absolute scale from geometry alone. Store arbitrary scale unless a measured distance, calibrated depth/stereo, or another independently validated scale source is supplied.
-- A free camera can travel anywhere. Phase 1 leaves unseen backsides and occluded rooms unknown. Phase 2 may complete them, retaining observed/inferred/generated/manual provenance; plausibility is not historical accuracy. Display coverage/confidence and provide return-to-capture-path in both phases.
+- A free camera can travel anywhere. The M1–M3 reconstruction baseline leaves unseen backsides and occluded rooms unknown. The asset track may complete them, retaining observed/inferred/generated/manual provenance; plausibility is not historical accuracy. Display coverage/confidence and provide return-to-capture-path in both workflows.
 - Phase 1 assumes a commercially distributable product is desirable. This is a technical license screen, not a claim that every dependency or checkpoint has received a completed legal review.
 - C++ applies to the application, viewer, storage, scheduling, and public contracts. Existing Python/CUDA and optional Rust reconstruction engines run as isolated workers. An all-C++ reconstruction implementation would materially change the schedule.
-- “v1” means the Phase 1/M6 reconstruction release: generative completion and automatic material/light recovery remain excluded there. Phase 2 explicitly adds completion and evaluated PBR relighting; it does not promise physically unique recovery from monocular video. Dynamic 4D replay, multiplayer, VR, architectural certification, surveying guarantees and unrestricted city-scale mapping remain outside the approved scope. M7–M8 live reconstruction stays deferred.
+- The M1–M3 reconstruction baseline excludes generative completion and intrinsic material recovery. A0–A5 add completion and evaluated PBR relighting before M4; M6 is the combined offline release candidate, not a reconstruction-only release followed by the actual product goal. Completion/relighting remain separate from captured appearance and do not promise physically unique recovery from monocular video. Dynamic 4D replay, multiplayer, VR, architectural certification, surveying guarantees and unrestricted city-scale mapping remain outside the approved scope. M7–M8 live reconstruction stays deferred.
 
 These boundaries are design decisions and inferences, supported by the distinct geometry, appearance, and tracking responsibilities demonstrated in COLMAP, Open3D, 3DGS, and SLAM implementations [S01–S04, S28–S40].
 
@@ -62,10 +63,10 @@ All architecture, thresholds, budgets, effort estimates, and recommendations bel
 
 “MUST” reconstruction quality is certified first on the NVIDIA reference pipeline. Other platforms must open the same packages and expose their actual local-processing capability. They must not silently substitute a sparse cloud for a completed dense scene.
 
-This table describes Phase 1 priorities. Its later completion/material-recovery
-items are now assigned to Phase 2 §11, rather than optional substitutes for the
-approved final goal. Phase 1 textured-mesh export remains baked appearance;
-existing reconstruction evidence does not certify Phase 2 asset production.
+This table retains the reconstruction/platform feature allocation. Completion and
+material recovery are required in the separate asset track (§11), before M4;
+they are not optional post-release work. M3 textured-mesh export remains baked
+appearance; existing reconstruction evidence does not certify asset production.
 
 Capture guidance: translate around surfaces rather than only pan; maintain overlapping views; lock lens/focus/exposure where possible; avoid digital zoom and aggressive stabilization; revisit the starting area; capture doorways from both sides. These are operating recommendations, not guaranteed numeric capture rules.
 
@@ -359,7 +360,7 @@ Walk mode: Jolt kinematic capsule, fixed 120 Hz simulation with a capped catch-u
 | **09 Storage/updates** | Single PLY; in-place mutable buffer; immutable chunks and revisions | Versioned hybrid chunks with transactional updates and deferred GPU reclamation | Index/schema overhead. Revisit chunk sizing after W3/W4 traces; retain revision semantics |
 | **10 Live path** | Adopt Gaussian SLAM now; replay-only batches forever; separate tracking/mapping | Offline contracts now; future tracking frontend plus revisioned submaps and slower appearance refinement | More lifecycle design in Phase 1. Revisit backend choice at live milestone using L1/Q4 and checkpoint licensing |
 | **11 Build/dependencies** | Arch rolling packages only; multiple package managers; pinned manifests | CMake/Ninja, vcpkg baseline, isolated worker locks/images, exact CI compiler versions | Periodic upgrade work. Revisit only for a demonstrated packaging limitation |
-| **12 Unknown content** | Fill holes automatically; suppress uncertainty; preserve unknown regions | Phase 1 preserves unknown regions and bounded walking. Phase 2 adds separately labeled completion under [ADR 018](adr/018-offline-asset-production.md) | Generated/inferred content never substitutes for measured Q5 geometry or N2 walking support; §11 owns asset-production requirements |
+| **12 Unknown content** | Fill holes automatically; suppress uncertainty; preserve unknown regions | Reconstruction preserves unknown regions and bounded walking. The pre-M4 asset track adds separately labeled completion under [ADR 019](adr/019-assets-before-platforms.md) | Generated/inferred content never substitutes for measured Q5 geometry or N2 walking support; §11 owns asset-production requirements |
 
 ## 5. Workflows
 
@@ -704,16 +705,27 @@ Use a small manually constructed colored-axis scene to test all camera conventio
 
 ## 8. Roadmap
 
-All effort and schedule figures are **D/T estimates**, assuming three full-time engineers: one graphics/systems, one reconstruction, one application/platform, with approximately 0.25 FTE QA and occasional legal/security review. Phase 1 is approximately **50–70 engineering person-weeks over 5–7 elapsed months**, including overlap, integration and contingency. A solo implementation is closer to 12–18 months under these assumptions. These are planning ranges, not measured productivity claims.
+All effort and schedule figures are **D/T estimates**, assuming three full-time engineers: one graphics/systems, one reconstruction, one application/platform, with approximately 0.25 FTE QA and occasional legal/security review. The original M1–M6 reconstruction/platform estimate was **50–70 engineering person-weeks over 5–7 elapsed months** (solo 12–18 months), including overlap/integration/contingency. That estimate does not include the asset track and is no longer the elapsed schedule for the combined release. Asset effort in §11.7 is additional and now precedes M4; re-estimate the combined calendar after A1. These are planning ranges, not measured productivity claims.
+
+**Execution order:** M1 → M2 → M3 → A0 → A1 → A2 → A3 → A4 → A5 → M4 → M5 → M6 → A6.
+M1–M6 keep their relative order and identifiers. The asset track validates the
+actual local product before native platform expansion. A1 is the first visible
+automatic completed environment; A5 is the scoped local development exit defined
+in §11.8. M4 then qualifies existing reconstruction **and asset viewing/import**
+on other native machines; M5 owns larger-scene operation; M6 closes full release
+gates. A6 remains the later engine packaging adapter. Existing portable interfaces,
+compiler discipline and CPU CI continue throughout; a Linux-first implementation
+must not hard-code Linux/CUDA types into unrelated public contracts.
 
 | Milestone | Deliverables | Exit criteria tied to §3 | Dependencies | Effort estimate | Main risk |
 |---|---|---|---|---|---|
 | **M1 — minimal vertical slice** | One 20–30 s consented textured-room video → COLMAP poses → gsplat fit → validated scene bundle → native Vulkan fly viewer. Instanced-quad splats, camera controls, CLI job log. Include a synthetic replace/delete update. Pin versions and audit selected licenses | Real end-to-end run and ≤250k-splat fixture opening succeed on the available native Linux/NVIDIA development host; zero Vulkan validation errors; fly controls, frame/pose/map/scene/update contracts and replace/delete replay checked; hosted Linux/Windows/macOS CPU builds/tests pass. Record versions/license audit and local Q1/P1/P2 observations without full-gate certification; detailed checklist in §8.1 | Consent/fixture; available Linux development GPU/build/worker environment; hosted CPU CI | 6–9 person-weeks; weeks 1–3 with focused team | Camera conventions and splat rendering mismatch; licensing of packaged binary dependencies |
 | **M2 — renderer and update foundation** | GPU tiled renderer, correct sorting/compositing, budgeted upload, immutable snapshots, diagnostics, replay/resync and device-loss behavior | Linux/NVIDIA development checklist in §8.2: real/synthetic parity, bounded updates/memory, recovery, local packing/input/timing observations and accepted lifetime evidence. Reference-device P2/P4/P6, full N1/Q6 and other native-machine qualification move to M4 or later | M1 and fixed renderer fixtures | 9–12 person-weeks; roughly weeks 4–7 | Overdraw/sort scratch exceeds budget; numerical mismatch with training renderer |
 | **M3 — robust offline reconstruction and geometry** | Keyframe/preflight workflow, one recovery path, resume/cache, dense MVS/TSDF proxy, metric alignment, collision/walk, textured-mesh export | Q1 on development/validation corpus; Q3/Q5, P1 and N2 on qualified fixtures; stage failure preserves valid partial results | M1 worker contracts; M2 scene integration | 12–15 person-weeks; roughly weeks 4–10, partly parallel | Low-texture/reflective rooms; weak scale and geometry; dense processing time |
-| **M4 — platform qualification** | Native Windows and macOS packages; MoltenVK profile; AMD viewer qualification; Brush adapter and bounded local Mac recipe if it passes | Inherited M2 reference-device P2/P4/P6, physical N1, per-device Q6 and recovery qualification (§8.2); physical Windows/macOS viewer, GPU/display/input/HiDPI qualification; the former M1 ≤250k fixture opens on Arch/Windows/macOS and reaches ≥30 FPS at 720p on H_V/H_M. P3/P4/P5/E2 and identical scene/camera semantics remain required. Brush promoted only after Q3/Q6 and checkpoint/cancel tests; otherwise experimental | M2; access to physical platform/reference devices; M3 canonical outputs | 8–11 person-weeks; roughly weeks 8–13 | Platform-specific shader/compiler behavior and training memory; native worker packaging |
-| **M5 — larger scenes and operation** | Spatial chunks, measured LOD hierarchy, prefetch/eviction, collision residency, W3/W4 handling, coarse-first loading; crash-safe publish | P4/P5/P6 under memory pressure; W3 fly path stays within P2/P3 budgets through declared LOD; Q6 per supported packing mode; unknown/collision boundaries remain safe | M2/M3 and profiling traces | 8–11 person-weeks; roughly weeks 12–17 | Chunk overlap/opacity errors, global ordering and LOD quality, bad large-scene poses |
-| **M6 — Phase 1 release candidate** | Sealed corpus report, reproducible recipes, user capture/error guidance, privacy/retention controls, signed packages, rights/SBOM review | Q1–Q6, P1–P6, N1–N2, E1–E2 for explicitly certified profiles; every failing platform/preset removed from certification or fixed. Full 30k Q2 quality run separate from standard P1 | M1–M5; benchmark rights and release devices | 7–10 person-weeks; roughly weeks 18–23 plus contingency | Targets inconsistent with real capture distribution; release packaging and rights gaps |
+| **A0–A5 — local asset-production track** | Required editable objects/structure, completion, PBR and reusable exports; first native visual result in A1, bounded local rooms through A5 | §11.6 AP gates with the explicit local-development/reference qualification split in §11.8; no generalization on a synthetic or manually repaired pilot | M3 calibrated original views, observed geometry and scene/update contracts; local resources/rights | §11.7 owns detailed milestones and estimates | Completion/material ambiguity; unavailable local inference resources/rights |
+| **M4 — platform qualification** | Native Windows and macOS packages; MoltenVK profile; AMD viewer qualification; Brush adapter and bounded local Mac recipe if it passes; qualify the existing local PBR asset viewer and portable imports | Inherited M2 reference-device P2/P4/P6, physical N1, per-device Q6 and recovery qualification (§8.2); physical Windows/macOS viewer, GPU/display/input/HiDPI qualification; the former M1 ≤250k fixture opens on Arch/Windows/macOS and reaches ≥30 FPS at 720p on H_V/H_M. P3/P4/P5/E2 and identical scene/camera semantics remain required. Brush promoted only after Q3/Q6 and checkpoint/cancel tests; otherwise experimental. Add AP7 native asset/import parity and unchanged H_V AP8 engine runtime qualification | A5 scoped local exit; M2/M3 canonical outputs; access to physical platform/reference devices | 8–11 person-weeks after A5; former weeks 8–13 no longer operative | Platform-specific shader/compiler behavior and training memory; native worker packaging |
+| **M5 — larger scenes and operation** | Spatial chunks, measured LOD hierarchy, prefetch/eviction, collision residency, W3/W4 handling, coarse-first loading; crash-safe publish | P4/P5/P6 under memory pressure; W3 fly path stays within P2/P3 budgets through declared LOD; Q6 per supported packing mode; unknown/collision boundaries remain safe | M4; M2/M3 and A0–A5 products/profiling traces | 8–11 person-weeks after M4; former weeks 12–17 no longer operative | Chunk overlap/opacity errors, global ordering and LOD quality, bad large-scene poses |
+| **M6 — combined offline release candidate** | Reconstruction and asset workflows, sealed corpus reports, reproducible recipes, user capture/error guidance, privacy/retention controls, signed packages, rights/SBOM review | Q1–Q6, P1–P6, N1–N2, E1–E2 for explicitly certified profiles; every failing platform/preset removed from certification or fixed. Full 30k Q2 quality run separate from standard P1. Full AP0–AP9 for at least one local asset-production profile, including deferred reference/native evidence; no captured-only or experimental asset output certifies the expanded goal | M1–M5 plus A0–A5; benchmark rights and release devices | 7–10 person-weeks after M5 plus contingency; former weeks 18–23 no longer operative | Targets inconsistent with real capture distribution; release packaging and rights gaps |
 | **M7 — future tracking and incremental map pilot (DEFERRED_BY_USER)** | Camera/replay source, DPVO/alternative tracker, bounded keyframes/submaps, relocalization, pose revisions and loop correction | L1 capture-to-pose and Q4; 20-minute replay with loss/relocalization, no unlimited memory growth; spectator camera unaffected; permission/weight gate resolved | Phase 1 contracts; licensed tracker; chosen sensor | Additional 10–14 person-weeks | Drift, tracking loss, timestamp calibration, checkpoint rights |
 | **M8 — future live appearance and geometry pilot (DEFERRED_BY_USER)** | Time-budgeted refinement, progressive chunks, depth-backed geometry where available, background rebuild after correction | Full L1 including preview/render rate; P4/P6; N2 only on validated metric collision regions; compare quality against offline result after capture ends | M7; chosen live sensor and GPU budget | Additional 12–18 person-weeks | Mapping/render contention, non-rigid correction, catastrophic optimizer drift |
 
@@ -747,7 +759,7 @@ M2 closure requires a dated checklist review linking actual evidence and unresol
 
 **M4 or later:** M4 owns the deferred renderer qualification on other native machines: H_V P2/P4/P6, AMD/H_A and Apple Silicon/H_M/MoltenVK, Windows/macOS native GPU/display/input/HiDPI, physical recovery and N1 input-to-display measurements, plus per-device packing/Q6 checks. Use §3 workloads, frame/presentation definitions and Appendix B procedures, including P2's 30-second warmup, 120-second measurement and five runs. Missing access remains an explicit M4 blocker. Corpus-wide Q6, metric-scale and full Q/P/N/E release certification remain required by M6; no claimed release profile may bypass its prescribed evidence. M3's reconstruction/geometry requirements and H_R P1 schedule are unchanged. No external native-machine M2 task is a prerequisite before M4.
 
-The Phase 1 person-week range is rounded; milestone estimates total 50–68 before small contingency. Calendar windows overlap only where engineers and interfaces allow it. Approved offline completion/material recovery is assigned to the new Phase 2 (§11), after M6, with separate resources and gates. Ray-traced Gaussian effects, custom foundation-model training and unrestricted city-scale reconstruction remain separate proposals, not hidden critical-path work.
+The original M1–M6 person-week range is rounded; those milestone estimates total 50–68 before small contingency. Calendar windows overlap only where engineers and interfaces allow it. Approved offline completion/material recovery now runs between M3 and M4 (§11), adding effort to the release critical path. The former absolute week windows do not schedule the combined product. Ray-traced Gaussian effects, custom foundation-model training and unrestricted city-scale reconstruction remain separate proposals, not hidden critical-path work.
 
 **First ten working days:** freeze camera/color/schema conventions; configure three-platform native builds and feature probes; validate one permissively usable pipeline recipe; run the tiny COLMAP→gsplat fixture; implement imported splat rendering and fly controls; publish the first scene through the update queue; capture baseline timing and one deliberate failure/retry. Do not spend M1 building a general editor or porting the optimizer to Vulkan.
 
@@ -776,7 +788,7 @@ Likelihood/impact are qualitative planning estimates **D**, before mitigations. 
 | Upstream installer/demo uploads data or downloads models implicitly | High / high | Local workers with outbound network disabled after explicit provisioning; replace remote upstream stages, fail clearly on missing weights; no cloud fallback | Systems / AP0; remote transport remains outside scope |
 | Walk collision holes, stale shapes or bad scale cause confusing navigation | High / medium | Separate conservative collision coverage; swept capsule; unknown blocked; recover/fly button; invalidate on revision | Graphics + systems / N2 |
 | Metrics improve while completion or user experience worsens | Medium / high | Report failures, time/memory and per-scene results beside PSNR; fixed holdouts and fly paths; no post-hoc exclusions | Research / Q1–Q6 |
-| Asset completion/relighting displaces Phase 1 or conceals failures | High / high | Complete M1–M6 in order; Phase 2 §11/ADR 018 adds distinct gates and worker recipes; keep M7–M8 deferred and manual assistance visible | Tech lead / milestone reviews |
+| Asset research delays platforms/release or conceals failures | High / high | M3 then bounded A1 real pilot; complete local assets through A5 before M4 under §11/ADR 019; preserve measured gates, expose hardware/rights blockers and manual assistance; keep M7–M8 deferred | Tech lead / milestone reviews |
 
 Privacy behavior should be testable: processing works with outbound network disabled after installation; diagnostic archives omit raw imagery by default; users can inspect/delete source frames, trained assets and caches; exports list whether source images, timestamps or location metadata are included. Disable GPS/location export by default. Face blurring alone does not remove room identity or sensitive objects, and reconstructed appearance can retain removed details unless rebuilt. These are design recommendations, not claims of regulatory certification.
 
@@ -791,7 +803,7 @@ None of these blocks starting M1 under the stated defaults. Record changes as AD
 | Initial capture category | Static rooms and bounded objects, W1/W2 | Large landscapes/cities or dynamic scenes require different scale, priors and data regimes |
 | Metric scale / depth availability | Accept optional measured distance, calibration and RGB-D; monocular alone defaults to arbitrary scale | Requiring reliable metric geometry pushes toward a sensor/capture application and calibration workflow |
 | “C++ project” interpretation | Native application and interfaces in C++; existing reconstruction engines in isolated Python/CUDA or Rust workers | All-C++ training/model inference would be a separate implementation effort, not a small packaging choice |
-| User-facing visual goal | Phase 1 captured appearance with explicit coverage; Phase 2 reusable completed PBR assets and assembled environment (§11) | Inverse rendering/additional calibration and novel-light tests are required; a Vulkan RT toggle or named PBR maps is insufficient |
+| User-facing visual goal | M1–M3 captured appearance/observed geometry; A0–A5 reusable completed PBR assets and assembled environment before M4 (§11) | Inverse rendering/additional calibration and novel-light tests are required; a Vulkan RT toggle or named PBR maps is insufficient |
 | Walk mode release priority | Ship after metric collision passes N2; fly is always the core experience | Mandatory walking on all captures would sharply reduce accepted input scope |
 | Minimum Apple support | Apple Silicon, macOS 15+, exact supported release tuples tested; Intel Mac best effort | Older hardware/OS support can constrain shader/library/deployment choices |
 | Video color / HDR | SDR input and SDR display certified first; preserve source metadata; HDR conversion explicit | Native HDR capture/training/display requires additional color calibration and evaluation |
@@ -801,16 +813,21 @@ None of these blocks starting M1 under the stated defaults. Record changes as AD
 | Benchmark usage rights | Clear each public corpus; maintain an owned, consented release corpus | If a benchmark is unavailable, replace its gate explicitly and recalibrate thresholds; do not assert incomparable numbers |
 | Foundation-model policy | Experimental opt-in after checkpoint-specific review; no default NC weights | Research-only distribution may allow broader evaluation, but does not establish deployability or universal quality |
 
-Resume the first incomplete Phase 1 milestone from [progress](progress.md), then
-complete M1–M6 in order. The final product direction includes Phase 2 below;
-planning it does not start its implementation or activate M7–M8.
+Resume the first incomplete milestone from [progress](progress.md), following §8's
+interleaved asset-before-platform sequence. Planning this schedule implements no
+asset capability and does not activate M7–M8.
 
-## 11. Phase 2: offline asset production
+<a id="11-phase-2-offline-asset-production"></a>
 
-**Approved product direction; A0–A6 and AP0–AP9: NOT_STARTED.** Implementation
-follows M6; these are new identifiers, not renamed M7/M8 milestones. The latter
-remain DEFERRED_BY_USER. [ADR 018](adr/018-offline-asset-production.md) records
-the scope/architecture decision. The [dated research assessment](research/offline_asset_pipeline.md)
+## 11. Offline asset-production track
+
+**Approved product direction; A0–A6 and AP0–AP9: NOT_STARTED.** A0–A5 follow M3
+and precede M4; the first visible result is A1. A6 engine packaging remains after
+M6. These are distinct identifiers, not renamed M7/M8 milestones; the latter stay
+DEFERRED_BY_USER. [ADR 018](adr/018-offline-asset-production.md) records the
+original architecture and [ADR 019](adr/019-assets-before-platforms.md) supersedes
+its scheduling/release boundary. The legacy section anchor above preserves old
+evidence links. The [dated research assessment](research/offline_asset_pipeline.md)
 owns candidate facts, licenses and comparisons; all architecture and targets here
 are **D/T**, with no implementation or qualification implied.
 
@@ -878,7 +895,7 @@ defines adapter experiments that must precede promotion.
 
 ### 11.3 Process architecture, revisions and recovery
 
-Extend the existing coordinator/worker contracts; this is proposed Phase 2
+Extend the existing coordinator/worker contracts; this is proposed asset-track
 behavior, not the implemented protocol described in `protocols/`. Native
 `application` owns CLI/GUI commands, `map_store` owns observation/pose snapshots,
 and a proposed `asset_catalog` owns immutable definitions and semantic lineage.
@@ -997,7 +1014,8 @@ must not be the only copy. Engine importers need not retain extras. Validate pat
 URI containment, buffers/accessors, texture sizes and required extensions locally.
 
 Choose Godot as the first import-test engine (version pinned at A1). A1 uses its
-ordinary glTF import for evidence; A6 later adds reusable PackedScene/prefab and
+ordinary glTF import for evidence on the local development machine; A6 after M6
+adds reusable PackedScene/prefab and
 environment-scene packaging, collider/LOD mapping and resource reuse. Unity/Unreal
 adapters are later alternatives, not simultaneous critical-path commitments.
 No engine dependency enters canonical asset contracts.
@@ -1053,13 +1071,13 @@ or threshold changes to obtain a pass. Changes require an ADR retaining failures
 | **AP0 local reproducibility / provenance / rights** | Outbound network disabled during full run after explicit installation; exact code/env/model/input hashes and terms; all outputs carry evidence classes/manual ancestry; cancellation/crash/resume preserves committed bytes, stale dependency rejected; no restricted/uncleared component in distribution recipe | A0 conformance fixtures, A1 real pilot, A5 final closure |
 | **AP1 visible fidelity** | Real independent held-out inspection plus temporal blocks: per-scene PSNR ≥25 dB, SSIM ≥0.80, AlexNet LPIPS ≤0.25 on declared observed valid mask, ≥90% eligible visible-pixel coverage. Report full image and object/boundary scores and pose uncertainty; no fitted test exposure | A1 pilot report; A2/A5 corpus; separate captured versus PBR render columns |
 | **AP2 object separation / identity / pivot** | All required pilot props/structural elements separate. Corpus object precision/recall ≥0.90, median instance mask IoU ≥0.85 across held-out views; zero ID reuse/switches in frozen revisit tests; no fused required props. Deterministic pivots within 2 cm of annotated support/attachment reference after independent scale; symmetric orientation ambiguity explicit | A1 initial inventory and edit test; A2 corpus association |
-| **AP3 observed geometry and layout/support** | Q5 remains required on measured observed surfaces under its original procedure. Phase 2 additionally: structural plane normal error ≤3°, opening boundary p90 ≤5 cm, support gap/penetration ≤2 cm for ≥95% declared contacts, zero blocked required openings. Report unobserved layout separately; no forced Manhattan alignment | A1 small shell, A2 structure refinement, A5 qualification |
+| **AP3 observed geometry and layout/support** | Q5 remains required on measured observed surfaces under its original procedure. Asset track additionally: structural plane normal error ≤3°, opening boundary p90 ≤5 cm, support gap/penetration ≤2 cm for ≥95% declared contacts, zero blocked required openings. Report unobserved layout separately; no forced Manhattan alignment | A1 small shell, A2 structure refinement, A5 qualification |
 | **AP4 completion / move-remove** | Every required prop removed and moved ≥one object width; inspect backside, under-object region, exposed walls/floor and new shadows from fixed paths/lights. ≥99% required revealed surface render coverage, zero residual duplicate object surfaces/shadows from source bake. Blinded ≥3 reviewers score geometry/material/scene plausibility ≥4/5 median, no required object median <3; report disagreement and hidden-GT fidelity separately | A1 end-to-end pilot, A3 completed room. Human evaluation does not authorize manual inference edits |
 | **AP5 topology / UV / bake** | Finite valid indices/normals/tangents, zero unintended degenerate/nonmanifold/self-intersecting elements; intentional sheets/open boundaries declared. UVs finite/in range, zero unintended overlaps, ≥99% surface texel coverage, padding ≥8 texels at 2K baseline (scale per texture). Bake reprojection hit rate ≥99% of required surface; normal angular p95 ≤10° to high source; report seams/stretch and excluded area | A1 basic assets, A4 production quality |
-| **AP6 material / novel lighting** | With frozen geometry/materials, evaluate ≥3 unseen light environments/directions including near light on real controlled fixtures where feasible. Synthetic known-material and real calibrated-light tracks reported separately: PSNR ≥23 dB, SSIM ≥0.80, LPIPS ≤0.25 on valid surface mask; report shadows/highlights and per-light failure. No source shadow in base color; no test-time material/light refit. Missing real novel-light evidence leaves real relighting unqualified | A1 controlled prop test, A4 inverse fit, A5 release |
+| **AP6 material / novel lighting** | With frozen geometry/materials, evaluate ≥3 unseen light environments/directions including near light on real controlled fixtures where feasible. Synthetic known-material and real calibrated-light tracks reported separately: PSNR ≥23 dB, SSIM ≥0.80, LPIPS ≤0.25 on valid surface mask; report shadows/highlights and per-light failure. No source shadow in base color; no test-time material/light refit. Missing real novel-light evidence leaves real relighting unqualified | A1 controlled prop test, A4 inverse fit, A5 local exit; M6 combined release |
 | **AP7 reusable export / import integrity** | Zero validator errors (warnings triaged); individual/assembly canonical mesh/material/image hash equivalence; instance transforms preserved (≤1 mm / ≤0.1° on metric fixture); two instances reuse same engine resource; move/remove/replace survives save/reimport. Ordinary Godot import + independent glTF inspection, missing-sidecar/URI failure checks | A1 portable pilot, A4 final exporter; A6 packaging additionally |
-| **AP8 resource / game budgets** | Initial 3-prop pilot ≤300k scene render triangles and ≤256 MiB resident textures; props ≤50k LOD0 triangles, LOD1/2 targets 50%/20% with ≤1/2 px p95 silhouette error on frozen paths. Collider ≤16 hulls ×64 vertices/prop unless recorded exception. H_AP48 pilot ≤2 h end-to-end, ≤40 GiB device peak /96 GiB RSS, ≤100 GiB job scratch. H_V engine test 1080p ≥60 presented FPS on frozen path without processing contention, 30 s warmup/120 s ×5 runs; record p95/p99, lights/shadows, loads and process/device memory | A1 measures actual cost; A4 budgets; A5 certifies. These do not replace Phase 1 P1/P2/P4 or imply full-room timing |
-| **AP9 automatic yield / honest assistance** | Frozen additional 10-room consented static corpus, 3–10 required props/room; ≥8/10 automatic full outputs passing AP0–AP8 within predeclared per-room budget envelope. Report each gate and object, all submissions/preflight exclusions, partials, rejects, manual minutes and seeds. Assisted runs separate; bounded automatic recovery cost included | A5; complex-room expansion only after A1 succeeds |
+| **AP8 resource / game budgets** | Initial 3-prop pilot ≤300k scene render triangles and ≤256 MiB resident textures; props ≤50k LOD0 triangles, LOD1/2 targets 50%/20% with ≤1/2 px p95 silhouette error on frozen paths. Collider ≤16 hulls ×64 vertices/prop unless recorded exception. H_AP48 pilot ≤2 h end-to-end, ≤40 GiB device peak /96 GiB RSS, ≤100 GiB job scratch. H_V engine test 1080p ≥60 presented FPS on frozen path without processing contention, 30 s warmup/120 s ×5 runs; record p95/p99, lights/shadows, loads and process/device memory | A1 measures local costs; A4/A5 enforce production/asset budgets. H_V runtime qualification at M4/M6; full AP8 stays open until then (§11.8). No change to P1/P2/P4 or full-room timing scope |
+| **AP9 automatic yield / honest assistance** | Frozen additional 10-room consented static corpus, 3–10 required props/room; ≥8/10 automatic full outputs passing AP0–AP8 within predeclared per-room budget envelope. Report each gate and object, all submissions/preflight exclusions, partials, rejects, manual minutes and seeds. Assisted runs separate; bounded automatic recovery cost included | A5 scoped local corpus exit (§11.8); full AP9 waits for all AP0–AP8 evidence at M4/M6. Complex-room expansion only after A1 succeeds |
 
 AP4 plausibility does not claim historical authenticity. Withheld true backsides/
 empty backgrounds provide an additional fidelity column when obtainable; do not
@@ -1081,7 +1099,7 @@ own qualification. Preserve individual gate failures even if aggregate yield pas
 
 The available development host remains the §8.2 RTX 4060 Laptop 8 GiB / approximately
 16 GiB RAM profile. It can support contract/CPU/export work and later bounded
-experiments; it is **not qualified for Phase 2 inference**. Upstream requirements
+experiments; it is **not qualified for asset-track inference**. Upstream requirements
 include SAM 3D Objects ≥32 GB NVIDIA and TRELLIS.2 ≥24 GB NVIDIA, not evidence of
 8 GB operation. SAM 3.1/GenRecon full-room minimums and CPU/RAM/storage/runtime
 remain unresolved in the [candidate assessment](research/offline_asset_pipeline.md).
@@ -1101,25 +1119,88 @@ platform support for a framework does not certify a complete worker recipe.
 
 | Milestone / all NOT_STARTED | Deliverable and dependencies | Exit evidence / main risk | Conditional effort |
 |---|---|---|---|
-| **A0 contracts, capture and recipe freeze** | After M6: project schemas, dependency DAG, rights/resource lock proposal, fixture/evaluation manifests, explicit installation plan and synthetic admission/recovery fixtures | AP0 contract checks and exact candidate rights/device gaps; no “pipeline complete” claim. Must resolve or substitute restricted renderer/checkpoint paths before distributable recipe use | 3–5 person-weeks |
-| **A1 small real end-to-end pilot** | A0 + explicit local provisioning + consented capture: one room corner with floor/two walls/ceiling segment/opening and 3 distinct opaque props, one partly occluded. Capture orbit/revisit and independent scale, held-out path, empty background and changed-light prop evidence. Automatic masks→observed mesh→completion→UV/bake→PBR→catalog/assembly→ordinary Godot import | Exercise AP0–AP8 end-to-end, all 3 props individually exported, one reused twice, each moved/removed. Record automatic/assisted status and actual resources. No expansion on synthetic-only, captured-only or manually repaired success; unresolved gates remain open | 6–10 person-weeks; material/completion failure can add 4–8 before a usable pilot |
+| **A0 contracts, capture and recipe freeze** | After M3, before M4: reuse validated calibrated views/observed geometry and M2 update contracts; project schemas, dependency DAG, rights/resource lock proposal, fixture/evaluation manifests, explicit installation plan and synthetic admission/recovery fixtures | AP0 contract checks and exact candidate rights/device gaps; no “pipeline complete” claim. Must resolve or substitute restricted renderer/checkpoint paths before distributable recipe use; no M4 package, M5 streaming or M6 release prerequisite | 3–5 person-weeks |
+| **A1 small real end-to-end pilot** | A0 + explicit local provisioning + consented capture: one room corner with floor/two walls/ceiling segment/opening and 3 distinct opaque props, one partly occluded. Capture orbit/revisit and independent scale, held-out path, empty background and changed-light prop evidence. Automatic masks→observed mesh→completion→UV/bake→PBR→catalog/assembly→local native mesh/PBR viewer and ordinary Godot import | Display the actual completed environment, select each separate object, inspect provenance, move/remove each prop and switch inspection lighting on the local native viewer. All 3 props exported, one reused twice; apply AP0–AP7 pilot checks and AP8 production budgets under §11.8. No expansion on synthetic-only, captured-only or manually repaired success; untested reference gates remain open | 6–10 person-weeks; material/completion or local PBR-viewer work can add 4–8 before a usable pilot |
 | **A2 identity and architectural reconstruction** | A1 pass; rooms with 3–10 props, revisits/repeated objects, ceilings/doors/windows and non-Manhattan example; support/layout refinement, bounded room profile freeze | AP1–AP3 plus object inventory and pose-change invalidation; ground-truth/occlusion ambiguity risk | 6–10 person-weeks |
 | **A3 object and background completion** | A1/A2 evidence, fixed challenger comparison and cleared local assets/models; shared scene constraints rather than independent image inpainting | AP4, observed-anchor fidelity retained and no unexplained free-space violations; generated/manually derived masks maintained. No plausible-corner demo substitutes for all required move/remove cases | 8–14 person-weeks |
 | **A4 production meshes, materials and portable export** | A2/A3; quality-bounded repair/UV/bake/LOD/collision, shared materials/joint lights, revisioned export and optional DCC replacement loop | AP5–AP8 on real + known synthetic/controlled-light references; AP1 regressions checked. Main risks intrinsic ambiguity, GPU memory, seams and exporter loss | 10–18 person-weeks |
-| **A5 automatic room qualification** | A2–A4; sealed additional corpus, repeatable offline installation, rights/SBOM/retention review and failure/resume/engine runs | AP0–AP9 on declared profiles; per-gate/capture failures visible. No new Phase 1 certification inferred | 6–10 person-weeks |
-| **A6 engine packaging adapter** | A5 portable assets; chosen Godot version/prefab policy and exact resource mappings | Reusable PackedScenes + assembled scene, LOD/collider/material mapping, replacement/reimport/deterministic resource reuse; repeat AP7/AP8 for engine package | 3–6 person-weeks; each additional engine estimated separately |
+| **A5 local automatic room development exit** | A2–A4 before M4; sealed additional corpus, repeatable offline installation, rights/SBOM/retention review and failure/resume/local engine runs | §11.8 local exit: all intrinsic asset-quality checks and production budgets, prescribed corpus/automatic accounting. Original reference/native AP7/AP8 and dependent full AP9 remain due at M4/M6; no new full-gate certification inferred | 6–10 person-weeks |
+| **A6 engine packaging adapter** | After M6 combined release and qualified A5 portable assets; chosen Godot version/prefab policy and exact resource mappings | Reusable PackedScenes + assembled scene, LOD/collider/material mapping, replacement/reimport/deterministic resource reuse; repeat AP7/AP8 for engine package | 3–6 person-weeks; each additional engine estimated separately |
 
-The 42–73 person-week total is incremental after M6, assuming three experienced
-engineers (vision/materials, geometry/assets, systems/export), part-time QA/artist
+The 42–73 person-week asset-track total is additional to the original M1–M6 work,
+assuming three experienced engineers (vision/materials, geometry/assets,
+systems/export), part-time QA/artist
 evaluation, reusable Phase 1 inputs and access to local H_AP48. Allow 25–50%
 contingency for research/rights/capture failures: approximately 53–110 person-weeks,
-roughly 6–12 calendar months with stage overlap and those staff. These are planning
-ranges, not delivery commitments. A single engineer should budget approximately
-12–24+ months after M6; commercial licensing/major model replacement can add an
+roughly 6–12 calendar months of added work with stage overlap and those staff.
+A0–A5 account for 39–67 person-weeks before contingency, now inserted before M4;
+A6's 3–6 person-weeks remain after M6. Portability/release dates therefore move
+later; this rescheduling does not compress or eliminate the research effort.
+The M4–M6 base estimates may also grow with asset-viewer porting and final
+qualification; A1 measurements must inform the combined re-estimate.
+These are planning ranges, not delivery commitments. A single engineer should
+budget approximately 12–24+ months of additional asset work across that sequence;
+commercial licensing/major model replacement can add an
 unbounded external delay. No foundation-model training from scratch is assumed.
 Re-estimate after A1 measurements; never buy hardware or broaden models merely
 to preserve this schedule. Independent evaluation/manual artist hours are real
 project costs but cannot be counted as automatic inference success.
+
+### 11.8 Local product exit before native platform qualification
+
+The new order follows actual data dependencies. M3 supplies calibrated original
+views, valid observed geometry/scale and mesh export; M2 supplies update/residency
+and local viewer integration. A0–A5 need those contracts, not completed Windows/
+macOS packages, a portable optimizer, M5 multi-room streaming or release signing.
+Per-asset LOD and a bounded-room catalog in A4 do not require M5's larger-scene
+hierarchy. Keep existing CPU portability CI and dependency boundaries healthy;
+postpone native qualification, not maintainable portable design.
+Do not begin new M4 platform-expansion/package/qualification work before the A5
+local exit; continue existing CPU CI and repair portability regressions throughout.
+
+A1 is the first visible local product checkpoint. Show the **generated output of
+the actual automatic pipeline** in the native viewer: assembled structure/props,
+source comparisons and provenance, independent object selection, move/remove
+inspection exposing completed surroundings, and changed-light inspection of PBR
+assets. The imported glTF/GLB in local Godot is an additional portability check,
+not a substitute for local application visualization or A6 prefab packaging.
+Evaluation clicks/transforms inspect an already produced result; any clicks or
+edits used to produce/select it are assisted. Apply §11.6's pilot quality and
+production-budget requirements; the only reference-device deferral is below.
+
+A5 may be VERIFIED **for the exact Linux/NVIDIA local development exit only**
+after all of the following evidence exists:
+
+1. A1–A4 work end-to-end on the real pilot and bounded room inputs, including
+   the native PBR viewer, separate objects/structure, completion, materials,
+   UV/bakes, collision/LOD and reusable individual/assembled exports. All
+   applicable AP0–AP7 quality/provenance/integrity requirements pass locally;
+   no intrinsic quality, changed-light or completion failure is reclassified
+   as deferred hardware work.
+2. AP8 asset/production limits pass on the declared local production profile.
+   Record actual native-viewer/engine display timings, memory and limitations
+   on the tested local display device without claiming H_V performance. A
+   stronger local host may produce the assets; the current 8 GiB machine is
+   not assumed able to run every model.
+3. Run AP9's unchanged frozen corpus, denominator, automatic yield target and
+   per-room production budget, applying all local quality/production checks.
+   Retain per-gate failures, rejected/partial/assisted outcomes and manual time.
+   Label this **local automatic yield**, not a full AP9 pass while AP8's
+   prescribed H_V evidence is missing. Preserve the exact exported assets for
+   subsequent qualification rather than selecting a different workload.
+4. Review the evidence/dependency/rights receipts and enumerate every remaining
+   reference/native check. Full AP8 and dependent AP9 remain open until their
+   original prescribed evidence passes. Historical reports and thresholds stay
+   unchanged; a local checklist pass cannot upgrade them.
+
+After this scoped A5 exit, M4 qualifies the same asset packages/local product on
+the named viewer platforms and devices: original Q/P/N/E obligations plus AP7
+native view/import parity and the unchanged H_V AP8 runtime test. Advanced worker
+parity on every OS/GPU is not implied; qualify only declared production profiles.
+M5 then handles larger scenes; M6 must close all original Q/P/N/E release
+obligations and AP0–AP9 for at least one local asset-production profile, with all
+required reference/native evidence. A6 later adds engine-specific scene/prefab
+packaging from the same qualified assets. M7–M8 remain DEFERRED_BY_USER.
 
 ## Appendix A. Dated source register
 

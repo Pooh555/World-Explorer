@@ -1,7 +1,7 @@
 # World Explorer — Codex execution prompt
 
 Prepared 11 October 2026, Asia/Hong_Kong. Companion to `docs/technical_plan.md`.
-Scope updated 17 October 2026 for plan v1.3 / [ADR 018](adr/018-offline-asset-production.md).
+Scope updated 17 October 2026 for plan v1.4 / [ADR 019](adr/019-assets-before-platforms.md).
 
 ## How to use these two files
 
@@ -10,13 +10,13 @@ Keep the technical plan as the project specification. Use this file as the imple
 Start Codex in the intended repository and send:
 
 ```text
-Read docs/execution_prompt.md and follow its agent instructions. Use docs/technical_plan.md as the project specification. Implement Phase 1 through milestones M1–M6, starting with the first incomplete milestone. Build working software, run the relevant checks, preserve an accurate progress record, and git commit meaningfully. Continue through verified milestones without asking for routine confirmation. Keep future live reconstruction possible through the specified interfaces; M7–M8 remain DEFERRED_BY_USER. The expanded final goal is Phase 2 offline asset production (plan §11), scheduled after M6 with separate gates.
+Read docs/execution_prompt.md and follow its agent instructions. Use docs/technical_plan.md as the project specification. Follow M1 → M2 → M3 → A0–A5 → M4 → M5 → M6, then A6 engine packaging, starting with the first incomplete milestone. Build working software, run the relevant checks, preserve an accurate progress record, and git commit meaningfully. Validate the completed editable PBR environment locally before platform qualification; A1 must show the real automatic output in the native viewer. Continue through verified milestones without routine confirmation. Keep future live contracts; M7–M8 remain DEFERRED_BY_USER. Plan §11 owns the asset milestones and separate AP gates.
 ```
 
 For a later session, use:
 
 ```text
-Continue World Explorer using execution_prompt.md. Read the existing AGENTS.md, docs/progress.md and docs/requirements.md, inspect the current code and verification evidence, and resume the first incomplete Phase 1 milestone. Preserve completed work and existing user changes. Recheck the relevant specification sections when needed; do not restart the project.
+Continue World Explorer using docs/execution_prompt.md. Read the existing AGENTS.md, docs/progress.md and docs/requirements.md, inspect the current code and verification evidence, and resume the first incomplete milestone in plan §8's M3 → A0–A5 → M4 sequence. Preserve completed work and existing user changes. Recheck the relevant specification sections when needed; do not restart the project or skip local product validation to begin platform qualification.
 ```
 
 The instructions below are intended for the coding agent. They do not grant access beyond its configured permissions. A prompt cannot supply missing GPUs, signed release credentials, licensed datasets, or real capture evidence. The agent must report those gaps without treating them as successful verification.
@@ -34,14 +34,15 @@ does not qualify a product capability.
 
 ## 1. Mission, scope and authority
 
-You are the principal implementation engineer for World Explorer. Deliver a maintainable native desktop application that reconstructs a scene from a completed camera video and supports responsive, Minecraft-style spectator navigation. Implement Phase 1 through M1–M6 of the accompanying technical plan, including its assigned geometry/walk, platform and scaling work. M7–M8 describe future live reconstruction: preserve the required contracts now, but do not implement that expanded product without a subsequent request.
+You are the principal implementation engineer for World Explorer. Deliver a maintainable native desktop application that reconstructs a scene from a completed camera video and supports responsive, Minecraft-style spectator navigation. Follow plan §8's M1 → M2 → M3 → A0–A5 → M4 → M5 → M6 order, including assigned geometry/walk, local asset production, platform and scaling work. A6 engine packaging follows M6. M7–M8 describe future live reconstruction: preserve those contracts now, but do not implement live work without a subsequent request.
 
 The approved final goal also includes fully automatic local production of
 separate reusable static game assets and architectural structure, completed
 hidden surfaces/backgrounds, evaluated PBR materials and shared glTF/GLB scene
-assembly. Plan §11 assigns this to Phase 2 A0–A6 after M6, with an early real
-pilot and a later engine packaging adapter. Its implementation remains
-NOT_STARTED. Complete Phase 1 in order; do not repurpose M7–M8 or claim the
+assembly. Plan §11 places A0–A5 after M3 and before M4, with a visible real
+native-viewer pilot in A1 and a scoped local development exit in A5. The later
+A6 engine packaging adapter stays after M6. Implementation remains
+NOT_STARTED. Preserve M1–M6 relative order; do not repurpose M7–M8 or claim the
 expanded pipeline is present because reconstruction/viewing works.
 
 The deliverable is working source code, reproducible builds, usable interfaces, actual integration, and evidence of correctness. Planning documents and an application shell are intermediate work.
@@ -60,7 +61,7 @@ Use the specification as follows:
 | Repository layout, style and tooling | §7 |
 | Milestone order and release scope | §8 |
 | Risks, privacy and recommended defaults | §§9–10 |
-| Offline reusable asset production, proposed contracts, hardware and AP gates | §11; dated [candidate research](research/offline_asset_pipeline.md), decision [ADR 018](adr/018-offline-asset-production.md) |
+| Offline reusable asset production, local visualization, contracts, hardware and AP gates | §11, including local/reference split in §11.8; dated [candidate research](research/offline_asset_pipeline.md), scheduling decision [ADR 019](adr/019-assets-before-platforms.md) |
 
 Follow the current user instructions and applicable repository/tool policies. Preserve existing `AGENTS.md` guidance; do not edit instructions to evade constraints. This runbook adds execution detail and UI requirements; it does not silently weaken the technical plan. If evidence reveals a wrong or obsolete recommendation, record the finding and a short decision record before changing the implementation. Ask only when the unresolved choice materially changes product scope, licensing, spending, privacy or an irreversible action.
 
@@ -74,7 +75,7 @@ On the first run:
 2. Locate the supplied plan and this runbook. Read the scope, architecture, acceptance and roadmap sections once. If a required source is genuinely missing, finish useful repository inspection and request the exact missing file; do not invent its contents.
 3. Inspect available OS, compilers, build tools, GPU/driver/Vulkan capabilities, storage and worker environments using non-destructive checks. Never print credentials or collect unrelated personal files. Classify work as locally runnable, runnable through already configured CI, or externally blocked.
 4. Preserve an existing viable build. For a new repository, establish the minimal CMake/Ninja/vcpkg structure and a compilable native target. Use project-local environments and explicit dependency locks. Do not change global compiler defaults, install GPU drivers or require privileged commands as a routine setup step.
-5. Create a concise implementation backlog from M1–M6, with requirement IDs and executable acceptance checks. Record genuine external prerequisites. Start implementation in the same session; a second research document is not the output.
+5. Use plan §§8/11's interleaved milestone sequence, with requirement IDs and executable acceptance checks; do not create a duplicate backlog. Record genuine external prerequisites. For implementation requests start a useful slice in the same session; respect documentation-only task scope.
 
 Work in small complete slices: implement one behavior, exercise the actual code path, fix discovered failures, inspect the diff, update concise evidence, then continue. Planning can adapt as evidence changes. Do not generate every possible module, abstraction or future plugin before the first scene renders.
 
@@ -116,7 +117,7 @@ Keep the spectator camera independent of the capture camera. Pose correction upd
 
 Use the versioned worker protocol across processes, not a promised stable C++ ABI. Start with validated messages and immutable file references. Add shared memory or a more complex scheduler only when a profile identifies a material bottleneck.
 
-For Phase 2, follow §11's proposed asset-definition/instance separation and
+For the asset track, follow §11's proposed asset-definition/instance separation and
 dependency DAG. Keep observations, completion, material/light fitting, mesh/UV/bake
 and export products independently revisioned. A pose/mask/UV/material correction
 invalidates all affected downstream products, including collision and exports.
@@ -154,8 +155,8 @@ Use the prescribed coordinate, quaternion, pixel-center, SH, scale and color con
 
 Use independently supported depth/geometry for collision. Preserve confidence, observed free space and unknown regions; do not fill missing floors to make walking appear successful. Standard and quality presets remain separate, including their 7k/30k training and benchmark scope. Record any lower-budget retry as a changed result.
 
-Phase 1 excludes completion and intrinsic material recovery. Phase 2 explicitly
-adds them under separate AP gates: use original calibrated views as evidence,
+The M1–M3 reconstruction baseline excludes completion and intrinsic material
+recovery. A0–A5 add them before M4 under separate AP gates: use original calibrated views as evidence,
 retain observed/inferred/generated/manual region provenance and protect measured
 surfaces. Generated floors and gameplay colliders never count toward Q5/N2 or
 enable measured walk mode. Static assets need valid economical topology, UVs,
@@ -234,16 +235,21 @@ Within repository work, preserve user edits, inspect diffs and avoid destructive
 
 ## 8. Milestones and execution gates
 
-Use the detailed plan's M1–M6 deliverables and §3 targets. This table gives the implementation order; it does not replace the full acceptance definitions.
+Use the detailed plan's M1–M6 deliverables, interleaved A0–A5 asset track and §3/§11
+targets. This table gives implementation order; it does not replace acceptance
+definitions. Preserve portable interfaces and existing CPU CI while deferring
+native platform qualification until after A5.
 
 | Milestone | Build and prove | Required evidence |
 |---|---|---|
 | M1: development vertical slice | Real consented 20–30 s textured-room video → COLMAP → gsplat → versioned scene → native Linux fly viewer on available hardware; full ≤250k fixture opening and synthetic replace/delete replay; hosted Linux/Windows/macOS CPU builds/tests | Plan §8.1 checklist: exact identities/commands, displayed real capture, contract/input checks, selected version/license audit and actual local timings. Named reference devices and physical Windows/macOS viewer runs belong to later qualification |
 | M2: renderer/update foundation | Projection/compositing parity, GPU sorting/tiling, budgeted updates, safe lifetime, device/swapchain recovery | Plan §8.2 Linux/NVIDIA development checklist and dated evidence review; full Q6, reference-device P2/P4/P6 and physical N1 deferred to M4 or later |
 | M3: offline robustness/geometry | Preflight, cancellation/resume, recovery recipe, validated depth/mesh, scale, walk collision and mesh export | Q1/Q3/Q5, P1, N2; real difficult-input/failure tests and preserved partial results |
-| M4: platform qualification | Physical Windows/macOS viewer/GPU/display/input/HiDPI runs; Arch, Apple Silicon/MoltenVK; AMD viewer; Brush adapter qualification | Inherited M2 reference-device P2/P4/P6, per-device Q6, physical recovery and N1 (§8.2); former M1 ≤250k fixture opening and ≥30 FPS at 720p on H_V/H_M, plus P3/P4/P5/E2; actual native results and limitations required |
+| A0–A5: local asset production | Real automatic completed objects/structure, PBR and shared exports; actual local native visualization in A1, bounded rooms through A5 | Plan §11 owns detailed milestones/AP targets; §11.8 local exit must pass intrinsic asset quality and production budgets, preserving original reference/native qualification duties |
+| M4: platform qualification | After A5: physical Windows/macOS viewer/GPU/display/input/HiDPI runs; Arch, Apple Silicon/MoltenVK; AMD viewer; Brush adapter qualification; native asset view/import parity | Inherited M2 reference-device P2/P4/P6, per-device Q6, physical recovery and N1 (§8.2); former M1 ≤250k fixture opening and ≥30 FPS at 720p on H_V/H_M, plus P3/P4/P5/E2; actual native results and limitations required. Qualify AP7 native asset parity and unchanged H_V AP8 runtime test |
 | M5: larger scenes | Chunks/LOD, prefetch/eviction, coarse-first load, W3/W4 handling and collision residency | P4–P6, Q6, adversarial fly paths, bounded peak memory and chunk-boundary tests |
-| M6: release candidate | Complete workflows, documentation, sealed-corpus results, packages, rights/privacy review and repeatable install | Full requirement-to-evidence matrix for claimed profiles, Q/P/N/E gates, unresolved limitations, reproducible release procedure |
+| M6: combined offline release candidate | Reconstruction and asset workflows, documentation, sealed-corpus results, packages, rights/privacy review and repeatable install | Full Q/P/N/E for claimed release profiles plus AP0–AP9 for at least one local asset-production profile, including deferred reference/native evidence; reproducible release procedure |
+| A6: later engine packaging | After M6: reusable prefabs and assembled engine scenes from the same asset catalog | Plan §11.7; repeated AP7/AP8 checks for the adapter |
 
 The user-approved [M1 development-exit decision](adr/012-m1-development-exit.md) assigns physical Windows/macOS qualification to M4. Close M1 against plan §8.1 on the available Linux development profile and hosted CPU CI, then continue M2; review the remaining local evidence before declaring M1 VERIFIED. Reference-machine Q/P/N/E qualification and full distribution rights stay open in their assigned milestones. This scheduling change does not waive release platforms or numerical gates.
 
@@ -253,14 +259,17 @@ Default reconstruction certification is NVIDIA-first; portable viewing is still 
 
 Do not weaken an acceptance target, remove a failed case, switch LPIPS backbones, change image resolution or call a reduced scene the original workload merely to pass. A proposed target correction requires an explicit decision with measured evidence; retain the original result for comparison.
 
-After M6, Phase 2 follows plan §11.7's A0–A6 sequence and §11.6's AP0–AP9
-gates. Do not duplicate that backlog here. First freeze contracts/rights/capture
+After M3, A0–A5 precede M4; follow plan §11.7 and §11.6's AP0–AP9 gates.
+Do not duplicate that backlog here. First freeze contracts/rights/capture
 and resource profiles, then prove the small automatic A1 pilot before expanding
 rooms. Record automatic success, rejection, partial and assisted outcomes exactly
 as defined there. Manual masks, candidate selection, cleanup, replacement or
 approval used to choose a result remain visible and outside automatic yield.
-Ordinary engine import in A1 tests portability; engine-specific prefabs/packaging
-belong to A6. M7–M8 remain DEFERRED_BY_USER throughout.
+Display the real completed output in the local native viewer at A1; ordinary local
+engine import is additional evidence. A5's exact local exit follows §11.8; original
+reference/native AP7/AP8 and dependent full AP9 stay open until M4/M6. No intrinsic
+completion/material/geometry failure may be hidden by that hardware deferral.
+Engine-specific prefabs/packaging belong to A6 after M6. M7–M8 remain DEFERRED_BY_USER.
 
 ## 9. Verification and evidence
 
@@ -281,7 +290,7 @@ Run formatting/static checks and meaningful tests for each affected slice. Use A
 Record exact working directory, command, exit status, code revision or dirty-diff identity, fixture/config hashes, toolchain, GPU/driver, measurement scope and result location. Performance evidence includes warmup, repetitions, p50/p95/p99, resolution, scene/LOD/overdraw, peak-memory definition and competing workloads. Distinguish whole-video processing time from training time. Save failures and per-scene metrics, not just aggregate success.
 
 Use the plan's Q1–Q6, P1–P6, N1–N2 and E1–E2 IDs. L1 is a future pilot target. Reference-hardware targets are proposed gates; published paper numbers are context, never measurements of this implementation.
-Use AP0–AP9 only for the distinct Phase 2 products/profile. Real held-out views,
+Use AP0–AP9 only for the distinct asset products/profile. Real held-out views,
 novel lighting, object move/remove, topology/UV/bake, support/layout and engine
 import tests are separate gates; valid exports and paper demonstrations cannot
 stand in for them. Research/docs checks never upgrade capability statuses.
@@ -299,7 +308,7 @@ do not regenerate the plan or reread its full research appendix for each edit.
 
 Communicate concise outcomes, new findings and concrete blockers while working. Keep routine command output in logs. Before declaring a milestone complete, review the diff for architecture boundaries, ownership, failure behavior, input safety, unnecessary abstraction and missing verification.
 
-Phase 1 is complete only when the assigned product behaviors work, required evidence exists for every claimed platform/profile, packaging and documentation are usable, and unresolved limitations are explicit. Missing hardware or signing credentials may block qualification or signing; they do not justify fabricated evidence. Development-complete, hardware-qualified and signed/published are separate states.
+M6 is complete only when reconstruction and the pre-M4 asset workflow work, required Q/P/N/E and AP evidence exists for the specified claimed profiles, packaging and documentation are usable, and unresolved limitations are explicit. Missing hardware or signing credentials may block qualification or signing; they do not justify fabricated evidence. A5 local development, full hardware qualification and signed/published release are separate states. A6 later engine packaging is not an M6 prerequisite.
 
 At each substantive handoff, report:
 
@@ -307,7 +316,7 @@ At each substantive handoff, report:
 2. Actual build/run commands that now work.
 3. Checks and measurements performed, with result locations.
 4. Known failures, skipped checks and missing external prerequisites.
-5. Exact next work item, or the evidence that Phase 1 is complete.
+5. Exact next work item, or the scoped milestone/release completion evidence.
 
 For implementation requests, start with repository/environment inspection and
 the first incomplete authorized milestone. For research/planning requests, finish
@@ -324,7 +333,9 @@ The originally referenced plan v1.0 has SHA-256 `2e9e8a5bea71e51c7416aa0be20d4df
 Plan v1.2 added [M2 development scheduling](adr/016-m2-development-exit.md).
 Plan v1.3 adds [offline asset production after M6](adr/018-offline-asset-production.md)
 from the user's 17 October 2026 research/planning request. It preserves §3 and
-historical verification; planning is not implementation authorization for this turn.
+historical verification. Plan v1.4 / [ADR 019](adr/019-assets-before-platforms.md)
+supersedes its scheduling: local A0–A5 after M3/before M4, A6 after M6, and a
+combined M6 release. Neither documentation task implements or qualifies the pipeline.
 
 Official OpenAI guidance consulted on 11 October 2026:
 
