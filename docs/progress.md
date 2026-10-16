@@ -534,15 +534,16 @@ packing exactly across replacements, offsets, transforms and origin changes;
 the full real 4K regression and strict X11 smoke pass. **270 dev / 252 C++23 CPU
 checks**, format/tidy and **2,088 protected files unchanged** pass.
 
-Next executable step: collect
-`artifacts/validation/m2-completion-20261016/resident-full-exit.json` after the
-new 7,200-second full/full/empty stress finishes. Check exit 0 and its bound
-launch hashes, then audit `resident-full/summary.json`, events, observed resident
-copy bytes, allocation cap and readbacks. Its 60-second pilot passes; the long
-run is **IN_PROGRESS**, not a pass. Then implement/check Q6's fixed 100-view
-packing comparison. Rebuilt executables invalidate the historical dependency
-receipt's current-byte check (exit 2); fresh runtime observation is also due.
-Preserve saved scenes, failures and the frozen fixture; do not rerun reconstruction.
+[Resident-copy lifetime completion](validation/2026-10-16-m2-resident-lifetime.md)
+now passes the bound exit/source/binary and independent event/readback audit:
+**7,200.746 s**, **480 updates**, **359 resizes**, **13 identical captures**,
+**304,047 frames**, zero Vulkan errors and **520,936,256** peak tracked bytes.
+Both host and resident copy totals match the full/full/empty revision sequence.
+
+Next executable step: implement/check Q6's fixed 100-view packing comparison.
+Rebuilt executables invalidate the historical dependency receipt's current-byte
+check (exit 2); fresh runtime observation is also due. Preserve saved scenes,
+failures and the frozen fixture; do not rerun reconstruction.
 Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
 other-scene/platform qualification remain open.
 
