@@ -15,6 +15,9 @@ successful four-job hosted CPU run at reviewed commit `788db85`. Remaining
 hardware, corpus, benchmark and distribution obligations keep their later gate
 statuses open.
 
+[User-approved M2 development exit](adr/016-m2-development-exit.md) now uses the
+current Linux/NVIDIA host and the six-item [plan §8.2 checklist](technical_plan.md#82-m2-development-exit-and-deferred-hardware-qualification). Other native-machine renderer qualification starts at M4; full release gates remain due by M6. M2 stays IN_PROGRESS pending its scoped checklist review.
+
 ## Implemented and checked
 
 Native SDL3/ImGui viewer/CLI, Vulkan anisotropic projection/radix/tile rendering,
@@ -642,17 +645,14 @@ artifact audit pass; **1,513 protected files unchanged**. Selected production
 binaries and current runtime receipts remain unchanged/current. This verifies
 local synthetic capacity, not full P2/P4 or reconstruction.
 
-Next executable step: inspect native presentation-timing support and the selected
-swapchain present mode/queue depth before implementing P2's timed replay. Freeze
-an adversarial path for the new 2M fixture, then use the prescribed **30-second
-warmup / 120-second measurement / five runs** with presented intervals distinguished
-from CPU draw and completed GPU timings. H_V certification remains externally
-blocked; local diagnostic measurements must retain their scope. Q6's prescribed
-captured-target path, corpus/scale/platforms and full gates remain open. Preserve
-saved runs, sources and both frozen fixtures; do not rerun the two-hour stress or
-reconstruction.
-Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
-other-scene/platform qualification remain open.
+Next executable step: audit all six plan §8.2 local M2 exit items against the
+retained evidence, binding fixture/source/toolchain identities and recording any
+missing local checks in a dated exit review. Close only that scoped development
+exit when supported, then continue M3. Reference-device presented-FPS replay,
+physical input/display/recovery and other native-machine qualification belong to
+M4 or later and do not block M2. Preserve saved runs, sources and both frozen
+fixtures; do not rerun the two-hour stress or reconstruction. Full Q/P/N/E,
+release-vcpkg, corpus/scale and platform qualification remain open.
 
 [Physical Windows/macOS qualification](adr/012-m1-development-exit.md) is scheduled
 for M4, including the unchanged frozen bundle/hash, native viewers, GPU/display/
