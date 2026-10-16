@@ -1,0 +1,7 @@
+# Isolated Linux x86_64 / CPython 3.12.15; exact installed distributions.
+cuda-toolkit==12.9.2.0
+numpy==2.2.6
+nvidia-cuda-runtime-cu12==12.9.79
+nvidia-curand-cu12==10.3.10.19
+pillow==11.3.0
+pycolmap-cuda12==4.2.1

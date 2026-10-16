@@ -1,0 +1,4 @@
+# Isolated Linux CPython 3.12 M3 COLMAP CUDA backend. No model weights.
+pycolmap-cuda12==4.2.1
+numpy==2.2.6
+Pillow==11.3.0
