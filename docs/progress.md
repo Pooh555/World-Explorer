@@ -65,7 +65,7 @@ source/result/scene identities and structural validation, without starting jobs.
 | Video | Current saved state |
 |---|---|
 | sample_1 | Completed 7k fit, **295,952 splats**; saved terminal/validation exits 0 and current native CLI bundle validation exit 0. Its previously inspected Source view remains available |
-| sample_2 | Saved terminal exit 2, **POSE_DISCONNECTED**, no scene. Retain failed stages; unchanged retries cannot meet registration from the retained match graph |
+| sample_2 | New replacement SHA `10a6405980025eadfbe12e4c68d86bbab8d41af24e0fa48f2d12ca829f0e1de3`; old artifacts deleted at user request. Fresh run FAILED, exit 2 / POSE_DISCONNECTED after 1,137.473 s; 90 decoded frames, largest connected model 79 (81 required). No fit or scene; failed stages retained. [Reset/run evidence](validation/2026-10-16-sample2-second-replacement.md) |
 | sample_3 | Replacement source SHA `4448a1d9eb93f8b7fc787f9ea037d282128438a2512fad8eb8df8544f53906da`. Saved **80 registered poses → 7k fit → 648,332 splats**, terminal/validation and native bundle validation exits 0. [Current full-scene checks](validation/2026-10-15-sample3-evidence.md): native viewer 126 frames / zero Vulkan errors; [all 80 calibrated comparisons](validation/2026-10-15-all-camera-reference.md) pass, maximum one RGB8 level; 16/16 offline holdout scores reproduce exactly, mean **20.8708 dB / 0.815687 SSIM / 0.253078 LPIPS**, Q3 remains blocked |
 
 The preceding sample_3 disconnected/recovery records describe the older source
@@ -92,6 +92,15 @@ Future videos: `python3 tools/new_video_job.py data/local/VIDEO.mp4` creates
 refused; `--name VIDEO_retry_2` selects a separate attempt. Full SHA-256 stays in
 `source.json`; all source data/artifacts remain ignored;
 [layout protocol](protocols/artifacts.md).
+
+The latest sample_2 replacement has terminated with POSE_DISCONNECTED.
+Next recovery step: inspect sparse-model image memberships and the verified
+match graph in `artifacts/sample_2/poses/stages/.poses-1_k2am3l/` before
+selecting a disjoint recovery attempt capable of connecting at least 81/90
+frames. Preserve the failed stages and decoded data; do not restart the
+unchanged solve or lower registration thresholds. The prior replacement's
+raw stages were deleted under the explicit second reset request; its dated
+report retains historical results.
 
 ## Next executable work and blockers
 
@@ -618,8 +627,8 @@ runtime pins and saved reconstructions are unchanged. The later
 the earlier local replay retains its narrower qualification.
 
 For these videos, use the working sample_1 view below; preserve
-sample_2's failed stages until replacement footage or a qualified pose recovery
-is available, and both completed scenes. Do not restart identical failed solves or
+the replacement sample_2's failed stages pending qualified pose recovery,
+and both completed scenes. Do not restart identical failed solves or
 completed fits. Current sample_1 view:
 `build/dev/we_viewer --scene artifacts/sample_1/scene.wexplore --source-view --max-splats 1000000`.
 Source view is a viewing reference, not measured gravity or floor/collision.
