@@ -330,6 +330,50 @@ diagnostic tolerances remain PSNR ≥45 dB and maximum error ≤8 levels.
 [Clipping-boundary evidence](../validation/2026-10-15-clipping-boundaries.md)
 records the tested compiler/device scope. No real reconstruction or Q gate follows.
 
+## Maximum-scale synthetic fixture
+
+`we_scale_fixture NEW_DIRECTORY` publishes the separate MIT diagnostic
+`resident_2m_two_banks_v1`: eight 250k chunks, **2,000,000 degree-3 splats**, positive
+opacity, arbitrary scale and unavailable collision. Binary-grid positions and SH
+coefficients reproduce without randomness or libm-dependent geometry. The frozen
+scene SHA is `589336d9a958d9870936b6707857e0407fd8bf0643e3d822b5c1416080ae64f8`.
+This CPU-only target requires `BUILD_TESTING`; it roundtrips the normal bundle,
+copies the repository license and atomically publishes the profile after assets.
+Existing outputs are refused. The frozen 250k fixture below retains its identity.
+
+At 1920×1080, the camera at `(0,0,8)` sees one million splats in the Z=0 bank;
+the other million at Z=16 are behind it. Reversing optical right/forward exposes
+the other bank without eviction. Both views use intrinsics
+`(1536,1536,959.5,539.5)`, near/far `1/32`, and optical down −Y. Projected radii
+are two pixels; the grid's exact tile crossings total **1,561,248 references**
+(1,248 horizontal × 1,251 vertical). CPU tests independently check full counts,
+degree/opacity, frustum eligibility and integer coverage.
+
+```sh
+build/dev/we_scale_fixture artifacts/diagnostics/scale-v1
+build/dev/we_gpu_scale_fixture artifacts/diagnostics/scale-v1/scene.wexplore artifacts/diagnostics/scale-fp32
+build/dev/we_gpu_scale_fixture artifacts/diagnostics/scale-v1/scene.wexplore artifacts/diagnostics/scale-packed --fp16-sh
+```
+
+The GPU helper requires the frozen bundle and native validation. It uses ordinary
+asynchronous admission, checks exact full-payload transfer totals, fixed-size
+nonblank front/reverse/front-return readbacks, unchanged caller data and full
+resident/reference counts. `--fp16-sh` selects explicit 160-byte SH storage;
+default FP32 uses 256 bytes. Default tracked-buffer budget is **2 GiB**;
+`--budget-mib N` accepts 512–4096, without changing application defaults. Rejected
+full admission must preserve the empty baseline revision and pixels, and exits 2.
+Unknown/duplicate/missing options and existing outputs fail explicitly.
+
+`native.json` retains per-draw buffer categories, sampled RSS and maximum observed
+values. Linux reports separate approximate `/proc/self/status` RSS/HWM and
+`smaps_rollup` RSS; unavailable counters are null. Reported maxima are maxima of
+the retained samples, not a claim to observe every transient allocation. Tracked
+buffers include host-visible staging but exclude swapchain/driver allocations;
+independent category peaks must not be summed as simultaneous usage. The helper
+enforces its explicit buffer budget and the unchanged 4 GiB sampled process bound.
+Readback/idle waits and fixed-view warmups make this an admission/memory diagnostic,
+not P2's five 120-second adversarial paths or full P4/reference qualification.
+
 ## Frozen portable viewer fixture
 
 `we_viewer_fixture NEW_DIRECTORY` creates the project-authored MIT synthetic

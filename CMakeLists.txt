@@ -308,6 +308,12 @@ if(WE_BUILD_VIEWER)
   target_compile_definitions(we_gpu_portable_fixture PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
   add_dependencies(we_gpu_portable_fixture we_shaders)
 
+  add_executable(we_gpu_scale_fixture tests/gpu/scale_fixture.cpp)
+  we_target(we_gpu_scale_fixture)
+  target_link_libraries(we_gpu_scale_fixture PRIVATE render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_gpu_scale_fixture PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
+  add_dependencies(we_gpu_scale_fixture we_shaders)
+
   add_executable(we_gpu_reference tests/gpu/reference.cpp)
   we_target(we_gpu_reference)
   target_link_libraries(we_gpu_reference PRIVATE render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
@@ -346,6 +352,10 @@ install(DIRECTORY workers/ DESTINATION share/world-explorer/workers PATTERN "__p
 install(DIRECTORY "${WE_WIRE_DIRECTORY}/python/" DESTINATION share/world-explorer/workers/wire_bindings PATTERN "__pycache__" EXCLUDE)
 
 if(BUILD_TESTING)
+  add_executable(we_scale_fixture tests/fixtures/scale_fixture.cpp)
+  we_target(we_scale_fixture)
+  target_link_libraries(we_scale_fixture PRIVATE scene_store render_core nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_scale_fixture PRIVATE WE_FIXTURE_LICENSE="${PROJECT_SOURCE_DIR}/LICENSE")
   add_executable(we_viewer_fixture tests/fixtures/viewer_fixture.cpp)
   we_target(we_viewer_fixture)
   target_link_libraries(we_viewer_fixture PRIVATE scene_store render_core nlohmann_json::nlohmann_json)
