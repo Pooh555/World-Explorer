@@ -628,14 +628,29 @@ prevent a full N1 claim. **278/278** dev CPU checks, five timing cases per compi
 and format/tidy pass; **1,382 protected files unchanged**. Fresh runtime receipts
 for this viewer pass default/local inventory checking; strict rights closure stays 3.
 
-Next executable step: inspect P2/P4's prescribed scale and current fixture limits,
-then add a separate deterministic synthetic admission/memory fixture for **2M
-resident degree-3 splats / ≤1M contributing / ≤8M tile references**. Preserve the
-frozen 250k M1 fixture. Exercise the full count at 1920×1080 with explicit budgets
-and actual allocation/RSS observations on this development host; H_V performance
-qualification remains separate. Q6's prescribed captured-target path, scale/corpus/
-platforms and full gates remain open. Preserve saved runs and sources; do not rerun
-the long stress or reconstruction.
+[Maximum-scale synthetic admission](validation/2026-10-16-m2-scale-fixture.md):
+a separate frozen **2M degree-3** fixture roundtrips byte-identically in three
+GCC/Clang publications, preserving the 250k fixture. Four native compiler/storage
+checks at **1920×1080** retain all 2M splats, switch between two 1M-splat banks,
+match exact **1,561,248** references and reproduce all readbacks with zero Vulkan
+errors. Peak sampled tracked allocation is **1,090,486,384 FP32 / 709,618,112 packed
+bytes** under an explicit 2 GiB budget. Sampled rollup RSS and approximate HWM
+remain below 4 GiB; the observer now retains maxima rather than its last reading.
+A 512 MiB attempt rejects without changing the prior scene/pixels. **280/280** dev
+checks, two Clang fixture cases / 51 assertions, format/tidy and independent raw
+artifact audit pass; **1,513 protected files unchanged**. Selected production
+binaries and current runtime receipts remain unchanged/current. This verifies
+local synthetic capacity, not full P2/P4 or reconstruction.
+
+Next executable step: inspect native presentation-timing support and the selected
+swapchain present mode/queue depth before implementing P2's timed replay. Freeze
+an adversarial path for the new 2M fixture, then use the prescribed **30-second
+warmup / 120-second measurement / five runs** with presented intervals distinguished
+from CPU draw and completed GPU timings. H_V certification remains externally
+blocked; local diagnostic measurements must retain their scope. Q6's prescribed
+captured-target path, corpus/scale/platforms and full gates remain open. Preserve
+saved runs, sources and both frozen fixtures; do not rerun the two-hour stress or
+reconstruction.
 Physical loss, desktop/Wayland minimize, release-vcpkg, reference Q/P/N/E and
 other-scene/platform qualification remain open.
 
