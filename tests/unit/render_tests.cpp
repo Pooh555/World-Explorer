@@ -50,6 +50,55 @@ TEST_CASE("renderer admission is idempotent and rejects stale or modified retrie
     REQUIRE_FALSE(sink.enqueue(wrong_epoch));
 }
 
+TEST_CASE("prepared renderer admission preserves retries and checks current budget") {
+    const auto bytes = validate_scene(*make_diagnostic_scene()).value();
+    renderer_update_sink sink({bytes * 4, 250000, 4});
+    const auto original = batch_at({1}, {11}, true);
+    auto prepared = sink.prepare(original);
+    REQUIRE(prepared);
+    REQUIRE(original.snapshot);
+    REQUIRE(sink.set_residency_budget({bytes * 5, 250000, 4}));
+    const auto changed = sink.enqueue(*prepared);
+    REQUIRE_FALSE(changed);
+    CHECK(changed.error().code == error_code::WOULD_BLOCK);
+    auto fresh = sink.prepare(original);
+    REQUIRE(fresh);
+    const auto ticket = sink.enqueue(*fresh);
+    REQUIRE(ticket);
+    REQUIRE_FALSE(sink.enqueue(*fresh));
+    auto duplicate = sink.prepare(original);
+    REQUIRE(duplicate);
+    const auto repeated = sink.enqueue(*duplicate);
+    REQUIRE(repeated);
+    CHECK(*repeated == *ticket);
+    CHECK(sink.enqueue(*duplicate));
+    auto altered = batch_at({2}, {11});
+    auto collision = sink.prepare(altered);
+    REQUIRE(collision);
+    const auto rejected = sink.enqueue(*collision);
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == error_code::DUPLICATE_OPERATION);
+    auto changed_scene = std::make_shared<scene_state>(*original.snapshot);
+    auto changed_chunk = std::make_shared<scene_chunk>(*changed_scene->chunks.begin()->second);
+    changed_chunk->splats.front().opacity *= 0.5F;
+    changed_scene->chunks.begin()->second = changed_chunk;
+    auto changed_content = original;
+    changed_content.snapshot = changed_scene;
+    auto changed_prepared = sink.prepare(changed_content);
+    REQUIRE(changed_prepared);
+    const auto changed_retry = sink.enqueue(*changed_prepared);
+    REQUIRE_FALSE(changed_retry);
+    CHECK(changed_retry.error().code == error_code::DUPLICATE_OPERATION);
+    make_visible(sink, *ticket, 1);
+    auto stale = batch_at({3}, {12});
+    auto stale_prepared = sink.prepare(stale);
+    REQUIRE(stale_prepared);
+    const auto wrong_base = sink.enqueue(*stale_prepared);
+    REQUIRE_FALSE(wrong_base);
+    CHECK(wrong_base.error().code == error_code::RESYNC_REQUIRED);
+    CHECK(stale.snapshot);
+}
+
 TEST_CASE("renderer reports an oversized new snapshot as invalid before residency admission") {
     renderer_update_sink sink({sizeof(gaussian) - 1, 250000, 4});
     auto first = batch_at({1}, {1}, true);

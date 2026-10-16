@@ -5,6 +5,8 @@
 #include <deque>
 #include <mutex>
 #include <optional>
+#include <string>
+#include <utility>
 
 namespace world_explorer {
 enum class update_state : std::uint8_t {
@@ -31,12 +33,33 @@ struct admitted_update {
     update_ticket ticket;
     scene_delta_batch batch;
 };
+// Prepared off the render admission path. The snapshot remains immutable for the
+// lifetime of this value; a failed enqueue leaves the value available for retry.
+class prepared_scene_update {
+  public:
+    prepared_scene_update(const prepared_scene_update&) = delete;
+    prepared_scene_update& operator=(const prepared_scene_update&) = delete;
+    prepared_scene_update(prepared_scene_update&&) noexcept = default;
+    prepared_scene_update& operator=(prepared_scene_update&&) noexcept = default;
+
+  private:
+    friend class renderer_update_sink;
+    prepared_scene_update(scene_delta_batch batch, std::size_t bytes, std::string hash,
+                          residency_budget budget)
+        : batch_(std::move(batch)), bytes_(bytes), hash_(std::move(hash)), budget_(budget) {}
+    scene_delta_batch batch_;
+    std::size_t bytes_{};
+    std::string hash_;
+    residency_budget budget_;
+};
 // Multi-producer, single render-consumer. Snapshots are immutable. Failed enqueue
 // preserves its argument. Tickets and duplicate operations are retained for a
 // bounded 256-operation replay window; consumers must resync after losing it.
 class renderer_update_sink {
   public:
     explicit renderer_update_sink(residency_budget budget = {});
+    result<prepared_scene_update> prepare(const scene_delta_batch& batch) const;
+    result<update_ticket> enqueue(prepared_scene_update& prepared);
     result<update_ticket> enqueue(scene_delta_batch& batch);
     result<update_progress> query_progress(update_ticket ticket) const;
     result<void> set_residency_budget(residency_budget budget);
@@ -63,6 +86,14 @@ class renderer_update_sink {
     };
     void cancel_pending_locked();
     record* find(update_ticket ticket);
+    std::string fingerprint(const scene_state& scene) const;
+    std::string chunk_fingerprint(const std::shared_ptr<const scene_chunk>& chunk) const;
+    struct cached_chunk_fingerprint {
+        std::weak_ptr<const scene_chunk> owner;
+        std::string hash;
+    };
+    mutable std::mutex fingerprint_mutex_;
+    mutable std::deque<cached_chunk_fingerprint> fingerprint_cache_;
     mutable std::mutex mutex_;
     residency_budget budget_;
     std::deque<admitted_update> pending_;

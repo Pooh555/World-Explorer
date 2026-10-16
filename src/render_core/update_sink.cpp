@@ -1,21 +1,87 @@
 #include "world_explorer/render_core/update_sink.hpp"
+#include "world_explorer/core/hash.hpp"
 #include <algorithm>
+#include <array>
 #include <utility>
 
 namespace world_explorer {
+namespace {
+void add_u64(sha256_builder& hash, std::uint64_t value) {
+    std::array<std::byte, 8> bytes{};
+    for (unsigned index = 0; index < 8; ++index)
+        bytes[index] = static_cast<std::byte>((value >> (8U * index)) & 255U);
+    hash.update(bytes);
+}
+void add_string(sha256_builder& hash, const std::string& value) {
+    add_u64(hash, value.size());
+    hash.update(std::as_bytes(std::span(value.data(), value.size())));
+}
+} // namespace
 renderer_update_sink::renderer_update_sink(residency_budget budget) : budget_(budget) {}
 renderer_update_sink::record* renderer_update_sink::find(update_ticket ticket) {
     const auto found = std::find_if(history_.begin(), history_.end(),
                                     [&](const auto& item) { return item.ticket == ticket; });
     return found == history_.end() ? nullptr : &*found;
 }
-result<update_ticket> renderer_update_sink::enqueue(scene_delta_batch& batch) {
+std::string
+renderer_update_sink::chunk_fingerprint(const std::shared_ptr<const scene_chunk>& chunk) const {
+    {
+        std::lock_guard lock(fingerprint_mutex_);
+        for (const auto& entry : fingerprint_cache_)
+            if (entry.owner.lock() == chunk)
+                return entry.hash;
+    }
+    auto hash = scene_chunk_content_hash(*chunk);
+    std::lock_guard lock(fingerprint_mutex_);
+    for (const auto& entry : fingerprint_cache_)
+        if (entry.owner.lock() == chunk)
+            return entry.hash;
+    if (fingerprint_cache_.size() >= 4096) {
+        std::erase_if(fingerprint_cache_, [](const auto& entry) { return entry.owner.expired(); });
+        if (fingerprint_cache_.size() >= 4096)
+            fingerprint_cache_.pop_front();
+    }
+    fingerprint_cache_.push_back({chunk, hash});
+    return hash;
+}
+std::string renderer_update_sink::fingerprint(const scene_state& scene) const {
+    sha256_builder hash;
+    add_u64(hash, scene.id.value);
+    add_u64(hash, scene.epoch.value);
+    add_u64(hash, scene.revision.value);
+    add_u64(hash, static_cast<std::uint64_t>(scene.scale));
+    add_u64(hash, scene.provenance.size());
+    for (const auto& [key, value] : scene.provenance) {
+        add_string(hash, key);
+        add_string(hash, value);
+    }
+    add_u64(hash, scene.chunks.size());
+    for (const auto& [id, chunk] : scene.chunks) {
+        add_u64(hash, id.value);
+        const auto chunk_hash = chunk_fingerprint(chunk);
+        hash.update(std::as_bytes(std::span(chunk_hash.data(), chunk_hash.size())));
+    }
+    return hash.finish();
+}
+result<prepared_scene_update> renderer_update_sink::prepare(const scene_delta_batch& batch) const {
     if (!batch.snapshot)
         return fail(error_code::INVALID_DATA, "Missing renderer snapshot");
     residency_budget validated_budget;
     {
         std::lock_guard lock(mutex_);
         validated_budget = budget_;
+    }
+    auto bytes = validate_scene(
+        *batch.snapshot, {4096, validated_budget.max_splats, validated_budget.bytes, 1000000});
+    if (!bytes)
+        return std::unexpected(bytes.error());
+    return prepared_scene_update(batch, *bytes, fingerprint(*batch.snapshot), validated_budget);
+}
+result<update_ticket> renderer_update_sink::enqueue(scene_delta_batch& batch) {
+    if (!batch.snapshot)
+        return fail(error_code::INVALID_DATA, "Missing renderer snapshot");
+    {
+        std::lock_guard lock(mutex_);
         const auto duplicate =
             std::find_if(history_.begin(), history_.end(),
                          [&](const auto& item) { return item.operation == batch.operation; });
@@ -50,11 +116,18 @@ result<update_ticket> renderer_update_sink::enqueue(scene_delta_batch& batch) {
             }
         }
     }
-    auto bytes = validate_scene(
-        *batch.snapshot, {4096, validated_budget.max_splats, validated_budget.bytes, 1000000});
-    if (!bytes)
-        return std::unexpected(bytes.error());
-    const auto content_hash = scene_content_hash(*batch.snapshot);
+    auto prepared = prepare(batch);
+    if (!prepared)
+        return std::unexpected(prepared.error());
+    auto ticket = enqueue(*prepared);
+    if (ticket && !prepared->batch_.snapshot)
+        batch = {};
+    return ticket;
+}
+result<update_ticket> renderer_update_sink::enqueue(prepared_scene_update& prepared) {
+    auto& batch = prepared.batch_;
+    if (!batch.snapshot)
+        return fail(error_code::INVALID_DATA, "Missing renderer snapshot");
     std::lock_guard lock(mutex_);
     const auto duplicate = std::find_if(history_.begin(), history_.end(), [&](const auto& item) {
         return item.operation == batch.operation;
@@ -63,13 +136,13 @@ result<update_ticket> renderer_update_sink::enqueue(scene_delta_batch& batch) {
         if (duplicate->scene != batch.id || duplicate->epoch != batch.epoch ||
             duplicate->base != batch.base_revision ||
             duplicate->progress.revision != batch.new_revision ||
-            duplicate->content_hash != content_hash)
+            duplicate->content_hash != prepared.hash_)
             return fail(error_code::DUPLICATE_OPERATION,
                         "renderer operation ID reused for a different revision");
         return duplicate->ticket;
     }
-    if (budget_.max_splats != validated_budget.max_splats ||
-        budget_.bytes != validated_budget.bytes)
+    if (budget_.max_splats != prepared.budget_.max_splats ||
+        budget_.bytes != prepared.budget_.bytes)
         return fail(error_code::WOULD_BLOCK,
                     "renderer residency budget changed during update validation; retry");
     if (!batch.snapshot || batch.operation.value == 0 || batch.snapshot->id != batch.id ||
@@ -92,8 +165,9 @@ result<update_ticket> renderer_update_sink::enqueue(scene_delta_batch& batch) {
     }
     const auto* visible = visible_ticket_ ? find(*visible_ticket_) : nullptr;
     const std::size_t resident = (visible ? visible->bytes : 0) + retired_bytes_;
-    if (pending_.size() >= budget_.max_pending || *bytes > budget_.bytes ||
-        queued_bytes_ > budget_.bytes - *bytes || resident > budget_.bytes - *bytes - queued_bytes_)
+    if (pending_.size() >= budget_.max_pending || prepared.bytes_ > budget_.bytes ||
+        queued_bytes_ > budget_.bytes - prepared.bytes_ ||
+        resident > budget_.bytes - prepared.bytes_ - queued_bytes_)
         return fail(error_code::WOULD_BLOCK,
                     "renderer upload or replacement residency budget is full");
     while (history_.size() >= 256) {
@@ -110,13 +184,13 @@ result<update_ticket> renderer_update_sink::enqueue(scene_delta_batch& batch) {
                         batch.epoch,
                         batch.base_revision,
                         {update_state::ACCEPTED, batch.new_revision, 0, {}},
-                        *bytes,
-                        content_hash});
+                        prepared.bytes_,
+                        prepared.hash_});
     accepted_scene_ = batch.id;
     accepted_epoch_ = batch.epoch;
     accepted_revision_ = batch.new_revision;
-    queued_bytes_ += *bytes;
-    batch.upload_bytes = *bytes;
+    queued_bytes_ += prepared.bytes_;
+    batch.upload_bytes = prepared.bytes_;
     pending_.push_back({ticket, std::move(batch)});
     batch = {};
     return ticket;
