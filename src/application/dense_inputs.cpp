@@ -66,8 +66,11 @@ result<prepared_dense_inputs> prepare_dense_inputs(const dense_input_request& re
         if (!job_detail::valid_digest(request.depth_recipe_sha256) ||
             sha256(*selected_recipe) != request.depth_recipe_sha256)
             return fail(error_code::INVALID_DATA, "Dense depth recipe checksum differs");
+        // libc++ JSON adapters require character iterators; preserve the hashed byte extent.
         const auto depth_recipe = nlohmann::json::parse(
-            *selected_recipe, [](int depth, nlohmann::json::parse_event_t, const nlohmann::json&) {
+            reinterpret_cast<const char*>(selected_recipe->data()),
+            reinterpret_cast<const char*>(selected_recipe->data() + selected_recipe->size()),
+            [](int depth, nlohmann::json::parse_event_t, const nlohmann::json&) {
                 if (depth > 32)
                     throw std::invalid_argument("Dense recipe nesting exceeds profile");
                 return true;
