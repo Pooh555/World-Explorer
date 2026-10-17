@@ -179,4 +179,6 @@ raw captures or diagnostic images; `sample.mp4`, caches, scenes and `artifacts/`
 are ignored. [Specification](docs/technical_plan.md) owns acceptance gates;
 [documentation map](docs/README.md) links contracts/evidence and
 [documentation standards](docs/protocols/documentation.md). Check local links with
-`python3 tools/check_docs.py`.
+`python3 tools/check_docs.py`. Run `python3 tools/check_cpp_style.py` before
+finishing any C++ edit; it validates `clang-format`, optionally `clang-tidy`
+against the active build database, and `git diff --check` in one pass.

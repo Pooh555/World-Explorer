@@ -21,6 +21,7 @@
 - `release-vcpkg` uses the immutable dependency baseline; qualification remains separate.
 - Development archives are SHA-256 pinned in `cmake/dependencies.cmake`.
 - Format first-party C++ with clang-format 23.1.1 and `.clang-format`.
+- Run the repo gate `python3 tools/check_cpp_style.py` before finishing C++ work; it enforces formatting, optional clang-tidy, and whitespace checks together.
 - Static analysis uses clang-tidy 23.1.1; do not weaken warnings to pass.
 - GPU execution requires native device access; sandbox driver-load failure is not GPU absence.
 - Record actual commands/results in `docs/validation/`, not inferred passes.
