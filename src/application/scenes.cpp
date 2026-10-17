@@ -15,13 +15,13 @@ scene_snapshot make_diagnostic_scene() {
     // An asymmetric arrangement exposes handedness and depth-order mistakes.
     for (int index = 0; index < 45; ++index) {
         gaussian splat;
-        splat.mean = {static_cast<float>(index % 9 - 4) * 0.28F,
-                      static_cast<float>(index / 9 - 2) * 0.28F,
-                      static_cast<float>(index % 3) * -0.2F};
+        const float col = static_cast<float>(index % 9) - 4.0F;
+        const float row = static_cast<float>(index) / 9.0F - 2.0F;
+        splat.mean = {col * 0.28F, row * 0.28F, static_cast<float>(index % 3) * -0.2F};
         splat.scale = {0.13F, 0.08F, 0.06F};
         splat.opacity = 0.9F;
-        splat.sh[0] = (static_cast<float>(index % 9) / 8.F - 0.5F) / 0.2820947918F;
-        splat.sh[1] = (static_cast<float>(index / 9) / 4.F - 0.5F) / 0.2820947918F;
+        splat.sh[0] = (static_cast<float>(index % 9) / 8.0F - 0.5F) / 0.2820947918F;
+        splat.sh[1] = (static_cast<float>(index) / 9.0F / 4.0F - 0.5F) / 0.2820947918F;
         splat.sh[2] = 0.25F / 0.2820947918F;
         chunk->splats.push_back(splat);
     }
@@ -35,10 +35,11 @@ bounds3d world_bounds(const scene_state& scene) {
         (void)id;
         for (unsigned corner = 0; corner < 8; ++corner) {
             const auto& bounds = chunk->bounds;
-            const auto point = transform_point(chunk->world_from_chunk,
-                                               {corner & 1 ? bounds.maximum.x : bounds.minimum.x,
-                                                corner & 2 ? bounds.maximum.y : bounds.minimum.y,
-                                                corner & 4 ? bounds.maximum.z : bounds.minimum.z});
+            const auto point =
+                transform_point(chunk->world_from_chunk,
+                                {(corner & 1u) != 0u ? bounds.maximum.x : bounds.minimum.x,
+                                 (corner & 2u) != 0u ? bounds.maximum.y : bounds.minimum.y,
+                                 (corner & 4u) != 0u ? bounds.maximum.z : bounds.minimum.z});
             result.minimum.x = std::min(result.minimum.x, point.x);
             result.minimum.y = std::min(result.minimum.y, point.y);
             result.minimum.z = std::min(result.minimum.z, point.z);

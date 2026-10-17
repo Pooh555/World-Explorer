@@ -9,6 +9,7 @@ other git diff issues.
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import subprocess
 import sys
@@ -55,9 +56,48 @@ def resolve_targets(provided: list[str]) -> list[Path]:
     return targets
 
 
+def select_tidy_files(files: list[Path], compile_db: Path | None = None) -> list[Path]:
+    if compile_db is None or not compile_db.exists():
+        return files
+
+    try:
+        database = json.loads(compile_db.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return files
+
+    if not isinstance(database, list):
+        return files
+
+    project_roots = {(ROOT / root_name).resolve() for root_name in DEFAULT_SEARCH_ROOTS}
+    known_files = {
+        Path(entry["file"]).resolve()
+        for entry in database
+        if isinstance(entry, dict) and isinstance(entry.get("file"), str)
+    }
+
+    def is_project_file(path: Path) -> bool:
+        resolved = path.resolve()
+        return any(resolved.is_relative_to(root) for root in project_roots)
+
+    return [path for path in files if path.resolve() in known_files and is_project_file(path)]
+
+
 def run_command(command: list[str]) -> int:
     print("+ " + " ".join(command))
     return subprocess.run(command, cwd=str(ROOT)).returncode
+
+
+def run_repo_quality_checks() -> int:
+    quality_checks = [
+        ["python3", str(ROOT / "tools/check_docs.py")],
+        ["python3", str(ROOT / "tools/check_boundaries.py")],
+    ]
+    for command in quality_checks:
+        rc = run_command(command)
+        if rc != 0:
+            print("Repository quality check failed.", file=sys.stderr)
+            return rc
+    return 0
 
 
 def main() -> int:
@@ -102,18 +142,27 @@ def main() -> int:
         if not tidy_exe:
             print("clang-tidy is required when compile_commands.json exists but was not found in PATH.", file=sys.stderr)
             return 1
+        tidy_files = select_tidy_files(files, compile_db)
+        if not tidy_files:
+            print("No translation units are available in the compile database for clang-tidy.", file=sys.stderr)
+            return 0
+        tidy_relative = [str(path.relative_to(ROOT)) for path in tidy_files]
         tidy_rc = run_command([
             tidy_exe,
             "-p",
             str(build_dir),
             "--warnings-as-errors=*",
-            *relative_files,
+            *tidy_relative,
         ])
         if tidy_rc != 0:
             print("clang-tidy check failed.", file=sys.stderr)
             return tidy_rc
     else:
         print(f"clang-tidy skipped: {compile_db} is not present.")
+
+    quality_rc = run_repo_quality_checks()
+    if quality_rc != 0:
+        return quality_rc
 
     diff_rc = run_command(["git", "-C", str(ROOT), "diff", "--check"])
     if diff_rc != 0:
