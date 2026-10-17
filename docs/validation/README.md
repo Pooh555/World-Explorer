@@ -1,124 +1,124 @@
 # Validation index
 
-Historical reports retain their original code/profile scope; later success does
-not upgrade earlier qualification. Commands/logs, unique identities, failures and
-limitations stay in each report. [Shared command definitions](checks-2026-10-12.md)
-are recipes, not passes. All private artifacts remain local/ignored.
+Historical reports keep their original code/profile scope: later success does not
+upgrade earlier qualification. Each report owns commands/logs, identities,
+measurements, failures and limits; private artifacts stay local/ignored.
+[Shared commands](checks-2026-10-12.md) are recipes, not passes.
+Read [progress](../progress.md) and [requirements](../requirements.md) for current
+status and next work; a historical report's remaining work may be superseded.
 
-| Slice | Report: observed behavior / commands |
+| Slice | Report |
 |---|---|
-| Asset goal before platform qualification | [Rescheduling and document checks](2026-10-17-assets-before-platforms.md): local A0–A5 after M3/before M4, native visual pilot at A1, combined M6 release and later A6 packaging; thresholds/statuses preserved, no pipeline execution |
-| Expanded offline asset planning | [Original research and document checks](2026-10-17-offline-asset-planning.md): historical after-M6 schedule superseded by [ADR 019](../adr/019-assets-before-platforms.md); separate AP gates and reusable-asset architecture retained; no implementation, provisioning, media processing or capability qualification |
-| M3 isolated CUDA dense worker | [Native backend and partial real depth](2026-10-17-dense-worker.md): six-package isolated profile, known-Z synthetic check and three real pose-admitted assets; sparse coverage and forced cancellation retain explicit limits; no geometry gate |
-| M3 native dense inputs | [Checked native grids and retained-image correspondence](2026-10-17-dense-inputs.md): 63 sample_1 frames, separate preprocessing/depth recipe pins, matching GCC/Clang manifests and 7,623 sampled undistortion checks; real MVS/geometry remain unqualified |
-| M3 depth interchange / admission | [Axial depth and immutable pose dependencies](2026-10-17-depth-assets.md): explicit validity/confidence/support/optional uncertainty, stale/invalidated-pose rejection and synthetic inspection; 295 dev checks, 15 final cases / 772 assertions across GCC/Clang/native sanitizers, 18 independent CLI probes and 1,509 preserved files; real MVS/fusion/scale/walking remain open |
-| M3 recovery admission / graph | [Read-only retained inspection](2026-10-16-m3-recovery-analysis.md): verified input binding, bounded graphs, private-copy SQLite and exclusive reports; sample_2 remains 79/90, weak existing-point support, no unchanged retry; 17 new cases / 280 dev checks / 166 worker cases per interpreter and 1,509 preserved files |
-| M2 development exit review | [Six local items verified](2026-10-16-m2-exit-review.md): scoped Linux/NVIDIA closure; new full sample_1 63-camera reference pass, retained artifact/current runtime audit, no full gate or other-platform upgrade |
-| M2 development exit scheduling | [User-approved local scope](2026-10-16-m2-development-exit.md): six Linux/NVIDIA exit items; external native/reference qualification assigned to M4 or later, full thresholds unchanged; M2 remains IN_PROGRESS pending review |
-| M2 maximum-scale synthetic fixture | [2M admission, bank switching and memory](2026-10-16-m2-scale-fixture.md): three byte-identical CPU publications; four native compiler/storage runs at 1080p retain all 2M splats/exact 1,561,248 references/identical pixels/zero errors, peak tracked FP32/packed allocation 1,090,486,384/709,618,112 bytes; sampled RSS maxima corrected, constrained rejection preserves baseline; 280 dev checks, independent audit and 1,513 protected files pass, full P2/P4 open |
-| M2 native input timing | [Buffered CPU event/camera observations](2026-10-16-m2-input-latency.md): three GCC and one Clang full-scene runs each pass 134 polling-frame control checks with zero Vulkan errors; visible-scene p95 7.70–8.09 ms, startup burst/stale injection/clock precision retained; 278 dev CPU checks, format/tidy and fresh runtime inventory pass, full N1 open |
-| Acquisition-repair runtime refresh | [Current loader/native viewer/owner receipts](2026-10-16-acquire-runtime-refresh.md): 900 frames/zero Vulkan errors, 15 roots/213 loader files, 208 mapped files and 137 owner targets/16 groups/30 notices; current default/local inventory passes, strict closure remains 3; prior observations preserved |
-| Packed lifetime acceptance | [ADR 015](../adr/015-packed-lifetime-development-acceptance.md): user accepts retained interrupted-run evidence as VERIFIED for the local packed lifetime development check, without a rerun or a claim of completed two-hour packed execution; full gates remain open |
-| M2 interrupted packed stress / acquisition retry | [Retained-prefix audit and short native repair](2026-10-16-m2-acquire-timeout.md): exit 2 on acquisition timeout after 4,019.936 s; 267 updates/200 resizes/seven identical captures/66 zero-error samples; short GCC/Clang/Release and full-scene resize regressions pass after retry repair, 273 dev CPU checks pass; no two-hour rerun per user, full qualification unverified |
-| M2 packed lifetime pilot | [Explicit SH storage and bound long-run launch](2026-10-16-m2-packed-lifetime-pilot.md): full saved scene 60.314 s / three updates / two resizes / identical readbacks / zero Vulkan errors, exact transfer accounting; FP32/Clang native regressions and 273 dev checks pass; supervised 7,200-second packed run is running, completion unverified |
-| Renderer runtime refresh | [Fresh loader/native viewer/owner receipts](2026-10-16-packing-runtime-refresh.md): 15 roots/213 ELF files, native empty viewer 900 frames/zero Vulkan errors, 237 mapped files and 160 targets/31 groups/41 notices; new inventory default/local checks pass, strict closure exits 3 for 253 profile gaps; original receipts/data preserved |
-| M2 captured-target packing quality | [Calibrated before/after quality loss](2026-10-16-m2-packing-quality.md): all 63/80 retained cameras and full scenes, mean PSNR loss 0.00001164/0.00000528 dB and LPIPS increase 0.000000740/0.000000189, final 286 readbacks identical, zero Vulkan errors; actual view counts and split scores retained, Q6 corpus/scale/platform gate remains open |
-| Latest sample_2 replacement | [Second reset and supervised rerun](2026-10-16-sample2-second-replacement.md): new source 10a64059…, old sample_2 outputs deleted; terminal exit 2 / POSE_DISCONNECTED after 1,137.473 s; largest model 79/90 (81 required); no fit or scene, failed stages retained |
-| sample_2 replacement | [Fresh reset and supervised rerun](2026-10-16-sample2-replacement.md): old outputs deleted; replacement decoded 88 frames, largest model 75/88 (80 required), terminal exit 2 / POSE_DISCONNECTED after 1,254.710 s; no fit or scene |
-| M2 optional SH packing | [160-byte GPU profile and frozen 100-view comparisons](2026-10-16-m2-sh-packing.md): both full saved scenes, zero Vulkan errors, max one RGB8 level and pairwise PSNR 76.29/77.93 dB; pinned offline metrics/bound native exits/images audited, 48-phase GCC/Clang tests and 273 dev/255 C++23 CPU checks pass; ground-truth Q6 loss and scale/corpus/platform qualification stay open |
-| M2 resident-copy lifetime | [Bound two-hour completion and independent audit](2026-10-16-m2-resident-lifetime.md): exit 0, 7,200.746 s, 480 updates, 359 resizes, 13 identical captures, 304,047 frames, zero Vulkan errors and 520,936,256 peak tracked bytes; actual host/resident byte totals match all revisions, local profile only |
-| M2 resident chunk reuse | [Device-copy parity and sustained local P6 replay](2026-10-16-m2-resident-reuse.md): rebuilt old path misses 2 ms at 2.090 ms; final 100/600-revision replays pass locally at max 0.194/0.229 ms with zero idle waits/errors, GCC/Clang each pass 24 synthetic phases, full real 4K/strict X11 checks and 270 dev/252 C++23 CPU checks pass; the later bound two-hour completion is recorded above, full gates remain open |
-| M2 staged-upload completion audit | [Completed artifacts, events and all readbacks](2026-10-16-m2-staged-lifetime.md): 7,200.518 s reported completion, 480 visible updates, 359 resizes, 13 identical captures, 313,366 frames and zero reported Vulkan errors; independent audit passes, original exit/launch binary digest unavailable; applies to the prior full/empty path |
-| M2 accepted X11 minimize | [Native minimized-frame/update/restore check](2026-10-16-m2-minimize.md): Debug C++26 and Release C++23 pass on an isolated Xwayland/test-WM profile, three skipped draws retain an accepted revision, restore publishes it with identical pixels and zero Vulkan errors; strict Wayland denial fails as expected, 270 dev CPU checks and 2,088 protected files unchanged; physical desktop/full gates remain open |
-| M2 prepared admission and staged uploads | [Local 10 Hz replay and ownership pilot](2026-10-16-m2-p6-staged-uploads.md): two 100-update full retained-scene/synthetic-marker runs meet local unchanged enqueue/per-frame GPU/no-idle thresholds, 500 upload-frame samples each, zero Vulkan errors; 60-second VMA update/resize pilot and full-scene 4K regression pass. Changed-path two-hour stress is running; H_V/corpus/platform gates remain open |
-| M2 P6 update replay | [Native 10 Hz retained-scene diagnostic](2026-10-16-m2-p6-update-replay.md): 100 synthetic marker replacement/eviction revisions over all 295,952 real splats on local C++23 Release; 18.048 s, enqueue p95 196.268 ms, GPU upload p95 6.494 ms, zero interactive idle waits/errors. P6 fails; 269 dev / 251 C++23 CPU checks, focused TSan and timed smoke pass. |
-| Windows cancellation clock | [Stop-request-to-cleanup timing and delayed-ready regression](2026-10-16-windows-cancel-deadline.md): old launch-based clock deterministically fails at 6.319 s; corrected six-second bound passes all four modes/30 assertions and 267 dev/249 C++23 CPU checks locally; production handling unchanged, native Windows rerun pending |
-| VMA runtime refresh | [Current loader and native viewer receipts](2026-10-16-vma-runtime-refresh.md): 15 roots/213 ELF files, only two rebuilt executable identities changed; native empty viewer 900 frames/zero Vulkan errors; current inventory/default-local checks pass, strict closure exits 3 for 253 gaps; historical imports/owners retained and rechecked |
-| M2 VMA buffer ownership | [Pinned VMA 3.1.0 and dedicated renderer allocations](2026-10-15-m2-vma.md): GCC C++26 / GCC and Clang C++23 builds, 267 dev CPU/worker checks, native Debug/Release smoke, full-scene 60-second pilot and 4K/fullscreen under 512 MiB pass; [two-hour VMA run](2026-10-16-m2-vma-lifetime.md) passes 7,201.865 s/480 updates/359 resizes/13 identical captures with zero Vulkan errors; release-vcpkg and full gates open |
-| M2 lifetime stress | [Two-hour retained-scene native update/resize run](2026-10-15-m2-lifetime-stress.md): 7,203.746 s, 480 visible updates, 359 resizes, 13 matching readbacks, 270,414 frames, 369,408,864 tracked peak owned bytes and zero Vulkan errors; accepted minimize, physical loss and full gates open; later VMA repeat recorded above |
-| M2 device-loss recreation | [Native synthetic fault, renderer/overlay restart and retained scene readback](2026-10-15-m2-device-loss.md): typed loss, exact synthetic recovery pixel/revision, full sample_1 viewer baseline and post-recovery PPMs byte-identical, Release C++23 no-hook smoke; physical device loss and accepted minimize open; later lifetime stress recorded above |
-| M2 retired-swapchain recovery | [Native post-create fault and retained-scene redraw](2026-10-15-m2-postcreate-recovery.md): Vulkan retires oldSwapchain even if creation fails; injected post-create failure clears retired presentation and next draw recovers; normal/timed smoke and full sample_1 4K/fullscreen/restore pass with zero Vulkan errors; Wayland denied minimize, device loss/stress open |
-| M2 staged swapchain resize | [Native rejected-resize preservation and full-scene regression](2026-10-15-m2-swapchain-recovery.md): scratch budget failure keeps prior scene/presentation; 51-frame smoke, 24 tile-plan phases and sample_1 windowed/4K/fullscreen/restore pass with zero Vulkan errors; first fullscreen budget regression retained; later report corrects retirement semantics and covers post-create recovery |
-| M2 swapchain entry | [Current native baseline and recovery risk](2026-10-15-m2-swapchain-entry.md): existing 51-frame synthetic replace/delete/resize smoke passes with zero Vulkan errors on Linux NVIDIA; in-place swapchain/scratch teardown before replacement success remains a failure-path risk, with no device-loss or long-stress claim |
-| M1 development exit review | [Completed local checklist](2026-10-15-m1-exit-review.md): authorized 20.95-second room source and saved 63-pose/7k-fit/native-viewer chain, full 250k synthetic fixture, native fly/replay, selected audit/timings, same-source-commit four-job hosted CPU success, current 267/267 local CTest; M1 VERIFIED on Linux development profile only, full gates and M4 physical qualification open |
-| M1 development exit / M4 physical qualification | [User-approved milestone scheduling](2026-10-15-m1-exit-policy.md): available Linux + hosted CPU CI for M1; physical Windows/macOS and unchanged ≤250k / 720p ≥30 FPS target assigned to M4; plan v1.1 / ADR 012, §3 and Appendix B unchanged, no new execution or gate pass |
-| Frozen portable viewer fixture | [Reproducible 250k SH3 load/readback input](2026-10-15-viewer-fixture.md): five byte-identical CPU generations across C++26/C++23, native 720p 250k readback and GUI loading pass with zero Vulkan errors; 267 dev / 249 C++23 CPU checks, 2 cases / 54 assertions, 5 CLI rejects; 2,088 protected / 1,936 prior evidence / 94 production files unchanged, full gates pending |
-| Hosted native CPU confirmation | [Same-commit Windows/macOS/Linux results](2026-10-15-native-ci.md): dd43a8a four successful build/CTest/boundary/docs jobs; supplied Windows 246/246 / 240.64 s, worker integration passes; existing POSIX-only case explains local 247; viewer disabled, full M1/E2 and native viewer/reference qualification remain open |
-| Synthetic floating origin | [Joint translation and accepted-scene rebasing](2026-10-15-floating-origin.md): 12 new comparisons ≥72.9237 dB / maximum one RGB8 level; zero/±billion-unit images identical, excursion/return reupload passes; 2 C++ cases / 222 assertions, 32 Python cases, 265 dev / 247 C++23 CPU checks; default/clipping/full real regressions and 2,088 protected / 1,531 preceding evidence / 94 production files unchanged, no full gate upgrade |
-| Synthetic clipping boundaries | [Inclusive planes and exact float neighbors](2026-10-15-clipping-boundaries.md): six splats / 12 independent region checks, 78.8331 dB / maximum one RGB8 level; 32 existing synthetic / three real comparisons pass, 1 C++ case / 27 assertions, 26 Python cases, 263 dev / 245 C++23 CPU checks; 2,088 protected / 1,206 preceding evidence / 94 production files unchanged, no full gate upgrade |
-| Clang C++23 calibrated rendering | [Full native profile and cross-compiler equality](2026-10-15-clang-camera-reference.md): 262 CPU checks, all 80/default/reordered reports match GCC bytes, full-scene viewer 340 frames / zero Vulkan errors; 2,088 protected / 697 preceding evidence / 94 production files unchanged; local compiler/device scope, no full gate upgrade |
-| Explicit calibrated camera selection | [All 80 retained cameras and bounded admission](2026-10-15-all-camera-reference.md): full 648,332-splat Vulkan/gsplat comparisons pass at maximum one RGB8 level; unchanged default, reordered and synthetic regressions pass; 2 C++ cases / 174 assertions, 18 Python cases, six pre-GPU CLI rejects, 262 dev / 244 C++23 CPU checks; 2,088 protected / 54 preceding evidence / 94 production files unchanged, full gates pending |
-| Replacement sample_3 evidence | [Current scene-bound viewer/reference/holdout checks](2026-10-15-sample3-evidence.md): 126 native viewer frames / 648,332 splats / zero Vulkan errors; three calibrated full-scene comparisons pass at maximum one RGB8 level, fixture/readbacks unchanged; 16/16 offline holdout scores reproduce exactly, mean 20.8708 dB / 0.815687 SSIM / 0.253078 LPIPS misses Q3; 2,088 protected / 94 production files unchanged, no reconstruction rerun or full gate upgrade |
-| Runtime refresh after system drift | [Fresh loader/import/viewer/owner evidence](2026-10-15-runtime-refresh.md): active full local check restored, old snappy failure retained; 15 roots / 213 loader ELF files, five contexts / 208 mapped files, unchanged 137 owner targets / 30 notices; 900-frame empty native viewer / zero Vulkan errors, 260 dev / 242 C++23 CPU checks; source/rights and full gates remain pending, all saved runs/history preserved |
-| Windows loader-path roundtrip | [Full-capture host conversion and guaranteed fixture restoration](2026-10-15-windows-runtime-roundtrip.md): supplied Windows 240/241, seven worker errors / one cascading failure; seven-case replay reproduces and repairs every record; 16 runtime / 133 worker cases on three interpreters, 260 dev / 242 C++23 CPU checks; native rerun pending, production/pins/saved runs unchanged |
-| Newly mapped owners / notices | [Current installed associations and retained system drift](2026-10-15-binding-owners.md): 137 ELF files, ten worker distributions / six system packages / 30 notices; 15 new / 132 worker cases on three interpreters, 260 dev / 242 C++23 CPU checks; scoped owner checks pass, full local manifest fails on snappy/zlib drift, rights remain open; 2,088 protected / 94 production files unchanged |
-| Windows Linux-loader fixtures | [Contained POSIX fixture translation and LF metadata](2026-10-15-windows-runtime-fixture.md): supplied Windows 240/241 fails worker integration with five errors / three failures; seven-case portable reproduction passes after fixture-only repair; 15 runtime / 117 worker cases on three interpreters, 260 dev / 242 C++23 CPU checks; native Windows rerun pending, production/pins/saved runs unchanged |
-| Actual imports / viewer mappings | [Source/raw/current-byte checked observations](2026-10-15-backend-bindings.md): five contexts / 208 ELF files, 137 beyond the loader audit, native prebuilt gsplat and empty viewer 900 frames / zero Vulkan errors; sandbox failures retained; 23 new / 115 worker cases on three interpreters, 260 dev / 242 C++23 CPU checks; 2,088 protected / 94 production files unchanged; attribution/rights/full gates pending |
-| Selected Linux ELF runtimes | [Loader contexts, graph checking and notice gaps](2026-10-14-runtime-dependencies.md): 15 roots / 213 ELF files / 123 system packages / 96 notices, corrected loader alias observer and zero final unresolved edges; 13 new / 92 worker cases on three interpreters, 260 dev / 242 C++23 CPU checks; 2,088 protected / 94 src/include files unchanged; source/rights/import/driver/full gates remain unqualified |
-| Selected dependency source/notice gaps | [Checked inventory and saved-run reconciliation](2026-10-14-dependency-closure.md): 82 components / seven profiles, four native archive pins, 56 worker packages / 119 notice files, exact Triton tag trace; strict closure remains unmet; 11 new / 79 worker cases on three interpreters, 260 dev / 242 C++23 CPU checks; newer sample_3 source/648,332-splat scene retained and structurally checked |
-| Concurrent renderer / TSan | [Four-producer admission, cancellation and ownership](2026-10-14-render-tsan.md): 3 synthetic cases / 5,308 assertions, ten repetitions, 242 native TSan / 260 dev / 242 C++23 CPU checks, no reported races; all 2,393 protected / 94 src/include files unchanged; GPU/platform/full gates pending |
-| Bounded scene bundle fuzzing | [Rehashed package admission and caller preservation](2026-10-14-bundle-fuzz.md): 196 synthetic seeds, 55,915 inputs / 61 s, 339 MiB peak RSS, zero native crashes/reported sanitizer errors; 257 dev / 239 C++23 CPU checks, 2,393 protected / 94 src/include files unchanged; full gates pending |
-| Bounded scene transaction fuzzing | [Commit/retry/ownership and replay invariants](2026-10-14-transaction-fuzz.md): 44 synthetic seeds, 30,251 inputs / 61 s, 308 MiB peak RSS, zero native crashes/reported sanitizer errors; 257 dev / 239 C++23 CPU checks and 2,393 protected files / 94 src/include files unchanged; sandbox LSan failure retained separately, full gates pending |
-| Bounded PLY fuzzing | [Isolated libFuzzer campaign and byte preservation](2026-10-14-ply-fuzz.md): ten synthetic seeds, 281,683 executions / 61 s, 101 accepted, 367 MiB peak RSS, zero crashes/reported sanitizer errors; 257 dev / 239 C++23 CPU checks, isolated-profile guards and 2,393 preserved files; broader fuzzing/full gates pending |
-| Windows batch launch marker | [Binary fixture marker and portable CRLF replay](2026-10-14-windows-batch-marker.md): supplied Windows 236/238 fails two marker observers; all ten failures reproduced, 2 corrected cases / 6,077 assertions, local 257 dev / 239 C++23 CPU CTest, focused sanitizers and 2,393 preserved files; production unchanged, native Windows rerun pending |
-| Scene bundle/PLY admission | [Raw byte-budget repair, package preservation and SH interchange](2026-10-14-bundle-admission.md): 13 synthetic cases / 8,467 assertions, bundle/PLY 94.59% branch, core 90.03% line / 81.65% branch, package/update 90.78%; strict local CPU coverage goals pass, full E1 pending; 239 coverage CPU / 257 dev / 239 C++23 CPU CTest, 13 native sanitizer cases and 2,393 preserved files |
-| Fresh batch-pose admission | [Output-path repair and bounded admission/retry](2026-10-14-batch-pose-admission.md): 16 synthetic cases / 20,633 assertions, three path regressions repaired, batch 92.75% branch, core 89.57% line / 80.66% branch, package/update 89.13% (90% unmet), 226 coverage CPU / 244 dev / 226 C++23 CPU CTest, 16 native sanitizer cases and 2,393 preserved files |
-| Decoded-frame source admission | [Rehashed stages, exact budgets and replay preservation](2026-10-14-decoded-frame-admission.md): 15 synthetic cases / 24,056 assertions, decoded source 95.80% branch, core 89.11% line / 79.27% branch, package/update 86.87% (90% unmet), 210 coverage CPU / 228 dev / 210 C++23 CPU CTest, 15 native sanitizer cases and 2,393 preserved files |
-| Completed-pose file admission | [Rehashed metadata rejection and retained-data preservation](2026-10-14-pose-import-admission.md): 14 synthetic cases / 36,151 assertions, importer 93.33% branch, core 88.72% line / 77.80% branch, package/update 84.43% (90% unmet), 195 coverage CPU / 213 dev / 195 C++23 CPU CTest, 14 native sanitizer cases and 2,393 preserved files |
-| Completed-pose replay admission | [Lease/retry/event contracts and observer lifetime](2026-10-14-replay-admission.md): 12 synthetic cases / 8,867 assertions, replay 100% mapped branches, core 88.39% line / 76.42% branch, package/update 82.13% (90% unmet), 181 coverage CPU / 199 dev / 181 C++23 CPU CTest, 12 native sanitizer cases, 20 cancellation repetitions and 2,393 preserved files |
-| Durable transactions | [Public commit rejection and retry preservation](2026-10-14-map-transactions.md): 12 synthetic cases / 4,168 assertions, map-store 95.19% branch, core 88.15% line / 75.09% branch, package/update 79.97% (90% unmet), 169 coverage CPU / 187 dev / 169 C++23 CPU CTest, 12 native sanitizer cases and 2,393 preserved files |
-| Windows map observer | [Held-lock inventory and caller-file hashing](2026-10-14-windows-map-observer.md): supplied Windows 148/155 fails seven preservation observers; helper repaired, local C++26 dev 175/175 / C++23 CPU 157/157, 14 focused cases / 1,612 assertions and 2,393 preserved files; native rerun pending |
-| Canonical producer admission | [Native/file rejection, bounded encoding and retry preservation](2026-10-14-canonical-admission.md): 13 synthetic cases / 1,271 assertions, core 87.93% line / 74.35% branch, package/update 78.77% branch (90% unmet), 156 coverage CPU / 174 dev CTest, 13 native sanitizer cases and 2,393 preserved files |
-| Durable-map admission | [Checkpoint/configuration rejection and recovery](2026-10-14-map-admission.md): revision-zero dependency repair, ten new synthetic cases, core 87.54% line / 73.18% branch and package/update 76.83% branch (90% unmet), 143 coverage CPU / 161 dev CTest, ten native sanitizer cases and 2,393 preserved files |
-| Worker envelope validation | [Typed rejection and manifest observer admission](2026-10-14-worker-envelope.md): Catch section discovery repair, 16 new cases, worker 97.20% branch / whole package-update 74.25% (90% unmet), 133 coverage CPU / 151 dev CTest, 17 native sanitizer cases and 2,393 preserved files |
-| CPU contract coverage | [Isolated Clang C++26 measurement](2026-10-14-cpu-coverage.md): core 86.62% line / 70.08% branch, package/update 71.71% branch (90% unmet); two enum admission repairs, 117 coverage CPU / 135 dev checks, 13 focused native sanitizer cases and 2,393 preserved files |
-| Native CI metric observer | [Canonical mutation paths](2026-10-14-native-metric-paths.md): latest supplied Windows 101/102 / macOS 102/103 fail the same metric mutation assertion; alias replay repaired, 18 metric / 68 worker cases across three interpreters, local C++23 103/103 and C++26 121/121, 2,393 protected files unchanged; hosted rerun pending |
-| Retained holdout evaluation | [Read-only real image pairs](2026-10-14-holdout-evaluation.md): all 13 RGB8 pairs score 17.5284 dB / 0.787073 SSIM / 0.382562 LPIPS; FP32 results stay separate; 13 image / 67 worker cases on three interpreters and 121 dev CTest, protected data unchanged; independent Q3 capture/rights remain blocked |
-| Offline CPU metrics | [Identity and parity](2026-10-14-metric-identity.md): explicitly authorized isolated 16-package CPU environment, fixed policy/implementation/linear-weight/backbone hashes, independent synthetic LPIPS/SSIM parity, 16 new / 53 worker tests across three interpreters and 121 dev CTest; original training and 2,393 protected files unchanged; corpus/rights remain unqualified |
-| Native input / live HiDPI | [Control, bookmark and resize checks](2026-10-14-native-input.md): 18 native control assertions, 2→1.5→1→2 compositor scaling, FOV/Import resize repairs, 121 GCC/Clang checks, zero Vulkan errors and 2,393 unchanged protected files; physical/reference latency and other platforms pending |
-| Native CI audit observer | [Canonical path repair](2026-10-13-native-audit-paths.md): supplied Windows 101/102 and macOS 102/103 share a zero-open test observation; prior SQLite cases pass; alias replay, 12 audit checks across three interpreters, 37 worker checks and local C++23 103/103 / C++26 119/119; hosted confirmation pending |
-| Installed worker identities | [Offline version/file/notice receipts](2026-10-13-worker-identity.md): 37 training / 3 pose distributions checked, 76 notice files identified, archive/metric/rights gaps explicit, 11 new tests across three interpreters and 119 CTest checks in both existing profiles; preceding 120-case reporting error corrected |
-| Checked Import metadata/storage | [Retained preflight and current space](2026-10-13-import-metadata.md): bounded read-only source/metadata validation, pending automatic inspection, per-output storage snapshots, 119 GCC/Clang checks, native dialogs/full Cancel/reopen and 2,393 unchanged files |
-| Windows SQLite handles | [Explicit closure repair](2026-10-13-windows-sqlite.md): supplied Windows 100/101 with six recovery cleanup errors; deterministic leaked-handle regression, local C++23 102/102 and Python 3.12/3.14 25/25; hosted rerun pending |
-| Saved pose continuation | [Complete matching and geometry recovery](2026-10-13-pose-continuation.md): bounded sample_2/3 solves exit normally with disconnected geometry; copied model recovery cannot join sample_2, only 57/64 images connected (58 required); layout repair and 24 worker checks |
-| Laptop service / viewing up | [Bounded supervision and capture orientation](2026-10-13-service-orientation.md): sample_1 validated/viewed with preserved fit/assets; source-reset tilt fixed; 116 GCC/Clang checks and 18 worker checks; remaining bounded service active |
-| COLMAP model selection | [Superset repair and retained recovery](2026-10-13-model-selection.md): full 63-frame model was falsely rejected beside a redundant four-frame attempt; 15 worker / 114 CPU checks pass, recovered pose replay passes; fit pending |
-| Fresh three-video reset | [Full user-requested reset](2026-10-13-fresh-video-reset.md): old artifacts removed; three fresh local coordinator runs in simple per-video folders, terminal results pending |
-| Artifact organization | [Semantic local layout](2026-10-13-artifact-layout.md): deleted-video job removed, 5,517 retained files unchanged, both full scenes reopened, content-keyed request helper for future videos |
-| New local videos | [Local run observations](2026-10-13-new-videos.md): AVI/MP4 disconnected-model rejection (three/two models); existing renamed original preserved |
-| Import request review | [Actions/limits and checked-byte launch](2026-10-13-request-review.md): bounded read-only background summary, stale/changed request rejection, native 1024×640/default dialog and full reviewed handoff, 114 checks in both profiles |
-| Owned viewer Cancel/reopen | [Stage-boundary cancellation](2026-10-13-viewer-cancel.md): pending job-admission repair, synchronous stop-callback access, seven owned-thread boundaries, native old-pixel preservation/full reopened visibility and 107 checks in both profiles |
-| Reconstruction processing status | [Typed stage/step events](2026-10-13-progress-status.md): bounded checked telemetry, terminal/handoff regressions, 105 checks in both profiles, native completed reuse and 670 unchanged protected files |
-| Fresh real owned chain | [Checkpoint resume repair](2026-10-13-fresh-chain.md): 63 real native RGB frames/poses → 7k fit → 297,489 splats → viewer; cancellation/resume/reuse, protected overlap tests, 99 checks in both profiles |
-| Recounted tile plans | [Geometry cache](2026-10-13-tile-plans.md): current-frame admission, bounded coverage/cache failures, native density/resize/overflow parity, unchanged 35 references; 97 checks in both profiles |
-| GPU stage timings / tile sort | [Bounded timing and radix passes](2026-10-13-stage-timing.md): completed CPU/GPU samples, three paired local repetitions before/after, stable full-scene output and unchanged budgets |
-| Full retained calibrated scene | [Real camera comparison](2026-10-13-real-reference.md): all 304,867 splats, three original fit views; affine/shared-origin diagnostics, 35 real/synthetic comparisons, protected assets and native scope |
-| Viewer fullscreen/lag | [Indexed tiles/residency](2026-10-13-viewer-regression.md): full real 4K/readback/fullscreen/restore under 512 MiB; unchanged/forced-partition parity; short local timings, no performance certification |
-| Windows FFmpeg setup | [Pinned archive](2026-10-13-windows-ffmpeg.md): supplied Chocolatey HTTP 504 before build/tests; checksum, retry and cache checks; hosted rerun pending |
-| Tiled exclusive composition | [Front-to-back batches](2026-10-12-tiled-composition.md): cutoff regression fixed; unchanged fixtures, batch reuse, scratch budgets, observed resize and full retained native scene |
-| Captured-domain composition | [FP32/SDR](2026-10-12-compositing.md): seven stress and four original views pass, exclusive-termination failure retained; budgeted images/buffers, observed resize, GCC26/Clang23 viewer/core checks |
-| Synthetic provenance | [Active scene labels](2026-10-12-synthetic-labels.md): imported canonical/legacy fixtures, hidden-panel banner, snapshot replacement classification, retained real scene; 91 dev checks |
-| Fixed-camera rendering | [Reference comparison](2026-10-12-render-reference.md): calibrated admission, pixel centers, covariance margin, 18-splat synthetic fixture/four gsplat comparisons; 90 dev / 87 C++23 / 87 libc++ checks |
-| Foundation | [2026-10-11](2026-10-11-foundation.md): build, GPU overlap/replace/delete/resize; failed original capture and successful replacement poses |
-| Real appearance | [Capture](2026-10-11-capture.md): fit failures, cancellation/resume, scene/viewer; [manifest](2026-10-11-capture.json) |
-| Shared continuation | [Coordinator](2026-10-11-coordinator.md): fit start/resume/reuse, GUI/GPU pause, shutdown; [manifest](2026-10-11-coordinator.json) |
-| Windows stage flush | [Flush repair](2026-10-12-windows-flush.md): supplied Windows 77/78; writable fsync, nine Python checks, preservation regression; hosted rerun pending |
-| Current native CPU repair | [Runtime/paths](2026-10-12-native-runtime.md): supplied macOS 78/79, Windows 74/78; alias assertion and missing FFmpeg repaired locally; hosted rerun pending |
-| CPU CI repair | [Initial](2026-10-11-ci.md), [follow-up](2026-10-11-ci-followup.md): compiler/library/OpenSSL, byte JSON and Windows path assumptions; hosted vs local scope |
-| Worker events | [Wire](2026-10-11-worker-wire.md): pinned FlatBuffers bindings, typed events; historical argv request transport |
-| Native frames | [Replay](2026-10-11-frame-replay.md): 63 RGB frames, seek/reset/EOF, hashes |
-| Retained poses | [Replay](2026-10-12-pose-replay.md): OPENCV import, capacity-one immutable map |
-| Fresh batch poses | [Batch](2026-10-12-batch-poses.md): RGB admission, sequential failure, exhaustive-guided recovery; `replay-poses` |
-| Canonical poses | [Assets](2026-10-12-pose-assets.md): `export-poses`/`inspect-poses`, independent roundtrip |
-| Durable maps | [Persistence](2026-10-12-persistent-maps.md): `init-map`/`import-map`/`inspect-map`, writer ownership, restart/partial-write recovery |
-| Pose → fit | [Preparation](2026-10-12-pose-preparation.md): `prepare-poses`, original fit reuse, distinct recovery map, dependency rejection/payload parity |
-| Worker control | [Protocol 2.0](2026-10-12-worker-control.md): START/CANCEL, retry/backpressure/process cleanup, real metadata cancellation |
-| Retained preflight | [Video](2026-10-12-video-preflight.md): metadata adoption, output storage/overlap, libc++ sentinel, preserved manifests |
-| Owned inspection | [Automatic](2026-10-12-automatic-inspection.md): fresh/cache/cancel, ownership guards, original scene parity |
-| Documentation | [Consolidation](2026-10-12-documentation.md): evidence-preservation audit, local links, workflow lint; no new software qualification |
-| Viewer controls/handoff | [Defaults and lifecycle](2026-10-12-viewer-controls.md): saved bindings/count/type checks, async snapshot completion, native overlays; dev 87/87 |
-| Fit calibration | [Admission](2026-10-12-fit-calibration.md): bounded undistorted camera, intrinsic/resize checks, real original/recovery/journal rejects, preserved payload/native viewer; 84 tests/four profiles |
-| Fresh stage chain | [Chaining](2026-10-12-stage-chain.md): 79 checks/six profiles, synthetic full chain; real 63-frame decode/cache/pre-solver cancellation |
-
-For current status and next work read [progress](../progress.md) and
-[requirements](../requirements.md), not a historical report's “remaining” section.
+| Documentation cleanup | [Concision and preservation audit](2026-10-17-documentation-cleanup.md) |
+| Asset goal before platform qualification | [Rescheduling and document checks](2026-10-17-assets-before-platforms.md) |
+| Expanded offline asset planning | [Original research and document checks](2026-10-17-offline-asset-planning.md); [ADR 019](../adr/019-assets-before-platforms.md) |
+| M3 isolated CUDA dense worker | [Native backend and partial real depth](2026-10-17-dense-worker.md) |
+| M3 native dense inputs | [Checked native grids and retained-image correspondence](2026-10-17-dense-inputs.md) |
+| M3 depth interchange / admission | [Axial depth and immutable pose dependencies](2026-10-17-depth-assets.md) |
+| M3 recovery admission / graph | [Read-only retained inspection](2026-10-16-m3-recovery-analysis.md) |
+| M2 development exit review | [Six local items verified](2026-10-16-m2-exit-review.md) |
+| M2 development exit scheduling | [User-approved local scope](2026-10-16-m2-development-exit.md) |
+| M2 maximum-scale synthetic fixture | [2M admission, bank switching and memory](2026-10-16-m2-scale-fixture.md) |
+| M2 native input timing | [Buffered CPU event/camera observations](2026-10-16-m2-input-latency.md) |
+| Acquisition-repair runtime refresh | [Current loader/native viewer/owner receipts](2026-10-16-acquire-runtime-refresh.md) |
+| Packed lifetime acceptance | [ADR 015](../adr/015-packed-lifetime-development-acceptance.md) |
+| M2 interrupted packed stress / acquisition retry | [Retained-prefix audit and short native repair](2026-10-16-m2-acquire-timeout.md) |
+| M2 packed lifetime pilot | [Explicit SH storage and bound long-run launch](2026-10-16-m2-packed-lifetime-pilot.md) |
+| Renderer runtime refresh | [Fresh loader/native viewer/owner receipts](2026-10-16-packing-runtime-refresh.md) |
+| M2 captured-target packing quality | [Calibrated before/after quality loss](2026-10-16-m2-packing-quality.md) |
+| Latest sample_2 replacement | [Second reset and supervised rerun](2026-10-16-sample2-second-replacement.md) |
+| sample_2 replacement | [Fresh reset and supervised rerun](2026-10-16-sample2-replacement.md) |
+| M2 optional SH packing | [160-byte GPU profile and frozen 100-view comparisons](2026-10-16-m2-sh-packing.md) |
+| M2 resident-copy lifetime | [Bound two-hour completion and independent audit](2026-10-16-m2-resident-lifetime.md) |
+| M2 resident chunk reuse | [Device-copy parity and sustained local P6 replay](2026-10-16-m2-resident-reuse.md) |
+| M2 staged-upload completion audit | [Completed artifacts, events and all readbacks](2026-10-16-m2-staged-lifetime.md) |
+| M2 accepted X11 minimize | [Native minimized-frame/update/restore check](2026-10-16-m2-minimize.md) |
+| M2 prepared admission and staged uploads | [Local 10 Hz replay and ownership pilot](2026-10-16-m2-p6-staged-uploads.md) |
+| M2 P6 update replay | [Native 10 Hz retained-scene diagnostic](2026-10-16-m2-p6-update-replay.md) |
+| Windows cancellation clock | [Stop-request-to-cleanup timing and delayed-ready regression](2026-10-16-windows-cancel-deadline.md) |
+| VMA runtime refresh | [Current loader and native viewer receipts](2026-10-16-vma-runtime-refresh.md) |
+| M2 VMA buffer ownership | [Pinned VMA 3.1.0 and dedicated renderer allocations](2026-10-15-m2-vma.md); [two-hour VMA run](2026-10-16-m2-vma-lifetime.md) |
+| M2 lifetime stress | [Two-hour retained-scene native update/resize run](2026-10-15-m2-lifetime-stress.md) |
+| M2 device-loss recreation | [Native synthetic fault, renderer/overlay restart and retained scene readback](2026-10-15-m2-device-loss.md) |
+| M2 retired-swapchain recovery | [Native post-create fault and retained-scene redraw](2026-10-15-m2-postcreate-recovery.md) |
+| M2 staged swapchain resize | [Native rejected-resize preservation and full-scene regression](2026-10-15-m2-swapchain-recovery.md) |
+| M2 swapchain entry | [Current native baseline and recovery risk](2026-10-15-m2-swapchain-entry.md) |
+| M1 development exit review | [Completed local checklist](2026-10-15-m1-exit-review.md) |
+| M1 development exit / M4 physical qualification | [User-approved milestone scheduling](2026-10-15-m1-exit-policy.md) |
+| Frozen portable viewer fixture | [Reproducible 250k SH3 load/readback input](2026-10-15-viewer-fixture.md) |
+| Hosted native CPU confirmation | [Same-commit Windows/macOS/Linux results](2026-10-15-native-ci.md) |
+| Synthetic floating origin | [Joint translation and accepted-scene rebasing](2026-10-15-floating-origin.md) |
+| Synthetic clipping boundaries | [Inclusive planes and exact float neighbors](2026-10-15-clipping-boundaries.md) |
+| Clang C++23 calibrated rendering | [Full native profile and cross-compiler equality](2026-10-15-clang-camera-reference.md) |
+| Explicit calibrated camera selection | [All 80 retained cameras and bounded admission](2026-10-15-all-camera-reference.md) |
+| Replacement sample_3 evidence | [Current scene-bound viewer/reference/holdout checks](2026-10-15-sample3-evidence.md) |
+| Runtime refresh after system drift | [Fresh loader/import/viewer/owner evidence](2026-10-15-runtime-refresh.md) |
+| Windows loader-path roundtrip | [Full-capture host conversion and guaranteed fixture restoration](2026-10-15-windows-runtime-roundtrip.md) |
+| Newly mapped owners / notices | [Current installed associations and retained system drift](2026-10-15-binding-owners.md) |
+| Windows Linux-loader fixtures | [Contained POSIX fixture translation and LF metadata](2026-10-15-windows-runtime-fixture.md) |
+| Actual imports / viewer mappings | [Source/raw/current-byte checked observations](2026-10-15-backend-bindings.md) |
+| Selected Linux ELF runtimes | [Loader contexts, graph checking and notice gaps](2026-10-14-runtime-dependencies.md) |
+| Selected dependency source/notice gaps | [Checked inventory and saved-run reconciliation](2026-10-14-dependency-closure.md) |
+| Concurrent renderer / TSan | [Four-producer admission, cancellation and ownership](2026-10-14-render-tsan.md) |
+| Bounded scene bundle fuzzing | [Rehashed package admission and caller preservation](2026-10-14-bundle-fuzz.md) |
+| Bounded scene transaction fuzzing | [Commit/retry/ownership and replay invariants](2026-10-14-transaction-fuzz.md) |
+| Bounded PLY fuzzing | [Isolated libFuzzer campaign and byte preservation](2026-10-14-ply-fuzz.md) |
+| Windows batch launch marker | [Binary fixture marker and portable CRLF replay](2026-10-14-windows-batch-marker.md) |
+| Scene bundle/PLY admission | [Raw byte-budget repair, package preservation and SH interchange](2026-10-14-bundle-admission.md) |
+| Fresh batch-pose admission | [Output-path repair and bounded admission/retry](2026-10-14-batch-pose-admission.md) |
+| Decoded-frame source admission | [Rehashed stages, exact budgets and replay preservation](2026-10-14-decoded-frame-admission.md) |
+| Completed-pose file admission | [Rehashed metadata rejection and retained-data preservation](2026-10-14-pose-import-admission.md) |
+| Completed-pose replay admission | [Lease/retry/event contracts and observer lifetime](2026-10-14-replay-admission.md) |
+| Durable transactions | [Public commit rejection and retry preservation](2026-10-14-map-transactions.md) |
+| Windows map observer | [Held-lock inventory and caller-file hashing](2026-10-14-windows-map-observer.md) |
+| Canonical producer admission | [Native/file rejection, bounded encoding and retry preservation](2026-10-14-canonical-admission.md) |
+| Durable-map admission | [Checkpoint/configuration rejection and recovery](2026-10-14-map-admission.md) |
+| Worker envelope validation | [Typed rejection and manifest observer admission](2026-10-14-worker-envelope.md) |
+| CPU contract coverage | [Isolated Clang C++26 measurement](2026-10-14-cpu-coverage.md) |
+| Native CI metric observer | [Canonical mutation paths](2026-10-14-native-metric-paths.md) |
+| Retained holdout evaluation | [Read-only real image pairs](2026-10-14-holdout-evaluation.md) |
+| Offline CPU metrics | [Identity and parity](2026-10-14-metric-identity.md) |
+| Native input / live HiDPI | [Control, bookmark and resize checks](2026-10-14-native-input.md) |
+| Native CI audit observer | [Canonical path repair](2026-10-13-native-audit-paths.md) |
+| Installed worker identities | [Offline version/file/notice receipts](2026-10-13-worker-identity.md) |
+| Checked Import metadata/storage | [Retained preflight and current space](2026-10-13-import-metadata.md) |
+| Windows SQLite handles | [Explicit closure repair](2026-10-13-windows-sqlite.md) |
+| Saved pose continuation | [Complete matching and geometry recovery](2026-10-13-pose-continuation.md) |
+| Laptop service / viewing up | [Bounded supervision and capture orientation](2026-10-13-service-orientation.md) |
+| COLMAP model selection | [Superset repair and retained recovery](2026-10-13-model-selection.md) |
+| Fresh three-video reset | [Full user-requested reset](2026-10-13-fresh-video-reset.md) |
+| Artifact organization | [Semantic local layout](2026-10-13-artifact-layout.md) |
+| New local videos | [Local run observations](2026-10-13-new-videos.md) |
+| Import request review | [Actions/limits and checked-byte launch](2026-10-13-request-review.md) |
+| Owned viewer Cancel/reopen | [Stage-boundary cancellation](2026-10-13-viewer-cancel.md) |
+| Reconstruction processing status | [Typed stage/step events](2026-10-13-progress-status.md) |
+| Fresh real owned chain | [Checkpoint resume repair](2026-10-13-fresh-chain.md) |
+| Recounted tile plans | [Geometry cache](2026-10-13-tile-plans.md) |
+| GPU stage timings / tile sort | [Bounded timing and radix passes](2026-10-13-stage-timing.md) |
+| Full retained calibrated scene | [Real camera comparison](2026-10-13-real-reference.md) |
+| Viewer fullscreen/lag | [Indexed tiles/residency](2026-10-13-viewer-regression.md) |
+| Windows FFmpeg setup | [Pinned archive](2026-10-13-windows-ffmpeg.md) |
+| Tiled exclusive composition | [Front-to-back batches](2026-10-12-tiled-composition.md) |
+| Captured-domain composition | [FP32/SDR](2026-10-12-compositing.md) |
+| Synthetic provenance | [Active scene labels](2026-10-12-synthetic-labels.md) |
+| Fixed-camera rendering | [Reference comparison](2026-10-12-render-reference.md) |
+| Foundation | [2026-10-11](2026-10-11-foundation.md) |
+| Real appearance | [Capture](2026-10-11-capture.md); [manifest](2026-10-11-capture.json) |
+| Shared continuation | [Coordinator](2026-10-11-coordinator.md); [manifest](2026-10-11-coordinator.json) |
+| Windows stage flush | [Flush repair](2026-10-12-windows-flush.md) |
+| Current native CPU repair | [Runtime/paths](2026-10-12-native-runtime.md) |
+| CPU CI repair | [Initial](2026-10-11-ci.md); [follow-up](2026-10-11-ci-followup.md) |
+| Worker events | [Wire](2026-10-11-worker-wire.md) |
+| Native frames | [Replay](2026-10-11-frame-replay.md) |
+| Retained poses | [Replay](2026-10-12-pose-replay.md) |
+| Fresh batch poses | [Batch](2026-10-12-batch-poses.md) |
+| Canonical poses | [Assets](2026-10-12-pose-assets.md) |
+| Durable maps | [Persistence](2026-10-12-persistent-maps.md) |
+| Pose → fit | [Preparation](2026-10-12-pose-preparation.md) |
+| Worker control | [Protocol 2.0](2026-10-12-worker-control.md) |
+| Retained preflight | [Video](2026-10-12-video-preflight.md) |
+| Owned inspection | [Automatic](2026-10-12-automatic-inspection.md) |
+| Documentation | [Consolidation](2026-10-12-documentation.md) |
+| Viewer controls/handoff | [Defaults and lifecycle](2026-10-12-viewer-controls.md) |
+| Fit calibration | [Admission](2026-10-12-fit-calibration.md) |
+| Fresh stage chain | [Chaining](2026-10-12-stage-chain.md) |
