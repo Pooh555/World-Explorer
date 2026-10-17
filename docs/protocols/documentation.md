@@ -2,87 +2,84 @@
 
 ## Ownership and reading
 
-Use the [documentation map](../README.md). Keep one authoritative home per fact:
+Use the [documentation map](../README.md); read by task. Each fact has one owner:
 
-| Record | Contains | Update rule |
-|---|---|---|
-| `technical_plan.md` | Product specification, targets, roadmap, research provenance | Change only for a necessary specification decision; never to obtain a pass |
-| `research/` | Dated primary-source comparisons, component terms/availability and evidence limits | Link from specification; keep proposed contracts/targets in the plan and qualification results in validation; do not duplicate candidate facts |
-| `execution_prompt.md` / `AGENTS.md` | Execution policy / concise repository rules | Reference specification/protocols; no milestone history |
-| `progress.md` | Current milestone, usable behavior, blockers, next executable step | Replace stale handoff text after each coherent slice; link historical evidence |
-| `requirements.md` | Gate → implementation → status → evidence | Update affected rows; retain original thresholds and approved deviations |
-| `protocols/` | Implemented contracts, invariants, compatibility, failure semantics | Update with code; distinguish proposed behavior explicitly |
-| `adr/` | Consequential decision: alternatives, criterion, choice, evidence, trade-off, revisit trigger | Preserve decision history; link superseding decision |
-| `validation/` | Dated observations, commands, identities, failures, results, scope | Add one report per coherent verification slice; correct errors explicitly |
-| Repository `README.md` / user guides | Supported quickstart, dependencies, import/view controls, capability limits, troubleshooting | Update when supported behavior changes |
-| Ignored `artifacts/` / `build/` | Raw logs, traces, captures, outputs, local probes | Reference by authorized location and hash; never commit private media/secrets |
+| Record | Content / update rule |
+|---|---|
+| `technical_plan.md` | Product specification, targets, roadmap, research provenance; change only for necessary specification decisions, never to obtain a pass |
+| `research/` | Dated primary-source comparisons and component terms/availability/limits; link from the plan, which owns proposed contracts/targets; validation owns qualification |
+| `execution_prompt.md` / `AGENTS.md` | Execution policy / concise repository rules; reference specification/protocols, omit milestone history |
+| `progress.md` | Current milestone, usable behavior, blockers, exact next step; replace stale handoff after each coherent slice and link historical evidence |
+| `requirements.md` | Gate → implementation → status → evidence; update affected rows, preserve thresholds/approved deviations |
+| `protocols/` | Implemented contracts/invariants/compatibility/failure semantics; update with code, label proposals |
+| `adr/` | Decision, alternatives, criterion, choice, evidence, trade-off, revisit trigger; preserve history and link superseding decisions |
+| `validation/` | Dated commands, identities, observations, failures, results, scope; one report per coherent verification slice, explicit corrections |
+| Repository `README.md` / guides | Supported quickstart, dependencies, import/view controls, limits, troubleshooting; update with supported behavior |
+| Ignored `artifacts/` / `build/` | Logs, traces, captures, outputs, probes; reference authorized location/hash, never commit private media/secrets |
 
-Future work stays in specification milestones and requirement rows. Put only the
-immediate executable task and genuine blockers in progress; avoid a second backlog.
-A current-work scratch note must be merged into its owning record or removed at
-handoff, not become another permanent source of status.
+Future work belongs in specification milestones/requirement rows. Progress keeps
+only immediate work and genuine blockers. Merge scratch notes into their owner or
+remove them at handoff; do not create another permanent status source.
 
 ## Concision without evidence loss
 
-Lead with outcome and scope. Use tables for comparable records; short prose for
-rationale. Link existing contracts, command definitions and reports instead of
-copying them. Preserve every unique constraint, decision, measurement, failure,
-identity and qualification limit when consolidating. Do not move verbose copies
-into a tracked archive merely to shrink the handoff.
+Lead with outcome/scope; use tables for comparisons and prose for rationale.
+Link contracts, command definitions and reports instead of copying them. Preserve
+every unique constraint, decision, measurement, failure, identity and qualification
+limit. Do not move verbose copies into tracked archives to shrink the handoff.
 
-Soft budgets: AGENTS.md ~60–100 useful lines; progress ~500 words; validation ~300–700 words plus necessary
-commands/identities; ADR ~150–300 words. These are review prompts, never reasons
-to omit details. Long specifications/contracts are read by section. Avoid routine
-command transcripts, repeated environment descriptions, conversational history,
-plans presented as results and retrospective rewrites of historical status.
+Soft budgets: AGENTS ~60–100 useful lines; progress ~500 words; validation
+~300–700 words plus necessary commands/identities; ADR ~150–300 words. These
+prompt review, never omission. Read long specifications/contracts by section.
+Avoid routine transcripts, repeated environments, conversational history, plans
+presented as results and retrospective historical-status rewrites.
 
 ## Status and evidence
 
-Use `NOT_STARTED`, `IN_PROGRESS`, `IMPLEMENTED_UNVERIFIED`, `VERIFIED`, `BLOCKED`,
-`DEFERRED_BY_USER`. Mark `VERIFIED` only with current relevant evidence; a requirement may pass on one
-platform and remain blocked on another. Scope every verification to the actual profile/hardware and
-fixture. Skips, configured CI, mocks, cross-compiles and software GPU execution
-cannot certify an untested native target. Synthetic results must be labeled.
-No Phase 1 gate changes without the specification's decision process.
+Statuses: `NOT_STARTED`, `IN_PROGRESS`, `IMPLEMENTED_UNVERIFIED`, `VERIFIED`,
+`BLOCKED`, `DEFERRED_BY_USER`. `VERIFIED` requires current relevant evidence,
+scoped to actual profile/hardware/fixture; a requirement can pass on one platform
+and remain blocked on another. Skips, configured CI, mocks, cross-compiles and
+software GPUs cannot certify untested native targets. Label synthetic results.
+Phase 1 gate changes require the specification's decision process.
 
 Minimum report fields:
 
 ```text
 # <Slice> — <date/timezone>
-Scope/status: affected gate IDs; implemented behavior; qualification limits.
+Scope/status: gate IDs, implemented behavior, qualification limits.
 Identity: parent/implementation commit or dirty-source identity; fixture/config hashes.
 Checks: actual command or versioned command-reference ID; cwd; exit; result/count;
-        toolchain/profile/device; raw-log location.
-Failures: observed cause, correction, retained failing evidence; skips/blockers.
-Real integration: input/output identities; measured behavior; preserved data.
-Remaining: unverified boundaries and next check (current task lives in progress).
+        toolchain/profile/device; raw logs.
+Failures: cause, correction, retained failing evidence, skips/blockers.
+Real integration: input/output identities, measured behavior, preserved data.
+Remaining: unverified boundaries/next check; current task lives in progress.
 ```
 
-Default cwd is repository root only when explicitly declared. A command reference
-must identify an immutable dated definition; overrides are written in the report.
-Reference [2026-10-12 check commands](../validation/checks-2026-10-12.md) only for
-runs that actually used them. Keep results/counts/logs in each report. Historical
-reports are not upgraded by later code, profile definitions or successful runs.
+Declare repository root explicitly to use it as default cwd. Command references
+must identify immutable dated definitions; record overrides, results/counts/logs
+in the report. Use [2026-10-12 commands](../validation/checks-2026-10-12.md) only
+for runs that used them. Later code/profiles/passes never upgrade old reports.
 
-Performance records also require warmup/repetitions, p50/p95/p99, resolution,
+Performance evidence also needs warmup/repetitions, p50/p95/p99, resolution,
 scene/LOD/overdraw, peak-memory definition, competing workloads and whole-video
-versus training scope. Retain per-scene failures/metrics. Private artifacts are
-local reproducibility references, not downloadable public evidence.
+versus training scope. Retain per-scene failures/metrics. Private artifact paths
+are local reproducibility references, not public downloads.
 
 ## Handoff and maintenance
 
-Keep project references repository-relative and commands reproducible. Never include
-credentials. If commits are authorized, use focused commits and record them; otherwise
-leave a reviewable diff with its identity. Do not invent commits or push remotely.
+Use repository-relative references/reproducible commands; never include credentials.
+If authorized, make/record focused commits; otherwise leave a reviewable diff with
+its identity. Never invent commits or push remotely.
 
-Update progress, affected requirements, protocols and validation index before
-ending a substantive slice; commit only authorized coherent work. Progress gives
-an exact command or concrete first task, output protection rules and missing
+Before ending a substantive slice, update progress, affected requirements,
+protocols and validation index; commit only authorized coherent work. Handoff
+needs an exact command/concrete first task, output protection and missing
 prerequisites. Report implemented behavior, working commands, observed checks,
-limitations and next work; do not re-narrate the session.
+limits and next work without re-narrating the session.
 
-Before a documentation refactor, compare source facts and references. Check local
+Before documentation refactoring, compare source facts/references; check local
 links, commands/hashes, status scope and specification integrity. Preserve user
-edits. Run `python3 tools/check_docs.py` and `git diff --check` after changes;
-code checks are required only if code also changed. New standards apply to future
-records; they do not invent missing fields in historical evidence.
+edits. Run `python3 tools/check_docs.py` and `git diff --check`; code checks are
+needed only if code changed. New standards apply to future records; never invent
+missing fields in historical evidence.

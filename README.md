@@ -1,25 +1,21 @@
 # World Explorer
 
-Native C++/Vulkan scene viewer and local video reconstruction work in progress.
-**M3 is active; this is not a Phase 1 release.** M1/M2 have scoped Linux
-development exits. See [progress](docs/progress.md)
-and the [requirement matrix](docs/requirements.md) for verified behavior and gaps.
+Native C++/Vulkan viewer and local video reconstruction. **M3 is active; this is
+not a Phase 1 release.** M1/M2 have scoped Linux development exits;
+[progress](docs/progress.md) and [requirements](docs/requirements.md) track gaps.
 
-The [approved final goal](docs/technical_plan.md#11-offline-asset-production-track)
-adds reusable objects, architectural structure, completed hidden surfaces and
-relightable PBR environments exported as glTF/GLB. The local asset workflow now
-follows M3 and precedes M4 platform qualification, with the first visible result
-in A1; A6 engine packaging stays after M6. This work is planned and NOT_STARTED;
-current splat/captured-appearance reconstruction does not provide it. M7–M8 live
-work remains deferred.
+The [approved asset goal](docs/technical_plan.md#11-offline-asset-production-track)
+adds reusable objects/structure, hidden-surface completion and relightable PBR
+exported as glTF/GLB: A0–A5 follow M3 before M4, first visible result in A1;
+A6 engine packaging follows M6. All are NOT_STARTED. Current splat/captured
+appearance does not provide these assets; M7–M8 live work remains deferred.
 
-## Build on the tested Arch development host
+## Build on the tested Arch host
 
-Requires CMake ≥3.30, Ninja, a compiler/library supporting C++26 and `std::expected`,
-OpenSSL, SDL3, Vulkan headers/loader and `glslc`. The development preset downloads
-SHA-256-pinned ImGui, JSON and Catch2 sources unless present in `.deps/`.
-CPU/worker tests require Python 3 and FFmpeg (`ffmpeg` and `ffprobe` on PATH),
-including the native PNG-to-RGB admission used by fresh reconstruction tests.
+Requires CMake ≥3.30, Ninja, C++26 compiler/library with `std::expected`, OpenSSL,
+SDL3, Vulkan headers/loader and `glslc`. Dev downloads SHA-256-pinned ImGui, JSON
+and Catch2 unless cached in `.deps/`. CPU/worker tests need Python 3 and
+FFmpeg/ffprobe on PATH, including native PNG-to-RGB admission tests.
 
 ```sh
 cmake --preset dev
@@ -28,59 +24,47 @@ ctest --preset dev
 build/dev/we_viewer
 ```
 
-`cpu` builds without SDL/Vulkan; `compat-cxx23` explicitly selects C++23.
-`clang`, `asan` and `tsan` provide separate verification configurations.
-`release-vcpkg` is an unqualified release dependency configuration, not a certified
-package. Native Windows/macOS viewer and release profiles remain unqualified.
+| Preset | Scope |
+|---|---|
+| `cpu` | Omits SDL/Vulkan |
+| `compat-cxx23` | Explicit C++23 compatibility |
+| `clang`, `asan`, `tsan` | Independent verification configurations |
+| `release-vcpkg` | Unqualified release dependency configuration; Windows/macOS viewer/release profiles remain unqualified |
+| `coverage` | Isolated Clang C++26 CPU instrumentation; after building, `cmake --build --preset coverage --target we_coverage_report` runs fresh tests and emits LLVM line/branch/package-update reports. [Protocol](docs/protocols/coverage.md) defines exclusions, evidence and `we_coverage_check` enforcing unchanged E1 targets |
+| `fuzz` | Isolated Clang C++26 libFuzzer + ASan/UBSan PLY diagnostic; [protocol](docs/protocols/fuzzing.md) defines bounded synthetic campaigns and crash retention under ignored directories |
 
-`coverage` keeps C++26 in an isolated Clang CPU build. After building it, run
-`cmake --build --preset coverage --target we_coverage_report` for fresh-test LLVM
-line/branch reports and separate package/update coverage. The
-[coverage protocol](docs/protocols/coverage.md) defines exclusions, saved evidence
-and `we_coverage_check`, which enforces the unchanged E1 coverage thresholds.
+`native-builds` checks explicit C++23 CPU builds: Ubuntu GCC 13 or Clang 19 with
+libstdc++ 13; Windows MSVC/runner OpenSSL SDK; macOS LLVM 20/matching libc++ and
+Homebrew OpenSSL. C++23 alone cannot supply missing library APIs. macOS CI does
+not qualify Apple Clang or Vulkan. All jobs check FFmpeg/ffprobe; Windows installs
+Chocolatey FFmpeg 7.1.1. See [toolchain decision](docs/adr/002-native-ci-toolchains.md),
+[initial repairs](docs/validation/2026-10-11-ci.md) and
+[portability follow-up](docs/validation/2026-10-11-ci-followup.md).
 
-`fuzz` builds an isolated Clang C++26 libFuzzer + ASan/UBSan PLY diagnostic.
-The [fuzzing protocol](docs/protocols/fuzzing.md) gives bounded synthetic seeds,
-campaign commands and crash retention; it uses only ignored local directories.
+## Reconstruct and review a video
 
-The `native-builds` workflow checks the explicit C++23 CPU profile with GCC 13
-and Clang 19/libstdc++ 13 on Ubuntu, MSVC with the runner's OpenSSL SDK on Windows,
-and LLVM 20 with its matching libc++ and Homebrew OpenSSL on macOS. Selecting
-C++23 alone does not provide missing standard-library APIs. The macOS CPU job
-does not qualify Apple Clang or the Vulkan viewer; see the
-[toolchain decision](docs/adr/002-native-ci-toolchains.md) and
-[CI repair checks](docs/validation/2026-10-11-ci.md) and
-[follow-up portability checks](docs/validation/2026-10-11-ci-followup.md).
-All CI jobs verify FFmpeg/ffprobe before configuration; Windows installs the
-versioned Chocolatey FFmpeg 7.1.1 package.
-
-GUI and CLI share a command to continue completed poses through explicit local
-fitting, checked publication and viewer loading:
+`python3 tools/new_video_job.py data/local/room.mp4` accepts a video anywhere in
+`data/`, creates/prints `artifacts/<video-name>/request.json` and starts no work.
+Use its printed request with the shared GUI/CLI coordinator:
 
 ```sh
 build/dev/we_process reconstruct --request artifacts/reconstruction.json
 build/dev/we_viewer --reconstruction-request artifacts/reconstruction.json --max-splats 500000
 ```
 
-For a new video anywhere in `data/`, run
-`python3 tools/new_video_job.py data/local/room.mp4`. This creates and prints a
-request under `artifacts/<video-name>/`
-without starting processing. Use that printed path with the commands above, or
-open it with `build/dev/we_viewer --review-request REQUEST_PATH`.
-Import shows the requested actions/limits and current output free space. An
-explicitly selected completed inspection also shows checked video metadata;
-automatic inspection remains pending until Run. Reviewing keeps scene viewing
-active and does not start reconstruction.
-See the [artifact layout](docs/protocols/artifacts.md) for limits, retained scenes
-and repeat-attempt naming. All of `data/` and `artifacts/` is ignored by Git.
+`build/dev/we_viewer --review-request REQUEST_PATH` reviews without reconstruction
+while viewing stays active. Import shows actions/limits/current output free space;
+selected retained inspection supplies checked metadata, while automatic inspection
+leaves metadata pending until Run. The full planned preflight UI is incomplete.
+The [artifact protocol](docs/protocols/artifacts.md) defines retained scenes,
+limits and repeat-attempt naming; `data/` and `artifacts/` are Git-ignored.
 
-See the [job schema](docs/protocols/jobs.md) for fresh fitting, checkpoint resume
-and explicit completed-fit reuse. Schema 2 can run automatic local metadata
-inspection in an owned job or adopt a checksummed retained inspection, then check
-metadata/current output storage before preparing poses. Explicit fresh decode/solve
-actions use owned jobs, immutable requests and checked RGB replay on restart.
-Fresh end-to-end real-chain qualification remains pending. The development recipe
-does not certify quality.
+The [job schema](docs/protocols/jobs.md) defines fresh fitting, checkpoint resume
+and explicit completed-fit reuse. Schema 2 owns automatic metadata inspection or
+adopts a checksummed inspection, checks metadata/storage before pose preparation,
+and supports explicit fresh decode/solve with immutable owned jobs and checked
+RGB replay on restart. Fresh end-to-end real-chain qualification remains pending;
+the development recipe does not certify quality.
 
 ## View a scene
 
@@ -92,40 +76,31 @@ build/dev/we_viewer --scene artifacts/diagnostics/gaussian-fixture/scene.wexplor
 build/dev/we_gpu_smoke artifacts/diagnostics/gpu-overlap/readback.ppm
 ```
 
-A separate [frozen 250,000-splat portable fixture](docs/protocols/viewer.md#frozen-portable-viewer-fixture)
-is generated with `we_viewer_fixture` and checked with `we_gpu_portable_fixture`.
-It includes its MIT notice, fixed camera and asset hashes; all generated outputs
-belong under ignored `artifacts/`. Its load/readback check does not measure FPS.
-
-The fixture is synthetic and tests rendering only. For a real scene, `compile`
-accepts the explicitly annotated gsplat-1.5.3 ASCII PLY profile emitted by our worker:
+These are synthetic rendering checks. The separate
+[frozen portable fixture](docs/protocols/viewer.md#frozen-portable-viewer-fixture)
+uses `we_viewer_fixture`/`we_gpu_portable_fixture`: 250,000 splats, MIT notice,
+fixed camera and hashes; load/readback only, no FPS measurement. Outputs belong
+under `artifacts/`. For real data, `compile` accepts the worker's explicitly
+annotated gsplat-1.5.3 ASCII PLY profile:
 
 ```sh
 build/dev/we_process compile /path/to/appearance.ply artifacts/capture.wexplore
 ```
 
-Click the viewport to capture the mouse. New/reset profiles use WASD movement,
-Space/Ctrl for vertical movement and Shift for acceleration. Existing saved
-bindings are preserved; the controls overlay shows the active keys. The wheel
-changes speed and Escape releases the mouse. Focus
-loss releases capture. Settings remap keys and reset panels. Walking is disabled
-because independent scale and supported collision geometry are not implemented.
-Bookmarks are session-local and restore pose and FOV together. Settings persist
-but input capture never does. UI scale follows the current display; Import remains
-within the viewport when resized.
+Click the viewport to capture the mouse; Escape/focus loss releases it.
+New/reset bindings: WASD movement, Space/Ctrl vertical, Shift acceleration, wheel
+speed. Saved bindings persist; the overlay shows active keys, and Settings remaps
+keys/resets panels. Capture never persists. Session bookmarks restore pose/FOV;
+UI scale follows the display and resized Import stays within the viewport.
+Open/import, background loading, logs and Cancel are available. Dear ImGui has no
+screen-reader integration here. Walking needs independent scale and supported
+collision geometry, both unavailable.
 
-The interface has open/import dialogs, background scene loading, worker logs and
-cancellation. Import reviews a configured job JSON before running, showing checked
-retained metadata, actions, limits and current output storage. Automatic inspection
-leaves metadata pending. The full planned preflight UI remains incomplete. Dear
-ImGui currently has no screen-reader integration in this application.
+## Pose workers and retained data
 
-## Process a local video
-
-FFmpeg/ffprobe must be on PATH. Install `workers/pose-requirements.txt` into an
-isolated Python 3.12 environment. This installs official pycolmap 4.2.1; a separate
-COLMAP executable is not required. Dependency installation is explicit, and
-processing does not upload media or silently install packages.
+Install `workers/pose-requirements.txt` explicitly in isolated Python 3.12:
+official pycolmap 4.2.1 needs no separate COLMAP executable. FFmpeg/ffprobe must
+be on PATH. Processing never uploads media or silently installs dependencies.
 
 ```json
 {
@@ -143,36 +118,26 @@ processing does not upload media or silently install packages.
 build/dev/we_process run --request job.json --worker-python /path/to/venv/bin/python
 ```
 
-Completed stages are checksummed and reused by compatible requests. Failed stages
-remain explicitly incomplete; committed output is preserved. A recovery request
-can set `pose_recipe` to `exhaustive_guided`; retain the original result and record
-the extra cost. Neither recipe guarantees reconstruction for low-parallax footage.
+Compatible requests reuse checksummed completed stages; failed stages stay
+incomplete and committed output is preserved. Recovery can select
+`pose_recipe: exhaustive_guided`; retain the original result and extra cost.
+Neither recipe guarantees low-parallax reconstruction.
 
-The native frame-source inspection path can replay a committed decode stage:
-`build/dev/we_process replay-frames DECODE_STAGE VIDEO`. It checks image references
-and prints original timestamps and RGB digests without rerunning reconstruction.
-See the [capture contract](docs/protocols/capture.md). Shared worker commands now
-use verified [FlatBuffers 2.0 START/CANCEL commands and events](docs/protocols/worker.md).
-Cancellation requests the existing checkpoint hook before enforcing process-tree
-termination; direct Python invocation retains JSONL diagnostics. Native protocol
-1 workers must be upgraded explicitly. Existing completed assets remain readable.
+Shared workers use verified [FlatBuffers 2.0 START/CANCEL](docs/protocols/worker.md).
+Cancellation requests checkpointing before process-tree termination; direct Python
+invocation retains JSONL diagnostics. Upgrade native protocol-1 workers explicitly;
+existing completed assets remain readable.
 
-`build/dev/we_process replay-poses POSE_JOB VIDEO [--decode-stage DIR]` checks
-completed poses/calibration, replays real frame leases through the native estimator
-contract and publishes an in-memory map snapshot. It is labeled completed-output
-replay. The optional stage selection
-handles a stale decode pointer without changing it. See [pose replay](docs/protocols/poses.md).
+| Command | Behavior / protection |
+|---|---|
+| `build/dev/we_process replay-frames DECODE_STAGE VIDEO` | Checks committed decode references and prints original timestamps/RGB digests; no reconstruction rerun. [Capture contract](docs/protocols/capture.md) |
+| `build/dev/we_process replay-poses POSE_JOB VIDEO [--decode-stage DIR]` | Completed-output replay: checks poses/calibration, replays real RGB leases through the estimator, publishes an in-memory map. Explicit stage handles a stale decode pointer without modifying it. [Pose contract](docs/protocols/poses.md) |
+| `build/dev/we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]` | Checked canonical FlatBuffers export; no solver/decoder/optimizer. Parent must exist; existing destination preserved. Images stay in the job; arbitrary scale/unknown gravity; interchange, not resumable map log |
+| `build/dev/we_process inspect-poses OUTPUT.weposes SHA256` | Reloads immutable snapshot with the export's reported SHA-256 and prints JSON |
+| `build/dev/we_process prepare-poses POSE_JOB VIDEO MAP_DIRECTORY [--decode-stage DIR]` | Imports checked retained poses into a durable map; identical dependency reuse is idempotent, corrected/different maps need new output or explicit resync |
+| `build/dev/we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE` | Fresh isolated CPU COLMAP solve from journaled native RGB leases; fresh output, retained failure diagnostics. Publishes canonical poses and `NEW_JOB.map`, preserves original job and does not fit. Optional `--recipe exhaustive_guided`; automatic video-to-fit chaining remains pending |
 
-`build/dev/we_process export-poses POSE_JOB VIDEO OUTPUT.weposes [--decode-stage DIR]`
-verifies retained poses and writes a canonical FlatBuffers asset without running
-a solver, decoder or optimizer. The destination parent must exist; existing files
-are preserved. Save the reported SHA-256 and use
-`build/dev/we_process inspect-poses OUTPUT.weposes SHA256` to reload the checked
-immutable snapshot and print JSON inspection. Images stay in the original local
-job. Scale remains arbitrary and gravity unknown; this file is pose interchange,
-not a resumable map-store log.
-
-Persistent native maps now retain snapshots and retry receipts across restart:
+Persistent maps retain snapshots/retry receipts across restart:
 
 ```sh
 build/dev/we_process init-map NEW_MAP_DIRECTORY
@@ -180,56 +145,38 @@ build/dev/we_process import-map INPUT.weposes SHA256 MAP_DIRECTORY
 build/dev/we_process inspect-map MAP_DIRECTORY
 ```
 
-Use a fresh output directory with an existing parent. The checked canonical source
-is copied into the store; the original capture/job is preserved. Repeating an import
-is idempotent, and corrupt/missing manifests never silently reset the map. See the
-[map contract](docs/protocols/maps.md) for writer ownership, cancellation, retention
-budgets and recovery limits. Scale remains arbitrary; walking is unavailable.
+Use fresh output/existing parent; import copies the checked canonical source,
+preserves the capture/job and is idempotent. Corrupt/missing manifests never
+silently reset maps. [Map contract](docs/protocols/maps.md) covers writer ownership,
+cancellation, retention budgets and recovery. Scale stays arbitrary; no walking.
 
-`build/dev/we_process prepare-poses POSE_JOB VIDEO MAP_DIRECTORY [--decode-stage DIR]`
-combines checked retained-pose import and durable map preparation. Repeating it
-reuses the identical committed dependency; corrected/different maps require a new
-output or explicit resync. The shared GUI/CLI reconstruction coordinator now
-performs this step before fitting, using optional `map_directory` or the default
-sibling `FIT_DIRECTORY.map`. It checks fit camera poses and attaches map/source
-dependencies to the scene. See the [job contract](docs/protocols/jobs.md).
+The GUI/CLI coordinator prepares maps before fitting: explicit `map_directory`
+or sibling `FIT_DIRECTORY.map`. It checks fit cameras and attaches map/source
+dependencies to the scene; see the [job contract](docs/protocols/jobs.md).
 
-`build/dev/we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE`
-runs a fresh isolated CPU COLMAP solve from native RGB leases. Use a fresh output
-directory; accepted frames are journaled locally, and failures retain diagnostics.
-The command publishes canonical poses and a durable map at the fresh sibling
-`NEW_JOB.map` and does not fit appearance or modify
-the original completed job. An explicit `--recipe exhaustive_guided` selects the
-existing recovery recipe. Automatic video-to-fit chaining remains pending.
+## Appearance and depth
 
-The explicitly named local development fit now works with real gsplat output;
-see [worker setup](workers/gsplat/README.md) for its pinned environment and native
-`we_process fit` / `compile-fit` commands. Open a resulting scene with
+[gsplat worker setup](workers/gsplat/README.md) defines the pinned local development
+environment and `we_process fit` / `compile-fit`. Open the result with
 `we_viewer --scene OUTPUT.wexplore --source-view --max-splats 500000`.
-“Source view” is an explicit upright spectator reset; it does not follow capture
-poses. Renderer budgets are configurable, and a larger scene must be admitted
-under an explicit budget. The default remains 250k splats/512 MiB.
+Source view explicitly resets the independent spectator upright; it does not
+follow capture poses. Admit larger scenes with explicit budgets; defaults remain
+250k splats/512 MiB.
 
-The prescribed upstream benchmark adapter still needs its separate environment
-and reviewed metric weights. Standard is 7k steps; quality is 30k. The development
-fit's explicit resize and temporal holdout do not certify Q2/Q3 or reference
-hardware/platform targets. The Q2 unlimited benchmark recipe remains unimplemented.
+Standard is 7k steps; quality is 30k. The upstream benchmark adapter needs its
+separate environment/reviewed metric weights; Q2 unlimited remains unimplemented.
+Development resize/temporal holdout does not certify Q2/Q3 or reference platforms.
 
-Sources and intermediates remain local until the user removes their selected job
-directory. `sample.mp4`, dependency caches, generated scenes and `artifacts/` are
-ignored by Git. Raw captures and their diagnostic images must never be committed.
+`build/dev/we_process inspect-depth INPUT.wedepth SHA256 [--max-dimension N]`
+checks format/provenance only; [depth contract](docs/protocols/depth.md).
+`we_process prepare-dense` checks/publishes calibrated input metadata without
+computing depth/changing scenes; [dense-input arguments/recipe/grid limits](docs/protocols/dense_inputs.md).
+The [separate CUDA pilot](workers/dense/README.md) produces partial checked depth;
+production dense reconstruction/walking remain unavailable.
 
-The full design and acceptance gates are in [the specification](docs/technical_plan.md).
-Use the [documentation map](docs/README.md) for contracts, historical evidence and
-[documentation standards](docs/protocols/documentation.md). Check local documentation
-links with `python3 tools/check_docs.py`.
-
-Depth interchange diagnostics: `build/dev/we_process inspect-depth INPUT.wedepth SHA256 [--max-dimension N]`
-checks format and provenance fields only. Production dense reconstruction and walking remain
-unavailable; the separate [three-view CUDA development pilot](workers/dense/README.md)
-produces partial checked depth only. See the [depth contract](docs/protocols/depth.md).
-
-Retained calibrated inputs can be prepared with `we_process prepare-dense`; see
-the [native dense-input contract](docs/protocols/dense_inputs.md) for arguments,
-recipe pins and grid limits. This command verifies and publishes input metadata;
-it does not compute depth or change the saved scene.
+Sources/intermediates stay local until the user removes their job. Never commit
+raw captures or diagnostic images; `sample.mp4`, caches, scenes and `artifacts/`
+are ignored. [Specification](docs/technical_plan.md) owns acceptance gates;
+[documentation map](docs/README.md) links contracts/evidence and
+[documentation standards](docs/protocols/documentation.md). Check local links with
+`python3 tools/check_docs.py`.
