@@ -134,6 +134,9 @@ Paths resolve against the request file's directory; absolute paths are accepted.
 An empty `decode_stage` uses normal retained-stage resolution. `outputs` contains
 **1–18** explicit frame IDs in unique checked-manifest order. There is no implicit
 view exclusion or selection. Version/frame IDs must be unsigned JSON integers.
+The checked request bytes are parsed as a bounded character view for libc++
+portability. Raw NUL bytes reject before parsing so trailing content cannot be
+hidden behind the parser's NUL end marker; escaped JSON characters are unaffected.
 The command independently runs `load_resized_dense_inputs`, then
 `load_pose_bound_depth` at **default limits** for each selected asset. Expected
 grid/intrinsics/producer/recipe come from checked inputs, never from the asset

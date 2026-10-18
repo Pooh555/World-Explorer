@@ -45,6 +45,8 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
         if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Visibility export cancelled");
         const auto K_CONFIG_BYTES = pinned(request, request_sha256, 1024uz * 1024uz, stop);
         if (!K_CONFIG_BYTES) return std::unexpected(K_CONFIG_BYTES.error());
+        if (std::ranges::find(*K_CONFIG_BYTES, std::byte {}) != K_CONFIG_BYTES->end())
+            return fail(ErrorCode::INVALID_DATA, "Visibility request contains a raw NUL byte");
         const auto K_CONFIG_TEXT =
             K_CONFIG_BYTES->empty()
                 ? std::string_view {}

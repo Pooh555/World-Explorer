@@ -590,7 +590,8 @@ TEST_CASE("visibility request parsing rejects empty truncated and embedded-NUL i
     const auto K_HASH = sha256(std::as_bytes(std::span(text)));
     const auto K_RESULT = export_depth_visibility_cache(data.m_config, K_HASH, data.m_destination);
     REQUIRE(!K_RESULT);
-    CHECK(K_RESULT.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(K_RESULT.error().m_code ==
+          (K_MODE == 0 ? ErrorCode::RESOURCE_EXHAUSTED : ErrorCode::INVALID_DATA));
     CHECK(!std::filesystem::exists(data.m_destination));
     CHECK(*sha256_file(data.m_config, 1024uz * 1024uz) == K_HASH);
 }

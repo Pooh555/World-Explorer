@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-18 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-19 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: IN_PROGRESS.** No full Q/P/N/E
 gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
@@ -35,6 +35,10 @@ retains all historical checks, identities, failures, timings and profile limits.
   restores the PPM budget fixture and Windows-only renamed references, with a
   string-literal regression in the style checker. Native Windows/macOS reruns
   remain due; milestone gates and the M3 next step are unchanged.
+- [macOS JSON build repair](validation/2026-10-19-macos-byte-json.md) replaces
+  byte-vector JSON input with a bounded character view and rejects raw NUL
+  termination. Local libc++ verification is separate from the required native
+  macOS workflow rerun; M3's next step remains fused-geometry admission.
 
 ## Saved reconstructions
 
