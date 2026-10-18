@@ -2,6 +2,7 @@
 #include "training_camera_fixture.hpp"
 #include "world_explorer/application/dense_inputs.hpp"
 #include "world_explorer/application/depth_assets.hpp"
+#include "world_explorer/application/depth_visibility.hpp"
 #include "world_explorer/application/pose_export.hpp"
 #include "world_explorer/core/asset_files.hpp"
 #include "world_explorer/reconstruction_adapters/colmap_images.hpp"
@@ -449,6 +450,126 @@ TEST_CASE("resized dense admission rejects changed PNG bytes headers links and c
     if (K_MODE == 3) cancellation.request_stop();
     if (K_MODE == 4) data.m_request.m_native.m_pose_sha256 = std::string(64uz, 'f');
     CHECK(data.load(cancellation.get_token()).has_value() == false);
+}
+
+namespace {
+
+struct VisibilityFixture {
+    ResizedFixture m_input;
+    std::filesystem::path m_config = m_input.m_native.m_outputs / "visibility.json";
+    std::filesystem::path m_destination = m_input.m_native.m_outputs / "visibility-cache";
+    nlohmann::json m_json;
+
+    VisibilityFixture() {
+        const auto K_PREPARED = m_input.load().value();
+        const auto& native = m_input.m_request.m_native;
+        m_json = { { "schema_version", 1 },
+                  { "pose_job", native.m_completed.m_pose_job.string() },
+                  { "source_sha256", native.m_completed.m_source_sha256 },
+                  { "poses", native.m_canonical_poses.string() },
+                  { "pose_sha256", native.m_pose_sha256 },
+                  { "native_recipe", native.m_depth_recipe.string() },
+                  { "native_recipe_sha256", native.m_depth_recipe_sha256 },
+                  { "recipe", m_input.m_request.m_depth_recipe.string() },
+                  { "recipe_sha256", m_input.m_request.m_depth_recipe_sha256 },
+                  { "manifest", m_input.m_manifest.string() },
+                  { "manifest_sha256", *sha256_file(m_input.m_manifest, 1024uz * 1024uz) },
+                  { "decode_stage", "" },
+                  { "outputs", nlohmann::json::array() } };
+        const auto K_DEPTH_ROOT = m_input.m_native.m_outputs / "depth-sources";
+        std::filesystem::create_directory(K_DEPTH_ROOT);
+        for (std::size_t i { 0uz }; i < K_PREPARED.m_frames.size(); ++i) {
+            DepthImageAsset depth;
+            depth.m_metadata = K_PREPARED.m_frames[i].m_expected_depth;
+            depth.m_axial_depth.resize(121uz);
+            depth.m_valid.resize(121uz);
+            depth.m_confidence.resize(121uz);
+            depth.m_support_count.resize(121uz);
+            if (i == 1uz) depth.m_standard_deviation = std::vector<float>(121uz);
+            if (i != 1uz) {
+                depth.m_axial_depth[7uz] = 4;
+                depth.m_valid[7uz] = 1;
+                depth.m_confidence[7uz] = i == 0uz ? .5F : 0.F;
+                depth.m_support_count[7uz] = i == 0uz ? 3 : 1;
+            }
+            const auto K_PATH = K_DEPTH_ROOT / (std::to_string(i) + ".wedepth");
+            const auto K_HASH = write_depth_asset(K_PATH, depth).value();
+            m_json["outputs"].push_back({ { "frame", depth.m_metadata.m_dependency.m_frame.m_value },
+                                         { "path", K_PATH.string() },
+                                         { "sha256", K_HASH } });
+        }
+    }
+
+    Result<std::string> run(const std::stop_token& stop = {}) {
+        std::ofstream(m_config) << m_json.dump(2);
+        return export_depth_visibility_cache(
+            m_config, *sha256_file(m_config, 1024uz * 1024uz), m_destination, stop);
+    }
+};
+
+}  // namespace
+
+TEST_CASE("visibility export preserves admitted depth planes and publishes exact dependencies",
+          "[dense][visibility]") {
+    VisibilityFixture data;
+    const auto K_RESULT = data.run();
+    INFO((K_RESULT ? *K_RESULT : K_RESULT.error().m_message));
+    REQUIRE(K_RESULT);
+    CHECK(*sha256_file(data.m_destination / "manifest.json", 1024uz * 1024uz) == *K_RESULT);
+    const auto K_MANIFEST =
+        nlohmann::json::parse(std::ifstream(data.m_destination / "manifest.json"));
+    CHECK(K_MANIFEST["files"].size() == 10uz);
+    CHECK(K_MANIFEST["frames"].size() == 3uz);
+    CHECK(K_MANIFEST["kind"] == "POSE_ADMITTED_DEPTH_VISIBILITY_V1");
+    for (std::size_t i { 0uz }; i < 3uz; ++i) {
+        const auto& frame = K_MANIFEST["frames"][i];
+        CHECK(frame["valid_pixels"] == (i == 1uz ? 0 : 1));
+        CHECK(frame["unknown_pixels"] == (i == 1uz ? 121 : 120));
+        CHECK(frame["depth_sha256"] == data.m_json["outputs"][i]["sha256"]);
+        const auto K_NAME = frame["depth_asset"].get<std::string>();
+        CHECK(*sha256_file(data.m_destination / K_NAME, 65536uz) ==
+              frame["depth_sha256"].get<std::string>());
+    }
+    CHECK(data.run().has_value() == false);
+    CHECK(*sha256_file(data.m_destination / "manifest.json", 1024uz * 1024uz) == *K_RESULT);
+}
+
+TEST_CASE("visibility export rejects wrong depth domain inventory dependencies and output overlap",
+          "[dense][visibility]") {
+    VisibilityFixture data;
+    const auto K_ORIGINALS = data.m_json["outputs"];
+    const auto K_MODE = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+    if (K_MODE == 0) data.m_json["outputs"][1uz]["frame"] = data.m_json["outputs"][0uz]["frame"];
+    if (K_MODE == 1) data.m_json["outputs"][0uz]["frame"] = 999999;
+    if (K_MODE == 2) data.m_json["outputs"][0uz]["sha256"] = std::string(64uz, 'f');
+    if (K_MODE == 3) data.m_json["pose_sha256"] = std::string(64uz, 'f');
+    if (K_MODE == 4) data.m_json["outputs"][0uz]["frame"] = true;
+    if (K_MODE == 5) data.m_json["recipe_sha256"] = std::string(64uz, 'f');
+    if (K_MODE == 6) data.m_destination = data.m_input.m_root / "forbidden";
+    if (K_MODE == 7) data.m_json["outputs"][0uz]["path"] = data.m_json["outputs"][1uz]["path"];
+    if (K_MODE == 8) {
+        while (data.m_json["outputs"].size() < 19uz)
+            data.m_json["outputs"].push_back(K_ORIGINALS[0uz]);
+    }
+    if (K_MODE == 9) data.m_json["outputs"].clear();
+    CHECK(data.run().has_value() == false);
+    CHECK(std::filesystem::exists(data.m_destination / "manifest.json") == false);
+    for (const auto& record : K_ORIGINALS) {
+        // Admission failure must never modify a caller-owned depth file.
+        const auto K_PATH = record.at("path").get<std::string>();
+        CHECK(*sha256_file(K_PATH, 65536uz) == record.at("sha256").get<std::string>());
+    }
+}
+
+TEST_CASE("visibility export cancellation does not publish a terminal receipt",
+          "[dense][visibility]") {
+    VisibilityFixture data;
+    std::stop_source cancellation;
+    cancellation.request_stop();
+    const auto K_RESULT = data.run(cancellation.get_token());
+    REQUIRE(!K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::CANCELLED);
+    CHECK(!std::filesystem::exists(data.m_destination));
 }
 
 TEST_CASE("resized dense admission rejects duplicate JSON keys and unsupported resize recipes",

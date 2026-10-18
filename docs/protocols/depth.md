@@ -102,3 +102,76 @@ states that pose-context/calibration/geometry quality remain unverified. It does
 not run a decoder, solver, optimizer or GPU, or enable walking. Bad input exits 2;
 observed cancellation exits 130. [Initial evidence](../validation/2026-10-17-depth-assets.md)
 separates synthetic interoperability from real retained-pose read regressions.
+
+## Pose-admitted visibility export
+
+```sh
+build/dev/we_process export-depth-visibility REQUEST.json REQUEST_SHA NEW_DIRECTORY
+```
+
+`application/depth_visibility.hpp` exposes the shared native application command.
+The pinned JSON request has exactly these fields:
+
+```json
+{
+  "schema_version": 1,
+  "pose_job": "POSE_JOB",
+  "source_sha256": "SOURCE_SHA",
+  "poses": "POSES.weposes",
+  "pose_sha256": "POSE_SHA",
+  "native_recipe": "NATIVE_RECIPE.json",
+  "native_recipe_sha256": "NATIVE_RECIPE_SHA",
+  "recipe": "RESIZED_RECIPE.json",
+  "recipe_sha256": "RESIZED_RECIPE_SHA",
+  "manifest": "RESIZED_MANIFEST.json",
+  "manifest_sha256": "RESIZED_MANIFEST_SHA",
+  "decode_stage": "",
+  "outputs": [{"frame": 123, "path": "INPUT.wedepth", "sha256": "DEPTH_SHA"}]
+}
+```
+
+Paths resolve against the request file's directory; absolute paths are accepted.
+An empty `decode_stage` uses normal retained-stage resolution. `outputs` contains
+**1–18** explicit frame IDs in unique checked-manifest order. There is no implicit
+view exclusion or selection. Version/frame IDs must be unsigned JSON integers.
+The command independently runs `load_resized_dense_inputs`, then
+`load_pose_bound_depth` at **default limits** for each selected asset. Expected
+grid/intrinsics/producer/recipe come from checked inputs, never from the asset
+being admitted. Re-encoding must reproduce the selected depth SHA exactly.
+
+The new destination must lie outside the pose job/decode stage, input manifest
+directory, depth-file parent directories, request, pose and recipe files, with
+containment checked in both directions. Existing entries, including dangling
+symlinks, reject. The exporter owns the new directory, writes closed/flushed
+immutable files first and publishes `manifest.json` last. Failure/cancellation
+can retain an **uncommitted** directory; it has no consumable receipt and is not
+resumed or overwritten. A final directory-flush error can leave a published
+receipt present: inspect its checksum before deciding its state. Caller data is
+read-only. Signals use the CLI's existing stop-token path.
+
+The `POSE_ADMITTED_DEPTH_VISIBILITY_V1` receipt binds request/input/pose/recipe
+hashes, epoch/revision, exact selected camera/image metadata, valid/unknown counts
+and every file's byte count/SHA. It copies `poses.weposes`, the original
+`dense-inputs.json`, both recipe files, selected RGB8 PNGs, and bit-identical
+`.wedepth` assets. Depth, validity, confidence, support and optional uncertainty
+remain separate unchanged planes. Bounds: **48 million aggregate selected
+pixels**, **768 MiB aggregate exported dependency/asset bytes**, **1 MiB** request
+and terminal receipt, plus existing per-file admission limits. Files stream one
+asset at a time; these are admission bounds, not a process-peak guarantee.
+
+This is a partial pose-context admission receipt, not a signature, reconstruction
+quality certificate, measured scale, fused mesh or scene/collision update. Pin
+its SHA from an observed native export. A self-authored/rehashed receipt is not
+evidence that native admission ran.
+
+`workers/dense/admitted_visibility.py` consumes that pinned receipt without
+backend imports or private-map fallback. It rechecks the closed file inventory,
+all copied hashes, dense-domain metadata, complete depth layout/numerics/counts,
+actual RGB8 decoding and wxyz camera transforms. It preserves read-only depth,
+validity/support/confidence/sigma arrays; zero-confidence valid pixels stay valid,
+and absent sigma stays unavailable. Its current analysis transform requires
+explicit unit camera-to-world scale; arbitrary pose units remain arbitrary.
+The existing [spatial diagnostic](../../workers/dense/README.md#spatial-and-texture-reliability-diagnostic)
+can compare fixed pairs while retaining unknown samples in every denominator.
+[Native/cache evidence](../validation/2026-10-18-depth-visibility.md) checks both
+retained runs without a solve; real fusion and Q5/N2 remain open.

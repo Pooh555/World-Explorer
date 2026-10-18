@@ -357,3 +357,27 @@ evaluation centers are `FLAT` and supply no support by the existing policy;
 both retained caches finds large disagreement in textured regions too. The
 candidate remains diagnostic-only (`gpu_recipe_ready: false`); no new solve or
 quality promotion is justified by the aggregate count.
+
+## Pose-admitted geometric depth
+
+The native `we_process export-depth-visibility` application command now exports
+selected `.wedepth` assets after independently rechecking resized inputs and
+canonical pose context at default depth limits. The
+[request/receipt contract](../../docs/protocols/depth.md#pose-admitted-visibility-export)
+defines paths, byte/pixel bounds and manifest-last publication. It preserves
+original depth/validity/support/confidence/optional uncertainty bytes, copied RGB,
+camera metadata and dependencies. It neither reruns MVS nor updates a scene.
+
+`admitted_visibility.load_admitted_cache(root, receipt_sha256, cancelled)` checks
+the pinned native receipt, copied files/domain, all planes and actual RGB8
+decoding. It returns immutable arrays and optical camera transforms for existing
+CPU diagnostics. Native admission is established by the observed export command
+and pinned receipt; this consumer does not independently certify a forged
+receipt or reconstruction accuracy. There is no private photometric-map fallback.
+
+[Local checks](../../docs/validation/2026-10-18-depth-visibility.md) preserve all
+**27** original depth assets across the nine/18-view runs. Fixed-nine valid
+observations remain **1,537,092 / 790,453**. The same 42-pair sampled comparison
+includes **474,641 / 496,003 unknown-reference observations out of 516,096**;
+conditional agreement cannot hide that missing coverage. No source re-ranking,
+new solver run, metric scale, fusion, Q5/N2 or walking qualification follows.

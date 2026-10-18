@@ -1,6 +1,7 @@
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/dense_inputs.hpp"
 #include "world_explorer/application/depth_assets.hpp"
+#include "world_explorer/application/depth_visibility.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/pose_export.hpp"
 #include "world_explorer/application/pose_preparation.hpp"
@@ -59,6 +60,7 @@ int main(int argc, char** argv) {
                    "  we_process inspect-poses INPUT.weposes SHA256 (checked JSON inspection)\n"
                    "  we_process inspect-depth INPUT.wedepth SHA256 [--max-dimension N] (format "
                    "inspection only)\n"
+                   "  we_process export-depth-visibility REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process prepare-dense POSE_JOB SOURCE_SHA POSES.weposes POSE_SHA "
                    "RECIPE.json RECIPE_SHA OUTPUT.json [--decode-stage DIR]\n"
                    "  we_process check-resized-dense POSE_JOB SOURCE_SHA POSES.weposes POSE_SHA "
@@ -156,6 +158,23 @@ int main(int argc, char** argv) {
             if ((*K_SNAPSHOT)->m_initial_pose_asset_sha256)
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
+        if (K_COMMAND == "export-depth-visibility") {
+            if (argc != 5) {
+                std::cerr << "Usage: we_process export-depth-visibility REQUEST.json SHA256 "
+                             "NEW_DIRECTORY\n";
+                return 2;
+            }
+            const auto K_EXPORTED = export_depth_visibility_cache(
+                argv[2uz], argv[3uz], argv[4uz], cancellation.get_token());
+            if (!K_EXPORTED) {
+                std::cerr << K_EXPORTED.error().m_message << '\n';
+                return K_EXPORTED.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Pose-admitted depth visibility cache; scale arbitrary; no "
+                         "fusion/walking\nSHA-256 "
+                      << *K_EXPORTED << '\n';
             return 0;
         }
         if (K_COMMAND == "check-resized-dense") {

@@ -134,6 +134,16 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   finds large disagreement in textured regions too. No new GPU recipe/solve;
   47 isolated dense tests and 16,114 independent scalar oracle samples pass.
 
+- [Pose-admitted visibility](validation/2026-10-18-depth-visibility.md): native
+  application/CLI exports checked resized-domain depth, RGB and pose dependencies;
+  all **27** retained depth assets copy exactly. Final C++26/C++23 replays reproduce
+  their corresponding export receipts;
+  **311 dev / 288 C++23** checks and focused native ASan/UBSan/LSan pass. The reader
+  preserves explicit validity/support/confidence/optional sigma. Same-pair
+  analysis retains **474,641 / 496,003 unknown-reference samples of 516,096**;
+  conditional depth agreement does not certify complete geometry. No solve,
+  source re-ranking or scene update occurs.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -143,25 +153,25 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement a **pose-admitted geometric-depth visibility cache** before another
-source-ranking change. Read `artifacts/validation/m3-dense-reliability-20261018/`
-`training.json`, `evaluation.json`, `cache-comparison.json` and `summary.json`.
-The denser objective improves an aggregate but harms two fixed references; raw
-photometric disagreement persists in textured regions. Do not tune on the opened
-evaluation grid or treat flat-by-policy samples as proven unreconstructable.
+Begin **bounded observed-depth fusion** under plan §5.1, using the native
+visibility receipts in `artifacts/validation/m3-depth-visibility-20261018/`:
+`temporal-cache/manifest.json`, `parallax-cache/manifest.json`, `analysis.json`
+and `native-check-commands.json`. Start with a project-owned fusion request and
+output/coverage contract around these exact pose-admitted inputs, then the
+isolated Open3D-backed sparse-TSDF pilot. Check local component availability,
+versions/terms and freeze a separate worker recipe/resource plan before any
+necessary provisioning; keep existing pose/training/dense environments unchanged.
 
-Start from `load_pose_bound_depth` in `application/depth_assets.hpp` and the
-retained nine/18-view `.wedepth` assets. Add a native checked export/receipt for
-visibility analysis: default-limit pose/image/calibration/recipe admission,
-immutable depth/validity/support/confidence bytes and exact dependencies. Compare
-the same fixed nine references and camera pairs, keep unknown samples in every
-tile/class denominator, and freeze new disjoint reference grids before any future
-ranking experiment. Unfiltered private maps must never be promoted into admitted
-geometry. Use the resulting supported observations to prepare real fusion work;
-partial coverage and arbitrary scale still cannot certify Q5/N2 or walking.
-Keep source-graph closure and backend filters; no retry or failed-reference
-exclusion is justified by this candidate. See
-[diagnostic instructions](../workers/dense/README.md#spatial-and-texture-reliability-diagnostic).
+Verify asymmetric known-surface/unknown-boundary fixtures before a bounded real
+fusion. For arbitrary-scale data use the plan's extent-relative voxel policy
+(initial extent/512), record camera/world units and pose revisions, and retain
+weights/support, uncertainty availability and unsupported/free-space distinctions.
+No inferred floor, hole filling, metric collision/walking or geometry-quality
+promotion. Copy/admit existing caches; do not rerun unchanged MVS or retune on
+opened evaluation grids. First results may be partial observed geometry, never
+completed room/Q5/N2 evidence. Keep every fixed reference and backend filter;
+unfiltered private photometric maps remain ineligible as admitted geometry.
+See the [visibility contract](protocols/depth.md#pose-admitted-visibility-export).
 
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or

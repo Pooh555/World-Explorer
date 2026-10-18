@@ -197,7 +197,7 @@ we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
 add_library(application src/application/commands.cpp src/application/scenes.cpp
-  src/application/depth_assets.cpp src/application/dense_inputs.cpp
+  src/application/depth_assets.cpp src/application/dense_inputs.cpp src/application/depth_visibility.cpp
   src/application/reconstruction_progress.cpp
   src/application/scene_import.cpp src/application/source_view.cpp
   src/application/reconstruction_job.cpp src/application/job_validation.cpp src/application/pose_replay.cpp
