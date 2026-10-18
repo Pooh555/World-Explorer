@@ -40,6 +40,35 @@ struct gpu_buffer {
     }
 };
 
+struct gpu_image {
+    VmaAllocator m_allocator {};
+    VkImage m_image {};
+    VmaAllocation m_allocation {};
+    VkDeviceSize m_allocation_bytes {};
+    gpu_image() = default;
+    gpu_image(const gpu_image&) = delete;
+    gpu_image& operator=(const gpu_image&) = delete;
+
+    gpu_image(gpu_image&& other) noexcept { swap(other); }
+
+    gpu_image& operator=(gpu_image&& other) noexcept {
+        gpu_image temporary(std::move(other));
+        swap(temporary);
+        return *this;
+    }
+
+    ~gpu_image() {
+        if (m_image) vmaDestroyImage(m_allocator, m_image, m_allocation);
+    }
+
+    void swap(gpu_image& other) noexcept {
+        std::swap(m_allocator, other.m_allocator);
+        std::swap(m_image, other.m_image);
+        std::swap(m_allocation, other.m_allocation);
+        std::swap(m_allocation_bytes, other.m_allocation_bytes);
+    }
+};
+
 }  // namespace world_explorer::detail
 
 #endif  // WORLD_EXPLORER_RENDER_VULKAN_BUFFER_HPP

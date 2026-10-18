@@ -3,6 +3,7 @@
 #include "world_explorer/application/depth_assets.hpp"
 #include "world_explorer/application/depth_visibility.hpp"
 #include "world_explorer/application/fusion_assets.hpp"
+#include "world_explorer/application/fusion_scene.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/pose_export.hpp"
 #include "world_explorer/application/pose_preparation.hpp"
@@ -61,6 +62,7 @@ int main(int argc, char** argv) {
                    "  we_process inspect-poses INPUT.weposes SHA256 (checked JSON inspection)\n"
                    "  we_process inspect-depth INPUT.wedepth SHA256 [--max-dimension N] (format "
                    "inspection only)\n"
+                   "  we_process inspect-fusion-scene REQUEST.json SHA256\n"
                    "  we_process inspect-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
                    "RECIPE_SHA POSES POSE_SHA\n"
                    "  we_process export-depth-visibility REQUEST.json SHA256 NEW_DIRECTORY\n"
@@ -161,6 +163,27 @@ int main(int argc, char** argv) {
             if ((*K_SNAPSHOT)->m_initial_pose_asset_sha256)
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
+        if (K_COMMAND == "inspect-fusion-scene") {
+            if (argc != 4) {
+                std::cerr << "Usage: we_process inspect-fusion-scene REQUEST.json SHA256\n";
+                return 2;
+            }
+            const auto K_SCENE =
+                load_fusion_scene_request(argv[2], argv[3], cancellation.get_token());
+            if (!K_SCENE) {
+                std::cerr << K_SCENE.error().m_message << '\n';
+                return 2;
+            }
+            const auto& chunk = (*K_SCENE)->m_chunks.begin()->second;
+            if (!chunk->m_mesh)
+                throw std::runtime_error("Admitted mesh scene is missing its payload");
+            const auto& mesh = *chunk->m_mesh;
+            std::cout << "Partial observed geometry; arbitrary units; walking disabled\n"
+                      << "Scene SHA-256: " << scene_content_hash(**K_SCENE) << '\n'
+                      << "Vertices: " << mesh.m_vertices.size()
+                      << " triangles: " << mesh.m_triangles.size() << '\n';
             return 0;
         }
         if (K_COMMAND == "inspect-fusion") {

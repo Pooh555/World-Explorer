@@ -47,11 +47,15 @@ template <class HandleType> HandleType native(std::uintptr_t value) {
 int viewer_main(int argc, char** argv) {
     std::filesystem::path scene_path, reconstruction_request, review_request, screenshot,
         settings_path, input_trace_path, input_latency_path, shader_path = WE_SHADER_DIRECTORY;
+    std::filesystem::path fusion_request;
+    std::string fusion_request_sha256;
+    SceneRepresentation representation { SceneRepresentation::CAPTURED_APPEARANCE };
     WorkerConfiguration worker { WE_WORKER_SCRIPT };
     std::size_t max_splats = 250000;
     std::size_t residency_mib = 512;
     bool diagnostic_fixture = false, validation = true;
     bool inspect_source = false;
+    bool open_geometry = false;
     unsigned frame_limit = 0;
 #if defined(WE_VULKAN_TEST_FAULTS)
     unsigned inject_device_loss_frame = 0;
@@ -63,6 +67,7 @@ int viewer_main(int argc, char** argv) {
                 << "we_viewer [--scene BUNDLE] [--diagnostic-fixture] [--frames N]\n"
                    "          [--screenshot FILE.ppm] [--settings FILE] [--shader-dir DIR]\n"
                    "          [--worker-python EXE] [--worker-script FILE] [--no-validation]\n"
+                   "          [--fusion-request FILE.json --fusion-request-sha SHA256]\n"
                    "          [--max-splats N] [--residency-mib N]\n";
             std::cout
                 << "          [--source-view] (explicit capture-orientation spectator reset)\n";
@@ -81,7 +86,9 @@ int viewer_main(int argc, char** argv) {
         else if (K_OPTION == "--source-view") inspect_source = true;
         else if (argument + 1 < argc) {
             const std::string K_VALUE = argv[++argument];
-            if (K_OPTION == "--scene") scene_path = K_VALUE;
+            if (K_OPTION == "--fusion-request") fusion_request = K_VALUE;
+            else if (K_OPTION == "--fusion-request-sha") fusion_request_sha256 = K_VALUE;
+            else if (K_OPTION == "--scene") scene_path = K_VALUE;
             else if (K_OPTION == "--reconstruction-request") reconstruction_request = K_VALUE;
             else if (K_OPTION == "--review-request") review_request = K_VALUE;
             else if (K_OPTION == "--screenshot") screenshot = K_VALUE;
@@ -102,6 +109,11 @@ int viewer_main(int argc, char** argv) {
             else throw std::runtime_error("Unknown option: " + K_OPTION);
         } else throw std::runtime_error("Missing option value: " + K_OPTION);
     }
+    if (!fusion_request.empty() && (!scene_path.empty() || diagnostic_fixture ||
+                                    !reconstruction_request.empty() || !review_request.empty()))
+        throw std::runtime_error("Choose one startup scene source");
+    if (fusion_request.empty() != fusion_request_sha256.empty())
+        throw std::runtime_error("Fusion request requires its SHA-256 pin");
     if (!input_latency_path.empty() && (!input_trace_path.empty() || !screenshot.empty()))
         throw std::runtime_error("Input latency requires traces and screenshots disabled");
     if (!SDL_Init(SDL_INIT_VIDEO)) throw std::runtime_error(SDL_GetError());
@@ -238,7 +250,10 @@ int viewer_main(int argc, char** argv) {
     unsigned frames = 0;
     bool screenshot_requested = false;
     auto previous = std::chrono::steady_clock::now();
-    if (diagnostic_fixture) state.loaded = make_diagnostic_scene();
+    if (!fusion_request.empty()) {
+        representation = SceneRepresentation::OBSERVED_MESH;
+        state.load_fusion(fusion_request, fusion_request_sha256);
+    } else if (diagnostic_fixture) state.loaded = make_diagnostic_scene();
     else if (!scene_path.empty()) state.load(scene_path);
     auto release_mouse = [&] {
         SDL_SetWindowRelativeMouseMode(window.get(), false);
@@ -328,6 +343,15 @@ int viewer_main(int argc, char** argv) {
             if (admitted) {
                 pending_ticket = *admitted;
                 current = loaded;
+                bool has_mesh = false;
+                bool has_splats = false;
+                for (const auto& [K_ID, K_CHUNK] : current->m_chunks) {
+                    static_cast<void>(K_ID);
+                    has_mesh = has_mesh || K_CHUNK->m_mesh.has_value();
+                    has_splats = has_splats || !K_CHUNK->m_splats.empty();
+                }
+                representation = has_mesh && !has_splats ? SceneRepresentation::OBSERVED_MESH
+                                                         : SceneRepresentation::CAPTURED_APPEARANCE;
                 camera.m_up_axis = { 0, 1, 0 };
                 camera.fit(world_bounds(*current));
                 if (inspect_source) {
@@ -422,7 +446,32 @@ int viewer_main(int argc, char** argv) {
             ImGui::Begin("Project", nullptr, K_PANEL_FLAGS);
             ImGui::TextUnformatted("PROJECT");
             ImGui::Separator();
-            ImGui::TextWrapped("%s", current ? "Gaussian appearance" : "No scene open");
+            ImGui::TextWrapped("%s",
+                               current ? (representation == SceneRepresentation::OBSERVED_MESH
+                                              ? "Partial observed geometry"
+                                              : "Gaussian appearance")
+                                       : "No scene open");
+            if (current) {
+                bool has_mesh = false;
+                bool has_splats = false;
+                for (const auto& [K_ID, K_CHUNK] : current->m_chunks) {
+                    static_cast<void>(K_ID);
+                    has_mesh = has_mesh || K_CHUNK->m_mesh.has_value();
+                    has_splats = has_splats || !K_CHUNK->m_splats.empty();
+                }
+                if (has_mesh) {
+                    if (ImGui::RadioButton("Observed surfaces",
+                                           representation == SceneRepresentation::OBSERVED_MESH))
+                        representation = SceneRepresentation::OBSERVED_MESH;
+                    if (has_splats &&
+                        ImGui::RadioButton("Captured appearance",
+                                           representation ==
+                                               SceneRepresentation::CAPTURED_APPEARANCE))
+                        representation = SceneRepresentation::CAPTURED_APPEARANCE;
+                    ImGui::TextWrapped("Normals diagnostic. Partial surfaces; gaps are unknown. No "
+                                       "collision or measured scale.");
+                }
+            }
             if (is_synthetic_scene(current))
                 ImGui::TextWrapped("Synthetic renderer diagnostic. Not a reconstructed capture.");
             if (current) {
@@ -536,12 +585,16 @@ int viewer_main(int argc, char** argv) {
         ImGui::End();
         if (show_open) ImGui::OpenPopup("Open scene");
         if (ImGui::BeginPopupModal("Open scene", &show_open, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextWrapped("Choose an unpacked .wexplore directory.");
+            ImGui::Checkbox("Observed geometry", &open_geometry);
+            ImGui::TextWrapped("%s",
+                               open_geometry ? "Choose a saved observed-geometry request JSON."
+                                             : "Choose an unpacked .wexplore directory.");
             ImGui::SetNextItemWidth(560 * scale);
             ImGui::InputText("Path", path.data(), path.size());
             ImGui::BeginDisabled(state.busy);
             if (ImGui::Button("Open")) {
-                state.load(path.data());
+                if (open_geometry) state.load_fusion(path.data());
+                else state.load(path.data());
                 show_open = false;
                 ImGui::CloseCurrentPopup();
             }
@@ -695,7 +748,8 @@ int viewer_main(int argc, char** argv) {
         if (!screenshot.empty() && !screenshot_requested && K_SCREENSHOT_AFTER_INJECTED_LOSS &&
             frames >= 8 && !state.has_pending_work() && reconstruction_request.empty() &&
             review_request.empty() &&
-            (!(K_REQUIRE_RECONSTRUCTION_SUCCESS || !scene_path.empty()) ||
+            (!(K_REQUIRE_RECONSTRUCTION_SUCCESS || !scene_path.empty() ||
+               !fusion_request.empty()) ||
              (current && !pending_ticket))) {
             if (K_REQUIRE_RECONSTRUCTION_SUCCESS) {
                 std::lock_guard lock(state.mutex);
@@ -719,7 +773,8 @@ int viewer_main(int argc, char** argv) {
 #endif
         const auto K_DRAWN = renderer->draw(
             {camera.m_position, camera.right(), camera.down(), camera.forward(), camera_fov},
-            !state.processing.load());
+            !state.processing.load(),
+            representation);
         if (!K_DRAWN && K_DRAWN.error().m_code == ErrorCode::DEVICE_LOST) {
             if (device_recoveries++) {
                 gui.m_device_lost = true;
@@ -771,9 +826,11 @@ int viewer_main(int argc, char** argv) {
             const auto K_PROGRESS = renderer->updates().query_progress(*pending_ticket);
             if (K_PROGRESS && K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
                 std::lock_guard lock(state.mutex);
-                state.status = is_synthetic_scene(current)
-                                   ? "Ready: synthetic diagnostic fixture."
-                                   : "Appearance ready. Geometry and walking unavailable.";
+                state.status =
+                    is_synthetic_scene(current) ? "Ready: synthetic diagnostic fixture."
+                    : representation == SceneRepresentation::OBSERVED_MESH
+                        ? "Partial observed surfaces ready. Scale unmeasured; walking unavailable."
+                        : "Appearance ready. Geometry and walking unavailable.";
                 pending_ticket.reset();
             }
         }
@@ -833,7 +890,7 @@ int viewer_main(int argc, char** argv) {
                 std::lock_guard lock(state.mutex);
                 if (!state.reviewed_request) throw std::runtime_error(state.review_error);
             }
-            if (!scene_path.empty() && !current) {
+            if ((!scene_path.empty() || !fusion_request.empty()) && !current) {
                 std::lock_guard lock(state.mutex);
                 throw std::runtime_error(state.status);
             }
@@ -858,6 +915,8 @@ int viewer_main(int argc, char** argv) {
     std::cout << nlohmann::json {{"device", renderer->capabilities().m_device_name},
                                  {"frames", K_STATS.m_submitted_frames},
                                  {"resident_splats", K_STATS.m_resident_splat_count},
+                                 { "resident_mesh_vertices", K_STATS.m_resident_mesh_vertices },
+                                 { "resident_mesh_triangles", K_STATS.m_resident_mesh_triangles },
                                  {"allocated_bytes", K_STATS.m_allocated_bytes},
                                  {"framebuffer_bytes", K_STATS.m_framebuffer_bytes},
                                  {"fp32_compositing", renderer->capabilities().m_fp32_compositing},

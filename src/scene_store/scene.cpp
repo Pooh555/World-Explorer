@@ -40,6 +40,12 @@ struct SceneHashWriter {
 
 void append_chunk(SceneHashWriter& hash, ChunkId id, const SceneChunk& chunk) {
     const auto K_ADD = [&](std::uint64_t value) { hash.add(value); };
+    // Zero cannot be an admitted chunk ID. Reserve it as an unambiguous mesh
+    // stream/version prefix while retaining every legacy splat-only digest.
+    if (chunk.m_mesh) {
+        K_ADD(0);
+        K_ADD(1);
+    }
     K_ADD(id.m_value);
     K_ADD(chunk.m_generation);
     K_ADD(chunk.m_pose_revision.m_value);
@@ -71,6 +77,95 @@ void append_chunk(SceneHashWriter& hash, ChunkId id, const SceneChunk& chunk) {
         K_ADD(splat.m_sh_degree);
         for (float value : splat.m_sh) K_ADD(std::bit_cast<std::uint32_t>(value));
     }
+    // Preserve existing splat-only hashes; mesh presence extends the stream.
+    if (chunk.m_mesh) {
+        K_ADD(UINT64_MAX);
+        const auto& mesh = *chunk.m_mesh;
+        K_ADD(mesh.m_observed.has_value());
+        if (mesh.m_observed) {
+            const auto& source = *mesh.m_observed;
+            K_ADD(source.m_context.m_epoch.m_value);
+            K_ADD(source.m_context.m_pose_revision.m_value);
+            for (const auto& text : {source.m_context.m_manifest_sha256,
+                                     source.m_context.m_receipt_sha256,
+                                     source.m_context.m_recipe_sha256,
+                                     source.m_context.m_pose_sha256,
+                                     source.m_asset_sha256,
+                                     source.m_manifest_json,
+                                     source.m_receipt_json}) {
+                K_ADD(text.size());
+                hash.add_bytes(std::as_bytes(std::span(text)));
+            }
+        }
+        K_ADD(mesh.m_vertices.size());
+        K_ADD(mesh.m_triangles.size());
+        for (const auto& vertex : mesh.m_vertices) {
+            for (auto value : vertex.m_position) K_ADD(std::bit_cast<std::uint32_t>(value));
+            for (auto value : vertex.m_normal) K_ADD(std::bit_cast<std::uint32_t>(value));
+        }
+        for (const auto& triangle : mesh.m_triangles)
+            for (auto index : triangle) K_ADD(index);
+    }
+}
+
+bool digest_valid(const std::string& text) {
+    return text.size() == 64uz && text.find_first_not_of("0123456789abcdef") == text.npos;
+}
+
+Result<std::size_t> mesh_bytes(const SceneChunk& chunk, const SceneLimits& limits) {
+    if (!chunk.m_mesh) return 0uz;
+    const auto& mesh = *chunk.m_mesh;
+    if (mesh.m_vertices.size() > limits.m_max_mesh_vertices ||
+        mesh.m_triangles.size() > limits.m_max_mesh_triangles ||
+        mesh.m_vertices.size() > limits.m_max_payload_bytes / sizeof(FusionVertex))
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Mesh exceeds configured count limits");
+    auto bytes = mesh.m_vertices.size() * sizeof(FusionVertex);
+    if (mesh.m_triangles.size() > (limits.m_max_payload_bytes - bytes) / 12uz)
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Mesh index budget exceeded");
+    bytes += mesh.m_triangles.size() * 12uz;
+    if (mesh.m_observed) {
+        const auto& source = *mesh.m_observed;
+        const auto& context = source.m_context;
+        for (const auto& pin : {context.m_manifest_sha256,
+                                context.m_receipt_sha256,
+                                context.m_recipe_sha256,
+                                context.m_pose_sha256,
+                                source.m_asset_sha256})
+            if (!digest_valid(pin))
+                return fail(ErrorCode::INVALID_DATA, "Invalid mesh dependency pin");
+        if (!context.m_pose_revision.m_value ||
+            (chunk.m_geometry_valid &&
+             context.m_pose_revision.m_value != chunk.m_pose_revision.m_value))
+            return fail(ErrorCode::RESYNC_REQUIRED, "Mesh pose revision differs");
+        for (const auto& text : { source.m_manifest_json, source.m_receipt_json }) {
+            if (text.empty() || text.size() > 4uz * 1024uz * 1024uz ||
+                text.size() > limits.m_max_payload_bytes - bytes)
+                return fail(ErrorCode::RESOURCE_EXHAUSTED, "Mesh metadata budget exceeded");
+            bytes += text.size();
+        }
+        if (sha256(std::as_bytes(std::span(source.m_manifest_json))) != context.m_manifest_sha256 ||
+            sha256(std::as_bytes(std::span(source.m_receipt_json))) != context.m_receipt_sha256)
+            return fail(ErrorCode::INVALID_DATA, "Mesh coverage metadata checksum differs");
+    }
+    for (const auto& vertex : mesh.m_vertices) {
+        const Vec3d K_POSITION { vertex.m_position[0], vertex.m_position[1], vertex.m_position[2] };
+        const Vec3d K_NORMAL { vertex.m_normal[0], vertex.m_normal[1], vertex.m_normal[2] };
+        if (!finite(K_POSITION) || !finite(K_NORMAL) ||
+            K_POSITION.m_x < chunk.m_bounds.m_minimum.m_x ||
+            K_POSITION.m_x > chunk.m_bounds.m_maximum.m_x ||
+            K_POSITION.m_y < chunk.m_bounds.m_minimum.m_y ||
+            K_POSITION.m_y > chunk.m_bounds.m_maximum.m_y ||
+            K_POSITION.m_z < chunk.m_bounds.m_minimum.m_z ||
+            K_POSITION.m_z > chunk.m_bounds.m_maximum.m_z ||
+            (dot(K_NORMAL, K_NORMAL) != 0 && std::abs(dot(K_NORMAL, K_NORMAL) - 1) > .001))
+            return fail(ErrorCode::INVALID_DATA, "Invalid mesh position or normal");
+    }
+    for (const auto& triangle : mesh.m_triangles)
+        if (triangle[0] >= mesh.m_vertices.size() || triangle[1] >= mesh.m_vertices.size() ||
+            triangle[2] >= mesh.m_vertices.size() || triangle[0] == triangle[1] ||
+            triangle[0] == triangle[2] || triangle[1] == triangle[2])
+            return fail(ErrorCode::INVALID_DATA, "Invalid mesh triangle");
+    return bytes;
 }
 
 }  // namespace
@@ -137,7 +232,12 @@ Result<std::size_t> validate_chunk(const SceneChunk& chunk, SceneLimits limits) 
             if (!std::isfinite(coefficient))
                 return fail(ErrorCode::INVALID_DATA, "nonfinite SH coefficient");
     }
-    return chunk.m_splats.size() * sizeof(Gaussian);
+    const auto K_MESH_BYTES = mesh_bytes(chunk, limits);
+    if (!K_MESH_BYTES) return std::unexpected(K_MESH_BYTES.error());
+    const auto K_SPLAT_BYTES = chunk.m_splats.size() * sizeof(Gaussian);
+    if (*K_MESH_BYTES > limits.m_max_payload_bytes - K_SPLAT_BYTES)
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Combined chunk payload budget exceeded");
+    return K_SPLAT_BYTES + *K_MESH_BYTES;
 }
 
 Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits) {
@@ -151,7 +251,7 @@ Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits) 
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Provenance field exceeds limit");
     if (scene.m_chunks.size() > limits.m_max_chunks)
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "scene chunk budget exceeded");
-    std::size_t bytes {}, splats {};
+    std::size_t bytes {}, splats {}, vertices {}, triangles {};
     for (const auto& [K_ID, K_CHUNK] : scene.m_chunks) {
         if (!K_CHUNK || K_ID != K_CHUNK->m_id)
             return fail(ErrorCode::INVALID_DATA, "chunk key differs from identity");
@@ -160,6 +260,25 @@ Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits) 
         if (*K_SIZE > limits.m_max_payload_bytes - bytes ||
             K_CHUNK->m_splats.size() > limits.m_max_splats - splats)
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "aggregate scene budget exceeded");
+        if (K_CHUNK->m_mesh) {
+            const auto& mesh = *K_CHUNK->m_mesh;
+            if (mesh.m_vertices.size() > limits.m_max_mesh_vertices - vertices ||
+                mesh.m_triangles.size() > limits.m_max_mesh_triangles - triangles)
+                return fail(ErrorCode::RESOURCE_EXHAUSTED, "Aggregate mesh count exceeded");
+            vertices += mesh.m_vertices.size();
+            triangles += mesh.m_triangles.size();
+            if (mesh.m_observed) {
+                if (scene.m_scale != ScaleStatus::ARBITRARY ||
+                    (K_CHUNK->m_geometry_valid &&
+                     mesh.m_observed->m_context.m_epoch != scene.m_epoch))
+                    return fail(ErrorCode::WRONG_EPOCH, "Observed mesh world context differs");
+            } else {
+                const auto K_KIND = scene.m_provenance.find("source_kind");
+                if (K_KIND == scene.m_provenance.end() || K_KIND->second != "synthetic_diagnostic")
+                    return fail(ErrorCode::INVALID_DATA,
+                                "Synthetic mesh requires explicit provenance");
+            }
+        }
         bytes += *K_SIZE;
         splats += K_CHUNK->m_splats.size();
     }

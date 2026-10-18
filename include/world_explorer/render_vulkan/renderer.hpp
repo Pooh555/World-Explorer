@@ -11,6 +11,8 @@
 
 namespace world_explorer {
 
+enum class SceneRepresentation : std::uint8_t { CAPTURED_APPEARANCE, OBSERVED_MESH };
+
 enum class GpuSplatStorage : std::uint8_t { FP32, FP32_GEOMETRY_FP16_SH };
 
 struct RendererOptions {
@@ -65,7 +67,10 @@ class VulkanRenderer {
     void set_overlay_callback(std::function<void(std::uintptr_t)> callback);
     // Overlay/presentation remain active when appearance is paused for a local
     // reconstruction job. Resident assets and update ownership are retained.
-    Result<void> draw(const CameraView& camera, bool draw_appearance = true);
+    Result<void>
+    draw(const CameraView& camera,
+         bool draw_appearance = true,
+         SceneRepresentation representation = SceneRepresentation::CAPTURED_APPEARANCE);
     Result<void> wait_for_idle();
     // Save the next successfully presented frame as an RGB PPM; explicit transfer capability is
     // required.

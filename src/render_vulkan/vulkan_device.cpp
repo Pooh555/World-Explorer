@@ -317,6 +317,30 @@ detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes,
     return output;
 }
 
+detail::gpu_image vulkan_device::allocate_image(const VkImageCreateInfo& info, std::size_t budget) {
+    VkImage probe {};
+    detail::check(vkCreateImage(device_, &info, nullptr, &probe), "query mesh image allocation");
+    VkMemoryRequirements requirements {};
+    vkGetImageMemoryRequirements(device_, probe, &requirements);
+    vkDestroyImage(device_, probe, nullptr);
+    if (requirements.size > budget) throw std::runtime_error("Mesh image exceeds residency budget");
+    detail::gpu_image output;
+    output.m_allocator = allocator_;
+    VmaAllocationCreateInfo allocation {};
+    allocation.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+    allocation.usage = VMA_MEMORY_USAGE_UNKNOWN;
+    allocation.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    VmaAllocationInfo allocated {};
+    detail::check(
+        vmaCreateImage(
+            allocator_, &info, &allocation, &output.m_image, &output.m_allocation, &allocated),
+        "allocate mesh target image");
+    output.m_allocation_bytes = allocated.size;
+    if (allocated.size > budget)
+        throw std::runtime_error("Mesh image allocation exceeds residency budget");
+    return output;
+}
+
 VkDeviceSize vulkan_device::buffer_allocation_bytes(buffer_allocation_request request) const {
     VkBuffer buffer {};
     auto info = detail::structure<VkBufferCreateInfo>(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);

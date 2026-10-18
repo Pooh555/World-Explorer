@@ -197,7 +197,7 @@ we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
 add_library(application src/application/commands.cpp src/application/scenes.cpp
-  src/application/depth_assets.cpp src/application/fusion_assets.cpp
+  src/application/depth_assets.cpp src/application/fusion_assets.cpp src/application/fusion_scene.cpp
   src/application/dense_inputs.cpp src/application/depth_visibility.cpp
   src/application/reconstruction_progress.cpp
   src/application/scene_import.cpp src/application/source_view.cpp
@@ -228,6 +228,7 @@ if(WE_BUILD_VIEWER)
 
   add_library(render_vulkan
     src/render_vulkan/renderer.cpp
+    src/render_vulkan/mesh_pass.cpp
     src/render_vulkan/vulkan_device.cpp
     src/render_vulkan/vulkan_swapchain.cpp)
   we_target(render_vulkan)
@@ -237,7 +238,7 @@ if(WE_BUILD_VIEWER)
   endif()
 
   set(WE_SHADER_OUTPUTS)
-  foreach(shader project.comp radix_histogram.comp radix_scan.comp radix_offsets.comp radix_scatter.comp tile_count.comp tile_scan.comp tile_emit.comp tile_ranges.comp composite.comp composite.frag present.vert)
+  foreach(shader project.comp radix_histogram.comp radix_scan.comp radix_offsets.comp radix_scatter.comp tile_count.comp tile_scan.comp tile_emit.comp tile_ranges.comp composite.comp composite.frag present.vert mesh.vert mesh.frag)
     set(output "${PROJECT_BINARY_DIR}/shaders/${shader}.spv")
 
     add_custom_command(OUTPUT "${output}"
@@ -270,6 +271,12 @@ if(WE_BUILD_VIEWER)
     target_include_directories(we_viewer PRIVATE "${PROJECT_SOURCE_DIR}/src/render_vulkan")
   endif()
   add_dependencies(we_viewer we_shaders)
+
+  add_executable(we_gpu_mesh tests/gpu/mesh.cpp)
+  we_target(we_gpu_mesh)
+  target_link_libraries(we_gpu_mesh PRIVATE application render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_gpu_mesh PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
+  add_dependencies(we_gpu_mesh we_shaders)
 
   add_executable(we_gpu_smoke tests/gpu/smoke.cpp)
   we_target(we_gpu_smoke)

@@ -105,7 +105,7 @@ Result<UpdateTicket> RendererUpdateSink::enqueue(SceneDeltaBatch& batch) {
             bool can_estimate = true;
             for (const auto& [K_ID, K_CHUNK] : batch.m_snapshot->m_chunks) {
                 static_cast<void>(K_ID);
-                if (!K_CHUNK) {
+                if (!K_CHUNK || K_CHUNK->m_mesh) {
                     can_estimate = false;
                     break;
                 }

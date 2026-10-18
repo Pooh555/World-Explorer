@@ -62,6 +62,10 @@ std::uint64_t fingerprint(const SceneTransaction& transaction) {
                 for (float value : splat.m_sh) K_ADD(std::bit_cast<std::uint32_t>(value));
             }
             for (auto frame : chunk.m_source_frames) K_ADD(frame.m_value);
+            if (chunk.m_mesh) {
+                const auto K_MESH_HASH = scene_chunk_content_hash(chunk);
+                for (unsigned char value : K_MESH_HASH) K_ADD(value);
+            }
         }
     }
     return hash;

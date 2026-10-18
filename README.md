@@ -96,6 +96,18 @@ Open/import, background loading, logs and Cancel are available. Dear ImGui has n
 screen-reader integration here. Walking needs independent scale and supported
 collision geometry, both unavailable.
 
+Partial observed meshes can be inspected from an admitted fusion request:
+
+```sh
+build/dev/we_process inspect-fusion-scene REQUEST.json REQUEST_SHA256
+build/dev/we_viewer --fusion-request REQUEST.json --fusion-request-sha REQUEST_SHA256
+```
+
+Open scene → Observed geometry accepts the same saved request. This normal-color
+view preserves unknown gaps and arbitrary units; it does not enable walking.
+See the [request and runtime contract](docs/protocols/scene.md#observed-mesh-runtime)
+and [native validation/retained commands](docs/validation/2026-10-19-observed-mesh-view.md).
+
 ## Pose workers and retained data
 
 Install `workers/pose-requirements.txt` explicitly in isolated Python 3.12:

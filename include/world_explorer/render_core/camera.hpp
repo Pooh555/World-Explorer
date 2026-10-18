@@ -37,6 +37,7 @@ struct RendererDiagnostics {
     std::uint64_t m_completed_timeline {};
     std::uint64_t m_interactive_device_idle_waits {};
     std::size_t m_resident_splat_count {};
+    std::size_t m_resident_mesh_vertices {}, m_resident_mesh_triangles {};
     std::size_t m_tile_reference_count {};
     std::size_t m_allocated_bytes {};
     std::size_t m_staging_bytes {};

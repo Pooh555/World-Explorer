@@ -2,10 +2,12 @@
 #define WORLD_EXPLORER_SCENE_STORE_SCENE_HPP
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/core/types.hpp"
+#include "world_explorer/scene_store/fusion_asset.hpp"
 
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace world_explorer {
@@ -22,10 +24,24 @@ struct Gaussian {
     std::uint8_t m_sh_degree {};
 };
 
+struct ObservedMeshSource {
+    FusionContext m_context;
+    std::string m_asset_sha256, m_manifest_json, m_receipt_json;
+};
+
+// Raw observed surfaces or explicitly labeled synthetic diagnostics. No material,
+// complete-space or collision eligibility is inferred from drawable triangles.
+struct SceneMesh {
+    std::vector<FusionVertex> m_vertices;
+    std::vector<std::array<std::uint32_t, 3>> m_triangles;
+    std::optional<ObservedMeshSource> m_observed;
+};
+
 struct SceneChunk {
     ChunkId m_id;
     std::uint64_t m_generation { 1 };
     std::vector<Gaussian> m_splats;
+    std::optional<SceneMesh> m_mesh;
     Bounds3d m_bounds;
     SimilarityTransform m_world_from_chunk;
     SceneRevisionId m_pose_revision;
@@ -84,6 +100,8 @@ struct SceneLimits {
     std::size_t m_max_splats { 10000000uz };
     std::size_t m_max_payload_bytes { 3uz * 1024uz * 1024uz * 1024uz };
     std::size_t m_max_source_frames { 1000000uz };
+    std::size_t m_max_mesh_vertices { 4000000uz };
+    std::size_t m_max_mesh_triangles { 8000000uz };
 };
 
 Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits = {});

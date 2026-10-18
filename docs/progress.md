@@ -38,15 +38,19 @@ retains all historical checks, identities, failures, timings and profile limits.
 - [macOS JSON build repair](validation/2026-10-19-macos-byte-json.md) replaces
   byte-vector JSON input with a bounded character view and rejects raw NUL
   termination. Local libc++ verification is separate from the required native
-  macOS workflow rerun; M3's next step remains fused-geometry admission.
+  macOS workflow rerun, which remains due.
+- [Windows fusion JSON repair](validation/2026-10-19-windows-fusion-json.md) removes
+  the reported MSVC C2666 overload ambiguity through typed string comparisons.
+  Local C++26/C++23 checks pass; native Windows rerun remains unverified.
 
 ## Saved reconstructions
 
 Sources: `data/local/`; outputs: `artifacts/<video>/`. Inspect each
 `logs/result.json` before another attempt; `request.json`, `source.json` and stage
 directories own exact selected inputs and results. Documentation reconciliation
-did not restore, delete or rerun data. Both completed scenes retain arbitrary
-scale; geometry/walking remain unavailable.
+did not restore, delete or rerun data. Both completed splat bundles retain arbitrary
+scale; separate partial-mesh inspection below does not enable measured geometry
+or walking.
 
 | Video | Current saved result |
 |---|---|
@@ -166,6 +170,13 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   data and stale/lost pose contexts reject. No scene/collision publication or
   geometry-quality promotion.
 
+- [Observed mesh runtime](validation/2026-10-19-observed-mesh-view.md): full retained
+  **32,074/61,598 vertices and 47,559/82,248 triangles** load through immutable
+  scene admission into the native normal-color viewer. Both visible 90-frame runs
+  and depth/clip/resize/staging/rebase/update diagnostics report zero Vulkan errors.
+  Full coverage/source metadata remains pinned; invalidation hides stale geometry.
+  No cleanup, baked texture, measured scale, hybrid occlusion or walking result.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -175,16 +186,18 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement **native observed-geometry scene/renderer integration** next under
-plan §§4.6/5.1. Read the [native fusion contract](protocols/fusion.md#native-partial-geometry-admission)
-and replay `artifacts/validation/m3-fusion-admission-20261019/commands.json` against
-both retained `.wefusion` assets. Extend immutable scene transactions to carry
-admitted partial meshes and their pose/coverage dependencies; use the same initial,
-replacement and deletion path, retaining the valid snapshot on failed admission.
-Add a bounded indexed-mesh diagnostic view and show both real fragmented outputs
-in the native viewer with explicit partial/unknown/arbitrary-scale labels.
-Validate occlusion/update/lifetime behavior before supported-component cleanup
-and error-bounded simplification. No unchanged fusion/MVS/refit run is needed.
+Implement **supported-component analysis and error-bounded mesh cleanup** next
+under plan §5.1. Read the [runtime mesh contract](protocols/scene.md#observed-mesh-runtime)
+and `artifacts/validation/m3-mesh-view-20261019/native-stable-commands.json`; reopen
+both retained requests with the documented `we_viewer --fusion-request` commands.
+Freeze a bounded component/support policy against the admitted TSDF weights,
+observation/support counts and unknown band before producing separate immutable
+outputs. Record complete component/area/support denominators and original-to-cleaned
+surface distances; qualify simplification against an explicit arbitrary-unit
+error bound without filling gaps. Preserve raw meshes for comparison and use the
+same checked scene update path. Native bundle persistence, baked-color export,
+production jobs/resume, metric alignment and collision remain open. No unchanged
+fusion/MVS/refit run is needed.
 
 Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
 support, sigma availability and the local observed front-band versus unknown
@@ -198,7 +211,7 @@ Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Production
 job/protocol integration needs bounded cancellation/kill/reap; resume, native
-scene/renderer integration, compressed storage, measured scale, collision/walking and
+mesh cleanup/persistence, compressed storage, measured scale, collision/walking and
 complete mesh export remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 

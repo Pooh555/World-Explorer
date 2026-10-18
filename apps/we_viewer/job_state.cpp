@@ -1,6 +1,8 @@
 #include "job_state.hpp"
 
+#include "world_explorer/application/fusion_scene.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
+#include "world_explorer/core/hash.hpp"
 
 namespace world_explorer::viewer {
 
@@ -33,6 +35,32 @@ void application_state::append(std::string text) {
     if (text.size() > K_MAX_LOG) text.erase(0, text.size() - K_MAX_LOG);
     if (log.size() + text.size() > K_MAX_LOG) log.erase(0, log.size() + text.size() - K_MAX_LOG);
     log += text;
+}
+
+void application_state::load_fusion(std::filesystem::path request, std::string sha256) {
+    if (!begin_job()) return;
+    started = std::chrono::steady_clock::now();
+    {
+        std::lock_guard lock(mutex);
+        progress.reset();
+        status = "Checking observed geometry and pose dependencies...";
+    }
+    job = std::jthread([this, request = std::move(request), sha256 = std::move(sha256)](
+                           const std::stop_token& stop) {
+        const auto K_PIN = sha256.empty() ? sha256_file(request, 1024uz * 1024uz, stop)
+                                          : Result<std::string> { sha256 };
+        const auto K_SCENE = K_PIN ? load_fusion_scene_request(request, *K_PIN, stop)
+                                   : Result<SceneSnapshot> { std::unexpected(K_PIN.error()) };
+        std::lock_guard lock(mutex);
+        if (stop.stop_requested()) status = "Cancelled. Current scene retained.";
+        else if (K_SCENE) {
+            loaded = *K_SCENE;
+            status = "Partial observed geometry validated; waiting for renderer admission.";
+        } else
+            status =
+                "Geometry open failed: " + K_SCENE.error().m_message + ". Current scene retained.";
+        busy = false;
+    });
 }
 
 void application_state::load(std::filesystem::path path) {

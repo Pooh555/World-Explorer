@@ -294,6 +294,12 @@ bool bounded_line(std::istream& input, std::string& line, std::size_t limit, std
 Result<void> write_bundle(const std::filesystem::path& directory, const SceneSnapshot& snapshot) {
     try {
         if (!snapshot) return fail(ErrorCode::INVALID_ARGUMENT, "missing bundle snapshot");
+        for (const auto& [K_ID, K_CHUNK] : snapshot->m_chunks) {
+            static_cast<void>(K_ID);
+            if (K_CHUNK && K_CHUNK->m_mesh)
+                return fail(ErrorCode::UNSUPPORTED_OPERATION,
+                            "Bundle schema 1 cannot encode mesh payloads");
+        }
         auto checked = validate_scene(*snapshot);
         if (!checked) return std::unexpected(checked.error());
         std::filesystem::create_directories(directory);

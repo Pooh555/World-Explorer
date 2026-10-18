@@ -82,7 +82,8 @@ sigma counts, mesh counts and supervisor observations. Walking is always false.
 `result.pending.json` is an uncommitted child result and **never consumable**;
 only successful supervision publishes the terminal receipt exclusively. Parent
 directory flush failure can leave a terminal file: inspect its hash before retry.
-Native partial-geometry admission is described below; scene publication remains unimplemented.
+Native admission is described below; the [runtime mesh view](scene.md#observed-mesh-runtime)
+adds immutable scene publication separately from this worker.
 
 ## Run and failure boundaries
 
@@ -167,5 +168,6 @@ calibration ID, tracking/invalidation state and composed world camera transform.
 It returns owned partial geometry without mutating caller files or publishing a
 scene/collision revision. `inspect-fusion` reports its asset/dependency identities,
 coverage, unknown/front/sigma denominators and arbitrary units. Walking stays
-false. Scene/renderer integration, supported-component cleanup, error-bounded
+false. The [runtime mesh path](scene.md#observed-mesh-runtime) adds native scene
+admission and normal-color inspection. Supported-component cleanup, error-bounded
 simplification, measured scale and complete export remain separate work.

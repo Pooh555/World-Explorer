@@ -37,6 +37,7 @@ class vulkan_device {
     void initialize();
     detail::gpu_buffer
     allocate(VkDeviceSize bytes, VkBufferUsageFlags usage, bool host_visible, std::size_t budget);
+    detail::gpu_image allocate_image(const VkImageCreateInfo& info, std::size_t budget);
     VkDeviceSize buffer_allocation_bytes(buffer_allocation_request request) const;
     VkShaderModule load_shader_module(const std::filesystem::path& shader_directory,
                                       const char* name) const;

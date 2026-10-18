@@ -11,8 +11,8 @@ rotation, opacity in [0,1], SH degree 0–3 and 48 coefficient-major RGB scalars
 SH and alpha compositing use the captured display-encoded domain, with negative
 evaluated colors clamped to zero and values above one preserved until presentation.
 The raster path accumulates in a queried FP32 attachment, then clamps once to SDR
-and draws UI. This is not linear HDR conversion or relightable albedo; a hybrid
-mesh pass is still absent. Precision/profile rationale: [ADR 006](../adr/006-fp32-capture-compositing.md).
+and draws UI. This is not linear HDR conversion or relightable albedo. The
+separate observed-mesh diagnostic below does not implement hybrid occlusion. Precision/profile rationale: [ADR 006](../adr/006-fp32-capture-compositing.md).
 
 Synthetic bundles declare provenance `source_kind=synthetic_diagnostic` and a named
 `fixture`. The viewer classifies the active snapshot using this explicit marker;
@@ -133,3 +133,75 @@ legacy enqueue still validates/hashes synchronously, snapshots require producer
 immutability, and resize waits for device idle. The renderer
 reports typed device loss; the viewer can recreate it from its retained scene,
 while physical loss remains unverified. P6 and full M2 qualification are incomplete.
+
+## Observed mesh runtime
+
+Runtime `SceneChunk::m_mesh` holds owned vertices/normals and triangle indices.
+`ObservedMeshSource` retains the admitted `.wefusion` SHA-256, typed pose context,
+recipe/receipt/manifest pins and exact original manifest/receipt text, including
+all coverage and uncertainty denominators. Voxel weights/support/sigma remain in
+the pinned original asset; no per-vertex confidence or free-space map is invented.
+Absent observed dependencies mean a synthetic diagnostic, requiring explicit
+synthetic scene provenance. Observed mesh scenes retain arbitrary scale.
+
+Scene admission checks finite bounded positions, unit-or-zero normals, distinct
+in-range indices, source pins/metadata hashes, pose context and aggregate budgets:
+4M vertices, 8M triangles, plus the existing payload limit. Mesh metadata counts
+toward that byte budget. The store deep-copies mesh vectors with their producer
+chunk; mutations through retained producer aliases cannot change a committed
+snapshot. Mesh-aware content/transaction/renderer fingerprints cover geometry and
+all source dependencies. A reserved zero-ID/version prefix distinguishes mesh
+hash streams; splat-only hashes remain unchanged. Invalidated/transformed derived
+geometry remains in its immutable historical snapshot but is omitted from mesh
+uploads until admitted current geometry replaces it. Initial full load, replay,
+replacement and deletion use the existing renderer update sink and retirement path.
+
+`load_fusion_scene_request` checks an externally pinned, at-most-1-MiB UTF-8 JSON
+request with exactly these fields:
+
+```json
+{
+  "schema_version": 1,
+  "asset": "INPUT.wefusion",
+  "asset_sha256": "ASSET_SHA256",
+  "manifest_sha256": "ORIGINAL_FUSION_MANIFEST_SHA256",
+  "receipt_sha256": "ORIGINAL_NATIVE_DEPTH_RECEIPT_SHA256",
+  "recipe_sha256": "FUSION_RECIPE_SHA256",
+  "poses": "CURRENT.weposes",
+  "pose_sha256": "POSE_SHA256"
+}
+```
+
+Paths resolve relative to the request. Duplicate/unknown/nested fields, raw or
+path-embedded NUL, bad version/hash and invalid fusion/pose dependencies reject.
+The shared application command retains every raw vertex/triangle and selected
+frame dependency, bounds the full mesh, and creates an immutable runtime snapshot;
+empty real geometry rejects. The CLI and native viewer use it directly:
+
+```sh
+build/dev/we_process inspect-fusion-scene REQUEST.json REQUEST_SHA256
+build/dev/we_viewer --fusion-request REQUEST.json --fusion-request-sha REQUEST_SHA256
+```
+
+Open scene → Observed geometry accepts the same saved request. Its owned loader
+thread pins the selected request bytes and checks cancellation, preserving the
+current scene on failure. Source-view reset remains tied to its existing capture
+inspection metadata; ordinary mesh opening fits full world bounds independently.
+
+`SceneRepresentation::OBSERVED_MESH` selects a two-sided normal-color diagnostic
+with indexed vertex/index draws, optical camera projection, Vulkan zero-to-one
+clipping and D32 depth testing. Per-frame FP32 color/depth targets are allocated
+on demand, budgeted using actual VMA requirements, and reused/replaced only after
+that frame slot completes. A checked copy feeds the existing FP32 presentation
+buffer and native UI. Mesh and captured appearance are separate representations;
+there is no automatic proxy occlusion of its own captured splats or hybrid clip
+claim. The shared staging path retains its 15-MiB/frame cap, old-scene visibility,
+floating origin, transfer dependencies and timeline retirement for both products.
+
+The viewer labels partial observed surfaces, arbitrary units and unknown gaps;
+normal colors are diagnostic, not captured texture, albedo or material recovery.
+Walking remains disabled. [Native evidence](../validation/2026-10-19-observed-mesh-view.md)
+covers both retained real meshes and synthetic projection/depth/update checks.
+Bundle schema 1 explicitly rejects mesh snapshots before writing anything, rather
+than dropping geometry. Persisted hybrid bundles, mesh cleanup/simplification,
+baked-color export, measured geometry and collision remain separate work.
