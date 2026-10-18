@@ -2,6 +2,7 @@
 #include "world_explorer/application/dense_inputs.hpp"
 #include "world_explorer/application/depth_assets.hpp"
 #include "world_explorer/application/depth_visibility.hpp"
+#include "world_explorer/application/fusion_assets.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/pose_export.hpp"
 #include "world_explorer/application/pose_preparation.hpp"
@@ -60,6 +61,8 @@ int main(int argc, char** argv) {
                    "  we_process inspect-poses INPUT.weposes SHA256 (checked JSON inspection)\n"
                    "  we_process inspect-depth INPUT.wedepth SHA256 [--max-dimension N] (format "
                    "inspection only)\n"
+                   "  we_process inspect-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
+                   "RECIPE_SHA POSES POSE_SHA\n"
                    "  we_process export-depth-visibility REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process prepare-dense POSE_JOB SOURCE_SHA POSES.weposes POSE_SHA "
                    "RECIPE.json RECIPE_SHA OUTPUT.json [--decode-stage DIR]\n"
@@ -158,6 +161,28 @@ int main(int argc, char** argv) {
             if ((*K_SNAPSHOT)->m_initial_pose_asset_sha256)
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
+        if (K_COMMAND == "inspect-fusion") {
+            if (argc != 9) {
+                std::cerr << "Usage: we_process inspect-fusion INPUT.wefusion SHA MANIFEST_SHA "
+                             "RECEIPT_SHA RECIPE_SHA POSES POSE_SHA\n";
+                return 2;
+            }
+            const auto K_ASSET = load_pose_bound_fusion(
+                { argv[2], argv[7], argv[3], argv[8], argv[4], argv[5], argv[6] },
+                {},
+                cancellation.get_token());
+            if (!K_ASSET) {
+                std::cerr << K_ASSET.error().m_message << '\n';
+                return 2;
+            }
+            const auto K_SUMMARY = inspect_fusion_asset(*K_ASSET);
+            if (!K_SUMMARY) {
+                std::cerr << K_SUMMARY.error().m_message << '\n';
+                return 2;
+            }
+            std::cout << *K_SUMMARY << '\n';
             return 0;
         }
         if (K_COMMAND == "export-depth-visibility") {

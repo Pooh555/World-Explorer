@@ -68,7 +68,7 @@ Assets are closed/flushed before terminal publication:
 | `observation_count`, `support_sum` uint32 N | Integrating view count and sum of original backend support counts |
 | `front_count` uint32 N | Integrating observations with positive signed distance, only in the local band; not a full ray-carved free-space map |
 | `sigma2_sum` float64, `sigma_weight` float32 N | Sum(weight × input sigma²) and weight for observations having sigma; zero sigma weight means unavailable, never certainty |
-| `mesh.npz`: `positions`, `normals` float32 V×3; `triangles` int64 T×3 | Raw Open3D extraction at weight threshold 1e-6, world coordinates; no color, inferred floor, filling, component cleanup or simplification |
+| `mesh.npz`: `positions`, `normals` float32 V×3; `triangles` int32 or int64 T×3 | Raw Open3D extraction at weight threshold 1e-6, world coordinates; no color, inferred floor, filling, component cleanup or simplification |
 
 Use `numpy.load(..., allow_pickle=False)`. RMS input sigma is
 `sqrt(sigma2_sum/sigma_weight)` where available; it is not fused surface-error
@@ -82,7 +82,7 @@ sigma counts, mesh counts and supervisor observations. Walking is always false.
 `result.pending.json` is an uncommitted child result and **never consumable**;
 only successful supervision publishes the terminal receipt exclusively. Parent
 directory flush failure can leave a terminal file: inspect its hash before retry.
-Native scene admission of this new format is not implemented.
+Native partial-geometry admission is described below; scene publication remains unimplemented.
 
 ## Run and failure boundaries
 
@@ -106,3 +106,66 @@ limits and backend errors fail without a terminal receipt. Partial owned files
 may remain; no overwrite/resume is provided. Direct `--child` invocation is an
 internal implementation detail and cannot publish a terminal receipt. Full
 application ownership, job kill/reap and resume qualification remain separate.
+
+## Native partial-geometry admission
+
+`tools/convert_fusion_asset.py` converts existing, externally pinned terminal
+outputs to a single immutable `.wefusion` file. It performs no fusion, cleanup,
+resampling or scene publication and leaves original outputs intact. Use the
+existing isolated fusion Python environment; no new backend/environment is needed:
+
+```sh
+artifacts/environments/fusion-cpu/bin/python tools/convert_fusion_asset.py FUSION_DIRECTORY MANIFEST_SHA REQUEST.json REQUEST_SHA NEW.wefusion
+build/dev/we_process inspect-fusion NEW.wefusion ASSET_SHA MANIFEST_SHA RECEIPT_SHA RECIPE_SHA CURRENT.weposes POSE_SHA
+```
+
+The converter checks source file sizes/hashes and bounds ZIP expansion and NPY
+headers before loading arrays, without pickle. It accepts exact float32/int32/
+uint32/float64 source planes and checked int32 or int64 triangle indices. It sorts
+voxel records lexicographically by lattice, preserving every value; positions,
+normals and triangle order remain unchanged. Exclusive closed/flushed publication
+refuses existing destinations and input containment overlaps. As with the pilot,
+a directory-flush error can leave a published file; inspect its hash before retry.
+Conversion is not native admission. The final asset hash pins the converted
+payload; original NPZ hashes identify provenance but the native reader does not
+decompress NPZ or independently repeat fusion. An independent retained-output
+comparison verifies the conversion in the [admission evidence](../validation/2026-10-19-fusion-admission.md).
+
+The project-owned V1 layout is uncompressed, little endian, with no padding:
+
+| Sequence | Encoding |
+|---|---|
+| Header, 36 bytes | `WEFUSN01`, uint32 metadata byte count, uint64 voxel/vertex/triangle counts |
+| Metadata | UTF-8 JSON object with exactly `manifest`, `receipt`, `recipe`, `request`; each value is the exact original document string |
+| Observed voxel records, 44 bytes each | int32 lattice xyz; float32 TSDF and weight; uint32 observation count, support sum, front count; float64 sigma² sum; float32 sigma weight |
+| Vertices, 24 bytes each | float32 world position xyz followed by float32 normal xyz |
+| Triangles, 12 bytes each | uint32 vertex indices abc |
+
+`decode_fusion_asset` in `scene_store` checks the same
+externally SHA-pinned bytes it parses, all embedded document hashes and the
+request → receipt/recipe → pose graph. Duplicate JSON keys, raw NUL, nesting above
+32, nonfinite values, unsupported semantics, trailing/truncated bytes and count
+aliasing reject. Fixed maxima are **256 MiB encoded**, **4 MiB metadata**,
+**16,777,216 voxels**, **4M vertices**, **8M triangles**, **18 views / 48M pixels**;
+caller limits may tighten them. The exact encoded length is checked before any
+count-based allocation. Reads/hashing/voxel/mesh loops check cancellation.
+
+Epoch/revision must match the caller's context. Coverage retains every ordered
+input view and full-grid valid/unknown/accepted/rejected denominators. Resolution
+is extent/512 with four-voxel truncation, in arbitrary units. Unique sorted
+lattices remain within ±2²⁰; TSDF is finite in [-1,1], weight positive and no larger
+than observation count, support/front counts bounded by their observations, and
+sigma weight/sum finite and coherent with availability. Allocated unknown counts,
+front-band counts and sigma counts must agree. Mesh positions are finite within
+the lattice precision extent, normals finite and unit within squared-length 0.001
+or explicitly zero for raw degenerate extraction, indices in range and distinct
+within each triangle. This does not establish topology or geometric accuracy.
+
+`load_pose_bound_fusion` in `application` reads a
+separately pinned canonical pose asset and verifies every selected observation,
+calibration ID, tracking/invalidation state and composed world camera transform.
+It returns owned partial geometry without mutating caller files or publishing a
+scene/collision revision. `inspect-fusion` reports its asset/dependency identities,
+coverage, unknown/front/sigma denominators and arbitrary units. Walking stays
+false. Scene/renderer integration, supported-component cleanup, error-bounded
+simplification, measured scale and complete export remain separate work.

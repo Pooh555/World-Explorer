@@ -158,6 +158,14 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   Separate hash-locked Open3D CPU environment leaves existing environments intact.
   No native mesh admission, scene update, measured geometry or walking result.
 
+- [Native fusion admission](validation/2026-10-19-fusion-admission.md): immutable
+  uncompressed voxel/mesh interchange, bounded native reader and pose-bound CLI
+  inspection admit both retained real outputs. Every voxel plane and mesh array
+  matches the originals; arbitrary units, complete coverage, support/weight,
+  optional sigma and unknown/front-band distinctions survive. Rehashed malformed
+  data and stale/lost pose contexts reject. No scene/collision publication or
+  geometry-quality promotion.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -167,17 +175,16 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement **native fused-geometry admission** next under plan §5.1. Start by
-reading the [fusion contract](protocols/fusion.md), then inspect
-`artifacts/validation/m3-observed-fusion-20261018/final/commands.json`, both
-`*-fusion/manifest.json` receipts and `output-audit.json`. Define a project-owned
-immutable voxel/mesh interchange and bounded native reader/application inspect
-command that independently binds receipt/recipe/pose hashes, epoch/revision,
-arbitrary units, complete weight/support/uncertainty/unknown coverage, finite
-vertices/normals and valid indices. Reject malformed/rehashed data and wrong pose
-context before any scene or collision publication. Use existing retained outputs;
-no unchanged fusion/MVS rerun is needed. Native scene/renderer integration,
-supported-component cleanup and error-bounded simplification follow admission.
+Implement **native observed-geometry scene/renderer integration** next under
+plan §§4.6/5.1. Read the [native fusion contract](protocols/fusion.md#native-partial-geometry-admission)
+and replay `artifacts/validation/m3-fusion-admission-20261019/commands.json` against
+both retained `.wefusion` assets. Extend immutable scene transactions to carry
+admitted partial meshes and their pose/coverage dependencies; use the same initial,
+replacement and deletion path, retaining the valid snapshot on failed admission.
+Add a bounded indexed-mesh diagnostic view and show both real fragmented outputs
+in the native viewer with explicit partial/unknown/arbitrary-scale labels.
+Validate occlusion/update/lifetime behavior before supported-component cleanup
+and error-bounded simplification. No unchanged fusion/MVS/refit run is needed.
 
 Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
 support, sigma availability and the local observed front-band versus unknown
@@ -191,7 +198,7 @@ Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Production
 job/protocol integration needs bounded cancellation/kill/reap; resume, native
-fusion admission, compressed storage, measured scale, collision/walking and
+scene/renderer integration, compressed storage, measured scale, collision/walking and
 complete mesh export remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 
