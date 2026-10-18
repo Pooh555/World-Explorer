@@ -116,8 +116,9 @@ the solver must not implicitly resize it again.
 
 The full recipe also contains the checked `resize` object, environment hash,
 `neighbors.worker_digest()` and the same confidence declaration as the native
-pilot. The digest binds `neighbors.py`, `resized_model.py`, `colmap_io.py`,
-`pilot.py` and `resize_inputs.py`. A new full recipe requires newly bound resized
+pilot. The current digest binds `neighbors.py`, `resized_model.py`, `colmap_io.py`,
+`pilot.py`, `resize_inputs.py`, `source_selection.py` and `plan_sources.py`.
+The earlier five-file receipt retains its original source identity. A new full recipe requires newly bound resized
 input metadata. Previously admitted images/depth keep their original identities.
 No generic unpinned launch, package acquisition or remote fallback is provided.
 
@@ -166,3 +167,74 @@ separates complete model correspondence, actual bounded GPU output and native
 pose admission from unimplemented room geometry. Production job/control/resume,
 full-scene dense qualification, fusion, compression, scale, collision and mesh
 export remain M3 work.
+
+## Parallax-aware source experiment
+
+The additional `PARTIAL_PARALLAX_NEIGHBOR_QUALIFICATION` scope keeps **the first
+nine manifest views as references** and selects at most **18 total views**. This
+is another bounded development experiment, not full-scene reconstruction. The
+resized input profile/grid, PatchMatch options, geometric filters and two required
+consistent sources remain unchanged. All selected sources receive their own MVS
+row; all selected views are exported. The nine-reference result remains separately
+identifiable through `reference_indices`.
+
+First independently admit the retained native inputs, then plan without a GPU:
+
+```sh
+.venv-dense/bin/python workers/dense/plan_sources.py \
+  --manifest NATIVE.json --manifest-sha256 NATIVE_SHA \
+  --stage COMMITTED_POSE_STAGE --output NEW_PLAN.json
+```
+
+The planner checks model hashes against the committed completion and manifest,
+reads private copies, and verifies every image/camera/calibration/pose against
+the native metadata. It validates bidirectional track references. Multiple
+explicit feature observations of the same landmark in a view count as **one**
+visible landmark; they remain unchanged in the backend model. Observations must
+be inside their image and in front of their camera. Missing/inconsistent track
+links, nonfinite data and unsupported inputs reject.
+
+`COVISIBLE_PARALLAX_GREEDY_V1` considers only pairs sharing at least **30 distinct
+visible landmarks** with **3°–60° parallax**. Deterministic greedy selection adds
+support views using gains in the references' two-source landmark coverage,
+normalized per reference; ties use manifest order. Per-view source rows use a
+similar coverage-gain ordering, with at most **six** sources. Auxiliary vertices
+without two eligible sources are pruned to a fixed point; losing a reference's
+two-source support rejects the plan. References are never removed to improve
+reported yield. Source rows need not be reciprocal; every edge must close over
+a selected vertex with its own geometric depth row.
+
+The profile caps model views at 120, landmarks at 100,000, keypoints/track
+references at one million each, and retained eligible pair-landmark incidences
+at four million. Cancellation checks bound iteration; these are input bounds,
+not process-memory or latency guarantees. Ray angles use scaled normalization
+so arbitrary coordinate units do not become a metric assumption. The planner
+neither estimates geometry nor proves dense coverage.
+
+Freeze the plan's `selection`, `selection_sha256` and exact policy into a new
+full depth recipe: `selection_indices`, `neighbors`, `selection_policy`,
+`selection_sha256`; omit the temporal recipe's `neighbor_radius`. The supported
+policy is `source_selection.DEFAULT_POLICY`. Include current worker/environment
+and preprocessing identities as before. Generate newly bound resized metadata
+and run `we_process check-resized-dense` before `neighbors.py` with this recipe.
+The existing worker CLI and `--prepare-only` mode apply.
+
+The worker recomputes the selection from the actual owned native model before
+adaptation/solve, compares both its canonical report digest and exact rows with
+the frozen recipe, and publishes `selection.json` with its preparation receipt.
+Rehashing a forged row or plan digest does not bypass that check. Recipes and
+previous results retain their original hashes; adding this implementation does
+not upgrade the earlier temporal experiment. No implicit re-selection, source
+expansion, threshold relaxation, partial-work resume or scene publication occurs.
+
+[Local parallax evidence](../../docs/validation/2026-10-18-dense-parallax.md)
+records synthetic invariants, the retained model, a changed bounded GPU recipe,
+fixed-reference comparisons and native admission. Sparse support statistics and
+valid-mask coverage do not certify measured geometry, Q5/N2 or walking.
+
+The checked 18-view candidate **reduced coverage on all nine fixed references**
+(3.34–9.89% → 2.60–5.36%), despite stronger sparse-track support. It remains
+experimental and is not promoted as a quality improvement. Recorded projection
+round trips suggest dense visibility/consistency must influence source ranking;
+this is a diagnostic, not ground-truth geometry. Retain both runs and inspect the
+evidence before another changed recipe; do not repeat or relax filters.

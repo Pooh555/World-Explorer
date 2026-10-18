@@ -174,7 +174,7 @@ computing depth/changing scenes; [dense-input arguments/recipe/grid limits](docs
 The separate resized-input profile prepares checked PNGs/calibration, admitted by
 `we_process check-resized-dense`; production job integration remains open.
 The [separate CUDA experiments](workers/dense/README.md) produce partial checked depth
-from native three-view or resized nine-view inputs;
+from native three-view, resized temporal, or experimental parallax-aware inputs;
 production dense reconstruction/walking remain unavailable.
 
 Sources/intermediates stay local until the user removes their job. Never commit

@@ -13,6 +13,7 @@ from colmap_io import encode_depth, read_depth, read_support
 from pilot import digest, parse, publish, read_pinned
 from resize_inputs import transformed, validate_resize
 from resized_model import adapt_model, neighbor_rows
+from source_selection import DEFAULT_POLICY, plan_sources, report_digest
 
 
 CONFIDENCE = 'consistent_source_fraction; not probability; sigma unavailable'
@@ -21,21 +22,29 @@ CONFIDENCE = 'consistent_source_fraction; not probability; sigma unavailable'
 def worker_digest():
     directory=Path(__file__).parent
     files={name:digest((directory/name).read_bytes()) for name in
-           ('neighbors.py','resized_model.py','colmap_io.py','pilot.py','resize_inputs.py')}
+           ('neighbors.py','resized_model.py','colmap_io.py','pilot.py','resize_inputs.py','source_selection.py','plan_sources.py')}
     return digest(json.dumps(files,sort_keys=True,separators=(',', ':')).encode())
 
 
 def validate_recipe(recipe):
-    if (set(recipe) != {'schema_version','input_profile','depth_producer','backend','scope',
-                       'selection_indices','neighbor_radius','patch_match','environment_sha256',
-                       'worker_sha256','confidence','resize'} or
+    common = {'schema_version','input_profile','depth_producer','backend','scope',
+              'selection_indices','patch_match','environment_sha256','worker_sha256','confidence','resize'}
+    adaptive = recipe.get('scope') == 'PARTIAL_PARALLAX_NEIGHBOR_QUALIFICATION'
+    extra = {'selection_policy','selection_sha256','neighbors'} if adaptive else {'neighbor_radius'}
+    if (set(recipe) != common | extra or
             type(recipe['schema_version']) is not int or recipe['schema_version'] != 1 or
             recipe['input_profile'] != 'colmap_resized_dense_input_v1' or
             recipe['depth_producer'] != 'MULTIVIEW_STEREO' or
             recipe['backend'] != 'pycolmap-cuda12==4.2.1' or
-            recipe['scope'] != 'PARTIAL_NINE_VIEW_NEIGHBOR_QUALIFICATION' or
+            recipe['scope'] not in ('PARTIAL_NINE_VIEW_NEIGHBOR_QUALIFICATION',
+                                    'PARTIAL_PARALLAX_NEIGHBOR_QUALIFICATION') or
             recipe['confidence'] != CONFIDENCE):
         raise ValueError('Unsupported resized neighbor recipe')
+    if adaptive and (recipe['selection_policy'] != DEFAULT_POLICY or
+                     not isinstance(recipe['selection_sha256'], str) or
+                     len(recipe['selection_sha256']) != 64 or
+                     any(c not in '0123456789abcdef' for c in recipe['selection_sha256'])):
+        raise ValueError('Unsupported/unpinned adaptive source policy')
     validate_resize(recipe['resize'])
     return recipe['patch_match']
 
@@ -55,7 +64,23 @@ def prepare(args):
         frame['calibrated_image_sha256']=actual['calibrated_image_sha256']
     if expected != manifest:
         raise ValueError('Resized manifest does not match native inputs/selected recipe')
-    rows=neighbor_rows(manifest['frames'],recipe['selection_indices'],recipe['neighbor_radius'])
+    if recipe['scope'] == 'PARTIAL_PARALLAX_NEIGHBOR_QUALIFICATION':
+        selection = recipe['selection_indices']
+        if (not isinstance(selection, list) or not 9 <= len(selection) <= 18 or
+                any(type(i) is not int for i in selection) or selection != sorted(set(selection)) or
+                selection[:9] != list(range(9)) or selection[-1] >= len(manifest['frames'])):
+            raise ValueError('Invalid bounded reference/support inventory')
+        rows = recipe['neighbors']
+        names = [Path(manifest['frames'][i]['image']).name for i in selection]
+        if not isinstance(rows, dict) or set(rows) != set(names):
+            raise ValueError('Adaptive source graph is not closed')
+        for name, sources in rows.items():
+            if (not isinstance(sources, list) or not 2 <= len(sources) <= 6 or
+                    any(not isinstance(v, str) for v in sources) or
+                    len(set(sources)) != len(sources) or name in sources or not set(sources) <= set(names)):
+                raise ValueError('Invalid bounded source row')
+    else:
+        rows=neighbor_rows(manifest['frames'],recipe['selection_indices'],recipe['neighbor_radius'])
     stage=args.stage.resolve(strict=True)
     completion=parse(read_pinned(stage/'completion.json',manifest['pose_completion_sha256'],16*1024**2))
     inventory={v['path']:v for v in completion['files']}
@@ -122,7 +147,15 @@ def run(args):
             return 130
         publish(output/'native'/name,read_pinned(path,entry['sha256'],256*1024**2))
     reconstruction=pycolmap.Reconstruction(output/'native')
+    selection_report = None
     try:
+        if recipe['scope'] == 'PARTIAL_PARALLAX_NEIGHBOR_QUALIFICATION':
+            selection_report = plan_sources(reconstruction, native, recipe['selection_policy'],
+                                            lambda: token.is_cancelled)
+            if (report_digest(selection_report) != recipe['selection_sha256'] or
+                    selection_report['selected_indices'] != recipe['selection_indices'] or
+                    selection_report['neighbors'] != rows):
+                raise ValueError('Frozen source selection differs from actual native model')
         adaptation=adapt_model(reconstruction,native,manifest,lambda:token.is_cancelled)
     except InterruptedError:
         return 130
@@ -161,6 +194,11 @@ def run(args):
               'neighbors':rows,'backend_indices':indices,
               'sparse_sha256':{p.name:digest(p.read_bytes()) for p in sorted((output/'sparse').iterdir()) if p.is_file()},
               'config_sha256':digest(config.encode()),'geometry_status':'UNAVAILABLE'}
+    if selection_report is not None:
+        publish(output/'selection.json', (json.dumps(selection_report, sort_keys=True, indent=2,
+                                                    allow_nan=False)+'\n').encode())
+        prepared['selection_sha256'] = recipe['selection_sha256']
+        prepared['reference_indices'] = recipe['selection_policy']['reference_indices']
     if token.is_cancelled:
         return 130
     publish(output/'prepared.json',(json.dumps(prepared,sort_keys=True,indent=2,allow_nan=False)+'\n').encode())
@@ -189,7 +227,8 @@ def run(args):
                         'native_depth_sha256':digest(depth_file.read_bytes()),
                         'native_graph_sha256':digest(graph_file.read_bytes())})
     report={'schema_version':1,'status':'PARTIAL_NEIGHBOR_PILOT_COMPLETE',
-            'scope':'nine resized views; no fusion, measured scale, room geometry or Q5/N2',
+            'scope':'bounded resized views; no fusion, measured scale, room geometry or Q5/N2',
+            'reference_indices':recipe.get('selection_policy', {}).get('reference_indices', recipe['selection_indices']),
             'manifest_sha256':args.manifest_sha256,'recipe_sha256':args.recipe_sha256,
             'worker_sha256':recipe['worker_sha256'],'elapsed_seconds':time.monotonic()-start,
             'prepared_sha256':digest((output/'prepared.json').read_bytes()),'frames':results}

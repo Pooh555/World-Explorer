@@ -108,6 +108,14 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   window limits support. CPU preparation cancellation passes; GPU/job cancellation
   and resume remain unqualified.
 
+- [Parallax-aware planning](validation/2026-10-18-dense-parallax.md): deterministic
+  co-visibility/parallax planning, graph closure and 18 native depth admissions
+  pass; 30 dense Python / 308 dev / 285 C++23 checks. The **449.453 s** candidate
+  loses valid coverage on every unchanged reference: **3.34–9.89% → 2.60–5.36%**,
+  **1,537,092 → 790,453** valid observations. It remains experimental, without
+  quality promotion. Sparse support is insufficient; cached photometric-depth
+  round trips show weaker overlap/consistency. Both runs are retained.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -117,19 +125,21 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement **parallax-aware bounded source selection** before another MVS solve.
-First read `artifacts/validation/m3-dense-neighbors-20261018/parallax.json`,
-`independent-model.json`, `independent-depth.json` and `real-pilot/result.json`.
-Only 3.66–7.61% of current reference sparse landmarks have two selected co-visible
-sources at the unchanged 3° filter angle; later views offer more useful support.
-Use co-visibility/parallax plus explicit geometric source-graph closure, test the
-selection against synthetic/retained models, then freeze a changed recipe and new
-input/depth identities before any bounded GPU run. Do not lower filters or infer
-dense coverage from sparse-track counts. The current nine-view recipe is pinned
-to consecutive views; no unchanged retry. See [worker instructions](../workers/dense/README.md#resized-neighbor-experiment).
+Implement **visibility/photometric-aware source scoring**, with CPU evidence
+before another solve. Read `artifacts/validation/m3-dense-parallax-20261018/roundtrip.json`,
+`reference-comparison.json`, `plan.json` and `real-pilot/result.json`. The sparse-only
+candidate increases sparse support but reduces fixed-reference depth coverage;
+projected in-bounds fraction falls 86.40% → 48.23%, and sampled median round-trip
+error rises 17.48 → 75.02 pixels. These diagnostics are not geometry ground truth.
+Use spatial overlap and consistency evidence to test complementary source ranking,
+preserving graph closure, all nine references and unchanged PatchMatch filters.
+Bind any cached-map inputs to their exact model/image/recipe identities; private
+photometric maps are not admitted geometry. Freeze a changed recipe only after
+those checks; no unchanged 18-view retry or failed-reference exclusion. See
+[worker instructions](../workers/dense/README.md#parallax-aware-source-experiment).
 
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
-Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view or
+Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Production
 job/protocol integration needs bounded cancellation/kill/reap; resume, real fusion,
