@@ -299,3 +299,61 @@ an unsuccessful candidate: training two-source support rises 107→126 samples,
 but separate-grid support falls 84→81, with five references worse. No GPU retry
 was justified. Both the sparse-only and cached scoring candidates remain
 experimental; measured geometry/fusion/walking remain open.
+
+## Spatial and texture reliability diagnostic
+
+`reliability.py` extends the private-cache diagnostic with **128×96 reference
+centers per view**, 8×6 interior-image tiles and three reference-patch variance
+classes: `FLAT` below 1e-4, `LOW` from 1e-4 to below 1e-3, and `HIGH` at least
+1e-3. Every sampled center remains in its tile/class denominator, including
+unknown depth and zero support. Six border pixels are outside the sampled domain;
+these statistics are sampled interior coverage, not full-plane reconstruction.
+Each tile contains 256 sampled centers. Reports include joint tile/class counts,
+unsupported counts and explicit conditional populations for depth-disagreement
+quantiles. Empty groups retain zero counts and null fractions/quantiles.
+
+The fixed `DENSE_GRID_GREEDY_STRATIFIED_DIAGNOSTIC_V1` policy preserves V1's
+support gates and greedy objective. Only sampling density and diagnostics change;
+there is no texture/tile reweighting or backend-filter change. Reference centers
+at quarter-cell training and three-quarter-cell evaluation phases are disjoint;
+grids below **268×204** reject rather than shrinking/deduplicating the sample set.
+Patch neighborhoods and source warps can overlap across stages. Both phases use
+the same capture/cache and do not establish independent held-out validation.
+
+```sh
+.venv-dense/bin/python workers/dense/reliability.py plan \
+  --workspace COMPLETED_NEIGHBOR_WORKSPACE \
+  --cache CACHE.json --cache-sha256 CACHE_SHA --output NEW_TRAINING.json
+.venv-dense/bin/python workers/dense/reliability.py check \
+  --workspace COMPLETED_NEIGHBOR_WORKSPACE \
+  --cache CACHE.json --cache-sha256 CACHE_SHA \
+  --plan NEW_TRAINING.json --plan-sha256 TRAINING_SHA --output NEW_EVALUATION.json
+```
+
+`plan` uses only training reference centers, keeps all cache vertices and the
+first nine references, and freezes closed six-source rows plus training evidence,
+policy, implementation and cache identities. `check` recomputes the complete
+training receipt before evaluating those rows on the second grid. Rehashed row,
+statistic, policy or code changes reject; evaluation never ranks sources. Both
+commands publish exclusively, cap reports at 16 MiB, and inherit the cache's
+path/byte/pixel/camera/pose guards. Cancellation is checked between bounded pair
+operations and before publication. CLI Python sockets are disabled; no OS network
+sandbox, GPU cooperative cancellation or production job/resume claim follows.
+
+Per-pair first-failure counts partition all samples in this order: unknown
+reference, outside source projection, unknown source, behind-camera return,
+round-trip disagreement, relative-depth disagreement, low parallax, unknown or
+outside patch, flat reference, flat source, NCC disagreement, supported. This
+ordering is accounting, not causal attribution. Conditional relative-depth p90
+and round-trip medians use known source depths with positive returned Z and
+always report that population size. The legacy 768-center diagnostic retains
+identical numerical results; its implementation digest changes with shared code.
+
+[Local dense-grid evidence](../../docs/validation/2026-10-18-dense-reliability.md)
+records aggregate separate-grid support **1,501→1,579**, but regressions on the
+first two references and high-texture support **958→930**. **96,397/110,592**
+evaluation centers are `FLAT` and supply no support by the existing policy;
+**317/432** candidate tiles have zero support. A same-42-pair comparison across
+both retained caches finds large disagreement in textured regions too. The
+candidate remains diagnostic-only (`gpu_recipe_ready: false`); no new solve or
+quality promotion is justified by the aggregate count.

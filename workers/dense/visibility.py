@@ -63,8 +63,20 @@ def bilinear(plane, x, y):
 
 def pair_evidence(reference, source, heldout=False):
     """Integer centers, optical +Z, axial depth; sampled warp is not COLMAP NCC."""
-    import numpy as np
     x, y = sample_grid(reference['depth'].shape, heldout)
+    return pixel_evidence(reference, source, x, y)[:3]
+
+
+def pixel_evidence(reference, source, x, y):
+    """Bounded explicit pixel samples; expose diagnostic masks without changing V1."""
+    import numpy as np
+    height, width = reference['depth'].shape
+    if (not isinstance(x, np.ndarray) or not isinstance(y, np.ndarray) or
+            x.ndim != 1 or y.shape != x.shape or not 1 <= len(x) <= 12_288 or
+            x.dtype.kind not in 'iu' or y.dtype.kind not in 'iu' or
+            np.any((x < 2) | (x >= width-2) | (y < 2) | (y >= height-2))):
+        raise ValueError('Invalid bounded diagnostic pixel inventory')
+    x, y = x.astype(np.int64, copy=False), y.astype(np.int64, copy=False)
     offsets = np.array([(dx, dy) for dy in POLICY['patch_offsets'] for dx in POLICY['patch_offsets']])
     px, py = x[:, None]+offsets[:, 0], y[:, None]+offsets[:, 1]
     z = reference['depth'][py, px].astype(np.float64)
@@ -110,7 +122,13 @@ def pair_evidence(reference, source, heldout=False):
     summary = {'in_bounds': int(inside[:, 4].sum()), 'known': int(known[:, 4].sum()),
                'geometric': int(geometric.sum()), 'textured': int(textured.sum()), 'good': int(good.sum()),
                'roundtrip_median_pixels': float(np.median(values)) if len(values) else None}
-    return good, quality, summary
+    details = {'reference_known': z[:, 4] > 0, 'in_bounds': inside[:, 4],
+               'source_known': known[:, 4], 'back_positive': back[:, 4, 2] > 0,
+               'roundtrip_pixels': error[:, 4], 'relative_depth_error': relative[:, 4],
+               'angle_degrees': angle, 'patch_inside': inside.all(axis=1) & rgb_inside.all(axis=1),
+               'reference_variance': rv, 'source_variance': sv, 'ncc': ncc,
+               'geometric': geometric, 'good': good}
+    return good, quality, summary, details
 
 
 def score_sources(views, baseline_rows, cancelled=lambda: False):

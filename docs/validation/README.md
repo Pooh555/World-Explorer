@@ -9,6 +9,7 @@ status and next work; a historical report's remaining work may be superseded.
 
 | Slice | Report |
 |---|---|
+| M3 spatial / texture reliability | [Frozen dense grids, complete denominators and same-pair cache comparison](2026-10-18-dense-reliability.md) |
 | M3 cached visibility / photometric scoring | [Pinned CPU diagnostic and retained separate-grid regression](2026-10-18-dense-visibility.md) |
 | M3 parallax source planning | [Bounded selection, native admission and retained coverage regression](2026-10-18-dense-parallax.md) |
 | M3 resized neighbor MVS | [Owned model, bounded CUDA depth and pose admission](2026-10-18-dense-neighbors.md) |

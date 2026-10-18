@@ -125,6 +125,15 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   show stronger landmark coverage but larger unfiltered-depth disagreement tails
   in the parallax cache; shared SfM evidence is not geometry ground truth.
 
+- [Spatial/texture reliability](validation/2026-10-18-dense-reliability.md):
+  12,288 centers/view, complete tile/class denominators and separately pinned
+  training/evaluation. Separate-grid support rises **1,501→1,579**, but the first
+  two references and high-texture support regress; **317/432** candidate tiles
+  have zero support. **96,397/110,592** centers are below the existing texture
+  threshold and contribute no support by definition. A same-42-pair comparison
+  finds large disagreement in textured regions too. No new GPU recipe/solve;
+  47 isolated dense tests and 16,114 independent scalar oracle samples pass.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -134,25 +143,25 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement **spatially stratified source reliability diagnostics** before changing
-the GPU recipe. Start with `artifacts/validation/m3-dense-visibility-20261018/`:
-`cache.json`, `scores-final.json`, `oracle.json` and `sparse-depth.json`.
-Extend the pinned CPU scorer to report support/disagreement by image tile and
-texture class, including unsupported area in every denominator; use a denser
-training grid with a separately frozen disjoint evaluation grid. The 768-sample
-ranking objective did not improve separate-grid support. Diagnose whether the
-larger parallax depth tails concentrate outside reliable textured tracks before
-choosing a new objective. Do not select a policy on its evaluation grid.
+Implement a **pose-admitted geometric-depth visibility cache** before another
+source-ranking change. Read `artifacts/validation/m3-dense-reliability-20261018/`
+`training.json`, `evaluation.json`, `cache-comparison.json` and `summary.json`.
+The denser objective improves an aggregate but harms two fixed references; raw
+photometric disagreement persists in textured regions. Do not tune on the opened
+evaluation grid or treat flat-by-policy samples as proven unreconstructable.
 
-`check_sparse_depth.py` in that evidence directory already compares both retained
-caches at projected distinct landmarks: parallax photometric p90 relative axial-Z
-disagreement is **64.85–407.57%**, versus **25.01–50.91%** temporally. This is
-shared-model internal consistency, not centimetre accuracy or Q5. Keep all nine
-references, graph closure and unchanged backend filters. Cached maps remain
-private/pinned diagnostic inputs; no direct geometry admission or promotion of
-the current candidate. Freeze a changed recipe only after justified CPU evidence;
-no unchanged 18-view retry or failed-reference exclusion. See
-[diagnostic instructions](../workers/dense/README.md#cached-visibility-and-photometric-diagnostic).
+Start from `load_pose_bound_depth` in `application/depth_assets.hpp` and the
+retained nine/18-view `.wedepth` assets. Add a native checked export/receipt for
+visibility analysis: default-limit pose/image/calibration/recipe admission,
+immutable depth/validity/support/confidence bytes and exact dependencies. Compare
+the same fixed nine references and camera pairs, keep unknown samples in every
+tile/class denominator, and freeze new disjoint reference grids before any future
+ranking experiment. Unfiltered private maps must never be promoted into admitted
+geometry. Use the resulting supported observations to prepare real fusion work;
+partial coverage and arbitrary scale still cannot certify Q5/N2 or walking.
+Keep source-graph closure and backend filters; no retry or failed-reference
+exclusion is justified by this candidate. See
+[diagnostic instructions](../workers/dense/README.md#spatial-and-texture-reliability-diagnostic).
 
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
