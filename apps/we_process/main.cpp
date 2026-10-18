@@ -61,6 +61,9 @@ int main(int argc, char** argv) {
                    "inspection only)\n"
                    "  we_process prepare-dense POSE_JOB SOURCE_SHA POSES.weposes POSE_SHA "
                    "RECIPE.json RECIPE_SHA OUTPUT.json [--decode-stage DIR]\n"
+                   "  we_process check-resized-dense POSE_JOB SOURCE_SHA POSES.weposes POSE_SHA "
+                   "NATIVE_RECIPE NATIVE_RECIPE_SHA RESIZED_RECIPE RESIZED_RECIPE_SHA "
+                   "MANIFEST MANIFEST_SHA [--decode-stage DIR]\n"
                    "  we_process init-map MAP_DIRECTORY\n"
                    "  we_process import-map INPUT.weposes SHA256 MAP_DIRECTORY\n"
                    "  we_process inspect-map MAP_DIRECTORY (checked restart/recovery)\n"
@@ -153,6 +156,32 @@ int main(int argc, char** argv) {
             if ((*K_SNAPSHOT)->m_initial_pose_asset_sha256)
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
+        if (K_COMMAND == "check-resized-dense") {
+            if (argc != 12 && !(argc == 14 && std::string_view(argv[12uz]) == "--decode-stage")) {
+                std::cerr
+                    << "Usage: we_process check-resized-dense POSE_JOB SOURCE_SHA POSES.weposes "
+                       "POSE_SHA NATIVE_RECIPE NATIVE_RECIPE_SHA RESIZED_RECIPE RESIZED_RECIPE_SHA "
+                       "MANIFEST MANIFEST_SHA [--decode-stage DIR]\n";
+                return 2;
+            }
+            const ResizedDenseInputRequest K_REQUEST {
+                {{argv[2uz], argv[3uz], argc == 14 ? argv[13uz] : std::filesystem::path {}},
+                 argv[4uz],
+                 argv[5uz],
+                 argv[6uz],
+                 argv[7uz]},
+                argv[8uz],
+                argv[9uz]};
+            const auto K_PREPARED = load_resized_dense_inputs(
+                K_REQUEST, argv[10uz], argv[11uz], cancellation.get_token());
+            if (!K_PREPARED) {
+                std::cerr << K_PREPARED.error().m_message << '\n';
+                return K_PREPARED.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Checked resized dense inputs: " << K_PREPARED->m_frames.size()
+                      << " frames; arbitrary scale; no depth produced\n";
             return 0;
         }
         if (K_COMMAND == "prepare-dense") {

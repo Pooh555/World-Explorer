@@ -93,7 +93,13 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   partial work has no terminal result and preserves completed pilot. This is
   backend/interchange evidence, not room geometry or Q5/N2.
 
-Saved runs/failures/frozen fixtures and 1,509 protected files remain unchanged.
+- [Resized dense inputs](validation/2026-10-18-dense-resize.md): separate explicit
+  profile binds native/resized bytes, recipe and per-axis half-pixel calibration.
+  All 63 sample_1 frames prepare at 2048×1102 and pass native admission; 6,237
+  independent filtered-pixel samples differ by at most one RGB8 level, camera
+  rays by 2.22e-16. No depth or backend-model adaptation is produced.
+
+Saved runs/failures/frozen fixtures and prior dense pilot remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
 `python3 tools/check_dependency_manifest.py --local-evidence`. Earlier refreshes
@@ -102,13 +108,17 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement and verify a **separate checked resized-input profile**, binding actual
-resized bytes and per-axis half-pixel calibration, before broadening MVS to a
-bounded overlapping-neighbor recipe. Operational inputs:
-`artifacts/validation/m3-dense-worker-20261017/real-pilot/result.json` and
-[dense worker instructions](../workers/dense/README.md); `final-preflight.json`
-pins the current entry guard without another GPU solve. Native 4104-wide pilot
-requires explicit `max_dimension=8192`; retain defaults.
+Implement a **bounded overlapping-neighbor MVS recipe** consuming the checked
+resized profile. First adapt an owned COLMAP camera/model to its actual grid and
+verify asymmetric reprojection against the admitted manifest without solving;
+then freeze neighbor/configuration/worker identity before a new bounded GPU run.
+Operational inputs: `artifacts/validation/m3-dense-resize-20261018/real-result.json`,
+`resized/manifest.json`, `independent-real.json` and
+[dense input instructions](protocols/dense_inputs.md#separate-resized-profile).
+The resize evidence's depth recipe is explicitly unqualified/unexecuted; produce
+new dependent metadata for a runnable recipe. The existing native three-view pilot
+refuses resized inputs. Retain depth's default bounds; native 4104-wide evidence
+still needs explicit `max_dimension=8192`.
 
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view or

@@ -26,6 +26,12 @@ struct PreparedDenseInputs {
     std::string m_manifest_json;
 };
 
+struct ResizedDenseInputRequest {
+    DenseInputRequest m_native;
+    std::filesystem::path m_depth_recipe;
+    std::string m_depth_recipe_sha256;
+};
+
 // Read-only checked preparation of the retained native undistorted PNG grid.
 // No crop, resize, solve or depth production. Image bytes remain in the committed
 // pose stage. Preprocessing and selected depth recipe have separate hashes.
@@ -41,6 +47,14 @@ Result<PreparedDenseInputs> load_dense_inputs(const DenseInputRequest& request,
                                               const std::filesystem::path& manifest,
                                               const std::string& manifest_sha256,
                                               const std::stop_token& stop = {});
+
+// Independently rechecks native inputs, selected resize/depth recipe, transformed
+// calibration and actual resized PNG hashes/headers. Pixel resampling/decoding
+// remains in the isolated preparer/consumer; no backend model is resized here.
+Result<PreparedDenseInputs> load_resized_dense_inputs(const ResizedDenseInputRequest& request,
+                                                      const std::filesystem::path& manifest,
+                                                      const std::string& manifest_sha256,
+                                                      const std::stop_token& stop = {});
 
 }  // namespace world_explorer
 #endif

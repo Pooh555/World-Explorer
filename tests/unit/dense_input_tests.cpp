@@ -316,3 +316,160 @@ TEST_CASE("dense native grids require explicit depth dimension budgets without i
     explicit_limits.m_max_dimension = 8192;
     CHECK(validate_depth_asset(asset, explicit_limits).has_value());
 }
+
+namespace {
+
+struct ResizedFixture {
+    Fixture m_native;
+    std::filesystem::path m_root = m_native.m_outputs / "resized";
+    std::filesystem::path m_manifest = m_root / "manifest.json";
+    ResizedDenseInputRequest m_request;
+    nlohmann::json m_json;
+
+    ResizedFixture() {
+        std::filesystem::create_directories(m_root / "training/images");
+        m_request.m_native = m_native.m_request;
+        m_request.m_depth_recipe = m_native.m_outputs / "resized-recipe.json";
+        const nlohmann::json K_RESIZE {{"recipe", "colmap_resized_dense_input_v1"},
+                                       {"crop", "none"},
+                                       {"resize", "PILLOW_BILINEAR"},
+                                       {"width", 11},
+                                       {"height", 11},
+                                       {"pixel_centers", "integer"},
+                                       {"image_encoding", "PNG_RGB8"},
+                                       {"pillow_version", "11.3.0"},
+                                       {"worker_sha256", std::string(64uz, 'a')},
+                                       {"environment_sha256", std::string(64uz, 'b')}};
+        std::ofstream(m_request.m_depth_recipe) << nlohmann::json {
+            {"schema_version", 1},
+            {"input_profile", "colmap_resized_dense_input_v1"},
+            {"depth_producer", "MULTIVIEW_STEREO"},
+            {"resize", K_RESIZE}}.dump();
+        m_request.m_depth_recipe_sha256 = *sha256_file(m_request.m_depth_recipe, 65536uz);
+        const auto K_NATIVE = prepare_dense_inputs(m_native.m_request).value();
+        m_json = nlohmann::json::parse(K_NATIVE.m_manifest_json);
+        m_json["kind"] = "DENSE_INPUTS_RESIZED_GRID";
+        m_json["native_manifest_sha256"] =
+            sha256(std::as_bytes(std::span(K_NATIVE.m_manifest_json)));
+        m_json["preparation_recipe"] = K_RESIZE;
+        const auto K_BYTES = K_RESIZE.dump();
+        m_json["preparation_recipe_sha256"] = sha256(std::as_bytes(std::span(K_BYTES)));
+        m_json["depth_recipe_sha256"] = m_request.m_depth_recipe_sha256;
+        for (auto& frame : m_json["frames"]) {
+            const auto K_NAME = frame["image"].get<std::string>();
+            auto png =
+                asset_files::read_bytes(m_native.m_poses.posed / K_NAME, 65536uz, {}).value();
+            png[19uz] = std::byte { 11 };
+            png[23uz] = std::byte { 11 };
+            test::write_training_camera(m_root / K_NAME, png);
+            frame["native_image_sha256"] = frame["calibrated_image_sha256"];
+            frame["calibrated_image_sha256"] = sha256(png);
+            frame["width"] = 11;
+            frame["height"] = 11;
+            // Independent known fixture calibration in COLMAP half-pixel coordinates.
+            frame["intrinsics"] = {
+                11. / 17. * 21., 11. / 13. * 29., 11. / 17. * 7.25 - .5, 11. / 13. * 4.75 - .5};
+        }
+    }
+
+    Result<PreparedDenseInputs> load(const std::stop_token& stop = {}) {
+        const auto K_BYTES = m_json.dump();
+        std::ofstream(m_manifest) << K_BYTES;
+        return load_resized_dense_inputs(
+            m_request, m_manifest, sha256(std::as_bytes(std::span(K_BYTES))), stop);
+    }
+};
+
+}  // namespace
+
+TEST_CASE("resized dense admission binds unequal axis calibration and independent depth metadata",
+          "[dense][resize]") {
+    ResizedFixture data;
+    const auto K_PREPARED = data.load();
+    INFO((K_PREPARED ? "prepared" : K_PREPARED.error().m_message));
+    REQUIRE(K_PREPARED);
+    const auto& metadata = K_PREPARED->m_frames.front().m_expected_depth;
+    CHECK(metadata.m_width == 11);
+    CHECK(metadata.m_height == 11);
+    CHECK(std::abs(metadata.m_camera.m_cx - (7.25 * 11. / 17. - .5)) < 1e-12);
+    CHECK(std::abs(metadata.m_camera.m_cy - (4.75 * 11. / 13. - .5)) < 1e-12);
+    CHECK(metadata.m_calibrated_image_sha256 !=
+          data.m_json["frames"][0uz]["native_image_sha256"].get<std::string>());
+    const auto K_NATIVE = prepare_dense_inputs(data.m_native.m_request).value();
+    CHECK(metadata.m_dependency == K_NATIVE.m_frames.front().m_expected_depth.m_dependency);
+    DepthImageAsset depth;
+    depth.m_metadata = metadata;
+    depth.m_axial_depth.resize(121uz);
+    depth.m_valid.resize(121uz);
+    depth.m_confidence.resize(121uz);
+    depth.m_support_count.resize(121uz);
+    CHECK(admit_depth_asset(depth, metadata).has_value());
+    CHECK(admit_depth_asset(depth, K_NATIVE.m_frames.front().m_expected_depth).has_value() ==
+          false);
+    CHECK(std::filesystem::exists(K_PREPARED->m_frames.front().m_calibrated_image));
+}
+
+TEST_CASE("resized dense admission rejects rehashed dependency calibration and inventory forgery",
+          "[dense][resize]") {
+    ResizedFixture data;
+    const auto K_MODE = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8);
+    if (K_MODE == 0) data.m_json["frames"][0uz]["intrinsics"][2uz] = 6.75 * 11. / 17.;
+    if (K_MODE == 1) data.m_json["frames"][0uz]["native_image_sha256"] = std::string(64uz, 'f');
+    if (K_MODE == 2) data.m_json["frames"][0uz]["world_from_camera"]["translation"][0uz] = 9;
+    if (K_MODE == 3)
+        data.m_json["frames"][0uz]["observation_image_sha256"] = std::string(64uz, 'f');
+    if (K_MODE == 4) data.m_json["frames"][0uz]["image"] = "../escape.png";
+    if (K_MODE == 5) data.m_json["native_manifest_sha256"] = std::string(64uz, 'f');
+    if (K_MODE == 6) data.m_json["frames"].erase(0uz);
+    if (K_MODE == 7) data.m_json["preparation_recipe"]["width"] = 12;
+    if (K_MODE == 8) data.m_json["depth_recipe_sha256"] = std::string(64uz, 'f');
+    CHECK(data.load().has_value() == false);
+}
+
+TEST_CASE("resized dense admission rejects changed PNG bytes headers links and cancellation",
+          "[dense][resize]") {
+    ResizedFixture data;
+    const auto K_MODE = GENERATE(0, 1, 2, 3, 4);
+    const auto K_PATH = data.m_root / "training/images/0.png";
+    auto bytes = asset_files::read_bytes(K_PATH, 65536uz, {}).value();
+    if (K_MODE == 0) bytes[32uz] = std::byte { 1 };
+    if (K_MODE == 1) bytes[19uz] = std::byte { 12 };
+    test::write_training_camera(K_PATH, bytes);
+    if (K_MODE == 1) data.m_json["frames"][0uz]["calibrated_image_sha256"] = sha256(bytes);
+    if (K_MODE == 2) {
+#ifndef _WIN32
+        std::filesystem::remove(K_PATH);
+        std::filesystem::create_symlink(data.m_native.m_poses.posed / "training/images/0.png",
+                                        K_PATH);
+#else
+        return;
+#endif
+    }
+    std::stop_source cancellation;
+    if (K_MODE == 3) cancellation.request_stop();
+    if (K_MODE == 4) data.m_request.m_native.m_pose_sha256 = std::string(64uz, 'f');
+    CHECK(data.load(cancellation.get_token()).has_value() == false);
+}
+
+TEST_CASE("resized dense admission rejects duplicate JSON keys and unsupported resize recipes",
+          "[dense][resize]") {
+    ResizedFixture data;
+    const auto K_MODE = GENERATE(0, 1, 2, 3, 4);
+    if (K_MODE == 0) {
+        auto bytes = data.m_json.dump();
+        bytes.insert(1uz, "\"kind\":\"ignored\",");
+        std::ofstream(data.m_manifest) << bytes;
+        CHECK(load_resized_dense_inputs(
+                  data.m_request, data.m_manifest, sha256(std::as_bytes(std::span(bytes))))
+                  .has_value() == false);
+    } else {
+        auto recipe = nlohmann::json::parse(std::ifstream(data.m_request.m_depth_recipe));
+        if (K_MODE == 1) recipe["resize"]["width"] = 8193;
+        if (K_MODE == 2) recipe["resize"]["width"] = -1;
+        if (K_MODE == 3) recipe["resize"]["height"] = true;
+        if (K_MODE == 4) recipe["resize"]["resize"] = "IMPLICIT_BACKEND_RESIZE";
+        std::ofstream(data.m_request.m_depth_recipe) << recipe.dump();
+        data.m_request.m_depth_recipe_sha256 = *sha256_file(data.m_request.m_depth_recipe, 65536uz);
+        CHECK(data.load().has_value() == false);
+    }
+}

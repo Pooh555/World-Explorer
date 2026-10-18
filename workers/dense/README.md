@@ -91,6 +91,8 @@ perform independent input/pose admission.
 
 [Observed checks](../../docs/validation/2026-10-17-dense-worker.md) include the
 synthetic plane, real three-view output, native C++ admission, sparse coverage,
-CPU rejection and cancellation failure. Full source-neighbor selection, a checked
-smaller grid, worker-protocol/job integration, resume, fusion, compressed scene
+CPU rejection and cancellation failure. A separate [checked resized-input preparer](../../docs/protocols/dense_inputs.md#separate-resized-profile)
+now prepares a smaller grid without a solver; this native-grid pilot still refuses
+that profile. Full source-neighbor selection, resized backend-model adaptation,
+worker-protocol/job integration, resume, fusion, compressed scene
 storage and measured geometry remain M3 work.

@@ -171,6 +171,8 @@ Development resize/temporal holdout does not certify Q2/Q3 or reference platform
 checks format/provenance only; [depth contract](docs/protocols/depth.md).
 `we_process prepare-dense` checks/publishes calibrated input metadata without
 computing depth/changing scenes; [dense-input arguments/recipe/grid limits](docs/protocols/dense_inputs.md).
+The separate resized-input profile prepares checked PNGs/calibration, admitted by
+`we_process check-resized-dense`; its backend integration remains open.
 The [separate CUDA pilot](workers/dense/README.md) produces partial checked depth;
 production dense reconstruction/walking remain unavailable.
 

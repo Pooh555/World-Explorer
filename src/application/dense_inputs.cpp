@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <new>
+#include <set>
 
 namespace world_explorer {
 namespace {
@@ -57,6 +58,28 @@ Result<void> check_png(const std::filesystem::path& file,
     // Full pixel decoding belongs to the consuming isolated worker. This checks
     // encoded identity/header, not PNG decompression or photometric correctness.
     return {};
+}
+
+Result<nlohmann::json> read_resized_json(const std::filesystem::path& path,
+                                         const std::string& hash,
+                                         const std::stop_token& stop) {
+    const auto K_BYTES = asset_files::read_bytes(path, 1024uz * 1024uz, stop);
+    if (!K_BYTES) return std::unexpected(K_BYTES.error());
+    if (!job_detail::valid_digest(hash) || sha256(*K_BYTES) != hash)
+        return fail(ErrorCode::INVALID_DATA, "Resized JSON checksum differs");
+    std::vector<std::set<std::string>> keys;
+    return nlohmann::json::parse(
+        reinterpret_cast<const char*>(K_BYTES->data()),
+        reinterpret_cast<const char*>(K_BYTES->data() + K_BYTES->size()),
+        [&](int depth, nlohmann::json::parse_event_t event, nlohmann::json& value) {
+            if (depth > 32) throw std::invalid_argument("Resized JSON nesting exceeds profile");
+            if (event == nlohmann::json::parse_event_t::object_start) keys.emplace_back();
+            if (event == nlohmann::json::parse_event_t::object_end) keys.pop_back();
+            if (event == nlohmann::json::parse_event_t::key &&
+                !keys.back().insert(value.get<std::string>()).second)
+                throw std::invalid_argument("Duplicate resized JSON key");
+            return true;
+        });
 }
 
 bool within(const std::filesystem::path& child, const std::filesystem::path& parent) {
@@ -288,6 +311,102 @@ Result<PreparedDenseInputs> load_dense_inputs(const DenseInputRequest& request,
     if (!std::ranges::equal(*K_BYTES, K_EXPECTED))
         return fail(ErrorCode::RESYNC_REQUIRED, "Dense manifest differs from checked inputs");
     return prepared;
+}
+
+Result<PreparedDenseInputs> load_resized_dense_inputs(const ResizedDenseInputRequest& request,
+                                                      const std::filesystem::path& manifest,
+                                                      const std::string& manifest_sha256,
+                                                      const std::stop_token& stop) {
+    try {
+        auto native = prepare_dense_inputs(request.m_native, stop);
+        if (!native) return std::unexpected(native.error());
+        if (stop.stop_requested())
+            return fail(ErrorCode::CANCELLED, "Dense resize admission cancelled");
+        const auto K_RECIPE =
+            read_resized_json(request.m_depth_recipe, request.m_depth_recipe_sha256, stop);
+        if (!K_RECIPE) return std::unexpected(K_RECIPE.error());
+        if (K_RECIPE->at("schema_version") != 1 ||
+            K_RECIPE->at("input_profile") != "colmap_resized_dense_input_v1" ||
+            K_RECIPE->at("depth_producer") != "MULTIVIEW_STEREO")
+            return fail(ErrorCode::UNSUPPORTED_OPERATION, "Unsupported resized depth recipe");
+        const auto& resize = K_RECIPE->at("resize");
+        if (resize.size() != 10uz || resize.at("recipe") != "colmap_resized_dense_input_v1" ||
+            resize.at("crop") != "none" || resize.at("resize") != "PILLOW_BILINEAR" ||
+            resize.at("pixel_centers") != "integer" || resize.at("image_encoding") != "PNG_RGB8" ||
+            resize.at("pillow_version") != "11.3.0" || !resize.at("width").is_number_unsigned() ||
+            !resize.at("height").is_number_unsigned() ||
+            !job_detail::valid_digest(resize.at("worker_sha256").get<std::string>()) ||
+            !job_detail::valid_digest(resize.at("environment_sha256").get<std::string>()))
+            return fail(ErrorCode::INVALID_DATA, "Invalid explicit resize preparation recipe");
+        const auto K_WIDTH = resize.at("width").get<std::uint64_t>();
+        const auto K_HEIGHT = resize.at("height").get<std::uint64_t>();
+        if (K_WIDTH < 11 || K_HEIGHT < 11 || K_WIDTH > 4096 || K_HEIGHT > 4096)
+            return fail(ErrorCode::RESOURCE_EXHAUSTED, "Resize grid exceeds profile");
+        const auto K_SELECTED = read_resized_json(manifest, manifest_sha256, stop);
+        if (!K_SELECTED) return std::unexpected(K_SELECTED.error());
+        auto expected = nlohmann::json::parse(native->m_manifest_json);
+        expected["kind"] = "DENSE_INPUTS_RESIZED_GRID";
+        expected["native_manifest_sha256"] =
+            sha256(std::as_bytes(std::span(native->m_manifest_json)));
+        expected["preparation_recipe"] = resize;
+        const auto K_RECIPE_BYTES = resize.dump();
+        expected["preparation_recipe_sha256"] = sha256(std::as_bytes(std::span(K_RECIPE_BYTES)));
+        expected["depth_recipe_sha256"] = request.m_depth_recipe_sha256;
+        if (K_SELECTED->at("frames").size() != native->m_frames.size())
+            return fail(ErrorCode::RESYNC_REQUIRED, "Resized image inventory differs");
+        for (std::size_t index { 0uz }; index < native->m_frames.size(); ++index) {
+            if (stop.stop_requested())
+                return fail(ErrorCode::CANCELLED, "Dense resize admission cancelled");
+            auto& frame = native->m_frames[index];
+            auto& metadata = frame.m_expected_depth;
+            if (K_WIDTH > metadata.m_width || K_HEIGHT > metadata.m_height ||
+                (K_WIDTH == metadata.m_width && K_HEIGHT == metadata.m_height))
+                return fail(ErrorCode::INVALID_DATA, "Resize must downsample the native grid");
+            const auto K_SX = static_cast<double>(K_WIDTH) / metadata.m_width;
+            const auto K_SY = static_cast<double>(K_HEIGHT) / metadata.m_height;
+            metadata.m_camera.m_fx *= K_SX;
+            metadata.m_camera.m_fy *= K_SY;
+            metadata.m_camera.m_cx = K_SX * (metadata.m_camera.m_cx + 0.5) - 0.5;
+            metadata.m_camera.m_cy = K_SY * (metadata.m_camera.m_cy + 0.5) - 0.5;
+            metadata.m_width = static_cast<std::uint32_t>(K_WIDTH);
+            metadata.m_height = static_cast<std::uint32_t>(K_HEIGHT);
+            auto& description = expected["frames"][index];
+            description["native_image_sha256"] = metadata.m_calibrated_image_sha256;
+            metadata.m_calibrated_image_sha256 =
+                K_SELECTED->at("frames").at(index).at("calibrated_image_sha256").get<std::string>();
+            if (!job_detail::valid_digest(metadata.m_calibrated_image_sha256))
+                return fail(ErrorCode::INVALID_DATA, "Invalid resized image checksum");
+            metadata.m_recipe_sha256 = request.m_depth_recipe_sha256;
+            const auto K_PATH =
+                job_detail::contained_file(std::filesystem::canonical(manifest.parent_path()),
+                                           description.at("image").get<std::string>());
+            if (!K_PATH) return std::unexpected(K_PATH.error());
+            frame.m_calibrated_image = *K_PATH;
+            TrainingCamera camera;
+            camera.m_width = metadata.m_width;
+            camera.m_height = metadata.m_height;
+            const auto K_PNG = check_png(*K_PATH, metadata.m_calibrated_image_sha256, camera, stop);
+            if (!K_PNG) return std::unexpected(K_PNG.error());
+            description["width"] = K_WIDTH;
+            description["height"] = K_HEIGHT;
+            description["intrinsics"] = {metadata.m_camera.m_fx,
+                                         metadata.m_camera.m_fy,
+                                         metadata.m_camera.m_cx,
+                                         metadata.m_camera.m_cy};
+            description["calibrated_image_sha256"] = metadata.m_calibrated_image_sha256;
+        }
+        // Every field other than the actual encoded resized image hashes is
+        // independently derived. Compare structure to allow JSON key ordering.
+        if (expected != *K_SELECTED)
+            return fail(ErrorCode::RESYNC_REQUIRED, "Resized manifest differs from checked inputs");
+        native->m_manifest_json = expected.dump(2) + "\n";
+        return native;
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Dense resize admission allocation failed");
+    } catch (const std::exception& exception) {
+        return fail(ErrorCode::INVALID_DATA,
+                    std::string("Dense resize admission failed: ") + exception.what());
+    }
 }
 
 }  // namespace world_explorer
