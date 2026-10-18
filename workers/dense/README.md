@@ -89,10 +89,80 @@ needs explicit depth limits; `we_process inspect-depth FILE SHA --max-dimension
 8192` checks its format, while `load_dense_inputs` plus `load_pose_bound_depth`
 perform independent input/pose admission.
 
-[Observed checks](../../docs/validation/2026-10-17-dense-worker.md) include the
-synthetic plane, real three-view output, native C++ admission, sparse coverage,
-CPU rejection and cancellation failure. A separate [checked resized-input preparer](../../docs/protocols/dense_inputs.md#separate-resized-profile)
-now prepares a smaller grid without a solver; this native-grid pilot still refuses
-that profile. Full source-neighbor selection, resized backend-model adaptation,
-worker-protocol/job integration, resume, fusion, compressed scene
-storage and measured geometry remain M3 work.
+[Observed native-pilot checks](../../docs/validation/2026-10-17-dense-worker.md)
+retain their original recipe/source identity and scope. Adding the neighbor-count
+parameter to the shared depth encoder changes implementation hashes; historical
+recipes are not rebound or rerun. Default two-source encoding preserves the
+three-view policy; the new recipe pins its actual implementation separately.
+
+## Resized neighbor experiment
+
+`neighbors.py` is a second, **partial development experiment**, outside the shared
+job/protocol pipeline. It consumes separately admitted native and resized
+manifests, the committed native pose stage and an exact full recipe. It owns a new
+workspace, adapts all model views and copies nine selected PNGs. No pose solve,
+appearance fit, scene revision, measured scale, fusion or walking occurs.
+
+The recipe declares `PARTIAL_NINE_VIEW_NEIGHBOR_QUALIFICATION`, the resized input
+profile, nine consecutive manifest `selection_indices` and `neighbor_radius: 3`.
+Sources are the preceding/following three selected views, giving **3–6 sources**
+per reference. The source graph closes over all nine views; there is no hidden
+automatic source expansion. The full PatchMatch dictionary must equal pinned
+4.2.1 defaults with the same operational changes as the native pilot: GPU 0,
+`max_image_size=-1`, 1 GiB cache, two threads and consistency-graph output.
+Geometric consistency/filtering, five iterations and two required consistent
+sources are unchanged. The explicit resized grid belongs to the input profile;
+the solver must not implicitly resize it again.
+
+The full recipe also contains the checked `resize` object, environment hash,
+`neighbors.worker_digest()` and the same confidence declaration as the native
+pilot. The digest binds `neighbors.py`, `resized_model.py`, `colmap_io.py`,
+`pilot.py` and `resize_inputs.py`. A new full recipe requires newly bound resized
+input metadata. Previously admitted images/depth keep their original identities.
+No generic unpinned launch, package acquisition or remote fallback is provided.
+
+`resized_model.adapt_model` reads an owned, hash-checked native model, validates
+all image/camera/pose/calibration identities and promotes its single undistorted
+camera to **PINHOLE**, preserving distinct X/Y focal lengths. Native COLMAP image
+coordinates scale by their actual per-axis ratios; canonical integer-center
+intrinsics additionally use the documented half-pixel transform. Both tracked
+and untracked keypoints scale; track links, poses, 3D positions and colors stay
+unchanged. Pixel-based point errors are recomputed. Read-back checks validate the
+actual serialized camera; asymmetric optical probes verify rays. This follows
+[COLMAP's native camera domain](https://github.com/colmap/colmap/blob/4.2.1/src/colmap/scene/camera.cc)
+and its [MVS input requirements](https://github.com/colmap/colmap/blob/4.2.1/src/colmap/mvs/patch_match.cc).
+
+After producing the resized images with `resize_inputs.py` and independently
+checking them using `we_process check-resized-dense`, launch:
+
+```sh
+.venv-dense/bin/python workers/dense/neighbors.py \
+  --native-manifest NATIVE.json --native-manifest-sha256 NATIVE_SHA \
+  --manifest RESIZED/manifest.json --manifest-sha256 RESIZED_SHA \
+  --recipe RECIPE.json --recipe-sha256 RECIPE_SHA \
+  --stage COMMITTED_POSE_STAGE --output NEW_WORKSPACE --prepare-only
+# Omit --prepare-only for the bounded GPU run, using another new workspace.
+```
+
+`prepared.json` identifies checked private backend inputs and the exact source
+configuration; it is not a resumable job or a depth result. Existing, linked or
+overlapping output workspaces are refused. The full run writes immutable depth
+assets first and publishes `result.json` last as `PARTIAL_NEIGHBOR_PILOT_COMPLETE`.
+The worker checks cancellation between preparation/export steps and forwards
+signals to the backend token. Use an owning process with timeout, grace, kill and
+reap; the native pilot's non-cooperative GPU cancellation is not fixed by this
+experiment. Python socket creation is blocked, not an OS network sandbox.
+
+Positive finite geometric depth with at least **two distinct consistent source
+observations** becomes valid axial camera-Z. Support includes the reference;
+confidence is `(support - 1) / actual_selected_source_count`, still a relative
+weight, not probability or uncertainty. Support exceeding that reference's source
+inventory rejects. Missing/insufficient depth remains explicit unknown with zero
+depth/confidence/support. Backend normals are retained but not admitted as project
+assets. The `.wedepth` outputs use existing default bounds for the explicit grid.
+
+[Local neighbor evidence](../../docs/validation/2026-10-18-dense-neighbors.md)
+separates complete model correspondence, actual bounded GPU output and native
+pose admission from unimplemented room geometry. Production job/control/resume,
+full-scene dense qualification, fusion, compression, scale, collision and mesh
+export remain M3 work.

@@ -12,7 +12,7 @@ Read by task; do not load the entire directory for routine work.
 | Write/update documentation | [Documentation protocol](protocols/documentation.md) |
 | Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [depth](protocols/depth.md), [dense inputs](protocols/dense_inputs.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/camera/handoff](protocols/viewer.md) |
 | Organize outputs / add a local video | [Artifact layout and request helper](protocols/artifacts.md) |
-| Qualify the isolated local dense backend | [Three-view CUDA pilot](../workers/dense/README.md), [separate resized inputs](protocols/dense_inputs.md#separate-resized-profile); partial output, production job/fusion/geometry remain open |
+| Qualify the isolated local dense backend | [Dense development experiments](../workers/dense/README.md), [separate resized inputs](protocols/dense_inputs.md#separate-resized-profile); partial output, production job/fusion/geometry remain open |
 | Audit local worker/metric identities | [Installed identity receipts](protocols/worker_identity.md), [isolated CPU metric profile](../workers/metrics/README.md) |
 | Check selected dependency provenance gaps | [Source/archive/notice inventory](protocols/dependency_sources.md) |
 | Capture/check selected Linux ELF dependencies | [Runtime dependency receipts](protocols/runtime_dependencies.md) |

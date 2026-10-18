@@ -147,9 +147,11 @@ are rejected. Semantic JSON comparison permits serialization/key ordering change
 selected file identity still uses exact bytes. Full PNG decoding/pixel correctness
 remain preparer/consumer duties, as in the native profile.
 
-No resized COLMAP model or runnable resized MVS recipe is produced here. A future
-worker must explicitly adapt its owned model to this grid and check reprojection;
-copying an untouched native camera model would be invalid. The existing native
-three-view pilot refuses this profile. The [local resize evidence](../validation/2026-10-18-dense-resize.md)
-uses an explicitly unqualified, unexecuted depth recipe. Preparation/admission do
-not qualify depth, fusion, measured scale, walking or Q5/N2.
+The preparer itself produces no backend model or depth. The separate
+[bounded neighbor experiment](../../workers/dense/README.md#resized-neighbor-experiment)
+now adapts an owned COLMAP model, checks its grid and runs a separately pinned
+nine-view recipe. The native three-view pilot still refuses resized inputs.
+The [resize-only evidence](../validation/2026-10-18-dense-resize.md) retains its
+unqualified/unexecuted recipe; it is not retroactively upgraded by the later
+experiment. Preparation/admission alone do not qualify depth, fusion, measured
+scale, walking or Q5/N2.

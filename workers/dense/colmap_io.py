@@ -78,7 +78,9 @@ def read_support(path, width, height, reference_index, source_indices):
     return support
 
 
-def encode_depth(frame, manifest, depth, support, producer=2):
+def encode_depth(frame, manifest, depth, support, producer=2, source_count=2):
+    if type(source_count) is not int or not 2 <= source_count <= 20:
+        raise ValueError("Invalid selected source count")
     width, height = frame['width'], frame['height']
     count = width * height
     if producer not in (1, 2) or count > MAX_PIXELS or len(depth) != count or len(support) != count:
@@ -103,16 +105,16 @@ def encode_depth(frame, manifest, depth, support, producer=2):
     normalized = array('f', [0]) * count
     counts = array('I', [0]) * count
     for pixel, (value, observations) in enumerate(zip(depth, support)):
-        if not math.isfinite(value) or value < 0 or not 0 <= observations <= 21:
+        if not math.isfinite(value) or value < 0 or not 0 <= observations <= source_count + 1:
             raise ValueError("Invalid export sample")
         if value > 0 and observations >= 3:
             valid[pixel] = 1
             normalized[pixel] = value
             counts[pixel] = observations
             # Fixed recipe weight; no statistical confidence/uncertainty claim.
-            confidence[pixel] = (observations - 1) / 2
+            confidence[pixel] = (observations - 1) / source_count
             if confidence[pixel] > 1:
-                raise ValueError("Three-view pilot support exceeds selected sources")
+                raise ValueError("Depth support exceeds selected sources")
     if sys.byteorder != 'little':
         for plane in (normalized, confidence, counts):
             plane.byteswap()

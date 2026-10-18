@@ -9,6 +9,7 @@ status and next work; a historical report's remaining work may be superseded.
 
 | Slice | Report |
 |---|---|
+| M3 resized neighbor MVS | [Owned model, bounded CUDA depth and pose admission](2026-10-18-dense-neighbors.md) |
 | M3 resized dense inputs | [Bound resized bytes and per-axis camera calibration](2026-10-18-dense-resize.md) |
 | Native-build/style refactor repair | [PPM budgets, inactive Windows branches and style regression](2026-10-18-native-style-repair.md) |
 | Documentation cleanup | [Concision and preservation audit](2026-10-17-documentation-cleanup.md) |

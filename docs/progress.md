@@ -99,7 +99,16 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   independent filtered-pixel samples differ by at most one RGB8 level, camera
   rays by 2.22e-16. No depth or backend-model adaptation is produced.
 
-Saved runs/failures/frozen fixtures and prior dense pilot remain unchanged.
+- [Resized neighbor MVS](validation/2026-10-18-dense-neighbors.md): owned 63-view
+  model preserves poses/tracks/29,846 landmarks while scaling 441,769 keypoints;
+  max reprojection difference 4.55e-13 pixels. The frozen nine-view GPU recipe
+  completes in 213.754 s; all nine default-limit depth assets pass pose admission
+  and complete-plane export checks. Coverage remains **3.34–9.89%**; no room mesh
+  or geometry gate. Sparse-track parallax diagnostic suggests the close temporal
+  window limits support. CPU preparation cancellation passes; GPU/job cancellation
+  and resume remain unqualified.
+
+Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
 `python3 tools/check_dependency_manifest.py --local-evidence`. Earlier refreshes
@@ -108,20 +117,19 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement a **bounded overlapping-neighbor MVS recipe** consuming the checked
-resized profile. First adapt an owned COLMAP camera/model to its actual grid and
-verify asymmetric reprojection against the admitted manifest without solving;
-then freeze neighbor/configuration/worker identity before a new bounded GPU run.
-Operational inputs: `artifacts/validation/m3-dense-resize-20261018/real-result.json`,
-`resized/manifest.json`, `independent-real.json` and
-[dense input instructions](protocols/dense_inputs.md#separate-resized-profile).
-The resize evidence's depth recipe is explicitly unqualified/unexecuted; produce
-new dependent metadata for a runnable recipe. The existing native three-view pilot
-refuses resized inputs. Retain depth's default bounds; native 4104-wide evidence
-still needs explicit `max_dimension=8192`.
+Implement **parallax-aware bounded source selection** before another MVS solve.
+First read `artifacts/validation/m3-dense-neighbors-20261018/parallax.json`,
+`independent-model.json`, `independent-depth.json` and `real-pilot/result.json`.
+Only 3.66–7.61% of current reference sparse landmarks have two selected co-visible
+sources at the unchanged 3° filter angle; later views offer more useful support.
+Use co-visibility/parallax plus explicit geometric source-graph closure, test the
+selection against synthetic/retained models, then freeze a changed recipe and new
+input/depth identities before any bounded GPU run. Do not lower filters or infer
+dense coverage from sparse-track counts. The current nine-view recipe is pinned
+to consecutive views; no unchanged retry. See [worker instructions](../workers/dense/README.md#resized-neighbor-experiment).
 
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
-Keep CPU pose/training environments unchanged. No unchanged three-view or
+Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Production
 job/protocol integration needs bounded cancellation/kill/reap; resume, real fusion,

@@ -172,8 +172,9 @@ checks format/provenance only; [depth contract](docs/protocols/depth.md).
 `we_process prepare-dense` checks/publishes calibrated input metadata without
 computing depth/changing scenes; [dense-input arguments/recipe/grid limits](docs/protocols/dense_inputs.md).
 The separate resized-input profile prepares checked PNGs/calibration, admitted by
-`we_process check-resized-dense`; its backend integration remains open.
-The [separate CUDA pilot](workers/dense/README.md) produces partial checked depth;
+`we_process check-resized-dense`; production job integration remains open.
+The [separate CUDA experiments](workers/dense/README.md) produce partial checked depth
+from native three-view or resized nine-view inputs;
 production dense reconstruction/walking remain unavailable.
 
 Sources/intermediates stay local until the user removes their job. Never commit
