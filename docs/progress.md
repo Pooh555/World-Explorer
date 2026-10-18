@@ -116,6 +116,15 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   quality promotion. Sparse support is insufficient; cached photometric-depth
   round trips show weaker overlap/consistency. Both runs are retained.
 
+- [Cached visibility/NCC diagnostic](validation/2026-10-18-dense-visibility.md):
+  CPU-only pinned cache receipt, owned-byte model/image/depth loading, closed
+  six-source rows and disjoint pixel grids. An independent scalar oracle matches
+  **14,357 samples**. The candidate improves ranking-grid two-source support
+  **107→126**, but separate-grid support falls **84→81**, with five references
+  worse. No executable GPU recipe or solve is produced. Sparse-track/depth checks
+  show stronger landmark coverage but larger unfiltered-depth disagreement tails
+  in the parallax cache; shared SfM evidence is not geometry ground truth.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -125,18 +134,25 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement **visibility/photometric-aware source scoring**, with CPU evidence
-before another solve. Read `artifacts/validation/m3-dense-parallax-20261018/roundtrip.json`,
-`reference-comparison.json`, `plan.json` and `real-pilot/result.json`. The sparse-only
-candidate increases sparse support but reduces fixed-reference depth coverage;
-projected in-bounds fraction falls 86.40% → 48.23%, and sampled median round-trip
-error rises 17.48 → 75.02 pixels. These diagnostics are not geometry ground truth.
-Use spatial overlap and consistency evidence to test complementary source ranking,
-preserving graph closure, all nine references and unchanged PatchMatch filters.
-Bind any cached-map inputs to their exact model/image/recipe identities; private
-photometric maps are not admitted geometry. Freeze a changed recipe only after
-those checks; no unchanged 18-view retry or failed-reference exclusion. See
-[worker instructions](../workers/dense/README.md#parallax-aware-source-experiment).
+Implement **spatially stratified source reliability diagnostics** before changing
+the GPU recipe. Start with `artifacts/validation/m3-dense-visibility-20261018/`:
+`cache.json`, `scores-final.json`, `oracle.json` and `sparse-depth.json`.
+Extend the pinned CPU scorer to report support/disagreement by image tile and
+texture class, including unsupported area in every denominator; use a denser
+training grid with a separately frozen disjoint evaluation grid. The 768-sample
+ranking objective did not improve separate-grid support. Diagnose whether the
+larger parallax depth tails concentrate outside reliable textured tracks before
+choosing a new objective. Do not select a policy on its evaluation grid.
+
+`check_sparse_depth.py` in that evidence directory already compares both retained
+caches at projected distinct landmarks: parallax photometric p90 relative axial-Z
+disagreement is **64.85–407.57%**, versus **25.01–50.91%** temporally. This is
+shared-model internal consistency, not centimetre accuracy or Q5. Keep all nine
+references, graph closure and unchanged backend filters. Cached maps remain
+private/pinned diagnostic inputs; no direct geometry admission or promotion of
+the current candidate. Freeze a changed recipe only after justified CPU evidence;
+no unchanged 18-view retry or failed-reference exclusion. See
+[diagnostic instructions](../workers/dense/README.md#cached-visibility-and-photometric-diagnostic).
 
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or

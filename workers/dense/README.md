@@ -238,3 +238,64 @@ experimental and is not promoted as a quality improvement. Recorded projection
 round trips suggest dense visibility/consistency must influence source ranking;
 this is a diagnostic, not ground-truth geometry. Retain both runs and inspect the
 evidence before another changed recipe; do not repeat or relax filters.
+
+## Cached visibility and photometric diagnostic
+
+`cached_sources.py` provides CPU-only `freeze` and `score` commands for the
+retained resized development runs. This diagnostic neither invokes PatchMatch
+nor produces an executable worker recipe or admitted geometry. It keeps the
+entire selected cache inventory (9–18 views), the first nine references and closed
+rows of six sources. It cannot search uncached views or certify a new solve.
+
+```sh
+.venv-dense/bin/python workers/dense/cached_sources.py freeze \
+  --workspace COMPLETED_NEIGHBOR_WORKSPACE \
+  --manifest RESIZED.json --manifest-sha256 RESIZED_SHA \
+  --recipe RECIPE.json --recipe-sha256 RECIPE_SHA \
+  --result-sha256 RESULT_SHA --output NEW_CACHE.json
+.venv-dense/bin/python workers/dense/cached_sources.py score \
+  --workspace COMPLETED_NEIGHBOR_WORKSPACE \
+  --cache NEW_CACHE.json --cache-sha256 CACHE_SHA --output NEW_SCORES.json
+```
+
+`freeze` checks the pinned terminal/preparation/manifest/recipe chain, closed
+source graph/config, serialized model hashes and RGB hashes. It explicitly hashes
+the **current private photometric maps**: the old worker terminal did not hash
+those maps, so this receipt cannot prove their original producer-time identity.
+The descriptor embeds exact dependency-document bytes and relative file hashes.
+`score` rechecks every file, loads model copies from owned bytes, and checks actual
+camera IDs, pinhole calibration, poses and grids against the manifest. Private
+maps require exact little-endian payloads and finite values; nonpositive samples
+remain unknown. They never enter the public geometric-depth admission path.
+
+Inputs are limited to 44 files, 256 MiB/file, 512 MiB total encoded bytes and
+48 million decoded pixels; grids are 96–4096 × 72–4096. These admission bounds
+are not a measured process-memory guarantee. Linked/escaping paths, stale
+dependencies, malformed maps, occupied/overlapping outputs and cancellation
+publish no new result. Output publication is exclusive and atomic. Signals are
+checked between bounded operations. Python sockets are disabled in the CLI;
+this is not an operating-system network sandbox. No environment change/download
+or resume occurs. The seven-file GPU worker bundle remains unchanged.
+
+The fixed `CACHED_VISIBILITY_NCC_GREEDY_V1` policy uses a 32×24 pixel grid,
+axial-Z reprojection and bilinear source depth. A support sample requires a
+positive-depth round trip within one pixel, ≤1% relative depth difference,
+≥3° parallax, an in-bounds nine-tap RGB-to-luminance warp at offsets −2/0/2,
+both patch variances ≥1e-4 and normalized cross-correlation ≥0.1. Invalid depth,
+occlusion disagreement, textureless or inverted patches supply no support.
+This sampled depth warp is **not a replay of COLMAP's plane-based NCC/filter**.
+No backend option or product acceptance threshold changes.
+
+Per-row greedy ranking prioritizes a second supporting source, then first-source
+support, then quantized NCC/round-trip/parallax quality; ties use canonical view
+order. All comparisons use the **same frozen maps**. A second disjoint pixel grid
+is evaluated after ranking. It is the same capture/cache, not an independent
+held-out scene; the cache itself depends on the old source graph. Reports retain
+per-reference and per-pair results, code/cache identities and
+`gpu_recipe_ready: false`. No quality promotion follows from training support.
+
+[Local CPU evidence](../../docs/validation/2026-10-18-dense-visibility.md) records
+an unsuccessful candidate: training two-source support rises 107→126 samples,
+but separate-grid support falls 84→81, with five references worse. No GPU retry
+was justified. Both the sparse-only and cached scoring candidates remain
+experimental; measured geometry/fusion/walking remain open.
