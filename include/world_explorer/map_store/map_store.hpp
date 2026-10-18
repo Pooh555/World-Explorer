@@ -3,6 +3,7 @@
 
 #include "world_explorer/reconstruction_api/map_records.hpp"
 #include "world_explorer/reconstruction_api/pose_estimator.hpp"
+
 #include <cstddef>
 #include <deque>
 #include <filesystem>
@@ -17,92 +18,102 @@
 #include <vector>
 
 namespace world_explorer {
-struct map_state {
+
+struct MapState {
     // Monocular map units are arbitrary until an explicit measured-scale
     // transaction is implemented and verified. Alignment scale alone is no proof.
-    scale_status scale{scale_status::ARBITRARY};
-    world_epoch epoch;
-    map_revision_id revision;
-    std::map<calibration_id, calibration_record> calibrations;
-    std::map<frame_id, observation_record> observations;
-    std::map<frame_id, pose_estimate> poses;
-    std::map<submap_id, similarity_transform> world_from_submap;
+    ScaleStatus m_scale { ScaleStatus::ARBITRARY };
+    WorldEpoch m_epoch;
+    MapRevisionId m_revision;
+    std::map<CalibrationId, CalibrationRecord> m_calibrations;
+    std::map<FrameId, ObservationRecord> m_observations;
+    std::map<FrameId, PoseEstimate> m_poses;
+    std::map<SubmapId, SimilarityTransform> m_world_from_submap;
     // Consumers use this set to invalidate appearance/geometry derived from
     // corrected or deleted observations before publishing a new scene revision.
-    std::set<frame_id> invalidated_frames;
+    std::set<FrameId> m_invalidated_frames;
     // Initial canonical solve dependency, not the provenance of later corrections.
-    std::optional<std::string> initial_pose_asset_sha256;
+    std::optional<std::string> m_initial_pose_asset_sha256;
 };
-using map_snapshot = std::shared_ptr<const map_state>;
-struct map_transaction {
-    world_epoch epoch;
-    map_revision_id base_revision, new_revision;
-    operation_id operation;
-    std::vector<calibration_record> calibrations;
-    std::vector<observation_record> observations;
-    std::vector<pose_estimate> poses;
-    std::vector<map_alignment> alignments;
-    std::vector<frame_id> deleted_frames;
+
+using MapSnapshot = std::shared_ptr<const MapState>;
+
+struct MapTransaction {
+    WorldEpoch m_epoch;
+    MapRevisionId m_base_revision, m_new_revision;
+    OperationId m_operation;
+    std::vector<CalibrationRecord> m_calibrations;
+    std::vector<ObservationRecord> m_observations;
+    std::vector<PoseEstimate> m_poses;
+    std::vector<MapAlignment> m_alignments;
+    std::vector<FrameId> m_deleted_frames;
 };
-struct map_store_limits {
-    std::size_t max_frames{1000000};
-    std::size_t max_calibrations{4096};
-    std::size_t max_submaps{4096};
-    std::size_t remembered_operations{1024};
+
+struct MapStoreLimits {
+    std::size_t m_max_frames { 1000000uz };
+    std::size_t m_max_calibrations { 4096uz };
+    std::size_t m_max_submaps { 4096uz };
+    std::size_t m_remembered_operations { 1024uz };
 };
-struct persistent_map_config {
-    std::filesystem::path directory;
-    map_store_limits records{};
-    byte_budget checkpoint_bytes{std::size_t{256} * 1024 * 1024};
+
+struct PersistentMapConfig {
+    std::filesystem::path m_directory;
+    MapStoreLimits m_records {};
+    ByteBudget m_checkpoint_bytes { 256uz * 1024 * 1024 };
     // Explicit initialization only. Missing/corrupt manifests never reset a store.
-    bool create_if_missing{};
-    byte_budget retained_asset_bytes{std::size_t{8} * 1024 * 1024 * 1024};
+    bool m_create_if_missing {};
+    ByteBudget m_retained_asset_bytes { 8uz * 1024 * 1024 * 1024 };
 };
-class map_persistence;
+class MapPersistence;
 // Thread-safe serialized commits and immutable snapshots. Producers retain their
 // input on failure. Retry acknowledgements persist within remembered_operations;
 // older retries require snapshot resynchronization. Persistence performs blocking
 // file IO: call commit off the rendering thread.
-struct canonical_pose_asset;
-class map_store {
+struct CanonicalPoseAsset;
+
+class MapStore {
   public:
-    explicit map_store(map_store_limits limits = {});
-    ~map_store();
-    static result<std::unique_ptr<map_store>> open_persistent(persistent_map_config config,
-                                                              const std::stop_token& stop = {});
-    result<map_revision_id> commit(const map_transaction& transaction,
-                                   const std::stop_token& stop = {});
-    map_snapshot acquire_snapshot() const;
-    result<void> reset(world_epoch epoch, const std::stop_token& stop = {});
+    explicit MapStore(MapStoreLimits limits = {});
+    ~MapStore();
+    static Result<std::unique_ptr<MapStore>> open_persistent(PersistentMapConfig config,
+                                                             const std::stop_token& stop = {});
+    Result<MapRevisionId> commit(const MapTransaction& transaction,
+                                 const std::stop_token& stop = {});
+    MapSnapshot acquire_snapshot() const;
+    Result<void> reset(WorldEpoch epoch, const std::stop_token& stop = {});
     // Persistent revision-1 seeding from checked canonical poses. Copies the
     // immutable source dependency before publishing, and preserves retry IDs.
-    result<map_revision_id> import_pose_asset(const std::filesystem::path& path,
-                                              const std::string& sha256, operation_id operation,
-                                              const std::stop_token& stop = {});
-    result<map_revision_id> import_pose_asset(const canonical_pose_asset& asset,
-                                              operation_id operation,
-                                              const std::stop_token& stop = {});
+    Result<MapRevisionId> import_pose_asset(const std::filesystem::path& path,
+                                            const std::string& sha256,
+                                            OperationId operation,
+                                            const std::stop_token& stop = {});
+    Result<MapRevisionId> import_pose_asset(const CanonicalPoseAsset& asset,
+                                            OperationId operation,
+                                            const std::stop_token& stop = {});
 
   private:
-    mutable std::mutex mutex_;
-    map_store_limits limits_;
-    map_snapshot current_;
-    struct remembered {
-        operation_id operation;
-        std::string digest;
-        map_revision_id revision;
-    };
-    std::deque<remembered> operations_;
-    std::unique_ptr<map_persistence> persistence_;
-    friend class map_persistence;
-    result<map_revision_id> import_encoded_pose_asset(std::span<const std::byte> bytes,
-                                                      const std::string& hash,
-                                                      operation_id operation,
-                                                      const std::stop_token& stop);
-    result<map_revision_id> commit_locked(const map_transaction& transaction,
-                                          const std::stop_token& stop,
-                                          std::optional<std::string> initial_asset = {});
-};
-} // namespace world_explorer
+    mutable std::mutex m_mutex;
+    MapStoreLimits m_limits;
+    MapSnapshot m_current;
 
-#endif // WORLD_EXPLORER_MAP_STORE_MAP_STORE_HPP
+    struct Remembered {
+        OperationId m_operation;
+        std::string m_digest;
+        MapRevisionId m_revision;
+    };
+
+    std::deque<Remembered> m_operations;
+    std::unique_ptr<MapPersistence> m_persistence;
+    friend class MapPersistence;
+    Result<MapRevisionId> import_encoded_pose_asset(std::span<const std::byte> bytes,
+                                                    const std::string& hash,
+                                                    OperationId operation,
+                                                    const std::stop_token& stop);
+    Result<MapRevisionId> commit_locked(const MapTransaction& transaction,
+                                        const std::stop_token& stop,
+                                        std::optional<std::string> initial_asset = {});
+};
+
+}  // namespace world_explorer
+
+#endif  // WORLD_EXPLORER_MAP_STORE_MAP_STORE_HPP

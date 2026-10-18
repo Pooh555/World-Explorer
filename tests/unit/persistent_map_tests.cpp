@@ -3,424 +3,445 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/map_store/map_store.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
+
 #include <atomic>
 #include <bit>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
 #include <fstream>
 #include <limits>
-#include <nlohmann/json.hpp>
 #include <thread>
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
 using namespace world_explorer;
+
 namespace {
-struct directory {
-    std::filesystem::path path;
-    directory() {
-        static std::atomic<unsigned> count{};
-        path = std::filesystem::temp_directory_path() /
-               ("we_persistent_map_" +
-                std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "_" +
-                std::to_string(count++));
-        REQUIRE(std::filesystem::create_directory(path));
+
+struct Directory {
+    std::filesystem::path m_path;
+
+    Directory() {
+        static std::atomic<unsigned> count {};
+        m_path = std::filesystem::temp_directory_path() /
+                 ("we_persistent_map_" +
+                  std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
+                  "_" + std::to_string(count++));
+        REQUIRE(std::filesystem::create_directory(m_path));
     }
-    ~directory() {
+
+    ~Directory() {
         std::error_code ignored;
-        std::filesystem::remove_all(path, ignored);
+        std::filesystem::remove_all(m_path, ignored);
     }
 };
-map_transaction first_transaction() {
-    map_transaction tx;
-    tx.operation = {100};
-    tx.new_revision = {1};
-    tx.calibrations = {{{7},
-                        {711, 529, 319.25, 241.75},
-                        640,
-                        480,
-                        calibration_model::OPENCV,
-                        {.1, -.2, .003, -.004},
-                        {.5, .75, -3.25, 2.5}}};
-    tx.observations = {
-        {{1}, {8}, {7}, {-7, 1001, 30000}, std::chrono::nanoseconds{123}, std::string(64, 'a')},
-        {{2},
-         {8},
-         {7},
-         {11, 1001, 30000},
-         std::chrono::nanoseconds{367033333},
-         std::string(64, 'b')}};
-    tx.alignments = {{{55}, {1}, {{0, 1, 0, 0}, {10, -20, 30}, 2.5}}};
-    tx.poses = {{{1},
-                 {55},
-                 {{.5, .5, .5, .5}, {1, 2, 3}, 1},
-                 std::chrono::nanoseconds{123},
-                 {1},
-                 tracking_state::TRACKING,
-                 {}},
-                {{2},
-                 {55},
-                 {{0, 1, 0, 0}, {-1, 3, -2}, 1},
-                 std::chrono::nanoseconds{367033333},
-                 {1},
-                 tracking_state::TRACKING,
-                 {}}};
+
+MapTransaction first_transaction() {
+    MapTransaction tx;
+    tx.m_operation = { 100 };
+    tx.m_new_revision = { 1 };
+    tx.m_calibrations = { { { 7 },
+                          { 711, 529, 319.25, 241.75 },
+                          640,
+                          480,
+                          CalibrationModel::OPENCV,
+                          { .1, -.2, .003, -.004 },
+                          { .5, .75, -3.25, 2.5 } } };
+    tx.m_observations = {
+        { { 1 }, { 8 }, { 7 }, { -7, 1001, 30000 }, std::chrono::nanoseconds { 123 }, std::string(64, 'a') },
+        { { 2 },
+         { 8 },
+         { 7 },
+         { 11, 1001, 30000 },
+         std::chrono::nanoseconds { 367033333 },
+         std::string(64, 'b') } };
+    tx.m_alignments = { { { 55 }, { 1 }, { { 0, 1, 0, 0 }, { 10, -20, 30 }, 2.5 } } };
+    tx.m_poses = { { { 1 },
+                   { 55 },
+                   { { .5, .5, .5, .5 }, { 1, 2, 3 }, 1 },
+                   std::chrono::nanoseconds { 123 },
+                   { 1 },
+                   TrackingState::TRACKING,
+                   {} },
+                  { { 2 },
+                   { 55 },
+                   { { 0, 1, 0, 0 }, { -1, 3, -2 }, 1 },
+                   std::chrono::nanoseconds { 367033333 },
+                   { 1 },
+                   TrackingState::TRACKING,
+                   {} } };
     return tx;
 }
-std::unique_ptr<map_store> open(const std::filesystem::path& root, bool create = false,
-                                map_store_limits limits = {}) {
-    auto store =
-        map_store::open_persistent({root, limits, {std::size_t{256} * 1024 * 1024}, create});
+
+std::unique_ptr<MapStore>
+open(const std::filesystem::path& root, bool create = false, MapStoreLimits limits = {}) {
+    auto store = MapStore::open_persistent({root, limits, {256uz * 1024 * 1024}, create});
     REQUIRE(store);
     return std::move(*store);
 }
+
 std::string manifest_digest(const std::filesystem::path& root) {
-    const auto hash = sha256_file(root / "manifest.json", 65536);
-    REQUIRE(hash);
-    return *hash;
+    const auto K_HASH = sha256_file(root / "manifest.json", 65536);
+    REQUIRE(K_HASH);
+    return *K_HASH;
 }
+
 nlohmann::json manifest(const std::filesystem::path& root) {
     return nlohmann::json::parse(std::ifstream(root / "manifest.json"));
 }
+
 std::vector<std::byte> checkpoint_bytes(const std::filesystem::path& root,
                                         const nlohmann::json& metadata) {
-    const auto path =
+    const auto K_PATH =
         root / "assets" / ("checkpoint-" + metadata["sha256"].get<std::string>() + ".fb");
-    std::ifstream input(path, std::ios::binary);
+    std::ifstream input(K_PATH, std::ios::binary);
     std::vector<std::byte> bytes(metadata["bytes"].get<std::size_t>());
     input.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     REQUIRE(input.gcount() == static_cast<std::streamsize>(bytes.size()));
     return bytes;
 }
-void rehash_checkpoint(const std::filesystem::path& root, std::span<const std::byte> bytes,
+
+void rehash_checkpoint(const std::filesystem::path& root,
+                       std::span<const std::byte> bytes,
                        nlohmann::json metadata) {
-    const auto hash = sha256(bytes);
-    std::ofstream output(root / "assets" / ("checkpoint-" + hash + ".fb"), std::ios::binary);
+    const auto K_HASH = sha256(bytes);
+    std::ofstream output(root / "assets" / ("checkpoint-" + K_HASH + ".fb"), std::ios::binary);
     output.write(reinterpret_cast<const char*>(bytes.data()),
                  static_cast<std::streamsize>(bytes.size()));
     output.close();
-    metadata["sha256"] = hash;
+    metadata["sha256"] = K_HASH;
     metadata["bytes"] = bytes.size();
     std::ofstream(root / "manifest.json") << metadata.dump();
 }
-template <class value_type>
-void shorten_vector(flatbuffers::Vector<value_type>* values, flatbuffers::uoffset_t count) {
+
+template <class ValueType>
+void shorten_vector(flatbuffers::Vector<ValueType>* values, flatbuffers::uoffset_t count) {
     REQUIRE(values);
     REQUIRE(count <= values->size());
     flatbuffers::WriteScalar(reinterpret_cast<std::uint8_t*>(values), count);
 }
+
 void restore_manifest(const std::filesystem::path& root, const nlohmann::json& value) {
     std::ofstream output(root / "manifest.json");
     output << value.dump();
     REQUIRE(output);
 }
-canonical_pose_asset producer_asset() {
-    map_store memory;
+
+CanonicalPoseAsset producer_asset() {
+    MapStore memory;
     REQUIRE(memory.commit(first_transaction()));
     return {memory.acquire_snapshot(),
             {std::string(64, 'a'), std::string(64, 'b'), std::string(64, 'c'), {}}};
 }
-struct held_writer_lock {
-    std::filesystem::path path;
+
+struct HeldWriterLock {
+    std::filesystem::path m_path;
 };
+
 std::map<std::string, std::string> tree_identity(const std::filesystem::path& root,
-                                                 const held_writer_lock& writer_lock) {
+                                                 const HeldWriterLock& writer_lock) {
     std::map<std::string, std::string> files;
     for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-        const auto name = entry.path().lexically_relative(root).generic_string();
-        CAPTURE(name);
-        const auto status = entry.symlink_status();
-        if (entry.path() == writer_lock.path) {
+        const auto K_NAME = entry.path().lexically_relative(root).generic_string();
+        CAPTURE(K_NAME);
+        const auto K_STATUS = entry.symlink_status();
+        if (entry.path() == writer_lock.m_path) {
             // Windows denies another read handle while the store owns this lock.
             // Keep its regular entry in the inventory without opening its contents.
-            REQUIRE(std::filesystem::is_regular_file(status));
-            files.emplace(name, "exclusive-writer-lock");
-        } else if (std::filesystem::is_directory(status))
-            files.emplace(name, "directory");
+            REQUIRE(std::filesystem::is_regular_file(K_STATUS));
+            files.emplace(K_NAME, "exclusive-writer-lock");
+        } else if (std::filesystem::is_directory(K_STATUS)) files.emplace(K_NAME, "directory");
         else {
-            REQUIRE(std::filesystem::is_regular_file(status));
-            const auto digest = sha256_file(entry.path(), std::size_t{256} * 1024 * 1024);
-            INFO((digest ? "SHA-256 available" : digest.error().message));
-            REQUIRE(digest);
-            files.emplace(name, *digest);
+            REQUIRE(std::filesystem::is_regular_file(K_STATUS));
+            const auto K_DIGEST = sha256_file(entry.path(), 256uz * 1024 * 1024);
+            INFO((K_DIGEST ? "SHA-256 available" : K_DIGEST.error().m_message));
+            REQUIRE(K_DIGEST);
+            files.emplace(K_NAME, *K_DIGEST);
         }
     }
     return files;
 }
-map_transaction extension_transaction() {
+
+MapTransaction extension_transaction() {
     auto tx = first_transaction();
-    tx.operation = {101};
-    tx.base_revision = {1};
-    tx.new_revision = {2};
-    tx.calibrations[0].id = {8};
-    tx.observations.resize(1);
-    tx.observations[0].id = {3};
-    tx.observations[0].calibration = {8};
-    tx.alignments[0].submap = {56};
-    tx.alignments[0].revision = {2};
-    tx.poses.resize(1);
-    tx.poses[0].frame = {3};
-    tx.poses[0].submap = {56};
-    tx.poses[0].revision = {2};
+    tx.m_operation = { 101 };
+    tx.m_base_revision = { 1 };
+    tx.m_new_revision = { 2 };
+    tx.m_calibrations[0].m_id = { 8 };
+    tx.m_observations.resize(1);
+    tx.m_observations[0].m_id = { 3 };
+    tx.m_observations[0].m_calibration = { 8 };
+    tx.m_alignments[0].m_submap = { 56 };
+    tx.m_alignments[0].m_revision = { 2 };
+    tx.m_poses.resize(1);
+    tx.m_poses[0].m_frame = { 3 };
+    tx.m_poses[0].m_submap = { 56 };
+    tx.m_poses[0].m_revision = { 2 };
     return tx;
 }
-void reject_transaction_and_retry(const map_transaction& rejected, error_code expected,
-                                  const map_transaction& corrected, map_store_limits limits = {}) {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true, limits);
-    const auto first = first_transaction();
-    REQUIRE(store->commit(first));
-    const auto saved = store->acquire_snapshot();
-    const canonical_pose_asset producer{saved, producer_asset().provenance};
-    const auto bytes = encode_pose_asset(producer);
-    REQUIRE(bytes);
+
+void reject_transaction_and_retry(const MapTransaction& rejected,
+                                  ErrorCode expected,
+                                  const MapTransaction& corrected,
+                                  MapStoreLimits limits = {}) {
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true, limits);
+    const auto K_FIRST = first_transaction();
+    REQUIRE(store->commit(K_FIRST));
+    const auto K_SAVED = store->acquire_snapshot();
+    const CanonicalPoseAsset K_PRODUCER { K_SAVED, producer_asset().m_provenance };
+    const auto K_BYTES = encode_pose_asset(K_PRODUCER);
+    REQUIRE(K_BYTES);
     // This producer file is outside the store and must also survive failed admission.
-    REQUIRE(write_pose_asset(temporary.path / "producer.weposes", producer));
-    const auto files = tree_identity(temporary.path, {root / "writer.lock"});
-    const auto result = store->commit(rejected);
-    INFO((result ? "unexpected admission" : result.error().message));
-    REQUIRE(!result);
-    CHECK(result.error().code == expected);
-    CHECK(store->acquire_snapshot() == saved);
-    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == files);
-    const auto old_retry = store->commit(first);
-    REQUIRE(old_retry);
-    CHECK(old_retry->value == 1);
-    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == files);
+    REQUIRE(write_pose_asset(temporary.m_path / "producer.weposes", K_PRODUCER));
+    const auto K_FILES = tree_identity(temporary.m_path, {K_ROOT / "writer.lock"});
+    const auto K_RESULT = store->commit(rejected);
+    INFO((K_RESULT ? "unexpected admission" : K_RESULT.error().m_message));
+    REQUIRE(!K_RESULT);
+    CHECK(K_RESULT.error().m_code == expected);
+    CHECK(store->acquire_snapshot() == K_SAVED);
+    CHECK(tree_identity(temporary.m_path, {K_ROOT / "writer.lock"}) == K_FILES);
+    const auto K_OLD_RETRY = store->commit(K_FIRST);
+    REQUIRE(K_OLD_RETRY);
+    CHECK(K_OLD_RETRY->m_value == 1);
+    CHECK(tree_identity(temporary.m_path, {K_ROOT / "writer.lock"}) == K_FILES);
     // Failed admission must not reserve the operation ID in the live writer.
     REQUIRE(store->commit(corrected));
-    CHECK(store->acquire_snapshot()->revision.value == 2);
-    const auto unchanged = encode_pose_asset(producer);
-    REQUIRE(unchanged);
-    CHECK(*unchanged == *bytes);
-    const auto committed = tree_identity(temporary.path, {root / "writer.lock"});
+    CHECK(store->acquire_snapshot()->m_revision.m_value == 2);
+    const auto K_UNCHANGED = encode_pose_asset(K_PRODUCER);
+    REQUIRE(K_UNCHANGED);
+    CHECK(*K_UNCHANGED == *K_BYTES);
+    const auto K_COMMITTED = tree_identity(temporary.m_path, {K_ROOT / "writer.lock"});
     store.reset();
-    store = open(root, false, limits);
-    const auto retry = store->commit(corrected);
-    REQUIRE(retry);
-    CHECK(retry->value == 2);
-    REQUIRE(store->commit(first));
-    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == committed);
+    store = open(K_ROOT, false, limits);
+    const auto K_RETRY = store->commit(corrected);
+    REQUIRE(K_RETRY);
+    CHECK(K_RETRY->m_value == 2);
+    REQUIRE(store->commit(K_FIRST));
+    CHECK(tree_identity(temporary.m_path, {K_ROOT / "writer.lock"}) == K_COMMITTED);
 }
-} // namespace
+
+}  // namespace
+
 TEST_CASE("transaction revision and identity rejection preserves durable receipts",
           "[map_transaction_admission][envelope]") {
-    const auto corrected = extension_transaction();
-    auto rejected = corrected;
-    auto code = error_code::INVALID_ARGUMENT;
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5);
-    CAPTURE(field);
-    switch (field) {
+    const auto K_CORRECTED = extension_transaction();
+    auto rejected = K_CORRECTED;
+    auto code = ErrorCode::INVALID_ARGUMENT;
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
-        rejected.operation = {};
+        rejected.m_operation = {};
         break;
     case 1:
-        rejected.epoch = {1};
-        code = error_code::WRONG_EPOCH;
+        rejected.m_epoch = { 1 };
+        code = ErrorCode::WRONG_EPOCH;
         break;
     case 2:
-        rejected.base_revision = {};
-        code = error_code::WRONG_BASE;
+        rejected.m_base_revision = {};
+        code = ErrorCode::WRONG_BASE;
         break;
     case 3:
-        rejected.new_revision = {};
+        rejected.m_new_revision = {};
         break;
     case 4:
-        rejected.new_revision = {1};
+        rejected.m_new_revision = { 1 };
         break;
     case 5:
-        rejected.new_revision = {3};
+        rejected.m_new_revision = { 3 };
         break;
     default:
         FAIL("unknown transaction envelope mutation");
     }
-    reject_transaction_and_retry(rejected, code, corrected);
-    CHECK(rejected.operation.value == (field == 0 ? 0 : 101));
+    reject_transaction_and_retry(rejected, code, K_CORRECTED);
+    CHECK(rejected.m_operation.m_value == (K_FIELD == 0 ? 0 : 101));
 }
 
 TEST_CASE("transaction array budgets independently reject poses deletions and other records",
           "[map_transaction_admission][limits]") {
-    map_store_limits limits{.max_frames = 2, .max_calibrations = 1, .max_submaps = 1};
-    map_transaction corrected;
-    corrected.operation = {101};
-    corrected.base_revision = {1};
-    corrected.new_revision = {2};
+    MapStoreLimits limits { .m_max_frames = 2, .m_max_calibrations = 1, .m_max_submaps = 1 };
+    MapTransaction corrected;
+    corrected.m_operation = { 101 };
+    corrected.m_base_revision = { 1 };
+    corrected.m_new_revision = { 2 };
     auto rejected = corrected;
-    const auto producer = first_transaction();
-    const auto field = GENERATE(0, 1, 2, 3, 4);
-    CAPTURE(field);
-    switch (field) {
+    const auto K_PRODUCER = first_transaction();
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
-        rejected.observations.assign(3, producer.observations[0]);
+        rejected.m_observations.assign(3, K_PRODUCER.m_observations[0]);
         break;
     case 1:
-        rejected.poses.assign(3, producer.poses[0]);
+        rejected.m_poses.assign(3, K_PRODUCER.m_poses[0]);
         break;
     case 2:
-        rejected.deleted_frames.assign(3, frame_id{1});
+        rejected.m_deleted_frames.assign(3, FrameId { 1 });
         break;
     case 3:
-        rejected.calibrations.assign(2, producer.calibrations[0]);
+        rejected.m_calibrations.assign(2, K_PRODUCER.m_calibrations[0]);
         break;
     case 4:
-        rejected.alignments.assign(2, producer.alignments[0]);
+        rejected.m_alignments.assign(2, K_PRODUCER.m_alignments[0]);
         break;
     default:
         FAIL("unknown transaction array budget");
     }
-    reject_transaction_and_retry(rejected, error_code::RESOURCE_EXHAUSTED, corrected, limits);
-    CHECK(rejected.observations.size() + rejected.poses.size() + rejected.deleted_frames.size() +
-              rejected.calibrations.size() + rejected.alignments.size() ==
-          (field < 3 ? 3 : 2));
+    reject_transaction_and_retry(rejected, ErrorCode::RESOURCE_EXHAUSTED, corrected, limits);
+    CHECK(rejected.m_observations.size() + rejected.m_poses.size() +
+              rejected.m_deleted_frames.size() + rejected.m_calibrations.size() +
+              rejected.m_alignments.size() ==
+          (K_FIELD < 3 ? 3 : 2));
 }
 
 TEST_CASE("transaction calibration admission rejects invalid and reused identities atomically",
           "[map_transaction_admission][calibration]") {
-    const auto corrected = extension_transaction();
-    auto rejected = corrected;
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5);
-    CAPTURE(field);
-    switch (field) {
+    const auto K_CORRECTED = extension_transaction();
+    auto rejected = K_CORRECTED;
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
-        rejected.calibrations[0].id = {};
+        rejected.m_calibrations[0].m_id = {};
         break;
     case 1:
-        rejected.calibrations[0].camera.fx = 0;
+        rejected.m_calibrations[0].m_camera.m_fx = 0;
         break;
     case 2:
-        rejected.calibrations[0].id = {7};
+        rejected.m_calibrations[0].m_id = { 7 };
         break;
     case 3:
-        rejected.calibrations.push_back(rejected.calibrations[0]);
+        rejected.m_calibrations.push_back(rejected.m_calibrations[0]);
         break;
     case 4:
-        rejected.calibrations[0].distortion[3] = std::numeric_limits<double>::infinity();
+        rejected.m_calibrations[0].m_distortion[3] = std::numeric_limits<double>::infinity();
         break;
     case 5:
-        rejected.calibrations[0].model = std::bit_cast<calibration_model>(std::uint8_t{255});
+        rejected.m_calibrations[0].m_model = std::bit_cast<CalibrationModel>(std::uint8_t { 255 });
         break;
     default:
         FAIL("unknown transaction calibration mutation");
     }
-    reject_transaction_and_retry(rejected, error_code::INVALID_DATA, corrected);
-    CHECK(rejected.calibrations.size() == (field == 3 ? 2 : 1));
+    reject_transaction_and_retry(rejected, ErrorCode::INVALID_DATA, K_CORRECTED);
+    CHECK(rejected.m_calibrations.size() == (K_FIELD == 3 ? 2 : 1));
 }
 
 TEST_CASE("transaction observations require provenance identities and valid timestamps",
           "[map_transaction_admission][observations]") {
-    const auto corrected = extension_transaction();
-    auto rejected = corrected;
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
-    CAPTURE(field);
-    switch (field) {
+    const auto K_CORRECTED = extension_transaction();
+    auto rejected = K_CORRECTED;
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
-        rejected.observations[0].image_sha256.pop_back();
+        rejected.m_observations[0].m_image_sha256.pop_back();
         break;
     case 1:
-        rejected.observations[0].image_sha256[0] = 'G';
+        rejected.m_observations[0].m_image_sha256[0] = 'G';
         break;
     case 2:
-        rejected.observations[0].image_sha256[63] = '\0';
+        rejected.m_observations[0].m_image_sha256[63] = '\0';
         break;
     case 3:
-        rejected.observations[0].id = {};
+        rejected.m_observations[0].m_id = {};
         break;
     case 4:
-        rejected.observations[0].capture = {};
+        rejected.m_observations[0].m_capture = {};
         break;
     case 5:
-        rejected.observations[0].calibration = {999};
+        rejected.m_observations[0].m_calibration = { 999 };
         break;
     case 6:
-        rejected.observations[0].timestamp.time_base_numerator = 0;
+        rejected.m_observations[0].m_timestamp.m_time_base_numerator = 0;
         break;
     case 7:
-        rejected.observations[0].timestamp.time_base_numerator = -1;
+        rejected.m_observations[0].m_timestamp.m_time_base_numerator = -1;
         break;
     case 8:
-        rejected.observations[0].timestamp.time_base_denominator = 0;
+        rejected.m_observations[0].m_timestamp.m_time_base_denominator = 0;
         break;
     case 9:
-        rejected.observations[0].timestamp.time_base_denominator = -1;
+        rejected.m_observations[0].m_timestamp.m_time_base_denominator = -1;
         break;
     case 10:
-        rejected.observations[0].capture_time = std::chrono::nanoseconds{-1};
+        rejected.m_observations[0].m_capture_time = std::chrono::nanoseconds { -1 };
         break;
     case 11:
-        rejected.observations[0].id = {1};
+        rejected.m_observations[0].m_id = { 1 };
         break;
     case 12:
-        rejected.observations.push_back(rejected.observations[0]);
+        rejected.m_observations.push_back(rejected.m_observations[0]);
         break;
     default:
         FAIL("unknown transaction observation mutation");
     }
-    reject_transaction_and_retry(rejected, error_code::INVALID_DATA, corrected);
-    CHECK(rejected.observations[0].image_sha256.size() == (field == 0 ? 63 : 64));
-    if (field == 1)
-        CHECK(rejected.observations[0].image_sha256[0] == 'G');
-    if (field == 2)
-        CHECK(rejected.observations[0].image_sha256[63] == '\0');
+    reject_transaction_and_retry(rejected, ErrorCode::INVALID_DATA, K_CORRECTED);
+    CHECK(rejected.m_observations[0].m_image_sha256.size() == (K_FIELD == 0 ? 63 : 64));
+    if (K_FIELD == 1) CHECK(rejected.m_observations[0].m_image_sha256[0] == 'G');
+    if (K_FIELD == 2) CHECK(rejected.m_observations[0].m_image_sha256[63] == '\0');
 }
 
 TEST_CASE("transaction alignments reject invalid dependencies and duplicate changes",
           "[map_transaction_admission][alignment]") {
-    const auto corrected = extension_transaction();
-    auto rejected = corrected;
-    const auto field = GENERATE(0, 1, 2, 3, 4);
-    CAPTURE(field);
-    switch (field) {
+    const auto K_CORRECTED = extension_transaction();
+    auto rejected = K_CORRECTED;
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
-        rejected.alignments[0].submap = {};
+        rejected.m_alignments[0].m_submap = {};
         break;
     case 1:
-        rejected.alignments[0].revision = {1};
+        rejected.m_alignments[0].m_revision = { 1 };
         break;
     case 2:
-        rejected.alignments[0].world_from_submap.scale = 0;
+        rejected.m_alignments[0].m_world_from_submap.m_scale = 0;
         break;
     case 3:
-        rejected.alignments[0].world_from_submap.rotation = {1, 1, 0, 0};
+        rejected.m_alignments[0].m_world_from_submap.m_rotation = { 1, 1, 0, 0 };
         break;
     case 4:
-        rejected.alignments.push_back(rejected.alignments[0]);
+        rejected.m_alignments.push_back(rejected.m_alignments[0]);
         break;
     default:
         FAIL("unknown transaction alignment mutation");
     }
-    reject_transaction_and_retry(rejected, error_code::INVALID_DATA, corrected);
-    CHECK(rejected.alignments.size() == (field == 4 ? 2 : 1));
+    reject_transaction_and_retry(rejected, ErrorCode::INVALID_DATA, K_CORRECTED);
+    CHECK(rejected.m_alignments.size() == (K_FIELD == 4 ? 2 : 1));
 }
 
 TEST_CASE("transaction poses reject inconsistent dependencies covariance and world overflow",
           "[map_transaction_admission][poses]") {
     auto corrected = extension_transaction();
-    auto& covariance = corrected.poses[0].covariance.emplace();
-    for (std::size_t axis = 0; axis < 6; ++axis)
+    auto& covariance = corrected.m_poses[0].m_covariance.emplace();
+    for (std::size_t axis { 0uz }; axis < 6uz; ++axis)
         covariance[axis * 6 + axis] = static_cast<double>(axis + 1);
     auto rejected = corrected;
     auto rejected_covariance = covariance;
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
-    CAPTURE(field);
-    switch (field) {
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
-        rejected.poses[0].frame = {999};
+        rejected.m_poses[0].m_frame = { 999 };
         break;
     case 1:
-        rejected.poses[0].submap = {999};
+        rejected.m_poses[0].m_submap = { 999 };
         break;
     case 2:
-        rejected.poses[0].submap_from_camera.scale = 0;
+        rejected.m_poses[0].m_submap_from_camera.m_scale = 0;
         break;
     case 3:
-        rejected.poses[0].submap_from_camera.scale = 2;
+        rejected.m_poses[0].m_submap_from_camera.m_scale = 2;
         break;
     case 4:
-        rejected.poses[0].revision = {1};
+        rejected.m_poses[0].m_revision = { 1 };
         break;
     case 5:
-        rejected.poses.push_back(rejected.poses[0]);
+        rejected.m_poses.push_back(rejected.m_poses[0]);
         break;
     case 6:
-        rejected.poses[0].capture_time += std::chrono::nanoseconds{1};
+        rejected.m_poses[0].m_capture_time += std::chrono::nanoseconds { 1 };
         break;
     case 7:
         rejected_covariance[35] = std::numeric_limits<double>::quiet_NaN();
@@ -439,389 +460,382 @@ TEST_CASE("transaction poses reject inconsistent dependencies covariance and wor
         rejected_covariance[6] = 10;
         break;
     case 12:
-        rejected.poses[0].tracking = std::bit_cast<tracking_state>(std::uint8_t{255});
+        rejected.m_poses[0].m_tracking = std::bit_cast<TrackingState>(std::uint8_t { 255 });
         break;
     case 13:
-        rejected.alignments[0].world_from_submap.scale = std::numeric_limits<double>::max();
+        rejected.m_alignments[0].m_world_from_submap.m_scale = std::numeric_limits<double>::max();
         break;
     default:
         FAIL("unknown transaction pose mutation");
     }
-    rejected.poses[0].covariance = rejected_covariance;
-    reject_transaction_and_retry(rejected, error_code::INVALID_DATA, corrected);
-    if (const auto& retained = rejected.poses[0].covariance; retained) {
-        if (field == 7)
-            CHECK(std::isnan((*retained)[35]));
-        if (field == 8)
-            CHECK(std::isinf((*retained)[35]));
-    } else
-        FAIL("rejected producer covariance was consumed");
+    rejected.m_poses[0].m_covariance = rejected_covariance;
+    reject_transaction_and_retry(rejected, ErrorCode::INVALID_DATA, corrected);
+    if (const auto& retained = rejected.m_poses[0].m_covariance; retained) {
+        if (K_FIELD == 7) CHECK(std::isnan((*retained)[35]));
+        if (K_FIELD == 8) CHECK(std::isinf((*retained)[35]));
+    } else FAIL("rejected producer covariance was consumed");
     CHECK(covariance[35] == 6);
 }
 
 TEST_CASE("transaction deletions cannot remove missing observations or change a frame twice",
           "[map_transaction_admission][deletion]") {
-    map_transaction corrected;
-    corrected.operation = {101};
-    corrected.base_revision = {1};
-    corrected.new_revision = {2};
-    corrected.deleted_frames = {{1}};
+    MapTransaction corrected;
+    corrected.m_operation = { 101 };
+    corrected.m_base_revision = { 1 };
+    corrected.m_new_revision = { 2 };
+    corrected.m_deleted_frames = { { 1 } };
     auto rejected = corrected;
-    const auto field = GENERATE(0, 1, 2, 3);
-    CAPTURE(field);
-    if (field == 0)
-        rejected.deleted_frames = {{1}, {999}};
-    else if (field == 1)
-        rejected.deleted_frames.push_back({1});
-    else if (field == 2) {
-        rejected.poses = {first_transaction().poses[0]};
-        rejected.poses[0].revision = {2};
-    } else
-        rejected.deleted_frames.push_back({0});
-    reject_transaction_and_retry(rejected, error_code::NOT_FOUND, corrected);
-    CHECK(rejected.deleted_frames.front() == frame_id{1});
+    const auto K_FIELD = GENERATE(0, 1, 2, 3);
+    CAPTURE(K_FIELD);
+    if (K_FIELD == 0) rejected.m_deleted_frames = { { 1 }, { 999 } };
+    else if (K_FIELD == 1) rejected.m_deleted_frames.push_back({1});
+    else if (K_FIELD == 2) {
+        rejected.m_poses = { first_transaction().m_poses[0] };
+        rejected.m_poses[0].m_revision = { 2 };
+    } else rejected.m_deleted_frames.push_back({0});
+    reject_transaction_and_retry(rejected, ErrorCode::NOT_FOUND, corrected);
+    CHECK(rejected.m_deleted_frames.front() == FrameId { 1 });
 }
 
 TEST_CASE("aggregate record budgets reject small extensions while admitting exact boundaries",
           "[map_transaction_admission][limits]") {
-    const map_store_limits limits{.max_frames = 2, .max_calibrations = 1, .max_submaps = 1};
-    map_transaction corrected;
-    corrected.operation = {101};
-    corrected.base_revision = {1};
-    corrected.new_revision = {2};
+    const MapStoreLimits K_LIMITS { .m_max_frames = 2, .m_max_calibrations = 1, .m_max_submaps = 1 };
+    MapTransaction corrected;
+    corrected.m_operation = { 101 };
+    corrected.m_base_revision = { 1 };
+    corrected.m_new_revision = { 2 };
     auto rejected = corrected;
-    const auto extension = extension_transaction();
-    const auto field = GENERATE(0, 1, 2);
-    CAPTURE(field);
-    if (field == 0) {
-        rejected.observations = extension.observations;
-        rejected.observations[0].calibration = {7};
-        corrected.observations = rejected.observations;
-        corrected.deleted_frames = {{1}};
-    } else if (field == 1)
-        rejected.calibrations = extension.calibrations;
-    else
-        rejected.alignments = extension.alignments;
-    reject_transaction_and_retry(rejected, error_code::RESOURCE_EXHAUSTED, corrected, limits);
+    const auto K_EXTENSION = extension_transaction();
+    const auto K_FIELD = GENERATE(0, 1, 2);
+    CAPTURE(K_FIELD);
+    if (K_FIELD == 0) {
+        rejected.m_observations = K_EXTENSION.m_observations;
+        rejected.m_observations[0].m_calibration = { 7 };
+        corrected.m_observations = rejected.m_observations;
+        corrected.m_deleted_frames = { { 1 } };
+    } else if (K_FIELD == 1) rejected.m_calibrations = K_EXTENSION.m_calibrations;
+    else rejected.m_alignments = K_EXTENSION.m_alignments;
+    reject_transaction_and_retry(rejected, ErrorCode::RESOURCE_EXHAUSTED, corrected, K_LIMITS);
 }
 
 TEST_CASE(
     "alignment correction invalidates only dependent poses and each revision replaces the set",
     "[map_transaction_admission][invalidation]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto first = first_transaction();
-    const auto extension = extension_transaction();
-    REQUIRE(store->commit(first));
-    REQUIRE(store->commit(extension));
-    const auto before = store->acquire_snapshot();
-    CHECK(before->invalidated_frames.empty());
-    map_transaction correction;
-    correction.operation = {102};
-    correction.base_revision = {2};
-    correction.new_revision = {3};
-    correction.alignments = {{{55}, {3}, {{}, {1, 2, 3}, 1}}};
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_FIRST = first_transaction();
+    const auto K_EXTENSION = extension_transaction();
+    REQUIRE(store->commit(K_FIRST));
+    REQUIRE(store->commit(K_EXTENSION));
+    const auto K_BEFORE = store->acquire_snapshot();
+    CHECK(K_BEFORE->m_invalidated_frames.empty());
+    MapTransaction correction;
+    correction.m_operation = { 102 };
+    correction.m_base_revision = { 2 };
+    correction.m_new_revision = { 3 };
+    correction.m_alignments = { { { 55 }, { 3 }, { {}, { 1, 2, 3 }, 1 } } };
     REQUIRE(store->commit(correction));
-    const auto changed = store->acquire_snapshot();
-    CHECK(changed->invalidated_frames == std::set<frame_id>{{1}, {2}});
-    CHECK(changed->poses.at({3}).submap == submap_id{56});
-    CHECK(before->world_from_submap.at({55}).translation == vec3d{10, -20, 30});
-    map_transaction deletion;
-    deletion.operation = {103};
-    deletion.base_revision = {3};
-    deletion.new_revision = {4};
-    deletion.deleted_frames = {{3}};
+    const auto K_CHANGED = store->acquire_snapshot();
+    CHECK(K_CHANGED->m_invalidated_frames == std::set<FrameId> {{1}, {2}});
+    CHECK(K_CHANGED->m_poses.at({3}).m_submap == SubmapId { 56 });
+    CHECK(K_BEFORE->m_world_from_submap.at({55}).m_translation == Vec3d { 10, -20, 30 });
+    MapTransaction deletion;
+    deletion.m_operation = { 103 };
+    deletion.m_base_revision = { 3 };
+    deletion.m_new_revision = { 4 };
+    deletion.m_deleted_frames = { { 3 } };
     REQUIRE(store->commit(deletion));
-    CHECK(store->acquire_snapshot()->invalidated_frames == std::set<frame_id>{{3}});
-    CHECK(!store->acquire_snapshot()->poses.contains({3}));
-    CHECK(changed->poses.contains({3}));
-    const auto files = tree_identity(root, {root / "writer.lock"});
+    CHECK(store->acquire_snapshot()->m_invalidated_frames == std::set<FrameId> {{3}});
+    CHECK(!store->acquire_snapshot()->m_poses.contains({3}));
+    CHECK(K_CHANGED->m_poses.contains({3}));
+    const auto K_FILES = tree_identity(K_ROOT, {K_ROOT / "writer.lock"});
     store.reset();
-    store = open(root);
+    store = open(K_ROOT);
     REQUIRE(store->commit(correction));
     REQUIRE(store->commit(deletion));
-    CHECK(store->acquire_snapshot()->revision.value == 4);
-    CHECK(store->acquire_snapshot()->invalidated_frames == std::set<frame_id>{{3}});
-    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
+    CHECK(store->acquire_snapshot()->m_revision.m_value == 4);
+    CHECK(store->acquire_snapshot()->m_invalidated_frames == std::set<FrameId> {{3}});
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_FILES);
 }
 
 TEST_CASE("saturated durable map revisions cannot wrap to revision zero",
           "[map_transaction_admission][revision]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
     REQUIRE(store->commit(first_transaction()));
-    const auto original = manifest(root);
+    const auto K_ORIGINAL = manifest(K_ROOT);
     store.reset();
     // A rehashed synthetic checkpoint reaches the otherwise impractical public boundary.
-    auto bytes = checkpoint_bytes(root, original);
+    auto bytes = checkpoint_bytes(K_ROOT, K_ORIGINAL);
     auto* checkpoint = map_wire::GetMutablecheckpoint(bytes.data());
-    constexpr auto MAX_REVISION = std::numeric_limits<std::uint64_t>::max();
-    REQUIRE(checkpoint->mutate_revision(MAX_REVISION));
-    REQUIRE(checkpoint->mutable_receipts()->GetMutableObject(0)->mutate_revision(MAX_REVISION));
-    auto saturated = original;
-    saturated["revision"] = MAX_REVISION;
-    rehash_checkpoint(root, bytes, saturated);
-    store = open(root);
-    const auto saved = store->acquire_snapshot();
-    CHECK(saved->revision.value == MAX_REVISION);
-    const auto files = tree_identity(root, {root / "writer.lock"});
-    map_transaction wrapped;
-    wrapped.operation = {101};
-    wrapped.base_revision = {MAX_REVISION};
-    const auto rejected = store->commit(wrapped);
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::INVALID_ARGUMENT);
-    CHECK(store->acquire_snapshot() == saved);
-    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
+    constexpr auto K_MAX_REVISION { std::numeric_limits<std::uint64_t>::max() };
+    REQUIRE(checkpoint->mutate_revision(K_MAX_REVISION));
+    REQUIRE(checkpoint->mutable_receipts()->GetMutableObject(0)->mutate_revision(K_MAX_REVISION));
+    auto saturated = K_ORIGINAL;
+    saturated["revision"] = K_MAX_REVISION;
+    rehash_checkpoint(K_ROOT, bytes, saturated);
+    store = open(K_ROOT);
+    const auto K_SAVED = store->acquire_snapshot();
+    CHECK(K_SAVED->m_revision.m_value == K_MAX_REVISION);
+    const auto K_FILES = tree_identity(K_ROOT, {K_ROOT / "writer.lock"});
+    MapTransaction wrapped;
+    wrapped.m_operation = { 101 };
+    wrapped.m_base_revision = { K_MAX_REVISION };
+    const auto K_REJECTED = store->commit(wrapped);
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_ARGUMENT);
+    CHECK(store->acquire_snapshot() == K_SAVED);
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_FILES);
     REQUIRE(store->reset({1}));
-    wrapped.epoch = {1};
-    wrapped.base_revision = {};
-    wrapped.new_revision = {1};
+    wrapped.m_epoch = { 1 };
+    wrapped.m_base_revision = {};
+    wrapped.m_new_revision = { 1 };
     REQUIRE(store->commit(wrapped));
     store.reset();
-    store = open(root);
+    store = open(K_ROOT);
     REQUIRE(store->commit(wrapped));
-    CHECK(store->acquire_snapshot()->epoch.value == 1);
-    CHECK(store->acquire_snapshot()->revision.value == 1);
-    CHECK(saved->revision.value == MAX_REVISION);
+    CHECK(store->acquire_snapshot()->m_epoch.m_value == 1);
+    CHECK(store->acquire_snapshot()->m_revision.m_value == 1);
+    CHECK(K_SAVED->m_revision.m_value == K_MAX_REVISION);
 }
 
 TEST_CASE("failed durable reset preserves epoch records and receipts until explicit repair",
           "[map_transaction_admission][reset]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto first = first_transaction();
-    REQUIRE(store->commit(first));
-    const auto saved = store->acquire_snapshot();
-    const auto obstruction = root / "assets" / "caller-directory";
-    REQUIRE(std::filesystem::create_directory(obstruction));
-    std::ofstream(obstruction / "caller.txt") << "caller data";
-    const auto files = tree_identity(root, {root / "writer.lock"});
-    const auto rejected = store->reset({1});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::INVALID_DATA);
-    CHECK(store->acquire_snapshot() == saved);
-    REQUIRE(store->commit(first));
-    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
-    REQUIRE(std::filesystem::remove(obstruction / "caller.txt"));
-    REQUIRE(std::filesystem::remove(obstruction));
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_FIRST = first_transaction();
+    REQUIRE(store->commit(K_FIRST));
+    const auto K_SAVED = store->acquire_snapshot();
+    const auto K_OBSTRUCTION = K_ROOT / "assets" / "caller-directory";
+    REQUIRE(std::filesystem::create_directory(K_OBSTRUCTION));
+    std::ofstream(K_OBSTRUCTION / "caller.txt") << "caller data";
+    const auto K_FILES = tree_identity(K_ROOT, {K_ROOT / "writer.lock"});
+    const auto K_REJECTED = store->reset({1});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(store->acquire_snapshot() == K_SAVED);
+    REQUIRE(store->commit(K_FIRST));
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_FILES);
+    REQUIRE(std::filesystem::remove(K_OBSTRUCTION / "caller.txt"));
+    REQUIRE(std::filesystem::remove(K_OBSTRUCTION));
     REQUIRE(store->reset({1}));
     store.reset();
-    store = open(root);
-    CHECK(store->acquire_snapshot()->epoch.value == 1);
-    CHECK(store->acquire_snapshot()->revision.value == 0);
-    CHECK(store->acquire_snapshot()->observations.empty());
-    CHECK(saved->observations.size() == 2);
+    store = open(K_ROOT);
+    CHECK(store->acquire_snapshot()->m_epoch.m_value == 1);
+    CHECK(store->acquire_snapshot()->m_revision.m_value == 0);
+    CHECK(store->acquire_snapshot()->m_observations.empty());
+    CHECK(K_SAVED->m_observations.size() == 2);
 }
 
 TEST_CASE("map preservation observer inventories the held lock and hashes unrelated lock names",
           "[canonical_admission][observation]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto lock_path = root / "writer.lock";
-    const auto caller = temporary.path / "writer.lock";
-    std::ofstream(caller) << "caller data";
-    const auto observed = tree_identity(temporary.path, {lock_path});
-    CHECK(observed.at("map/writer.lock") == "exclusive-writer-lock");
-    const auto caller_hash = sha256_file(caller, 65536);
-    REQUIRE(caller_hash);
-    CHECK(observed.at("writer.lock") == *caller_hash);
-    const auto still_owned = file_lock::acquire(lock_path);
-    REQUIRE(!still_owned);
-    CHECK(still_owned.error().code == error_code::WOULD_BLOCK);
-    const auto before = store->acquire_snapshot();
-    std::ofstream(caller) << "changed caller data";
-    const auto changed = tree_identity(temporary.path, {lock_path});
-    CHECK(changed.at("writer.lock") != observed.at("writer.lock"));
-    CHECK(changed.at("map/writer.lock") == observed.at("map/writer.lock"));
-    CHECK(changed.at("map/manifest.json") == observed.at("map/manifest.json"));
-    CHECK(store->acquire_snapshot() == before);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_LOCK_PATH = K_ROOT / "writer.lock";
+    const auto K_CALLER = temporary.m_path / "writer.lock";
+    std::ofstream(K_CALLER) << "caller data";
+    const auto K_OBSERVED = tree_identity(temporary.m_path, {K_LOCK_PATH});
+    CHECK(K_OBSERVED.at("map/writer.lock") == "exclusive-writer-lock");
+    const auto K_CALLER_HASH = sha256_file(K_CALLER, 65536);
+    REQUIRE(K_CALLER_HASH);
+    CHECK(K_OBSERVED.at("writer.lock") == *K_CALLER_HASH);
+    const auto K_STILL_OWNED = FileLock::acquire(K_LOCK_PATH);
+    REQUIRE(!K_STILL_OWNED);
+    CHECK(K_STILL_OWNED.error().m_code == ErrorCode::WOULD_BLOCK);
+    const auto K_BEFORE = store->acquire_snapshot();
+    std::ofstream(K_CALLER) << "changed caller data";
+    const auto K_CHANGED = tree_identity(temporary.m_path, {K_LOCK_PATH});
+    CHECK(K_CHANGED.at("writer.lock") != K_OBSERVED.at("writer.lock"));
+    CHECK(K_CHANGED.at("map/writer.lock") == K_OBSERVED.at("map/writer.lock"));
+    CHECK(K_CHANGED.at("map/manifest.json") == K_OBSERVED.at("map/manifest.json"));
+    CHECK(store->acquire_snapshot() == K_BEFORE);
     store.reset();
-    const auto released = tree_identity(temporary.path, {});
-    const auto lock_hash = sha256_file(lock_path, 65536);
-    REQUIRE(lock_hash);
-    CHECK(released.at("map/writer.lock") == *lock_hash);
+    const auto K_RELEASED = tree_identity(temporary.m_path, {});
+    const auto K_LOCK_HASH = sha256_file(K_LOCK_PATH, 65536);
+    REQUIRE(K_LOCK_HASH);
+    CHECK(K_RELEASED.at("map/writer.lock") == *K_LOCK_HASH);
 }
+
 TEST_CASE("persistent maps reload snapshots and operation receipts without losing correction "
           "invalidation",
           "[map][restart]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto first = first_transaction();
-    REQUIRE(store->commit(first));
-    const auto original = store->acquire_snapshot();
-    auto correction = map_transaction{};
-    correction.operation = {101};
-    correction.base_revision = {1};
-    correction.new_revision = {2};
-    auto pose = first.poses[0];
-    pose.revision = {2};
-    pose.submap_from_camera.translation = {5, -2, 8};
-    correction.poses = {pose};
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_FIRST = first_transaction();
+    REQUIRE(store->commit(K_FIRST));
+    const auto K_ORIGINAL = store->acquire_snapshot();
+    auto correction = MapTransaction {};
+    correction.m_operation = { 101 };
+    correction.m_base_revision = { 1 };
+    correction.m_new_revision = { 2 };
+    auto pose = K_FIRST.m_poses[0];
+    pose.m_revision = { 2 };
+    pose.m_submap_from_camera.m_translation = { 5, -2, 8 };
+    correction.m_poses = { pose };
     REQUIRE(store->commit(correction));
-    const auto corrected = store->acquire_snapshot();
-    const auto hash = manifest_digest(root);
+    const auto K_CORRECTED = store->acquire_snapshot();
+    const auto K_HASH = manifest_digest(K_ROOT);
     store.reset();
-    store = open(root);
-    CHECK(store->acquire_snapshot()->revision.value == 2);
-    CHECK(store->acquire_snapshot()->invalidated_frames == std::set<frame_id>{{1}});
-    CHECK(store->acquire_snapshot()->poses.at({1}).submap_from_camera.translation ==
-          vec3d{5, -2, 8});
-    CHECK(store->acquire_snapshot()->calibrations.at({7}).image_transform[2] == -3.25);
-    CHECK(store->acquire_snapshot()->observations.at({1}).timestamp.pts == -7);
-    REQUIRE(store->commit(first));
-    REQUIRE(store->commit(correction)); // old base is a recognized retry
-    CHECK(manifest_digest(root) == hash);
-    auto collision = first;
-    collision.calibrations[0].distortion[0] = .11;
-    const auto failed = store->commit(collision);
-    REQUIRE(!(failed));
-    CHECK(failed.error().code == error_code::DUPLICATE_OPERATION);
-    CHECK(manifest_digest(root) == hash);
-    CHECK(original->poses.at({1}).submap_from_camera.translation.x == 1);
-    CHECK(corrected->poses.at({1}).submap_from_camera.translation.x == 5);
-    map_transaction deletion;
-    deletion.operation = {102};
-    deletion.base_revision = {2};
-    deletion.new_revision = {3};
-    deletion.deleted_frames = {{1}};
+    store = open(K_ROOT);
+    CHECK(store->acquire_snapshot()->m_revision.m_value == 2);
+    CHECK(store->acquire_snapshot()->m_invalidated_frames == std::set<FrameId> {{1}});
+    CHECK(store->acquire_snapshot()->m_poses.at({1}).m_submap_from_camera.m_translation ==
+          Vec3d { 5, -2, 8 });
+    CHECK(store->acquire_snapshot()->m_calibrations.at({7}).m_image_transform[2] == -3.25);
+    CHECK(store->acquire_snapshot()->m_observations.at({1}).m_timestamp.m_pts == -7);
+    REQUIRE(store->commit(K_FIRST));
+    REQUIRE(store->commit(correction));  // old base is a recognized retry
+    CHECK(manifest_digest(K_ROOT) == K_HASH);
+    auto collision = K_FIRST;
+    collision.m_calibrations[0].m_distortion[0] = .11;
+    const auto K_FAILED = store->commit(collision);
+    REQUIRE(!(K_FAILED));
+    CHECK(K_FAILED.error().m_code == ErrorCode::DUPLICATE_OPERATION);
+    CHECK(manifest_digest(K_ROOT) == K_HASH);
+    CHECK(K_ORIGINAL->m_poses.at({1}).m_submap_from_camera.m_translation.m_x == 1);
+    CHECK(K_CORRECTED->m_poses.at({1}).m_submap_from_camera.m_translation.m_x == 5);
+    MapTransaction deletion;
+    deletion.m_operation = { 102 };
+    deletion.m_base_revision = { 2 };
+    deletion.m_new_revision = { 3 };
+    deletion.m_deleted_frames = { { 1 } };
     REQUIRE(store->commit(deletion));
     store.reset();
-    store = open(root);
-    CHECK(!(store->acquire_snapshot()->observations.contains({1})));
-    CHECK(!(store->acquire_snapshot()->poses.contains({1})));
-    CHECK(store->acquire_snapshot()->invalidated_frames.contains({1}));
-    CHECK(corrected->observations.size() == 2);
+    store = open(K_ROOT);
+    CHECK(!(store->acquire_snapshot()->m_observations.contains({1})));
+    CHECK(!(store->acquire_snapshot()->m_poses.contains({1})));
+    CHECK(store->acquire_snapshot()->m_invalidated_frames.contains({1}));
+    CHECK(K_CORRECTED->m_observations.size() == 2);
     REQUIRE(store->commit(deletion));
 }
+
 TEST_CASE("persistent map writer ownership prevents racing processes and serializes thread commits",
           "[map][ownership]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto second = map_store::open_persistent({.directory = root});
-    REQUIRE(!(second));
-    CHECK(second.error().code == error_code::WOULD_BLOCK);
-    const auto tx = first_transaction();
-    std::atomic<unsigned> accepted{};
-    const auto producer = [&] {
-        if (store->commit(tx))
-            ++accepted;
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_SECOND = MapStore::open_persistent({.m_directory = K_ROOT});
+    REQUIRE(!(K_SECOND));
+    CHECK(K_SECOND.error().m_code == ErrorCode::WOULD_BLOCK);
+    const auto K_TX = first_transaction();
+    std::atomic<unsigned> accepted {};
+    const auto K_PRODUCER = [&] {
+        if (store->commit(K_TX)) ++accepted;
     };
-    {
-        std::jthread first(producer), second_writer(producer);
-    }
+    { std::jthread first(K_PRODUCER), second_writer(K_PRODUCER); }
     CHECK(accepted == 2);
-    CHECK(store->acquire_snapshot()->revision.value == 1);
+    CHECK(store->acquire_snapshot()->m_revision.m_value == 1);
     store.reset();
-    auto reopened = open(root);
-    CHECK(reopened->acquire_snapshot()->revision.value == 1);
+    auto reopened = open(K_ROOT);
+    CHECK(reopened->acquire_snapshot()->m_revision.m_value == 1);
 }
+
 TEST_CASE("persistent map cancellation and budget failure preserve the prior manifest and RAM",
           "[map][failure]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    const auto disk_limit = GENERATE(false, true);
-    auto store =
-        map_store::open_persistent({root,
-                                    {},
-                                    {disk_limit ? std::size_t{256} * 1024 * 1024 : 512},
-                                    true,
-                                    {disk_limit ? 512 : std::size_t{8} * 1024 * 1024 * 1024}});
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    const auto K_DISK_LIMIT = GENERATE(false, true);
+    auto store = MapStore::open_persistent({K_ROOT,
+                                            {},
+                                            {K_DISK_LIMIT ? 256uz * 1024 * 1024 : 512},
+                                            true,
+                                            {K_DISK_LIMIT ? 512 : 8uz * 1024 * 1024 * 1024}});
     REQUIRE(store);
-    const auto initial = (*store)->acquire_snapshot();
-    const auto hash = manifest_digest(root);
-    const auto tx = first_transaction();
-    const auto failed = (*store)->commit(tx);
-    REQUIRE(!(failed));
-    CHECK(failed.error().code == error_code::RESOURCE_EXHAUSTED);
-    CHECK((*store)->acquire_snapshot() == initial);
-    CHECK(manifest_digest(root) == hash);
+    const auto K_INITIAL = (*store)->acquire_snapshot();
+    const auto K_HASH = manifest_digest(K_ROOT);
+    const auto K_TX = first_transaction();
+    const auto K_FAILED = (*store)->commit(K_TX);
+    REQUIRE(!(K_FAILED));
+    CHECK(K_FAILED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+    CHECK((*store)->acquire_snapshot() == K_INITIAL);
+    CHECK(manifest_digest(K_ROOT) == K_HASH);
     std::stop_source stop;
     stop.request_stop();
-    CHECK((*store)->commit(tx, stop.get_token()).error().code == error_code::CANCELLED);
-    CHECK((*store)->reset({1}, stop.get_token()).error().code == error_code::CANCELLED);
-    CHECK((*store)->acquire_snapshot() == initial);
-    CHECK(manifest_digest(root) == hash);
-    CHECK(!(map_store::open_persistent({.directory = root}, stop.get_token())));
+    CHECK((*store)->commit(K_TX, stop.get_token()).error().m_code == ErrorCode::CANCELLED);
+    CHECK((*store)->reset({1}, stop.get_token()).error().m_code == ErrorCode::CANCELLED);
+    CHECK((*store)->acquire_snapshot() == K_INITIAL);
+    CHECK(manifest_digest(K_ROOT) == K_HASH);
+    CHECK(!(MapStore::open_persistent({.m_directory = K_ROOT}, stop.get_token())));
     store->reset();
-    auto recovered = open(root);
-    CHECK(recovered->acquire_snapshot()->revision.value == 0);
-    std::ofstream(root / "assets" / "checkpoint-orphan.fb") << "interrupted unreferenced asset";
-    std::filesystem::create_directory(root / ".we-map-tmp-interrupted");
+    auto recovered = open(K_ROOT);
+    CHECK(recovered->acquire_snapshot()->m_revision.m_value == 0);
+    std::ofstream(K_ROOT / "assets" / "checkpoint-orphan.fb") << "interrupted unreferenced asset";
+    std::filesystem::create_directory(K_ROOT / ".we-map-tmp-interrupted");
     recovered.reset();
-    auto with_orphans = open(root);
-    CHECK(with_orphans->acquire_snapshot()->revision.value == 0);
-    CHECK(std::filesystem::exists(root / "assets" / "checkpoint-orphan.fb"));
+    auto with_orphans = open(K_ROOT);
+    CHECK(with_orphans->acquire_snapshot()->m_revision.m_value == 0);
+    CHECK(std::filesystem::exists(K_ROOT / "assets" / "checkpoint-orphan.fb"));
 }
+
 TEST_CASE(
     "persistent map reset reloads a fresh epoch and does not silently truncate the retry window",
     "[map][epoch]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true, {.remembered_operations = 2});
-    const auto first = first_transaction();
-    REQUIRE(store->commit(first));
-    for (std::uint64_t revision = 2; revision <= 3; ++revision) {
-        map_transaction tx;
-        tx.operation = {100 + revision};
-        tx.base_revision = {revision - 1};
-        tx.new_revision = {revision};
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true, {.m_remembered_operations = 2});
+    const auto K_FIRST = first_transaction();
+    REQUIRE(store->commit(K_FIRST));
+    for (std::uint64_t revision { 2 }; revision <= 3; ++revision) {
+        MapTransaction tx;
+        tx.m_operation = { 100 + revision };
+        tx.m_base_revision = { revision - 1 };
+        tx.m_new_revision = { revision };
         REQUIRE(store->commit(tx));
     }
     store.reset();
-    const auto narrow =
-        map_store::open_persistent({.directory = root, .records = {.remembered_operations = 1}});
-    REQUIRE(!(narrow));
-    CHECK(narrow.error().code == error_code::RESOURCE_EXHAUSTED);
-    store = open(root, false, {.remembered_operations = 2});
-    CHECK(store->commit(first).error().code ==
-          error_code::WRONG_BASE); // expired receipt requires resync
-    auto wrong = map_transaction{};
-    wrong.operation = {1000};
-    wrong.epoch = {1};
-    wrong.base_revision = {3};
-    wrong.new_revision = {4};
-    CHECK(store->commit(wrong).error().code == error_code::WRONG_EPOCH);
+    const auto K_NARROW = MapStore::open_persistent(
+        {.m_directory = K_ROOT, .m_records = { .m_remembered_operations = 1 }});
+    REQUIRE(!(K_NARROW));
+    CHECK(K_NARROW.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+    store = open(K_ROOT, false, {.m_remembered_operations = 2});
+    CHECK(store->commit(K_FIRST).error().m_code ==
+          ErrorCode::WRONG_BASE);  // expired receipt requires resync
+    auto wrong = MapTransaction {};
+    wrong.m_operation = { 1000 };
+    wrong.m_epoch = { 1 };
+    wrong.m_base_revision = { 3 };
+    wrong.m_new_revision = { 4 };
+    CHECK(store->commit(wrong).error().m_code == ErrorCode::WRONG_EPOCH);
     REQUIRE(store->reset({8}));
     store.reset();
-    store = open(root);
-    CHECK(store->acquire_snapshot()->epoch.value == 8);
-    CHECK(store->acquire_snapshot()->revision.value == 0);
-    CHECK(store->acquire_snapshot()->observations.empty());
-    CHECK(store->commit(first).error().code == error_code::WRONG_EPOCH);
-    CHECK(store->reset({8}).error().code == error_code::WRONG_EPOCH);
-    map_transaction fresh;
-    fresh.operation = {100};
-    fresh.epoch = {8};
-    fresh.new_revision = {1};
+    store = open(K_ROOT);
+    CHECK(store->acquire_snapshot()->m_epoch.m_value == 8);
+    CHECK(store->acquire_snapshot()->m_revision.m_value == 0);
+    CHECK(store->acquire_snapshot()->m_observations.empty());
+    CHECK(store->commit(K_FIRST).error().m_code == ErrorCode::WRONG_EPOCH);
+    CHECK(store->reset({8}).error().m_code == ErrorCode::WRONG_EPOCH);
+    MapTransaction fresh;
+    fresh.m_operation = { 100 };
+    fresh.m_epoch = { 8 };
+    fresh.m_new_revision = { 1 };
     REQUIRE(store->commit(fresh));
     store.reset();
-    store = open(root);
+    store = open(K_ROOT);
     REQUIRE(store->commit(fresh));
 }
+
 TEST_CASE("persistent recovery rejects corrupt rehashed checkpoints instead of falling back",
           "[map][corruption]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
     REQUIRE(store->commit(first_transaction()));
-    map_transaction second;
-    second.operation = {101};
-    second.base_revision = {1};
-    second.new_revision = {2};
+    MapTransaction second;
+    second.m_operation = { 101 };
+    second.m_base_revision = { 1 };
+    second.m_new_revision = { 2 };
     REQUIRE(store->commit(second));
     store.reset();
-    auto metadata = manifest(root);
-    auto bytes = checkpoint_bytes(root, metadata);
+    auto metadata = manifest(K_ROOT);
+    auto bytes = checkpoint_bytes(K_ROOT, metadata);
     auto* checkpoint = map_wire::GetMutablecheckpoint(bytes.data());
-    const auto mode = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8);
-    switch (mode) {
+    const auto K_MODE = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8);
+    switch (K_MODE) {
     case 0:
         bytes.resize(bytes.size() / 2);
         break;
@@ -854,176 +868,180 @@ TEST_CASE("persistent recovery rejects corrupt rehashed checkpoints instead of f
         FAIL("Missing corruption mode");
         break;
     }
-    rehash_checkpoint(root, bytes, metadata);
-    const auto result = map_store::open_persistent({.directory = root});
-    CHECK(!(result));
-    CHECK(std::filesystem::exists(root / "assets" /
+    rehash_checkpoint(K_ROOT, bytes, metadata);
+    const auto K_RESULT = MapStore::open_persistent({.m_directory = K_ROOT});
+    CHECK(!(K_RESULT));
+    CHECK(std::filesystem::exists(K_ROOT / "assets" /
                                   ("checkpoint-" + metadata["sha256"].get<std::string>() + ".fb")));
 }
+
 TEST_CASE("persistent initialization and manifest tampering preserve caller data and demand resync",
           "[map][manifest]") {
-    directory temporary;
-    std::ofstream(temporary.path / "caller.txt") << "caller data";
-    CHECK(!(map_store::open_persistent({.directory = temporary.path, .create_if_missing = true})));
-    std::ifstream caller(temporary.path / "caller.txt");
+    Directory temporary;
+    std::ofstream(temporary.m_path / "caller.txt") << "caller data";
+    CHECK(!(
+        MapStore::open_persistent({.m_directory = temporary.m_path, .m_create_if_missing = true})));
+    std::ifstream caller(temporary.m_path / "caller.txt");
     std::string text;
     std::getline(caller, text);
     CHECK(text == "caller data");
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
     REQUIRE(store->commit(first_transaction()));
-    const auto snapshot = store->acquire_snapshot();
-    auto metadata = manifest(root);
+    const auto K_SNAPSHOT = store->acquire_snapshot();
+    auto metadata = manifest(K_ROOT);
     metadata["revision"] = 99;
-    std::ofstream(root / "manifest.json") << metadata.dump();
-    const auto changed = manifest_digest(root);
-    map_transaction tx;
-    tx.operation = {101};
-    tx.base_revision = {1};
-    tx.new_revision = {2};
-    CHECK(store->commit(tx).error().code == error_code::RESYNC_REQUIRED);
-    CHECK(store->acquire_snapshot() == snapshot);
-    CHECK(manifest_digest(root) == changed);
+    std::ofstream(K_ROOT / "manifest.json") << metadata.dump();
+    const auto K_CHANGED = manifest_digest(K_ROOT);
+    MapTransaction tx;
+    tx.m_operation = { 101 };
+    tx.m_base_revision = { 1 };
+    tx.m_new_revision = { 2 };
+    CHECK(store->commit(tx).error().m_code == ErrorCode::RESYNC_REQUIRED);
+    CHECK(store->acquire_snapshot() == K_SNAPSHOT);
+    CHECK(manifest_digest(K_ROOT) == K_CHANGED);
     store.reset();
-    CHECK(!(map_store::open_persistent({.directory = root})));
-    std::filesystem::remove(root / "manifest.json");
-    CHECK(!(map_store::open_persistent({.directory = root, .create_if_missing = true})));
-    CHECK(!(std::filesystem::exists(root / "manifest.json")));
+    CHECK(!(MapStore::open_persistent({.m_directory = K_ROOT})));
+    std::filesystem::remove(K_ROOT / "manifest.json");
+    CHECK(!(MapStore::open_persistent({.m_directory = K_ROOT, .m_create_if_missing = true})));
+    CHECK(!(std::filesystem::exists(K_ROOT / "manifest.json")));
 }
+
 TEST_CASE("persistent canonical import keeps its checked source dependency after the external "
           "asset disappears",
           "[map][provenance]") {
-    directory temporary;
-    map_store memory;
-    const auto tx = first_transaction();
-    REQUIRE(memory.commit(tx));
-    const auto source = temporary.path / "source.weposes";
-    const auto hash = write_pose_asset(
-        source, {memory.acquire_snapshot(),
-                 {std::string(64, 'a'), std::string(64, 'b'), std::string(64, 'c'), {}}});
-    REQUIRE(hash);
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    REQUIRE(store->import_pose_asset(source, *hash, {777}));
-    const auto saved = store->acquire_snapshot();
-    CHECK(saved->initial_pose_asset_sha256 == *hash);
-    const auto dependency = root / "assets" / ("poses-" + *hash + ".weposes");
-    std::filesystem::remove(source);
+    Directory temporary;
+    MapStore memory;
+    const auto K_TX = first_transaction();
+    REQUIRE(memory.commit(K_TX));
+    const auto K_SOURCE = temporary.m_path / "source.weposes";
+    const auto K_HASH =
+        write_pose_asset(K_SOURCE,
+                         {memory.acquire_snapshot(),
+                          {std::string(64, 'a'), std::string(64, 'b'), std::string(64, 'c'), {}}});
+    REQUIRE(K_HASH);
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    REQUIRE(store->import_pose_asset(K_SOURCE, *K_HASH, {777}));
+    const auto K_SAVED = store->acquire_snapshot();
+    CHECK(K_SAVED->m_initial_pose_asset_sha256 == *K_HASH);
+    const auto K_DEPENDENCY = K_ROOT / "assets" / ("poses-" + *K_HASH + ".weposes");
+    std::filesystem::remove(K_SOURCE);
     store.reset();
-    store = open(root);
-    CHECK(store->acquire_snapshot()->initial_pose_asset_sha256 == *hash);
-    REQUIRE(store->import_pose_asset(dependency, *hash, {777}));
-    const auto digest = manifest_digest(root);
-    CHECK(!(store->import_pose_asset(dependency, *hash, {778})));
-    CHECK(manifest_digest(root) == digest);
+    store = open(K_ROOT);
+    CHECK(store->acquire_snapshot()->m_initial_pose_asset_sha256 == *K_HASH);
+    REQUIRE(store->import_pose_asset(K_DEPENDENCY, *K_HASH, {777}));
+    const auto K_DIGEST = manifest_digest(K_ROOT);
+    CHECK(!(store->import_pose_asset(K_DEPENDENCY, *K_HASH, {778})));
+    CHECK(manifest_digest(K_ROOT) == K_DIGEST);
     store.reset();
-    std::fstream changed(dependency, std::ios::binary | std::ios::in | std::ios::out);
+    std::fstream changed(K_DEPENDENCY, std::ios::binary | std::ios::in | std::ios::out);
     changed.put('!');
     changed.close();
-    CHECK(!(map_store::open_persistent({.directory = root})));
-    CHECK(saved->poses.size() == 2);
+    CHECK(!(MapStore::open_persistent({.m_directory = K_ROOT})));
+    CHECK(K_SAVED->m_poses.size() == 2);
 }
 
 TEST_CASE("a full retained asset index rejects another checkpoint while the committed map stays "
           "recoverable",
           "[map][limits]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto digest = manifest_digest(root);
-    for (unsigned index = 0; index < 4095; ++index)
-        std::ofstream(root / "assets" / ("orphan-" + std::to_string(index))) << "x";
-    const auto result = store->commit(first_transaction());
-    REQUIRE(!result);
-    CHECK(result.error().code == error_code::RESOURCE_EXHAUSTED);
-    CHECK(manifest_digest(root) == digest);
-    CHECK(store->acquire_snapshot()->revision.value == 0);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_DIGEST = manifest_digest(K_ROOT);
+    for (unsigned index { 0 }; index < 4095; ++index)
+        std::ofstream(K_ROOT / "assets" / ("orphan-" + std::to_string(index))) << "x";
+    const auto K_RESULT = store->commit(first_transaction());
+    REQUIRE(!K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+    CHECK(manifest_digest(K_ROOT) == K_DIGEST);
+    CHECK(store->acquire_snapshot()->m_revision.m_value == 0);
     store.reset();
-    store = open(root);
-    CHECK(store->acquire_snapshot()->revision.value == 0);
+    store = open(K_ROOT);
+    CHECK(store->acquire_snapshot()->m_revision.m_value == 0);
 }
 
 TEST_CASE("invalid persistent configuration fails before creating files or acquiring ownership",
           "[map_admission][configuration]") {
-    directory temporary;
-    const auto root = temporary.path / "must-remain-missing";
-    persistent_map_config config{.directory = root, .create_if_missing = true};
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
-    CAPTURE(field);
-    switch (field) {
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "must-remain-missing";
+    PersistentMapConfig config { .m_directory = K_ROOT, .m_create_if_missing = true };
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
-        config.directory.clear();
+        config.m_directory.clear();
         break;
     case 1: {
-        auto spelling = root.native();
-        spelling.push_back(std::filesystem::path::value_type{});
+        auto spelling = K_ROOT.native();
+        spelling.push_back(std::filesystem::path::value_type {});
         spelling += std::filesystem::path("suffix").native();
-        config.directory = spelling;
+        config.m_directory = spelling;
         break;
     }
     case 2:
-        config.checkpoint_bytes.bytes = 0;
+        config.m_checkpoint_bytes.m_bytes = 0;
         break;
     case 3:
-        config.checkpoint_bytes.bytes = std::size_t{256} * 1024 * 1024 + 1;
+        config.m_checkpoint_bytes.m_bytes = 256uz * 1024 * 1024 + 1;
         break;
     case 4:
-        config.records.max_frames = 0;
+        config.m_records.m_max_frames = 0;
         break;
     case 5:
-        config.records.max_frames = 1000001;
+        config.m_records.m_max_frames = 1000001;
         break;
     case 6:
-        config.records.max_calibrations = 0;
+        config.m_records.m_max_calibrations = 0;
         break;
     case 7:
-        config.records.max_calibrations = 4097;
+        config.m_records.m_max_calibrations = 4097;
         break;
     case 8:
-        config.records.max_submaps = 0;
+        config.m_records.m_max_submaps = 0;
         break;
     case 9:
-        config.records.max_submaps = 4097;
+        config.m_records.m_max_submaps = 4097;
         break;
     case 10:
-        config.records.remembered_operations = 0;
+        config.m_records.m_remembered_operations = 0;
         break;
     case 11:
-        config.records.remembered_operations = 65537;
+        config.m_records.m_remembered_operations = 65537;
         break;
     case 12:
-        config.retained_asset_bytes.bytes = 0;
+        config.m_retained_asset_bytes.m_bytes = 0;
         break;
     case 13:
-        config.retained_asset_bytes.bytes = std::size_t{256} * 1024 * 1024 * 1024 + 1;
+        config.m_retained_asset_bytes.m_bytes = 256uz * 1024 * 1024 * 1024 + 1;
         break;
     default:
         FAIL("unknown persistent configuration mutation");
     }
-    const auto result = map_store::open_persistent(config);
-    REQUIRE(!result);
-    CHECK(result.error().code == error_code::INVALID_ARGUMENT);
-    CHECK(!std::filesystem::exists(root));
-    CHECK(std::filesystem::is_empty(temporary.path));
-    auto valid = open(root, true);
+    const auto K_RESULT = MapStore::open_persistent(config);
+    REQUIRE(!K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::INVALID_ARGUMENT);
+    CHECK(!std::filesystem::exists(K_ROOT));
+    CHECK(std::filesystem::is_empty(temporary.m_path));
+    auto valid = open(K_ROOT, true);
     REQUIRE(valid->commit(first_transaction()));
 }
 
 TEST_CASE("manifest schema and byte admission reject tampering without resetting a committed map",
           "[map_admission][manifest]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto tx = first_transaction();
-    REQUIRE(store->commit(tx));
-    const auto saved = store->acquire_snapshot();
-    const auto original = manifest(root);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_TX = first_transaction();
+    REQUIRE(store->commit(K_TX));
+    const auto K_SAVED = store->acquire_snapshot();
+    const auto K_ORIGINAL = manifest(K_ROOT);
     store.reset();
-    auto value = original;
-    auto expected = error_code::INVALID_DATA;
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-    CAPTURE(field);
-    switch (field) {
+    auto value = K_ORIGINAL;
+    auto expected = ErrorCode::INVALID_DATA;
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
         value = nlohmann::json::array();
         break;
@@ -1059,67 +1077,67 @@ TEST_CASE("manifest schema and byte admission reject tampering without resetting
         break;
     case 11:
         value["bytes"] = 0;
-        expected = error_code::RESOURCE_EXHAUSTED;
+        expected = ErrorCode::RESOURCE_EXHAUSTED;
         break;
     case 12:
-        value["bytes"] = std::size_t{256} * 1024 * 1024 + 1;
-        expected = error_code::RESOURCE_EXHAUSTED;
+        value["bytes"] = 256uz * 1024 * 1024 + 1;
+        expected = ErrorCode::RESOURCE_EXHAUSTED;
         break;
     case 13:
-        value["bytes"] = original["bytes"].get<std::uint64_t>() + 1;
+        value["bytes"] = K_ORIGINAL["bytes"].get<std::uint64_t>() + 1;
         break;
     case 14:
         value["sha256"] = std::string(64, '0');
         break;
     case 15:
         value["sha256"] = "nested";
-        for (unsigned depth = 0; depth < 10; ++depth)
+        for (unsigned depth { 0 }; depth < 10; ++depth)
             value["sha256"] = nlohmann::json::array({value["sha256"]});
         break;
     default:
         FAIL("unknown manifest mutation");
     }
-    restore_manifest(root, value);
-    const auto changed_hash = manifest_digest(root);
-    const auto rejected =
-        map_store::open_persistent({.directory = root, .create_if_missing = true});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == expected);
-    CHECK(manifest_digest(root) == changed_hash);
-    CHECK(saved->revision.value == 1);
-    const auto original_checkpoint =
-        root / "assets" / ("checkpoint-" + original["sha256"].get<std::string>() + ".fb");
-    const auto original_hash = sha256_file(original_checkpoint, std::size_t{256} * 1024 * 1024);
-    REQUIRE(original_hash);
-    CHECK(*original_hash == original["sha256"].get<std::string>());
-    restore_manifest(root, original);
-    auto restored = open(root);
-    REQUIRE(restored->commit(tx));
-    CHECK(restored->acquire_snapshot()->revision.value == 1);
+    restore_manifest(K_ROOT, value);
+    const auto K_CHANGED_HASH = manifest_digest(K_ROOT);
+    const auto K_REJECTED =
+        MapStore::open_persistent({.m_directory = K_ROOT, .m_create_if_missing = true});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == expected);
+    CHECK(manifest_digest(K_ROOT) == K_CHANGED_HASH);
+    CHECK(K_SAVED->m_revision.m_value == 1);
+    const auto K_ORIGINAL_CHECKPOINT =
+        K_ROOT / "assets" / ("checkpoint-" + K_ORIGINAL["sha256"].get<std::string>() + ".fb");
+    const auto K_ORIGINAL_HASH = sha256_file(K_ORIGINAL_CHECKPOINT, 256uz * 1024 * 1024);
+    REQUIRE(K_ORIGINAL_HASH);
+    CHECK(*K_ORIGINAL_HASH == K_ORIGINAL["sha256"].get<std::string>());
+    restore_manifest(K_ROOT, K_ORIGINAL);
+    auto restored = open(K_ROOT);
+    REQUIRE(restored->commit(K_TX));
+    CHECK(restored->acquire_snapshot()->m_revision.m_value == 1);
 }
 
 TEST_CASE("rehashed checkpoint receipts reject gaps malformed digests and missing committed tails",
           "[map_admission][receipt]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
     REQUIRE(store->commit(first_transaction()));
-    for (std::uint64_t revision = 2; revision <= 3; ++revision) {
-        map_transaction transaction;
-        transaction.base_revision = {revision - 1};
-        transaction.new_revision = {revision};
-        transaction.operation = {100 + revision};
+    for (std::uint64_t revision { 2 }; revision <= 3; ++revision) {
+        MapTransaction transaction;
+        transaction.m_base_revision = { revision - 1 };
+        transaction.m_new_revision = { revision };
+        transaction.m_operation = { 100 + revision };
         REQUIRE(store->commit(transaction));
     }
-    const auto saved = store->acquire_snapshot();
-    const auto original = manifest(root);
+    const auto K_SAVED = store->acquire_snapshot();
+    const auto K_ORIGINAL = manifest(K_ROOT);
     store.reset();
-    auto bytes = checkpoint_bytes(root, original);
+    auto bytes = checkpoint_bytes(K_ROOT, K_ORIGINAL);
     auto* checkpoint = map_wire::GetMutablecheckpoint(bytes.data());
     auto* receipts = checkpoint->mutable_receipts();
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6);
-    CAPTURE(field);
-    switch (field) {
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
         REQUIRE(receipts->GetMutableObject(0)->mutate_operation(0));
         break;
@@ -1144,45 +1162,46 @@ TEST_CASE("rehashed checkpoint receipts reject gaps malformed digests and missin
     default:
         FAIL("unknown receipt mutation");
     }
-    rehash_checkpoint(root, bytes, original);
-    const auto changed_hash = manifest_digest(root);
-    const auto rejected =
-        map_store::open_persistent({.directory = root, .create_if_missing = true});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::INVALID_DATA);
-    CHECK(manifest_digest(root) == changed_hash);
-    CHECK(saved->revision.value == 3);
-    restore_manifest(root, original);
-    auto restored = open(root);
-    map_transaction retry;
-    retry.base_revision = {2};
-    retry.new_revision = {3};
-    retry.operation = {103};
+    rehash_checkpoint(K_ROOT, bytes, K_ORIGINAL);
+    const auto K_CHANGED_HASH = manifest_digest(K_ROOT);
+    const auto K_REJECTED =
+        MapStore::open_persistent({.m_directory = K_ROOT, .m_create_if_missing = true});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(manifest_digest(K_ROOT) == K_CHANGED_HASH);
+    CHECK(K_SAVED->m_revision.m_value == 3);
+    restore_manifest(K_ROOT, K_ORIGINAL);
+    auto restored = open(K_ROOT);
+    MapTransaction retry;
+    retry.m_base_revision = { 2 };
+    retry.m_new_revision = { 3 };
+    retry.m_operation = { 103 };
     REQUIRE(restored->commit(retry));
-    CHECK(restored->acquire_snapshot()->revision.value == 3);
+    CHECK(restored->acquire_snapshot()->m_revision.m_value == 3);
 }
 
 TEST_CASE("revision-zero checkpoints cannot retain an initial canonical dependency",
           "[map_admission][dependency]") {
-    directory temporary;
-    map_store memory;
+    Directory temporary;
+    MapStore memory;
     REQUIRE(memory.commit(first_transaction()));
-    const auto source = temporary.path / "synthetic.weposes";
-    const auto hash = write_pose_asset(
-        source, {memory.acquire_snapshot(),
-                 {std::string(64, 'a'), std::string(64, 'b'), std::string(64, 'c'), {}}});
-    REQUIRE(hash);
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    REQUIRE(store->import_pose_asset(source, *hash, {777}));
-    const auto saved = store->acquire_snapshot();
-    const auto original = manifest(root);
+    const auto K_SOURCE = temporary.m_path / "synthetic.weposes";
+    const auto K_HASH =
+        write_pose_asset(K_SOURCE,
+                         {memory.acquire_snapshot(),
+                          {std::string(64, 'a'), std::string(64, 'b'), std::string(64, 'c'), {}}});
+    REQUIRE(K_HASH);
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    REQUIRE(store->import_pose_asset(K_SOURCE, *K_HASH, {777}));
+    const auto K_SAVED = store->acquire_snapshot();
+    const auto K_ORIGINAL = manifest(K_ROOT);
     store.reset();
-    auto bytes = checkpoint_bytes(root, original);
+    auto bytes = checkpoint_bytes(K_ROOT, K_ORIGINAL);
     auto* checkpoint = map_wire::GetMutablecheckpoint(bytes.data());
-    auto metadata = original;
-    const auto field = GENERATE(0, 1, 2);
-    switch (field) {
+    auto metadata = K_ORIGINAL;
+    const auto K_FIELD = GENERATE(0, 1, 2);
+    switch (K_FIELD) {
     case 0:
         REQUIRE(checkpoint->mutate_revision(0));
         shorten_vector(checkpoint->mutable_calibrations(), 0);
@@ -1197,63 +1216,86 @@ TEST_CASE("revision-zero checkpoints cannot retain an initial canonical dependen
         checkpoint->mutable_initial_pose_asset_sha256()->Mutate(0, 'G');
         break;
     case 2:
-        std::filesystem::rename(root / "assets" / ("poses-" + *hash + ".weposes"),
-                                root / "caller-dependency.weposes");
+        std::filesystem::rename(K_ROOT / "assets" / ("poses-" + *K_HASH + ".weposes"),
+                                K_ROOT / "caller-dependency.weposes");
         break;
     default:
         FAIL("unknown canonical dependency mutation");
     }
-    rehash_checkpoint(root, bytes, metadata);
-    const auto changed_hash = manifest_digest(root);
-    const auto rejected = map_store::open_persistent({.directory = root});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::INVALID_DATA);
-    CHECK(manifest_digest(root) == changed_hash);
-    CHECK(saved->initial_pose_asset_sha256 == *hash);
-    if (field == 2)
-        std::filesystem::rename(root / "caller-dependency.weposes",
-                                root / "assets" / ("poses-" + *hash + ".weposes"));
-    restore_manifest(root, original);
-    auto restored = open(root);
-    REQUIRE(restored->import_pose_asset(source, *hash, {777}));
-    CHECK(restored->acquire_snapshot()->revision.value == 1);
+    rehash_checkpoint(K_ROOT, bytes, metadata);
+    const auto K_CHANGED_HASH = manifest_digest(K_ROOT);
+    const auto K_REJECTED = MapStore::open_persistent({.m_directory = K_ROOT});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(manifest_digest(K_ROOT) == K_CHANGED_HASH);
+    CHECK(K_SAVED->m_initial_pose_asset_sha256 == *K_HASH);
+    if (K_FIELD == 2)
+        std::filesystem::rename(K_ROOT / "caller-dependency.weposes",
+                                K_ROOT / "assets" / ("poses-" + *K_HASH + ".weposes"));
+    restore_manifest(K_ROOT, K_ORIGINAL);
+    auto restored = open(K_ROOT);
+    REQUIRE(restored->import_pose_asset(K_SOURCE, *K_HASH, {777}));
+    CHECK(restored->acquire_snapshot()->m_revision.m_value == 1);
 }
 
 TEST_CASE("rehashed checkpoint records reject duplicate identities and invalid pose dependencies",
           "[map_admission][records]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
     auto first = first_transaction();
-    auto calibration = first.calibrations[0];
-    calibration.id = {8};
-    first.calibrations.push_back(calibration);
-    first.alignments.push_back({{56}, {1}, {}});
-    auto& covariance = first.poses[0].covariance.emplace();
-    for (std::size_t axis = 0; axis < 6; ++axis)
-        covariance[axis * 6 + axis] = 1;
+    auto calibration = first.m_calibrations[0];
+    calibration.m_id = { 8 };
+    first.m_calibrations.push_back(calibration);
+    first.m_alignments.push_back({{56}, {1}, {}});
+    auto& covariance = first.m_poses[0].m_covariance.emplace();
+    for (std::size_t axis { 0uz }; axis < 6uz; ++axis) covariance[axis * 6 + axis] = 1;
     REQUIRE(store->commit(first));
-    map_transaction second;
-    second.base_revision = {1};
-    second.new_revision = {2};
-    second.operation = {101};
-    second.poses = first.poses;
-    for (auto& pose : second.poses) {
-        pose.revision = {2};
-        pose.submap_from_camera.translation.x += 1;
+    MapTransaction second;
+    second.m_base_revision = { 1 };
+    second.m_new_revision = { 2 };
+    second.m_operation = { 101 };
+    second.m_poses = first.m_poses;
+    for (auto& pose : second.m_poses) {
+        pose.m_revision = { 2 };
+        pose.m_submap_from_camera.m_translation.m_x += 1;
     }
     REQUIRE(store->commit(second));
-    const auto saved = store->acquire_snapshot();
-    const auto original = manifest(root);
+    const auto K_SAVED = store->acquire_snapshot();
+    const auto K_ORIGINAL = manifest(K_ROOT);
     store.reset();
-    auto bytes = checkpoint_bytes(root, original);
+    auto bytes = checkpoint_bytes(K_ROOT, K_ORIGINAL);
     auto* checkpoint = map_wire::GetMutablecheckpoint(bytes.data());
     auto* observation = checkpoint->mutable_observations()->GetMutableObject(0);
     auto* pose = checkpoint->mutable_poses()->GetMutableObject(0);
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
-                                19, 20, 21, 22, 23, 24, 25);
-    CAPTURE(field);
-    switch (field) {
+    const auto K_FIELD = GENERATE(0,
+                                  1,
+                                  2,
+                                  3,
+                                  4,
+                                  5,
+                                  6,
+                                  7,
+                                  8,
+                                  9,
+                                  10,
+                                  11,
+                                  12,
+                                  13,
+                                  14,
+                                  15,
+                                  16,
+                                  17,
+                                  18,
+                                  19,
+                                  20,
+                                  21,
+                                  22,
+                                  23,
+                                  24,
+                                  25);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
         REQUIRE(checkpoint->mutable_calibrations()->GetMutableObject(1)->mutate_id(7));
         break;
@@ -1276,7 +1318,7 @@ TEST_CASE("rehashed checkpoint records reject duplicate identities and invalid p
         observation->mutable_image_sha256()->Mutate(63, '\0');
         flatbuffers::WriteScalar(
             reinterpret_cast<std::uint8_t*>(observation->mutable_image_sha256()),
-            std::uint32_t{63});
+            std::uint32_t { 63 });
         break;
     case 7:
         REQUIRE(observation->mutate_capture(0));
@@ -1334,7 +1376,7 @@ TEST_CASE("rehashed checkpoint records reject duplicate identities and invalid p
         pose->mutable_covariance()->Mutate(0, -1);
         break;
     case 23:
-        for (std::size_t index = 0; index < 36; ++index)
+        for (std::size_t index { 0uz }; index < 36uz; ++index)
             pose->mutable_covariance()->Mutate(static_cast<flatbuffers::uoffset_t>(index), 0);
         pose->mutable_covariance()->Mutate(1, 1);
         pose->mutable_covariance()->Mutate(6, 1);
@@ -1348,70 +1390,69 @@ TEST_CASE("rehashed checkpoint records reject duplicate identities and invalid p
     default:
         FAIL("unknown checkpoint record mutation");
     }
-    rehash_checkpoint(root, bytes, original);
-    const auto changed_hash = manifest_digest(root);
-    const auto rejected = map_store::open_persistent({.directory = root});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::INVALID_DATA);
-    CHECK(manifest_digest(root) == changed_hash);
-    CHECK(saved->revision.value == 2);
-    CHECK(saved->invalidated_frames.size() == 2);
-    restore_manifest(root, original);
-    auto restored = open(root);
+    rehash_checkpoint(K_ROOT, bytes, K_ORIGINAL);
+    const auto K_CHANGED_HASH = manifest_digest(K_ROOT);
+    const auto K_REJECTED = MapStore::open_persistent({.m_directory = K_ROOT});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(manifest_digest(K_ROOT) == K_CHANGED_HASH);
+    CHECK(K_SAVED->m_revision.m_value == 2);
+    CHECK(K_SAVED->m_invalidated_frames.size() == 2);
+    restore_manifest(K_ROOT, K_ORIGINAL);
+    auto restored = open(K_ROOT);
     REQUIRE(restored->commit(second));
-    CHECK(restored->acquire_snapshot()->revision.value == 2);
+    CHECK(restored->acquire_snapshot()->m_revision.m_value == 2);
 }
 
 TEST_CASE("persistent opening refuses missing or occupied roots without inventing a blank map",
           "[map_admission][ownership]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    const auto mode = GENERATE(0, 1, 2, 3, 4);
-    persistent_map_config config{.directory = root};
-    auto expected = error_code::NOT_FOUND;
-    switch (mode) {
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    const auto K_MODE = GENERATE(0, 1, 2, 3, 4);
+    PersistentMapConfig config { .m_directory = K_ROOT };
+    auto expected = ErrorCode::NOT_FOUND;
+    switch (K_MODE) {
     case 0:
         break;
     case 1:
-        std::ofstream(root) << "caller data";
-        expected = error_code::INVALID_DATA;
+        std::ofstream(K_ROOT) << "caller data";
+        expected = ErrorCode::INVALID_DATA;
         break;
     case 2:
-        REQUIRE(std::filesystem::create_directory(root));
+        REQUIRE(std::filesystem::create_directory(K_ROOT));
         break;
     case 3:
-        REQUIRE(std::filesystem::create_directory(root));
-        std::ofstream(root / "assets") << "caller assets file";
-        config.create_if_missing = true;
-        expected = error_code::INVALID_DATA;
+        REQUIRE(std::filesystem::create_directory(K_ROOT));
+        std::ofstream(K_ROOT / "assets") << "caller assets file";
+        config.m_create_if_missing = true;
+        expected = ErrorCode::INVALID_DATA;
         break;
     case 4:
-        config.create_if_missing = true;
-        config.checkpoint_bytes.bytes = 1;
-        expected = error_code::RESOURCE_EXHAUSTED;
+        config.m_create_if_missing = true;
+        config.m_checkpoint_bytes.m_bytes = 1;
+        expected = ErrorCode::RESOURCE_EXHAUSTED;
         break;
     default:
         FAIL("unknown root admission mode");
     }
-    const auto result = map_store::open_persistent(config);
-    REQUIRE(!result);
-    CHECK(result.error().code == expected);
-    if (mode == 0)
-        CHECK(!std::filesystem::exists(root));
-    else if (mode == 1) {
-        std::ifstream input(root);
+    const auto K_RESULT = MapStore::open_persistent(config);
+    REQUIRE(!K_RESULT);
+    CHECK(K_RESULT.error().m_code == expected);
+    if (K_MODE == 0) CHECK(!std::filesystem::exists(K_ROOT));
+    else if (K_MODE == 1) {
+        std::ifstream input(K_ROOT);
         std::string text;
         std::getline(input, text);
         CHECK(text == "caller data");
     } else {
-        CHECK(!std::filesystem::exists(root / "manifest.json"));
-        if (mode == 3) {
-            std::ifstream input(root / "assets");
+        CHECK(!std::filesystem::exists(K_ROOT / "manifest.json"));
+        if (K_MODE == 3) {
+            std::ifstream input(K_ROOT / "assets");
             std::string text;
             std::getline(input, text);
             CHECK(text == "caller assets file");
         } else {
-            auto restored = open(root, true);
+            auto restored = open(K_ROOT, true);
             REQUIRE(restored->commit(first_transaction()));
         }
     }
@@ -1419,144 +1460,140 @@ TEST_CASE("persistent opening refuses missing or occupied roots without inventin
 
 TEST_CASE("retained asset admission failures preserve committed RAM manifest and retry receipts",
           "[map_admission][assets]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto first = first_transaction();
-    REQUIRE(store->commit(first));
-    const auto saved = store->acquire_snapshot();
-    const auto original_hash = manifest_digest(root);
-    const auto mode = GENERATE(0, 1, 2);
-    const auto obstruction = root / "assets" / "caller-directory";
-    if (mode == 0)
-        REQUIRE(std::filesystem::create_directory(obstruction));
-    else if (mode == 1) {
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_FIRST = first_transaction();
+    REQUIRE(store->commit(K_FIRST));
+    const auto K_SAVED = store->acquire_snapshot();
+    const auto K_ORIGINAL_HASH = manifest_digest(K_ROOT);
+    const auto K_MODE = GENERATE(0, 1, 2);
+    const auto K_OBSTRUCTION = K_ROOT / "assets" / "caller-directory";
+    if (K_MODE == 0) REQUIRE(std::filesystem::create_directory(K_OBSTRUCTION));
+    else if (K_MODE == 1) {
         store.reset();
-        const auto rejected =
-            map_store::open_persistent({.directory = root, .retained_asset_bytes = {1}});
-        REQUIRE(!rejected);
-        CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
+        const auto K_REJECTED =
+            MapStore::open_persistent({.m_directory = K_ROOT, .m_retained_asset_bytes = { 1 }});
+        REQUIRE(!K_REJECTED);
+        CHECK(K_REJECTED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
     } else {
         store.reset();
-        std::filesystem::rename(root / "assets", root / "caller-assets");
-        const auto rejected = map_store::open_persistent({.directory = root});
-        REQUIRE(!rejected);
-        CHECK(rejected.error().code == error_code::INVALID_DATA);
+        std::filesystem::rename(K_ROOT / "assets", K_ROOT / "caller-assets");
+        const auto K_REJECTED = MapStore::open_persistent({.m_directory = K_ROOT});
+        REQUIRE(!K_REJECTED);
+        CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
     }
-    if (mode == 0) {
-        map_transaction next;
-        next.base_revision = {1};
-        next.new_revision = {2};
-        next.operation = {101};
-        const auto rejected = store->commit(next);
-        REQUIRE(!rejected);
-        CHECK(rejected.error().code == error_code::INVALID_DATA);
-        CHECK(store->acquire_snapshot() == saved);
-        CHECK(manifest_digest(root) == original_hash);
-        REQUIRE(store->commit(first));
-        std::filesystem::remove(obstruction);
+    if (K_MODE == 0) {
+        MapTransaction next;
+        next.m_base_revision = { 1 };
+        next.m_new_revision = { 2 };
+        next.m_operation = { 101 };
+        const auto K_REJECTED = store->commit(next);
+        REQUIRE(!K_REJECTED);
+        CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
+        CHECK(store->acquire_snapshot() == K_SAVED);
+        CHECK(manifest_digest(K_ROOT) == K_ORIGINAL_HASH);
+        REQUIRE(store->commit(K_FIRST));
+        std::filesystem::remove(K_OBSTRUCTION);
         REQUIRE(store->commit(next));
-        CHECK(store->acquire_snapshot()->revision.value == 2);
+        CHECK(store->acquire_snapshot()->m_revision.m_value == 2);
         store.reset();
     } else {
-        CHECK(manifest_digest(root) == original_hash);
-        if (mode == 2)
-            std::filesystem::rename(root / "caller-assets", root / "assets");
+        CHECK(manifest_digest(K_ROOT) == K_ORIGINAL_HASH);
+        if (K_MODE == 2) std::filesystem::rename(K_ROOT / "caller-assets", K_ROOT / "assets");
     }
-    auto restored = open(root);
-    REQUIRE(restored->commit(first));
-    CHECK(saved->revision.value == 1);
+    auto restored = open(K_ROOT);
+    REQUIRE(restored->commit(K_FIRST));
+    CHECK(K_SAVED->m_revision.m_value == 1);
 }
 
 TEST_CASE("record budgets reject retained checkpoints without discarding records",
           "[map_admission][limits]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
     auto first = first_transaction();
-    auto calibration = first.calibrations[0];
-    calibration.id = {8};
-    first.calibrations.push_back(calibration);
-    first.alignments.push_back({{56}, {1}, {}});
+    auto calibration = first.m_calibrations[0];
+    calibration.m_id = { 8 };
+    first.m_calibrations.push_back(calibration);
+    first.m_alignments.push_back({{56}, {1}, {}});
     REQUIRE(store->commit(first));
-    const auto original = manifest(root);
-    const auto original_hash = manifest_digest(root);
+    const auto K_ORIGINAL = manifest(K_ROOT);
+    const auto K_ORIGINAL_HASH = manifest_digest(K_ROOT);
     store.reset();
-    persistent_map_config config{.directory = root};
-    const auto mode = GENERATE(0, 1, 2);
-    switch (mode) {
+    PersistentMapConfig config { .m_directory = K_ROOT };
+    const auto K_MODE = GENERATE(0, 1, 2);
+    switch (K_MODE) {
     case 0:
-        config.records.max_calibrations = 1;
+        config.m_records.m_max_calibrations = 1;
         break;
     case 1:
-        config.records.max_frames = 1;
+        config.m_records.m_max_frames = 1;
         break;
     case 2:
-        config.records.max_submaps = 1;
+        config.m_records.m_max_submaps = 1;
         break;
     default:
         FAIL("unknown record budget");
     }
-    const auto rejected = map_store::open_persistent(config);
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
-    CHECK(manifest_digest(root) == original_hash);
-    CHECK(manifest(root) == original);
-    auto restored = open(root);
+    const auto K_REJECTED = MapStore::open_persistent(config);
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+    CHECK(manifest_digest(K_ROOT) == K_ORIGINAL_HASH);
+    CHECK(manifest(K_ROOT) == K_ORIGINAL);
+    auto restored = open(K_ROOT);
     REQUIRE(restored->commit(first));
-    CHECK(restored->acquire_snapshot()->observations.size() == 2);
+    CHECK(restored->acquire_snapshot()->m_observations.size() == 2);
 }
 
 TEST_CASE("pose and invalidation counts have independent recovery budgets",
           "[map_admission][limits]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
     REQUIRE(store->commit(first_transaction()));
-    const auto mode = GENERATE(0, 1);
-    map_transaction deletion;
-    deletion.base_revision = {1};
-    deletion.new_revision = {2};
-    deletion.operation = {101};
-    deletion.deleted_frames = {{1}, {2}};
-    if (mode == 1)
-        REQUIRE(store->commit(deletion));
-    const auto saved = store->acquire_snapshot();
-    const auto original = manifest(root);
+    const auto K_MODE = GENERATE(0, 1);
+    MapTransaction deletion;
+    deletion.m_base_revision = { 1 };
+    deletion.m_new_revision = { 2 };
+    deletion.m_operation = { 101 };
+    deletion.m_deleted_frames = { { 1 }, { 2 } };
+    if (K_MODE == 1) REQUIRE(store->commit(deletion));
+    const auto K_SAVED = store->acquire_snapshot();
+    const auto K_ORIGINAL = manifest(K_ROOT);
     store.reset();
-    if (mode == 0) {
-        auto bytes = checkpoint_bytes(root, original);
+    if (K_MODE == 0) {
+        auto bytes = checkpoint_bytes(K_ROOT, K_ORIGINAL);
         shorten_vector(map_wire::GetMutablecheckpoint(bytes.data())->mutable_observations(), 0);
-        rehash_checkpoint(root, bytes, original);
+        rehash_checkpoint(K_ROOT, bytes, K_ORIGINAL);
     }
-    const auto changed_hash = manifest_digest(root);
-    const auto rejected =
-        map_store::open_persistent({.directory = root, .records = {.max_frames = 1}});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
-    CHECK(manifest_digest(root) == changed_hash);
-    restore_manifest(root, original);
-    auto restored = open(root);
-    if (mode == 0)
-        CHECK(restored->acquire_snapshot()->poses.size() == 2);
+    const auto K_CHANGED_HASH = manifest_digest(K_ROOT);
+    const auto K_REJECTED =
+        MapStore::open_persistent({.m_directory = K_ROOT, .m_records = { .m_max_frames = 1 }});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+    CHECK(manifest_digest(K_ROOT) == K_CHANGED_HASH);
+    restore_manifest(K_ROOT, K_ORIGINAL);
+    auto restored = open(K_ROOT);
+    if (K_MODE == 0) CHECK(restored->acquire_snapshot()->m_poses.size() == 2);
     else {
         REQUIRE(restored->commit(deletion));
-        CHECK(restored->acquire_snapshot()->invalidated_frames.size() == 2);
-        CHECK(saved->observations.empty());
+        CHECK(restored->acquire_snapshot()->m_invalidated_frames.size() == 2);
+        CHECK(K_SAVED->m_observations.empty());
     }
 }
 
 TEST_CASE("antipodal baked world quaternions preserve valid canonical poses on recovery",
           "[map_admission][coordinates]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto first = first_transaction();
-    REQUIRE(store->commit(first));
-    const auto saved = store->acquire_snapshot();
-    const auto original = manifest(root);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_FIRST = first_transaction();
+    REQUIRE(store->commit(K_FIRST));
+    const auto K_SAVED = store->acquire_snapshot();
+    const auto K_ORIGINAL = manifest(K_ROOT);
     store.reset();
-    auto bytes = checkpoint_bytes(root, original);
+    auto bytes = checkpoint_bytes(K_ROOT, K_ORIGINAL);
     auto* world = map_wire::GetMutablecheckpoint(bytes.data())
                       ->mutable_poses()
                       ->GetMutableObject(0)
@@ -1565,343 +1602,332 @@ TEST_CASE("antipodal baked world quaternions preserve valid canonical poses on r
     world->mutate_qx(-world->qx());
     world->mutate_qy(-world->qy());
     world->mutate_qz(-world->qz());
-    rehash_checkpoint(root, bytes, original);
-    auto restored = open(root);
-    REQUIRE(restored->commit(first));
-    CHECK(restored->acquire_snapshot()->poses.at({1}).submap_from_camera.rotation.w ==
-          saved->poses.at({1}).submap_from_camera.rotation.w);
-    CHECK(restored->acquire_snapshot()->scale == scale_status::ARBITRARY);
+    rehash_checkpoint(K_ROOT, bytes, K_ORIGINAL);
+    auto restored = open(K_ROOT);
+    REQUIRE(restored->commit(K_FIRST));
+    CHECK(restored->acquire_snapshot()->m_poses.at({1}).m_submap_from_camera.m_rotation.m_w ==
+          K_SAVED->m_poses.at({1}).m_submap_from_camera.m_rotation.m_w);
+    CHECK(restored->acquire_snapshot()->m_scale == ScaleStatus::ARBITRARY);
 }
 
 TEST_CASE("canonical producer identity and transform failures leave the persistent map untouched",
           "[canonical_admission][producer]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto original = producer_asset();
-    const auto original_bytes = encode_pose_asset(original);
-    REQUIRE(original_bytes);
-    auto state = std::make_shared<map_state>(*original.snapshot);
-    auto invalid = original;
-    invalid.snapshot = state;
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-    CAPTURE(field);
-    switch (field) {
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_ORIGINAL = producer_asset();
+    const auto K_ORIGINAL_BYTES = encode_pose_asset(K_ORIGINAL);
+    REQUIRE(K_ORIGINAL_BYTES);
+    auto state = std::make_shared<MapState>(*K_ORIGINAL.m_snapshot);
+    auto invalid = K_ORIGINAL;
+    invalid.m_snapshot = state;
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
-        state->calibrations.at({7}).id = {8};
+        state->m_calibrations.at({7}).m_id = { 8 };
         break;
     case 1:
-        state->observations.at({1}).id = {42};
+        state->m_observations.at({1}).m_id = { 42 };
         break;
     case 2: {
-        auto observation = state->observations.extract({1});
-        observation.key() = {0};
-        observation.mapped().id = {0};
-        state->observations.insert(std::move(observation));
+        auto observation = state->m_observations.extract({1});
+        observation.key() = { 0 };
+        observation.mapped().m_id = { 0 };
+        state->m_observations.insert(std::move(observation));
         break;
     }
     case 3:
-        state->poses.at({1}).frame = {42};
+        state->m_poses.at({1}).m_frame = { 42 };
         break;
     case 4:
-        state->poses.at({1}).submap = {56};
+        state->m_poses.at({1}).m_submap = { 56 };
         break;
     case 5:
-        state->poses.at({1}).submap_from_camera.rotation = {0, 0, 0, 0};
+        state->m_poses.at({1}).m_submap_from_camera.m_rotation = { 0, 0, 0, 0 };
         break;
     case 6:
-        state->poses.at({1}).submap_from_camera.translation.x =
+        state->m_poses.at({1}).m_submap_from_camera.m_translation.m_x =
             std::numeric_limits<double>::infinity();
         break;
     case 7:
-        state->world_from_submap.at({55}) = {{}, {}, std::numeric_limits<double>::max()};
-        state->poses.at({1}).submap_from_camera = {{}, {2, 0, 0}, 1};
+        state->m_world_from_submap.at({55}) = { {}, {}, std::numeric_limits<double>::max() };
+        state->m_poses.at({1}).m_submap_from_camera = { {}, { 2, 0, 0 }, 1 };
         break;
     case 8:
-        state->initial_pose_asset_sha256 = std::string(64, 'G');
+        state->m_initial_pose_asset_sha256 = std::string(64, 'G');
         break;
     case 9:
-        state->poses.at({1}).submap_from_camera.scale = 2;
+        state->m_poses.at({1}).m_submap_from_camera.m_scale = 2;
         break;
     case 10:
-        state->observations.erase({1});
+        state->m_observations.erase({1});
         break;
     default:
         FAIL("unknown producer mutation");
     }
-    const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(root, {root / "writer.lock"});
-    const auto rejected = store->import_pose_asset(invalid, {777});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::INVALID_DATA);
-    CHECK(invalid.snapshot == state);
-    CHECK(state->calibrations.size() == 1);
-    CHECK(state->poses.size() == 2);
-    CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
-    const auto unchanged = encode_pose_asset(original);
-    REQUIRE(unchanged);
-    CHECK(*unchanged == *original_bytes);
+    const auto K_BEFORE = store->acquire_snapshot();
+    const auto K_FILES = tree_identity(K_ROOT, {K_ROOT / "writer.lock"});
+    const auto K_REJECTED = store->import_pose_asset(invalid, {777});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(invalid.m_snapshot == state);
+    CHECK(state->m_calibrations.size() == 1);
+    CHECK(state->m_poses.size() == 2);
+    CHECK(store->acquire_snapshot() == K_BEFORE);
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_FILES);
+    const auto K_UNCHANGED = encode_pose_asset(K_ORIGINAL);
+    REQUIRE(K_UNCHANGED);
+    CHECK(*K_UNCHANGED == *K_ORIGINAL_BYTES);
     // A rejected operation must not reserve its ID or poison the later authentic retry.
-    REQUIRE(store->import_pose_asset(original, {777}));
-    const auto installed = tree_identity(root, {root / "writer.lock"});
-    const auto committed = store->acquire_snapshot();
-    const auto rejected_retry = store->import_pose_asset(invalid, {777});
-    REQUIRE(!rejected_retry);
-    CHECK(rejected_retry.error().code == error_code::INVALID_DATA);
-    CHECK(store->acquire_snapshot() == committed);
-    CHECK(tree_identity(root, {root / "writer.lock"}) == installed);
+    REQUIRE(store->import_pose_asset(K_ORIGINAL, {777}));
+    const auto K_INSTALLED = tree_identity(K_ROOT, {K_ROOT / "writer.lock"});
+    const auto K_COMMITTED = store->acquire_snapshot();
+    const auto K_REJECTED_RETRY = store->import_pose_asset(invalid, {777});
+    REQUIRE(!K_REJECTED_RETRY);
+    CHECK(K_REJECTED_RETRY.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(store->acquire_snapshot() == K_COMMITTED);
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_INSTALLED);
     store.reset();
-    auto restored = open(root);
-    REQUIRE(restored->import_pose_asset(original, {777}));
-    CHECK(restored->acquire_snapshot()->revision.value == 1);
-    CHECK(tree_identity(root, {root / "writer.lock"}) == installed);
+    auto restored = open(K_ROOT);
+    REQUIRE(restored->import_pose_asset(K_ORIGINAL, {777}));
+    CHECK(restored->acquire_snapshot()->m_revision.m_value == 1);
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_INSTALLED);
 }
 
 TEST_CASE("canonical producer provenance and required records fail before dependency publication",
           "[canonical_admission][producer]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto original = producer_asset();
-    auto state = std::make_shared<map_state>(*original.snapshot);
-    auto invalid = original;
-    invalid.snapshot = state;
-    auto expected = error_code::INVALID_DATA;
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-    CAPTURE(field);
-    switch (field) {
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_ORIGINAL = producer_asset();
+    auto state = std::make_shared<MapState>(*K_ORIGINAL.m_snapshot);
+    auto invalid = K_ORIGINAL;
+    invalid.m_snapshot = state;
+    auto expected = ErrorCode::INVALID_DATA;
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+    CAPTURE(K_FIELD);
+    switch (K_FIELD) {
     case 0:
-        invalid.snapshot.reset();
-        expected = error_code::INVALID_ARGUMENT;
+        invalid.m_snapshot.reset();
+        expected = ErrorCode::INVALID_ARGUMENT;
         break;
     case 1:
-        invalid.provenance.source_sha256 = "bad";
+        invalid.m_provenance.m_source_sha256 = "bad";
         break;
     case 2:
-        invalid.provenance.decode_completion_sha256 = std::string(64, 'G');
+        invalid.m_provenance.m_decode_completion_sha256 = std::string(64, 'G');
         break;
     case 3:
-        invalid.provenance.pose_completion_sha256.clear();
+        invalid.m_provenance.m_pose_completion_sha256.clear();
         break;
     case 4:
-        state->revision = {0};
+        state->m_revision = { 0 };
         break;
     case 5:
-        state->calibrations.clear();
+        state->m_calibrations.clear();
         break;
     case 6:
-        state->observations.clear();
+        state->m_observations.clear();
         break;
     case 7:
-        state->poses.clear();
+        state->m_poses.clear();
         break;
     case 8:
-        state->world_from_submap.clear();
+        state->m_world_from_submap.clear();
         break;
     case 9:
-        state->scale = scale_status::METRIC_MEASURED;
-        expected = error_code::UNSUPPORTED_OPERATION;
+        state->m_scale = ScaleStatus::METRIC_MEASURED;
+        expected = ErrorCode::UNSUPPORTED_OPERATION;
         break;
     default:
         FAIL("unknown required producer field");
     }
-    const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(root, {root / "writer.lock"});
-    const auto rejected = store->import_pose_asset(invalid, {777});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == expected);
-    CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
-    REQUIRE(store->import_pose_asset(original, {777}));
-    CHECK(store->acquire_snapshot()->observations.size() == 2);
+    const auto K_BEFORE = store->acquire_snapshot();
+    const auto K_FILES = tree_identity(K_ROOT, {K_ROOT / "writer.lock"});
+    const auto K_REJECTED = store->import_pose_asset(invalid, {777});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == expected);
+    CHECK(store->acquire_snapshot() == K_BEFORE);
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_FILES);
+    REQUIRE(store->import_pose_asset(K_ORIGINAL, {777}));
+    CHECK(store->acquire_snapshot()->m_observations.size() == 2);
 }
 
 TEST_CASE("canonical import accepts only a fresh initial solve without invalidated frames",
           "[canonical_admission][initial]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto original = producer_asset();
-    auto state = std::make_shared<map_state>(*original.snapshot);
-    const auto field = GENERATE(0, 1, 2);
-    if (field == 0)
-        state->epoch = {1};
-    else if (field == 1)
-        state->revision = {2};
-    else
-        state->invalidated_frames.insert({1});
-    const canonical_pose_asset advanced{state, original.provenance};
-    const auto encoded = encode_pose_asset(advanced);
-    REQUIRE(encoded); // Valid interchange can still be unsuitable for initial seeding.
-    const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(root, {root / "writer.lock"});
-    const auto rejected = store->import_pose_asset(advanced, {777});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::UNSUPPORTED_OPERATION);
-    CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
-    const auto unchanged = encode_pose_asset(advanced);
-    REQUIRE(unchanged);
-    CHECK(*unchanged == *encoded);
-    REQUIRE(store->import_pose_asset(original, {777}));
-    CHECK(store->acquire_snapshot()->epoch.value == 0);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_ORIGINAL = producer_asset();
+    auto state = std::make_shared<MapState>(*K_ORIGINAL.m_snapshot);
+    const auto K_FIELD = GENERATE(0, 1, 2);
+    if (K_FIELD == 0) state->m_epoch = { 1 };
+    else if (K_FIELD == 1) state->m_revision = { 2 };
+    else state->m_invalidated_frames.insert({1});
+    const CanonicalPoseAsset K_ADVANCED { state, K_ORIGINAL.m_provenance };
+    const auto K_ENCODED = encode_pose_asset(K_ADVANCED);
+    REQUIRE(K_ENCODED);  // Valid interchange can still be unsuitable for initial seeding.
+    const auto K_BEFORE = store->acquire_snapshot();
+    const auto K_FILES = tree_identity(K_ROOT, {K_ROOT / "writer.lock"});
+    const auto K_REJECTED = store->import_pose_asset(K_ADVANCED, {777});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::UNSUPPORTED_OPERATION);
+    CHECK(store->acquire_snapshot() == K_BEFORE);
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_FILES);
+    const auto K_UNCHANGED = encode_pose_asset(K_ADVANCED);
+    REQUIRE(K_UNCHANGED);
+    CHECK(*K_UNCHANGED == *K_ENCODED);
+    REQUIRE(store->import_pose_asset(K_ORIGINAL, {777}));
+    CHECK(store->acquire_snapshot()->m_epoch.m_value == 0);
 }
 
 TEST_CASE("cancelled canonical memory and file imports preserve producer bytes and allow retry",
           "[canonical_admission][cancellation]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto original = producer_asset();
-    const auto source = temporary.path / "synthetic.weposes";
-    const auto hash = write_pose_asset(source, original);
-    REQUIRE(hash);
-    const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(temporary.path, {root / "writer.lock"});
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_ORIGINAL = producer_asset();
+    const auto K_SOURCE = temporary.m_path / "synthetic.weposes";
+    const auto K_HASH = write_pose_asset(K_SOURCE, K_ORIGINAL);
+    REQUIRE(K_HASH);
+    const auto K_BEFORE = store->acquire_snapshot();
+    const auto K_FILES = tree_identity(temporary.m_path, {K_ROOT / "writer.lock"});
     std::stop_source stopped;
     stopped.request_stop();
-    const auto from_file = GENERATE(false, true);
-    const auto rejected = from_file
-                              ? store->import_pose_asset(source, *hash, {777}, stopped.get_token())
-                              : store->import_pose_asset(original, {777}, stopped.get_token());
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::CANCELLED);
-    CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == files);
-    REQUIRE(store->import_pose_asset(original, {777}));
+    const auto K_FROM_FILE = GENERATE(false, true);
+    const auto K_REJECTED =
+        K_FROM_FILE ? store->import_pose_asset(K_SOURCE, *K_HASH, {777}, stopped.get_token())
+                    : store->import_pose_asset(K_ORIGINAL, {777}, stopped.get_token());
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::CANCELLED);
+    CHECK(store->acquire_snapshot() == K_BEFORE);
+    CHECK(tree_identity(temporary.m_path, {K_ROOT / "writer.lock"}) == K_FILES);
+    REQUIRE(store->import_pose_asset(K_ORIGINAL, {777}));
     store.reset();
-    auto restored = open(root);
-    REQUIRE(restored->import_pose_asset(source, *hash, {777}));
-    CHECK(restored->acquire_snapshot()->revision.value == 1);
+    auto restored = open(K_ROOT);
+    REQUIRE(restored->import_pose_asset(K_SOURCE, *K_HASH, {777}));
+    CHECK(restored->acquire_snapshot()->m_revision.m_value == 1);
 }
 
 TEST_CASE("canonical import record budgets retain complete orphans without acknowledging failure",
           "[canonical_admission][limits]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
     auto original = producer_asset();
-    auto state = std::make_shared<map_state>(*original.snapshot);
-    auto calibration = state->calibrations.at({7});
-    calibration.id = {8};
-    state->calibrations.emplace(calibration.id, calibration);
-    state->world_from_submap.emplace(submap_id{56}, similarity_transform{});
-    original.snapshot = state;
-    persistent_map_config config{.directory = root, .create_if_missing = true};
-    const auto field = GENERATE(0, 1, 2);
-    if (field == 0)
-        config.records.max_frames = 1;
-    else if (field == 1)
-        config.records.max_calibrations = 1;
-    else
-        config.records.max_submaps = 1;
-    auto opened = map_store::open_persistent(config);
+    auto state = std::make_shared<MapState>(*original.m_snapshot);
+    auto calibration = state->m_calibrations.at({7});
+    calibration.m_id = { 8 };
+    state->m_calibrations.emplace(calibration.m_id, calibration);
+    state->m_world_from_submap.emplace(SubmapId { 56 }, SimilarityTransform {});
+    original.m_snapshot = state;
+    PersistentMapConfig config { .m_directory = K_ROOT, .m_create_if_missing = true };
+    const auto K_FIELD = GENERATE(0, 1, 2);
+    if (K_FIELD == 0) config.m_records.m_max_frames = 1;
+    else if (K_FIELD == 1) config.m_records.m_max_calibrations = 1;
+    else config.m_records.m_max_submaps = 1;
+    auto opened = MapStore::open_persistent(config);
     REQUIRE(opened);
     auto store = std::move(*opened);
-    const auto before = store->acquire_snapshot();
-    const auto digest = manifest_digest(root);
-    const auto bytes = encode_pose_asset(original);
-    REQUIRE(bytes);
-    const auto hash = sha256(*bytes);
-    const auto rejected = store->import_pose_asset(original, {777});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::RESOURCE_EXHAUSTED);
-    CHECK(store->acquire_snapshot() == before);
-    CHECK(manifest_digest(root) == digest);
+    const auto K_BEFORE = store->acquire_snapshot();
+    const auto K_DIGEST = manifest_digest(K_ROOT);
+    const auto K_BYTES = encode_pose_asset(original);
+    REQUIRE(K_BYTES);
+    const auto K_HASH = sha256(*K_BYTES);
+    const auto K_REJECTED = store->import_pose_asset(original, {777});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+    CHECK(store->acquire_snapshot() == K_BEFORE);
+    CHECK(manifest_digest(K_ROOT) == K_DIGEST);
     // Immutable dependencies may be installed before checkpoint admission fails.
-    const auto orphan = root / "assets" / ("poses-" + hash + ".weposes");
-    REQUIRE(read_pose_asset(orphan, hash));
+    const auto K_ORPHAN = K_ROOT / "assets" / ("poses-" + K_HASH + ".weposes");
+    REQUIRE(read_pose_asset(K_ORPHAN, K_HASH));
     store.reset();
-    auto restored = open(root);
+    auto restored = open(K_ROOT);
     REQUIRE(restored->import_pose_asset(original, {777}));
-    const auto installed = tree_identity(root, {root / "writer.lock"});
+    const auto K_INSTALLED = tree_identity(K_ROOT, {K_ROOT / "writer.lock"});
     restored.reset();
-    restored = open(root);
+    restored = open(K_ROOT);
     REQUIRE(restored->import_pose_asset(original, {777}));
-    CHECK(tree_identity(root, {root / "writer.lock"}) == installed);
-    CHECK(restored->acquire_snapshot()->calibrations.size() == 2);
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_INSTALLED);
+    CHECK(restored->acquire_snapshot()->m_calibrations.size() == 2);
 }
 
 TEST_CASE(
     "canonical import refuses memory stores and missing operation IDs without consuming input",
     "[canonical_admission][operation]") {
-    directory temporary;
-    const auto original = producer_asset();
-    const auto bytes = encode_pose_asset(original);
-    REQUIRE(bytes);
-    map_store memory;
-    const auto before = memory.acquire_snapshot();
-    const auto unsupported = memory.import_pose_asset(original, {777});
-    REQUIRE(!unsupported);
-    CHECK(unsupported.error().code == error_code::UNSUPPORTED_OPERATION);
-    CHECK(memory.acquire_snapshot() == before);
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto initial = store->acquire_snapshot();
-    const auto digest = manifest_digest(root);
-    const auto rejected = store->import_pose_asset(original, {0});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::INVALID_ARGUMENT);
-    CHECK(store->acquire_snapshot() == initial);
-    CHECK(manifest_digest(root) == digest);
-    const auto unchanged = encode_pose_asset(original);
-    REQUIRE(unchanged);
-    CHECK(*unchanged == *bytes);
-    REQUIRE(store->import_pose_asset(original, {777}));
+    Directory temporary;
+    const auto K_ORIGINAL = producer_asset();
+    const auto K_BYTES = encode_pose_asset(K_ORIGINAL);
+    REQUIRE(K_BYTES);
+    MapStore memory;
+    const auto K_BEFORE = memory.acquire_snapshot();
+    const auto K_UNSUPPORTED = memory.import_pose_asset(K_ORIGINAL, {777});
+    REQUIRE(!K_UNSUPPORTED);
+    CHECK(K_UNSUPPORTED.error().m_code == ErrorCode::UNSUPPORTED_OPERATION);
+    CHECK(memory.acquire_snapshot() == K_BEFORE);
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_INITIAL = store->acquire_snapshot();
+    const auto K_DIGEST = manifest_digest(K_ROOT);
+    const auto K_REJECTED = store->import_pose_asset(K_ORIGINAL, {0});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_ARGUMENT);
+    CHECK(store->acquire_snapshot() == K_INITIAL);
+    CHECK(manifest_digest(K_ROOT) == K_DIGEST);
+    const auto K_UNCHANGED = encode_pose_asset(K_ORIGINAL);
+    REQUIRE(K_UNCHANGED);
+    CHECK(*K_UNCHANGED == *K_BYTES);
+    REQUIRE(store->import_pose_asset(K_ORIGINAL, {777}));
 }
 
 TEST_CASE("occupied canonical dependency paths preserve caller entries until explicit repair",
           "[canonical_admission][assets]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto original = producer_asset();
-    const auto bytes = encode_pose_asset(original);
-    REQUIRE(bytes);
-    const auto hash = sha256(*bytes);
-    const auto occupied = root / "assets" / ("poses-" + hash + ".weposes");
-    const auto directory_entry = GENERATE(false, true);
-    if (directory_entry)
-        REQUIRE(std::filesystem::create_directory(occupied));
-    else
-        std::ofstream(occupied) << "caller data";
-    const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(root, {root / "writer.lock"});
-    const auto rejected = store->import_pose_asset(original, {777});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == error_code::INVALID_DATA);
-    CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(root, {root / "writer.lock"}) == files);
-    std::filesystem::remove(occupied);
-    REQUIRE(store->import_pose_asset(original, {777}));
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_ORIGINAL = producer_asset();
+    const auto K_BYTES = encode_pose_asset(K_ORIGINAL);
+    REQUIRE(K_BYTES);
+    const auto K_HASH = sha256(*K_BYTES);
+    const auto K_OCCUPIED = K_ROOT / "assets" / ("poses-" + K_HASH + ".weposes");
+    const auto K_DIRECTORY_ENTRY = GENERATE(false, true);
+    if (K_DIRECTORY_ENTRY) REQUIRE(std::filesystem::create_directory(K_OCCUPIED));
+    else std::ofstream(K_OCCUPIED) << "caller data";
+    const auto K_BEFORE = store->acquire_snapshot();
+    const auto K_FILES = tree_identity(K_ROOT, {K_ROOT / "writer.lock"});
+    const auto K_REJECTED = store->import_pose_asset(K_ORIGINAL, {777});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(store->acquire_snapshot() == K_BEFORE);
+    CHECK(tree_identity(K_ROOT, {K_ROOT / "writer.lock"}) == K_FILES);
+    std::filesystem::remove(K_OCCUPIED);
+    REQUIRE(store->import_pose_asset(K_ORIGINAL, {777}));
     store.reset();
-    auto restored = open(root);
-    REQUIRE(restored->import_pose_asset(original, {777}));
+    auto restored = open(K_ROOT);
+    REQUIRE(restored->import_pose_asset(K_ORIGINAL, {777}));
 }
 
 TEST_CASE("canonical file import rejects unavailable incomplete and rehashed malformed sources",
           "[canonical_admission][file]") {
-    directory temporary;
-    const auto root = temporary.path / "map";
-    auto store = open(root, true);
-    const auto original = producer_asset();
-    auto bytes = encode_pose_asset(original);
+    Directory temporary;
+    const auto K_ROOT = temporary.m_path / "map";
+    auto store = open(K_ROOT, true);
+    const auto K_ORIGINAL = producer_asset();
+    auto bytes = encode_pose_asset(K_ORIGINAL);
     REQUIRE(bytes);
     auto hash = sha256(*bytes);
-    const auto source = temporary.path / "caller.weposes";
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5);
-    CAPTURE(field);
-    auto expected = error_code::INVALID_DATA;
-    if (field == 1)
-        REQUIRE(std::filesystem::create_directory(source));
-    else if (field >= 2) {
-        if (field == 2) {
+    const auto K_SOURCE = temporary.m_path / "caller.weposes";
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5);
+    CAPTURE(K_FIELD);
+    auto expected = ErrorCode::INVALID_DATA;
+    if (K_FIELD == 1) REQUIRE(std::filesystem::create_directory(K_SOURCE));
+    else if (K_FIELD >= 2) {
+        if (K_FIELD == 2) {
             bytes->clear();
-            expected = error_code::RESOURCE_EXHAUSTED;
-        } else if (field == 3)
-            bytes->resize(bytes->size() / 2);
-        else if (field == 4)
-            hash = std::string(64, '0');
+            expected = ErrorCode::RESOURCE_EXHAUSTED;
+        } else if (K_FIELD == 3) bytes->resize(bytes->size() / 2);
+        else if (K_FIELD == 4) hash = std::string(64, '0');
         else {
             pose_wire::GetMutablepose_asset(bytes->data())
                 ->mutable_provenance()
@@ -1909,20 +1935,20 @@ TEST_CASE("canonical file import rejects unavailable incomplete and rehashed mal
                 ->Mutate(0, 'G');
             hash = sha256(*bytes);
         }
-        std::ofstream output(source, std::ios::binary);
+        std::ofstream output(K_SOURCE, std::ios::binary);
         output.write(reinterpret_cast<const char*>(bytes->data()),
                      static_cast<std::streamsize>(bytes->size()));
         REQUIRE(output);
     }
-    const auto before = store->acquire_snapshot();
-    const auto files = tree_identity(temporary.path, {root / "writer.lock"});
-    const auto rejected = store->import_pose_asset(source, hash, {777});
-    REQUIRE(!rejected);
-    CHECK(rejected.error().code == expected);
-    CHECK(store->acquire_snapshot() == before);
-    CHECK(tree_identity(temporary.path, {root / "writer.lock"}) == files);
-    REQUIRE(store->import_pose_asset(original, {777}));
+    const auto K_BEFORE = store->acquire_snapshot();
+    const auto K_FILES = tree_identity(temporary.m_path, {K_ROOT / "writer.lock"});
+    const auto K_REJECTED = store->import_pose_asset(K_SOURCE, hash, {777});
+    REQUIRE(!K_REJECTED);
+    CHECK(K_REJECTED.error().m_code == expected);
+    CHECK(store->acquire_snapshot() == K_BEFORE);
+    CHECK(tree_identity(temporary.m_path, {K_ROOT / "writer.lock"}) == K_FILES);
+    REQUIRE(store->import_pose_asset(K_ORIGINAL, {777}));
     store.reset();
-    auto restored = open(root);
-    REQUIRE(restored->import_pose_asset(original, {777}));
+    auto restored = open(K_ROOT);
+    REQUIRE(restored->import_pose_asset(K_ORIGINAL, {777}));
 }

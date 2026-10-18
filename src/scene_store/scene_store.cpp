@@ -1,200 +1,214 @@
 #include "world_explorer/scene_store/scene_store.hpp"
+
 #include <bit>
 #include <limits>
 #include <set>
 
 namespace world_explorer {
 namespace {
+
 // Canonical scalar hashing intentionally excludes object padding and ownership
 // addresses; a replay of independently decoded identical assets is the same op.
-std::uint64_t fingerprint(const scene_transaction& transaction) {
+std::uint64_t fingerprint(const SceneTransaction& transaction) {
     std::uint64_t hash = 14695981039346656037ULL;
-    const auto add = [&](std::uint64_t value) {
-        for (int i = 0; i < 8; ++i) {
+    const auto K_ADD = [&](std::uint64_t value) {
+        for (int i { 0 }; i < 8; ++i) {
             hash ^= value & 255U;
             hash *= 1099511628211ULL;
             value >>= 8U;
         }
     };
-    const auto transform = [&](const similarity_transform& value) {
-        for (double scalar :
-             {value.rotation.w, value.rotation.x, value.rotation.y, value.rotation.z,
-              value.translation.x, value.translation.y, value.translation.z, value.scale})
-            add(std::bit_cast<std::uint64_t>(scalar));
+    const auto K_TRANSFORM = [&](const SimilarityTransform& value) {
+        for (double scalar : {value.m_rotation.m_w,
+                              value.m_rotation.m_x,
+                              value.m_rotation.m_y,
+                              value.m_rotation.m_z,
+                              value.m_translation.m_x,
+                              value.m_translation.m_y,
+                              value.m_translation.m_z,
+                              value.m_scale})
+            K_ADD(std::bit_cast<std::uint64_t>(scalar));
     };
-    add(transaction.id.value);
-    add(transaction.epoch.value);
-    add(transaction.base_revision.value);
-    add(transaction.new_revision.value);
-    for (const auto& change : transaction.changes) {
-        add(static_cast<std::uint64_t>(change.kind));
-        add(change.id.value);
-        add(change.pose_revision.value);
-        transform(change.world_from_chunk);
-        if (change.chunk) {
-            const auto& chunk = *change.chunk;
-            add(chunk.id.value);
-            add(chunk.generation);
-            add(chunk.pose_revision.value);
-            add(chunk.geometry_valid);
-            transform(chunk.world_from_chunk);
-            for (double value :
-                 {chunk.bounds.minimum.x, chunk.bounds.minimum.y, chunk.bounds.minimum.z,
-                  chunk.bounds.maximum.x, chunk.bounds.maximum.y, chunk.bounds.maximum.z})
-                add(std::bit_cast<std::uint64_t>(value));
-            add(chunk.splats.size());
-            for (const auto& splat : chunk.splats) {
-                for (float value : splat.mean)
-                    add(std::bit_cast<std::uint32_t>(value));
-                for (float value : splat.scale)
-                    add(std::bit_cast<std::uint32_t>(value));
-                for (float value : splat.rotation)
-                    add(std::bit_cast<std::uint32_t>(value));
-                add(std::bit_cast<std::uint32_t>(splat.opacity));
-                add(splat.sh_degree);
-                for (float value : splat.sh)
-                    add(std::bit_cast<std::uint32_t>(value));
+    K_ADD(transaction.m_id.m_value);
+    K_ADD(transaction.m_epoch.m_value);
+    K_ADD(transaction.m_base_revision.m_value);
+    K_ADD(transaction.m_new_revision.m_value);
+    for (const auto& change : transaction.m_changes) {
+        K_ADD(static_cast<std::uint64_t>(change.m_kind));
+        K_ADD(change.m_id.m_value);
+        K_ADD(change.m_pose_revision.m_value);
+        K_TRANSFORM(change.m_world_from_chunk);
+        if (change.m_chunk) {
+            const auto& chunk = *change.m_chunk;
+            K_ADD(chunk.m_id.m_value);
+            K_ADD(chunk.m_generation);
+            K_ADD(chunk.m_pose_revision.m_value);
+            K_ADD(chunk.m_geometry_valid);
+            K_TRANSFORM(chunk.m_world_from_chunk);
+            for (double value : {chunk.m_bounds.m_minimum.m_x,
+                                 chunk.m_bounds.m_minimum.m_y,
+                                 chunk.m_bounds.m_minimum.m_z,
+                                 chunk.m_bounds.m_maximum.m_x,
+                                 chunk.m_bounds.m_maximum.m_y,
+                                 chunk.m_bounds.m_maximum.m_z})
+                K_ADD(std::bit_cast<std::uint64_t>(value));
+            K_ADD(chunk.m_splats.size());
+            for (const auto& splat : chunk.m_splats) {
+                for (float value : splat.m_mean) K_ADD(std::bit_cast<std::uint32_t>(value));
+                for (float value : splat.m_scale) K_ADD(std::bit_cast<std::uint32_t>(value));
+                for (float value : splat.m_rotation) K_ADD(std::bit_cast<std::uint32_t>(value));
+                K_ADD(std::bit_cast<std::uint32_t>(splat.m_opacity));
+                K_ADD(splat.m_sh_degree);
+                for (float value : splat.m_sh) K_ADD(std::bit_cast<std::uint32_t>(value));
             }
-            for (auto frame : chunk.source_frames)
-                add(frame.value);
+            for (auto frame : chunk.m_source_frames) K_ADD(frame.m_value);
         }
     }
     return hash;
 }
-} // namespace
-scene_store::scene_store(scene_id id, scene_store_limits limits) : limits_(limits) {
-    auto initial = std::make_shared<scene_state>();
-    initial->id = id;
-    current_ = std::move(initial);
+
+}  // namespace
+
+SceneStore::SceneStore(SceneId id, SceneStoreLimits limits) : m_limits(limits) {
+    auto initial = std::make_shared<SceneState>();
+    initial->m_id = id;
+    m_current = std::move(initial);
 }
-scene_snapshot scene_store::acquire_snapshot() const {
-    std::lock_guard lock(mutex_);
-    return current_;
+
+SceneSnapshot SceneStore::acquire_snapshot() const {
+    std::lock_guard lock(m_mutex);
+    return m_current;
 }
-result<scene_revision_id> scene_store::commit(const scene_transaction& transaction) {
-    std::lock_guard lock(mutex_);
-    if (transaction.id != current_->id || transaction.operation.value == 0)
-        return fail(error_code::INVALID_ARGUMENT, "wrong scene or missing operation ID");
-    if (transaction.changes.size() > limits_.scene.max_chunks)
-        return fail(error_code::RESOURCE_EXHAUSTED, "transaction exceeds operation budget");
-    for (const auto& change : transaction.changes) {
-        if (change.kind > scene_operation_kind::TRANSFORM)
-            return fail(error_code::INVALID_DATA, "unsupported scene operation kind");
-        if (change.chunk) {
-            auto checked = validate_chunk(*change.chunk, limits_.scene);
-            if (!checked)
-                return std::unexpected(checked.error());
+
+Result<SceneRevisionId> SceneStore::commit(const SceneTransaction& transaction) {
+    std::lock_guard lock(m_mutex);
+    if (transaction.m_id != m_current->m_id || transaction.m_operation.m_value == 0)
+        return fail(ErrorCode::INVALID_ARGUMENT, "wrong scene or missing operation ID");
+    if (transaction.m_changes.size() > m_limits.m_scene.m_max_chunks)
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "transaction exceeds operation budget");
+    for (const auto& change : transaction.m_changes) {
+        if (change.m_kind > SceneOperationKind::TRANSFORM)
+            return fail(ErrorCode::INVALID_DATA, "unsupported scene operation kind");
+        if (change.m_chunk) {
+            auto checked = validate_chunk(*change.m_chunk, m_limits.m_scene);
+            if (!checked) return std::unexpected(checked.error());
         }
     }
-    const auto digest = fingerprint(transaction);
-    for (const auto& prior : operations_)
-        if (prior.operation == transaction.operation) {
-            if (prior.epoch == transaction.epoch && prior.base == transaction.base_revision &&
-                prior.new_revision == transaction.new_revision && prior.fingerprint == digest)
-                return prior.new_revision;
-            return fail(error_code::DUPLICATE_OPERATION,
+    const auto K_DIGEST = fingerprint(transaction);
+    for (const auto& prior : m_operations)
+        if (prior.m_operation == transaction.m_operation) {
+            if (prior.m_epoch == transaction.m_epoch &&
+                prior.m_base == transaction.m_base_revision &&
+                prior.m_new_revision == transaction.m_new_revision &&
+                prior.m_fingerprint == K_DIGEST)
+                return prior.m_new_revision;
+            return fail(ErrorCode::DUPLICATE_OPERATION,
                         "operation ID was already used with different content");
         }
-    if (transaction.epoch != current_->epoch)
-        return fail(error_code::WRONG_EPOCH, "epoch mismatch; request full snapshot");
-    if (transaction.base_revision != current_->revision)
-        return fail(error_code::WRONG_BASE, "revision mismatch; request replay or snapshot");
-    if (transaction.base_revision.value == std::numeric_limits<std::uint64_t>::max() ||
-        transaction.new_revision.value != transaction.base_revision.value + 1)
-        return fail(error_code::INVALID_ARGUMENT, "transaction must advance exactly one revision");
-    auto next = std::make_shared<scene_state>(*current_);
-    std::set<chunk_id> changed;
-    for (const auto& change : transaction.changes) {
-        if (!changed.insert(change.id).second)
-            return fail(error_code::INVALID_DATA, "multiple changes for one chunk in transaction");
-        auto existing = next->chunks.find(change.id);
-        const bool exists = existing != next->chunks.end();
-        if (change.kind == scene_operation_kind::CREATE ||
-            change.kind == scene_operation_kind::REPLACE) {
-            if (!change.chunk || change.chunk->id != change.id)
-                return fail(error_code::INVALID_DATA, "replacement chunk identity mismatch");
-            if ((change.kind == scene_operation_kind::CREATE && exists) ||
-                (change.kind == scene_operation_kind::REPLACE && !exists))
-                return fail(error_code::INVALID_DATA,
+    if (transaction.m_epoch != m_current->m_epoch)
+        return fail(ErrorCode::WRONG_EPOCH, "epoch mismatch; request full snapshot");
+    if (transaction.m_base_revision != m_current->m_revision)
+        return fail(ErrorCode::WRONG_BASE, "revision mismatch; request replay or snapshot");
+    if (transaction.m_base_revision.m_value == std::numeric_limits<std::uint64_t>::max() ||
+        transaction.m_new_revision.m_value != transaction.m_base_revision.m_value + 1)
+        return fail(ErrorCode::INVALID_ARGUMENT, "transaction must advance exactly one revision");
+    auto next = std::make_shared<SceneState>(*m_current);
+    std::set<ChunkId> changed;
+    for (const auto& change : transaction.m_changes) {
+        if (!changed.insert(change.m_id).second)
+            return fail(ErrorCode::INVALID_DATA, "multiple changes for one chunk in transaction");
+        auto existing = next->m_chunks.find(change.m_id);
+        const bool K_EXISTS = existing != next->m_chunks.end();
+        if (change.m_kind == SceneOperationKind::CREATE ||
+            change.m_kind == SceneOperationKind::REPLACE) {
+            if (!change.m_chunk || change.m_chunk->m_id != change.m_id)
+                return fail(ErrorCode::INVALID_DATA, "replacement chunk identity mismatch");
+            if ((change.m_kind == SceneOperationKind::CREATE && K_EXISTS) ||
+                (change.m_kind == SceneOperationKind::REPLACE && !K_EXISTS))
+                return fail(ErrorCode::INVALID_DATA,
                             "create/replace existence precondition failed");
-            if (exists && change.chunk->generation <= existing->second->generation)
-                return fail(error_code::INVALID_DATA, "replacement must advance chunk generation");
+            if (K_EXISTS && change.m_chunk->m_generation <= existing->second->m_generation)
+                return fail(ErrorCode::INVALID_DATA, "replacement must advance chunk generation");
             // Copy the caller's object: a const shared_ptr alone does not prevent
             // mutation through another non-const alias retained by its producer.
-            next->chunks[change.id] = std::make_shared<const scene_chunk>(*change.chunk);
+            next->m_chunks[change.m_id] = std::make_shared<const SceneChunk>(*change.m_chunk);
         } else {
-            if (!exists)
-                return fail(error_code::NOT_FOUND, "changed chunk does not exist");
-            if (change.kind == scene_operation_kind::ERASE)
-                next->chunks.erase(existing);
+            if (!K_EXISTS) return fail(ErrorCode::NOT_FOUND, "changed chunk does not exist");
+            if (change.m_kind == SceneOperationKind::ERASE) next->m_chunks.erase(existing);
             else {
-                auto replacement = std::make_shared<scene_chunk>(*existing->second);
-                if (replacement->generation == std::numeric_limits<std::uint64_t>::max())
-                    return fail(error_code::RESOURCE_EXHAUSTED, "generation exhausted");
-                ++replacement->generation;
-                replacement->geometry_valid = false;
-                replacement->pose_revision = change.pose_revision;
-                if (change.kind == scene_operation_kind::TRANSFORM)
-                    replacement->world_from_chunk = change.world_from_chunk;
-                next->chunks[change.id] = std::move(replacement);
+                auto replacement = std::make_shared<SceneChunk>(*existing->second);
+                if (replacement->m_generation == std::numeric_limits<std::uint64_t>::max())
+                    return fail(ErrorCode::RESOURCE_EXHAUSTED, "generation exhausted");
+                ++replacement->m_generation;
+                replacement->m_geometry_valid = false;
+                replacement->m_pose_revision = change.m_pose_revision;
+                if (change.m_kind == SceneOperationKind::TRANSFORM)
+                    replacement->m_world_from_chunk = change.m_world_from_chunk;
+                next->m_chunks[change.m_id] = std::move(replacement);
             }
         }
     }
-    next->revision = transaction.new_revision;
-    auto checked = validate_scene(*next, limits_.scene);
-    if (!checked)
-        return std::unexpected(checked.error());
+    next->m_revision = transaction.m_new_revision;
+    auto checked = validate_scene(*next, m_limits.m_scene);
+    if (!checked) return std::unexpected(checked.error());
     // Prepare bounded records before publication, so allocation failure cannot
     // expose a revision without its replay/idempotency record.
-    operations_.push_back({transaction.operation, transaction.base_revision,
-                           transaction.new_revision, transaction.epoch, digest});
+    m_operations.push_back({transaction.m_operation,
+                            transaction.m_base_revision,
+                            transaction.m_new_revision,
+                            transaction.m_epoch,
+                            K_DIGEST});
     try {
-        journal_.push_back(transaction.base_revision);
+        m_journal.push_back(transaction.m_base_revision);
     } catch (...) {
-        operations_.pop_back();
+        m_operations.pop_back();
         throw;
     }
-    current_ = std::move(next);
-    while (operations_.size() > limits_.remembered_operations)
-        operations_.pop_front();
-    while (journal_.size() > limits_.journal_entries)
-        journal_.pop_front();
-    return transaction.new_revision;
+    m_current = std::move(next);
+    while (m_operations.size() > m_limits.m_remembered_operations) m_operations.pop_front();
+    while (m_journal.size() > m_limits.m_journal_entries) m_journal.pop_front();
+    return transaction.m_new_revision;
 }
-result<scene_delta_batch> scene_store::changes_since(scene_revision_id revision,
-                                                     byte_budget budget) const {
-    std::lock_guard lock(mutex_);
-    if (revision.value > current_->revision.value ||
-        (revision != current_->revision &&
-         (journal_.empty() || revision.value < journal_.front().value)))
-        return fail(error_code::RESYNC_REQUIRED, "revision outside retained replay window");
-    auto bytes = validate_scene(*current_, limits_.scene);
-    if (!bytes)
-        return std::unexpected(bytes.error());
-    if (*bytes > budget.bytes)
-        return fail(error_code::WOULD_BLOCK, "snapshot exceeds replay byte budget");
-    const auto operation = operations_.empty() ? operation_id{current_->revision.value + 1}
-                                               : operations_.back().operation;
-    return scene_delta_batch{current_->id, current_->epoch, revision, current_->revision,
-                             operation,    current_,        false,    *bytes};
+
+Result<SceneDeltaBatch> SceneStore::changes_since(SceneRevisionId revision,
+                                                  ByteBudget budget) const {
+    std::lock_guard lock(m_mutex);
+    if (revision.m_value > m_current->m_revision.m_value ||
+        (revision != m_current->m_revision &&
+         (m_journal.empty() || revision.m_value < m_journal.front().m_value)))
+        return fail(ErrorCode::RESYNC_REQUIRED, "revision outside retained replay window");
+    auto bytes = validate_scene(*m_current, m_limits.m_scene);
+    if (!bytes) return std::unexpected(bytes.error());
+    if (*bytes > budget.m_bytes)
+        return fail(ErrorCode::WOULD_BLOCK, "snapshot exceeds replay byte budget");
+    const auto K_OPERATION = m_operations.empty() ? OperationId { m_current->m_revision.m_value + 1 }
+                                                  : m_operations.back().m_operation;
+    return SceneDeltaBatch {m_current->m_id,
+                            m_current->m_epoch,
+                            revision,
+                            m_current->m_revision,
+                            K_OPERATION,
+                            m_current,
+                            false,
+                            *bytes};
 }
-result<void> scene_store::reset(const scene_snapshot& snapshot) {
-    if (!snapshot)
-        return fail(error_code::INVALID_ARGUMENT, "missing reset snapshot");
-    auto checked = validate_scene(*snapshot, limits_.scene);
-    if (!checked)
-        return std::unexpected(checked.error());
-    auto owned = std::make_shared<scene_state>(*snapshot);
-    for (auto& [id, chunk] : owned->chunks) {
-        (void)id;
-        chunk = std::make_shared<const scene_chunk>(*chunk);
+
+Result<void> SceneStore::reset(const SceneSnapshot& snapshot) {
+    if (!snapshot) return fail(ErrorCode::INVALID_ARGUMENT, "missing reset snapshot");
+    auto checked = validate_scene(*snapshot, m_limits.m_scene);
+    if (!checked) return std::unexpected(checked.error());
+    auto owned = std::make_shared<SceneState>(*snapshot);
+    for (auto& [K_ID, chunk] : owned->m_chunks) {
+        (void)K_ID;
+        chunk = std::make_shared<const SceneChunk>(*chunk);
     }
-    std::lock_guard lock(mutex_);
-    if (owned->id != current_->id || owned->epoch.value <= current_->epoch.value)
-        return fail(error_code::WRONG_EPOCH, "reset requires same scene and a newer world epoch");
-    current_ = std::move(owned);
-    operations_.clear();
-    journal_.clear();
+    std::lock_guard lock(m_mutex);
+    if (owned->m_id != m_current->m_id || owned->m_epoch.m_value <= m_current->m_epoch.m_value)
+        return fail(ErrorCode::WRONG_EPOCH, "reset requires same scene and a newer world epoch");
+    m_current = std::move(owned);
+    m_operations.clear();
+    m_journal.clear();
     return {};
 }
-} // namespace world_explorer
+
+}  // namespace world_explorer

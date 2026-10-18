@@ -2,12 +2,14 @@
 #include "events_generated.h"
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
+
 #include <chrono>
 #include <fstream>
-#include <nlohmann/json.hpp>
 #include <optional>
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
 #ifdef __linux__
 #include <csignal>
 #endif
@@ -15,117 +17,172 @@
 #include <unistd.h>
 #endif
 using namespace world_explorer;
+
 namespace {
-constexpr std::string_view SESSION =
-    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+constexpr std::string_view K_SESSION {
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
+
 std::vector<std::byte> handshake_frame(std::uint16_t major = 2,
                                        std::string_view backend = "diagnostic") {
     flatbuffers::FlatBufferBuilder builder;
-    const auto name = builder.CreateString(backend);
-    const auto version = builder.CreateString("test-1");
-    const auto sensors = builder.CreateVector(std::vector{builder.CreateString("video")});
-    const auto devices = builder.CreateVector(std::vector{builder.CreateString("cpu")});
-    const auto checkpoint = builder.CreateString("completed stages");
-    const auto rights = builder.CreateString("local diagnostic data");
-    const auto body = wire::Createhandshake(builder, name, version, sensors, true, false, devices,
-                                            checkpoint, rights, WORKER_MESSAGE_LIMIT, 120,
-                                            16ULL * 1024 * 1024 * 1024, 32ULL * 1024 * 1024 * 1024);
-    wire::FinishSizePrefixedenvelopeBuffer(
-        builder, wire::Createenvelope(builder, major, 0, 0, wire::payload::handshake, body.Union(),
-                                      builder.CreateString(SESSION), 0));
-    const auto bytes = std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
-    return {bytes.begin(), bytes.end()};
+    const auto K_NAME = builder.CreateString(backend);
+    const auto K_VERSION = builder.CreateString("test-1");
+    const auto K_SENSORS = builder.CreateVector(std::vector { builder.CreateString("video") });
+    const auto K_DEVICES = builder.CreateVector(std::vector { builder.CreateString("cpu") });
+    const auto K_CHECKPOINT = builder.CreateString("completed stages");
+    const auto K_RIGHTS = builder.CreateString("local diagnostic data");
+    const auto K_BODY = wire::Createhandshake(builder,
+                                              K_NAME,
+                                              K_VERSION,
+                                              K_SENSORS,
+                                              true,
+                                              false,
+                                              K_DEVICES,
+                                              K_CHECKPOINT,
+                                              K_RIGHTS,
+                                              K_WORKER_MESSAGE_LIMIT,
+                                              120,
+                                              16ULL * 1024 * 1024 * 1024,
+                                              32ULL * 1024 * 1024 * 1024);
+    wire::FinishSizePrefixedenvelopeBuffer(builder,
+                                           wire::Createenvelope(builder,
+                                                                major,
+                                                                0,
+                                                                0,
+                                                                wire::payload::handshake,
+                                                                K_BODY.Union(),
+                                                                builder.CreateString(K_SESSION),
+                                                                0));
+    const auto K_BYTES = std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
+    return { K_BYTES.begin(), K_BYTES.end() };
 }
+
 std::vector<std::byte> completion_frame(std::uint64_t sequence = 2) {
     flatbuffers::FlatBufferBuilder builder;
-    const auto body = wire::Createcompleted(builder, builder.CreateString("capabilities"));
-    wire::FinishSizePrefixedenvelopeBuffer(
-        builder, wire::Createenvelope(builder, 2, 0, sequence, wire::payload::completed,
-                                      body.Union(), builder.CreateString(SESSION), 1));
-    const auto bytes = std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
-    return {bytes.begin(), bytes.end()};
+    const auto K_BODY = wire::Createcompleted(builder, builder.CreateString("capabilities"));
+    wire::FinishSizePrefixedenvelopeBuffer(builder,
+                                           wire::Createenvelope(builder,
+                                                                2,
+                                                                0,
+                                                                sequence,
+                                                                wire::payload::completed,
+                                                                K_BODY.Union(),
+                                                                builder.CreateString(K_SESSION),
+                                                                1));
+    const auto K_BYTES = std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
+    return { K_BYTES.begin(), K_BYTES.end() };
 }
+
 std::vector<std::byte> acknowledgement_frame(std::uint64_t sequence = 1,
                                              wire::command_kind kind = wire::command_kind::START) {
     flatbuffers::FlatBufferBuilder builder;
-    const bool cancel = kind == wire::command_kind::CANCEL;
-    const auto body =
-        wire::Createcommand_acknowledged(builder, cancel ? 1 : 0, cancel ? 2 : 1, kind);
-    wire::FinishSizePrefixedenvelopeBuffer(
-        builder, wire::Createenvelope(builder, 2, 0, sequence, wire::payload::command_acknowledged,
-                                      body.Union(), builder.CreateString(SESSION), 1));
-    const auto bytes = std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
-    return {bytes.begin(), bytes.end()};
+    const bool K_CANCEL = kind == wire::command_kind::CANCEL;
+    const auto K_BODY =
+        wire::Createcommand_acknowledged(builder, K_CANCEL ? 1 : 0, K_CANCEL ? 2 : 1, kind);
+    wire::FinishSizePrefixedenvelopeBuffer(builder,
+                                           wire::Createenvelope(builder,
+                                                                2,
+                                                                0,
+                                                                sequence,
+                                                                wire::payload::command_acknowledged,
+                                                                K_BODY.Union(),
+                                                                builder.CreateString(K_SESSION),
+                                                                1));
+    const auto K_BYTES = std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
+    return { K_BYTES.begin(), K_BYTES.end() };
 }
-struct temporary_worker {
-    std::filesystem::path directory =
+
+struct TemporaryWorker {
+    std::filesystem::path m_directory =
         std::filesystem::temp_directory_path() /
         ("we_wire_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
-    temporary_worker() { std::filesystem::create_directories(directory); }
-    ~temporary_worker() {
+
+    TemporaryWorker() { std::filesystem::create_directories(m_directory); }
+
+    ~TemporaryWorker() {
         std::error_code ignored;
-        std::filesystem::remove_all(directory, ignored);
+        std::filesystem::remove_all(m_directory, ignored);
     }
 };
-} // namespace
+
+}  // namespace
+
 TEST_CASE(
     "worker wire verifies fragmented frames and enforces handshake sequence and terminal state") {
-    worker_stream_decoder decoder{std::string(SESSION)};
-    const auto handshake = handshake_frame();
-    std::size_t events{};
-    const auto received = [&](const worker_event& event) {
+    WorkerStreamDecoder decoder { std::string(K_SESSION) };
+    const auto K_HANDSHAKE = handshake_frame();
+    std::size_t events {};
+    const auto K_RECEIVED = [&](const WorkerEvent& event) {
         ++events;
-        if (const auto* capabilities = std::get_if<worker_handshake>(&event)) {
-            CHECK(capabilities->backend == "diagnostic");
-            CHECK(capabilities->batch);
-            CHECK_FALSE(capabilities->streaming_tracking);
+        if (const auto* capabilities = std::get_if<WorkerHandshake>(&event)) {
+            CHECK(capabilities->m_backend == "diagnostic");
+            CHECK(capabilities->m_batch);
+            CHECK_FALSE(capabilities->m_streaming_tracking);
         }
     };
-    for (const auto& byte : handshake)
-        REQUIRE(decoder.feed(std::span(&byte, 1), received));
+    for (const auto& byte : K_HANDSHAKE) REQUIRE(decoder.feed(std::span(&byte, 1), K_RECEIVED));
     CHECK(events == 1);
     CHECK_FALSE(decoder.finish(0));
     decoder.expect_start();
-    REQUIRE(decoder.feed(acknowledgement_frame(), received));
+    REQUIRE(decoder.feed(acknowledgement_frame(), K_RECEIVED));
     CHECK(events == 2);
     SECTION("successful terminal") {
-        REQUIRE(decoder.feed(completion_frame(), received));
+        REQUIRE(decoder.feed(completion_frame(), K_RECEIVED));
         CHECK(events == 3);
         REQUIRE(decoder.finish(0));
         CHECK_FALSE(decoder.finish(7));
-        CHECK_FALSE(decoder.feed(handshake, received));
+        CHECK_FALSE(decoder.feed(K_HANDSHAKE, K_RECEIVED));
     }
-    SECTION("duplicate handshake") { CHECK_FALSE(decoder.feed(handshake, received)); }
-    SECTION("sequence gap") { CHECK_FALSE(decoder.feed(completion_frame(3), received)); }
+    SECTION("duplicate handshake") {
+        CHECK_FALSE(decoder.feed(K_HANDSHAKE, K_RECEIVED));
+    }
+    SECTION("sequence gap") {
+        CHECK_FALSE(decoder.feed(completion_frame(3), K_RECEIVED));
+    }
     SECTION("truncated terminal") {
         auto completion = completion_frame();
         completion.pop_back();
-        REQUIRE(decoder.feed(completion, received));
+        REQUIRE(decoder.feed(completion, K_RECEIVED));
         CHECK_FALSE(decoder.finish(0));
     }
 }
+
 TEST_CASE("worker wire rejects untrusted lengths offsets versions and UTF-8 without publication") {
-    worker_stream_decoder decoder{std::string(SESSION)};
+    WorkerStreamDecoder decoder { std::string(K_SESSION) };
     auto bytes = handshake_frame();
-    SECTION("over budget length") { std::fill_n(bytes.begin(), 4, std::byte{0xff}); }
-    SECTION("invalid root offset") { std::fill_n(bytes.begin() + 4, 4, std::byte{0xff}); }
-    SECTION("wrong identifier") { bytes[8] = std::byte{'X'}; }
-    SECTION("unsupported version") { bytes = handshake_frame(3); }
-    SECTION("invalid UTF-8") { bytes = handshake_frame(2, std::string_view("\xff", 1)); }
-    SECTION("terminal before handshake") { bytes = completion_frame(0); }
-    std::size_t events{};
-    CHECK_FALSE(decoder.feed(bytes, [&](const worker_event&) { ++events; }));
+    SECTION("over budget length") {
+        std::fill_n(bytes.begin(), 4, std::byte { 0xff });
+    }
+    SECTION("invalid root offset") {
+        std::fill_n(bytes.begin() + 4, 4, std::byte { 0xff });
+    }
+    SECTION("wrong identifier") {
+        bytes[8] = std::byte { 'X' };
+    }
+    SECTION("unsupported version") {
+        bytes = handshake_frame(3);
+    }
+    SECTION("invalid UTF-8") {
+        bytes = handshake_frame(2, std::string_view("\xff", 1));
+    }
+    SECTION("terminal before handshake") {
+        bytes = completion_frame(0);
+    }
+    std::size_t events {};
+    CHECK_FALSE(decoder.feed(bytes, [&](const WorkerEvent&) { ++events; }));
     CHECK(events == 0);
     CHECK_FALSE(decoder.finish(0));
     CHECK_FALSE(decoder.feed(handshake_frame(), {}));
 }
+
 TEST_CASE("native framed worker separates diagnostics and verifies completion manifests") {
-    temporary_worker worker;
-    const auto script = worker.directory / "worker with spaces.py";
-    const auto artifact = worker.directory / "manifest.json";
-    const auto mode = GENERATE("valid", "truncated", "corrupt", "corrupt_hang", "silent", "failure",
-                               "missing", "changed");
-    std::ofstream file(script);
+    TemporaryWorker worker;
+    const auto K_SCRIPT = worker.m_directory / "worker with spaces.py";
+    const auto K_ARTIFACT = worker.m_directory / "manifest.json";
+    const auto K_MODE = GENERATE(
+        "valid", "truncated", "corrupt", "corrupt_hang", "silent", "failure", "missing", "changed");
+    std::ofstream file(K_SCRIPT);
     file << "import sys, time\nfrom pathlib import Path\nsys.path.insert(0, "
          << nlohmann::json(WE_TEST_PROTOCOL_MODULE).dump()
          << ")\nimport we_protocol as p\n"
@@ -152,63 +209,64 @@ TEST_CASE("native framed worker separates diagnostics and verifies completion ma
             "p.WRITER.stream=mutating_stream()\np.completed('test',path)\n";
     file.close();
     std::string log;
-    bool verified_completion{};
-    const auto started = std::chrono::steady_clock::now();
-    const auto result = execute_worker_protocol(
-        WE_TEST_PYTHON, script, {mode, artifact.string()}, {},
+    bool verified_completion {};
+    const auto K_STARTED = std::chrono::steady_clock::now();
+    const auto K_RESULT = execute_worker_protocol(
+        WE_TEST_PYTHON,
+        K_SCRIPT,
+        {K_MODE, K_ARTIFACT.string()},
+        {},
         [&](const std::string& text) { log += text; },
-        [&](const worker_event& event) {
-            if (std::holds_alternative<worker_completed>(event))
-                verified_completion = true;
+        [&](const WorkerEvent& event) {
+            if (std::holds_alternative<WorkerCompleted>(event)) verified_completion = true;
         });
     INFO(log);
-    CHECK(std::chrono::steady_clock::now() - started < std::chrono::seconds(4));
+    CHECK(std::chrono::steady_clock::now() - K_STARTED < std::chrono::seconds(4));
     REQUIRE(log.find("stderr diagnostic survives") != std::string::npos);
-    CHECK(verified_completion == (std::string_view(mode) == "valid"));
-    if (std::string_view(mode) == "valid") {
-        REQUIRE(result);
-        CHECK(*result == 0);
-    } else if (std::string_view(mode) == "failure") {
-        REQUIRE(result);
-        CHECK(*result == 2);
+    CHECK(verified_completion == (std::string_view(K_MODE) == "valid"));
+    if (std::string_view(K_MODE) == "valid") {
+        REQUIRE(K_RESULT);
+        CHECK(*K_RESULT == 0);
+    } else if (std::string_view(K_MODE) == "failure") {
+        REQUIRE(K_RESULT);
+        CHECK(*K_RESULT == 2);
         CHECK(log.find("explicit failure") != std::string::npos);
-    } else
-        CHECK_FALSE(result);
+    } else CHECK_FALSE(K_RESULT);
 }
 
 TEST_CASE("worker START and CANCEL encoding enforce bounded structured arguments") {
-    const auto started = encode_worker_start(std::string(SESSION),
-                                             {"run", "--request", "path with $ ; spaces.json"});
-    REQUIRE(started);
-    flatbuffers::Verifier verifier(reinterpret_cast<const std::uint8_t*>(started->data()),
-                                   started->size());
+    const auto K_STARTED = encode_worker_start(std::string(K_SESSION),
+                                               {"run", "--request", "path with $ ; spaces.json"});
+    REQUIRE(K_STARTED);
+    flatbuffers::Verifier verifier(reinterpret_cast<const std::uint8_t*>(K_STARTED->data()),
+                                   K_STARTED->size());
     REQUIRE(control::VerifySizePrefixedcommand_envelopeBuffer(verifier));
-    const auto* root = control::GetSizePrefixedcommand_envelope(started->data());
+    const auto* root = control::GetSizePrefixedcommand_envelope(K_STARTED->data());
     CHECK(root->operation() == 1);
     CHECK(root->sequence() == 0);
     CHECK(root->body_as_start_command()->arguments()->Get(2)->str() == "path with $ ; spaces.json");
-    const auto cancelled = encode_worker_cancel(std::string(SESSION));
-    REQUIRE(cancelled);
-    const auto* cancel = control::GetSizePrefixedcommand_envelope(cancelled->data());
+    const auto K_CANCELLED = encode_worker_cancel(std::string(K_SESSION));
+    REQUIRE(K_CANCELLED);
+    const auto* cancel = control::GetSizePrefixedcommand_envelope(K_CANCELLED->data());
     CHECK(cancel->operation() == 2);
     CHECK(cancel->body_as_cancel_command()->target_operation() == 1);
     CHECK_FALSE(encode_worker_start("wrong", {"run"}));
-    CHECK_FALSE(encode_worker_start(std::string(SESSION), {}));
-    CHECK_FALSE(encode_worker_start(std::string(SESSION), {std::string("NUL\0tail", 8)}));
-    CHECK_FALSE(encode_worker_start(std::string(SESSION), {std::string(1, '\xff')}));
-    CHECK_FALSE(encode_worker_start(std::string(SESSION), {std::string(4097, 'x')}));
-    CHECK_FALSE(encode_worker_start(std::string(SESSION), std::vector<std::string>(65, "x")));
-    CHECK_FALSE(encode_worker_start(std::string(SESSION),
+    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), {}));
+    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), {std::string("NUL\0tail", 8)}));
+    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), {std::string(1, '\xff')}));
+    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), {std::string(4097, 'x')}));
+    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), std::vector<std::string>(65, "x")));
+    CHECK_FALSE(encode_worker_start(std::string(K_SESSION),
                                     std::vector<std::string>(9, std::string(4096, 'x'))));
 }
 
 TEST_CASE("worker completion observers require actual regular-file size and checksum validation",
           "[worker_validation][worker_manifest]") {
-    temporary_worker worker;
-    const auto script = worker.directory / "synthetic-manifest.py";
-    const auto artifact = worker.directory / "manifest.json";
-    const auto mode = GENERATE("valid", "missing", "directory", "size", "hash", "growing");
-    std::ofstream file(script);
+    TemporaryWorker worker;
+    const auto K_SCRIPT = worker.m_directory / "synthetic-manifest.py";
+    const auto K_ARTIFACT = worker.m_directory / "manifest.json";
+    const auto K_MODE = GENERATE("valid", "missing", "directory", "size", "hash", "growing");
+    std::ofstream file(K_SCRIPT);
     file
         << "import sys, hashlib\nfrom pathlib import Path\nsys.path.insert(0, "
         << nlohmann::json(WE_TEST_PROTOCOL_MODULE).dump()
@@ -230,49 +288,52 @@ TEST_CASE("worker completion observers require actual regular-file size and chec
            "'Artifact':reference})\nwriter.write(builder,'completed',body)\n";
     file.close();
     std::string log;
-    std::size_t completions{};
-    const auto result = execute_worker_protocol(
-        WE_TEST_PYTHON, script, {mode, artifact.string()}, {},
+    std::size_t completions {};
+    const auto K_RESULT = execute_worker_protocol(
+        WE_TEST_PYTHON,
+        K_SCRIPT,
+        {K_MODE, K_ARTIFACT.string()},
+        {},
         [&](const std::string& message) { log += message; },
-        [&](const worker_event& event) {
-            completions += std::holds_alternative<worker_completed>(event) ? 1U : 0U;
+        [&](const WorkerEvent& event) {
+            completions += std::holds_alternative<WorkerCompleted>(event) ? 1U : 0U;
         });
     INFO(log);
-    if (std::string_view(mode) == "valid") {
-        REQUIRE(result);
-        CHECK(*result == 0);
+    if (std::string_view(K_MODE) == "valid") {
+        REQUIRE(K_RESULT);
+        CHECK(*K_RESULT == 0);
         CHECK(completions == 1);
     } else {
-        REQUIRE(!result);
-        CHECK(result.error().code == error_code::INVALID_DATA);
+        REQUIRE(!K_RESULT);
+        CHECK(K_RESULT.error().m_code == ErrorCode::INVALID_DATA);
         CHECK(completions == 0);
-        const bool invalid_file =
-            std::string_view(mode) == "missing" || std::string_view(mode) == "directory";
-        CHECK(result.error().message ==
-              (invalid_file ? "Worker completion manifest must be a regular file"
-                            : "Worker completion manifest checksum/size mismatch"));
+        const bool K_INVALID_FILE =
+            std::string_view(K_MODE) == "missing" || std::string_view(K_MODE) == "directory";
+        CHECK(K_RESULT.error().m_message ==
+              (K_INVALID_FILE ? "Worker completion manifest must be a regular file"
+                              : "Worker completion manifest checksum/size mismatch"));
     }
     CHECK(log.find("Worker accepted START.") != std::string::npos);
 }
 
 TEST_CASE("worker invocation rejects invalid START before launching a process",
           "[worker_validation]") {
-    temporary_worker worker;
-    const auto result = execute_worker_protocol(
-        WE_TEST_PYTHON, worker.directory / "never-created.py", {""}, {}, {});
-    REQUIRE(!result);
-    CHECK(result.error().code == error_code::INVALID_ARGUMENT);
+    TemporaryWorker worker;
+    const auto K_RESULT = execute_worker_protocol(
+        WE_TEST_PYTHON, worker.m_directory / "never-created.py", {""}, {}, {});
+    REQUIRE(!K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::INVALID_ARGUMENT);
 }
 
 TEST_CASE("worker event sessions and command acknowledgements cannot be spoofed or reordered") {
-    worker_stream_decoder decoder{std::string(SESSION)};
-    const auto start = [&] {
+    WorkerStreamDecoder decoder { std::string(K_SESSION) };
+    const auto K_START = [&] {
         REQUIRE(decoder.feed(handshake_frame(), {}));
         decoder.expect_start();
         REQUIRE(decoder.feed(acknowledgement_frame(), {}));
     };
     SECTION("wrong session") {
-        worker_stream_decoder other{std::string(64, 'b')};
+        WorkerStreamDecoder other { std::string(64, 'b') };
         CHECK_FALSE(other.feed(handshake_frame(), {}));
     }
     SECTION("unsolicited START acknowledgement") {
@@ -284,11 +345,11 @@ TEST_CASE("worker event sessions and command acknowledgements cannot be spoofed 
         CHECK_FALSE(decoder.feed(completion_frame(1), {}));
     }
     SECTION("unsolicited CANCEL acknowledgement") {
-        start();
+        K_START();
         CHECK_FALSE(decoder.feed(acknowledgement_frame(2, wire::command_kind::CANCEL), {}));
     }
     SECTION("acknowledged cancellation and duplicate replies") {
-        start();
+        K_START();
         decoder.expect_cancel();
         REQUIRE(decoder.feed(acknowledgement_frame(2, wire::command_kind::CANCEL), {}));
         REQUIRE(decoder.feed(acknowledgement_frame(3, wire::command_kind::CANCEL), {}));
@@ -298,6 +359,7 @@ TEST_CASE("worker event sessions and command acknowledgements cannot be spoofed 
 }
 
 namespace {
+
 void control_fixture(const std::filesystem::path& script) {
     std::ofstream file(script);
     file << "import sys,time,signal\nfrom pathlib import Path\nsys.path.insert(0, "
@@ -329,161 +391,180 @@ void control_fixture(const std::filesystem::path& script) {
             "optimizer')\n"
             "p.failure('CANCELLED','diagnostic','cooperative stop')\nsys.exit(130)\n";
 }
-} // namespace
+
+}  // namespace
+
 TEST_CASE("Python command verification rejects hostile START before executing an invocation") {
-    temporary_worker worker;
-    const auto script = worker.directory / "control.py";
-    const auto marker = worker.directory / "launches";
-    control_fixture(script);
-    auto start = encode_worker_start(std::string(SESSION), {"wait", marker.string()}).value();
-    const auto mode = GENERATE("length", "identifier", "root", "vtable", "version", "session",
-                               "vector", "nul", "utf8", "cancel_first");
+    TemporaryWorker worker;
+    const auto K_SCRIPT = worker.m_directory / "control.py";
+    const auto K_MARKER = worker.m_directory / "launches";
+    control_fixture(K_SCRIPT);
+    auto start = encode_worker_start(std::string(K_SESSION), {"wait", K_MARKER.string()}).value();
+    const auto K_MODE = GENERATE("length",
+                                 "identifier",
+                                 "root",
+                                 "vtable",
+                                 "version",
+                                 "session",
+                                 "vector",
+                                 "nul",
+                                 "utf8",
+                                 "cancel_first");
     const auto* root = control::GetSizePrefixedcommand_envelope(start.data());
-    if (std::string_view(mode) == "length")
-        std::fill_n(start.begin(), 4, std::byte{0xff});
-    if (std::string_view(mode) == "identifier")
-        start[8] = std::byte{'X'};
-    if (std::string_view(mode) == "root")
-        std::fill_n(start.begin() + 4, 4, std::byte{0xff});
+    if (std::string_view(K_MODE) == "length") std::fill_n(start.begin(), 4, std::byte { 0xff });
+    if (std::string_view(K_MODE) == "identifier") start[8] = std::byte { 'X' };
+    if (std::string_view(K_MODE) == "root") std::fill_n(start.begin() + 4, 4, std::byte { 0xff });
     // Locate pointers only before mutations that make root access invalid.
-    if (std::string_view(mode) == "vtable") {
-        const auto offset = reinterpret_cast<const std::byte*>(root) - start.data();
-        std::fill_n(start.begin() + offset, 4, std::byte{0xff});
+    if (std::string_view(K_MODE) == "vtable") {
+        const auto K_OFFSET = reinterpret_cast<const std::byte*>(root) - start.data();
+        std::fill_n(start.begin() + K_OFFSET, 4, std::byte { 0xff });
     }
-    if (std::string_view(mode) == "version") {
+    if (std::string_view(K_MODE) == "version") {
         flatbuffers::FlatBufferBuilder builder;
-        const auto arg = builder.CreateVector(
-            std::vector{builder.CreateString("wait"), builder.CreateString(marker.string())});
-        const auto body = control::Createstart_command(builder, arg);
+        const auto K_ARG = builder.CreateVector(
+            std::vector { builder.CreateString("wait"), builder.CreateString(K_MARKER.string()) });
+        const auto K_BODY = control::Createstart_command(builder, K_ARG);
         control::FinishSizePrefixedcommand_envelopeBuffer(
             builder,
-            control::Createcommand_envelope(builder, 3, 0, builder.CreateString(SESSION), 0, 1,
-                                            control::command_payload::start_command, body.Union()));
-        const auto bytes = std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
-        start.assign(bytes.begin(), bytes.end());
+            control::Createcommand_envelope(builder,
+                                            3,
+                                            0,
+                                            builder.CreateString(K_SESSION),
+                                            0,
+                                            1,
+                                            control::command_payload::start_command,
+                                            K_BODY.Union()));
+        const auto K_BYTES =
+            std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
+        start.assign(K_BYTES.begin(), K_BYTES.end());
     }
-    if (std::string_view(mode) == "session") {
-        const auto offset =
+    if (std::string_view(K_MODE) == "session") {
+        const auto K_OFFSET =
             reinterpret_cast<const std::byte*>(root->session()->data()) - start.data();
-        start[static_cast<std::size_t>(offset)] = std::byte{'b'};
+        start[static_cast<std::size_t>(K_OFFSET)] = std::byte { 'b' };
     }
-    if (std::string_view(mode) == "vector") {
-        const auto offset =
+    if (std::string_view(K_MODE) == "vector") {
+        const auto K_OFFSET =
             reinterpret_cast<const std::byte*>(root->body_as_start_command()->arguments()) -
             start.data();
-        std::fill_n(start.begin() + offset, 4, std::byte{0xff});
+        std::fill_n(start.begin() + K_OFFSET, 4, std::byte { 0xff });
     }
-    if (std::string_view(mode) == "nul" || std::string_view(mode) == "utf8") {
-        const auto offset = reinterpret_cast<const std::byte*>(
-                                root->body_as_start_command()->arguments()->Get(0)->data()) -
-                            start.data();
-        start[static_cast<std::size_t>(offset)] =
-            std::string_view(mode) == "nul" ? std::byte{0} : std::byte{0xff};
+    if (std::string_view(K_MODE) == "nul" || std::string_view(K_MODE) == "utf8") {
+        const auto K_OFFSET = reinterpret_cast<const std::byte*>(
+                                  root->body_as_start_command()->arguments()->Get(0)->data()) -
+                              start.data();
+        start[static_cast<std::size_t>(K_OFFSET)] =
+            std::string_view(K_MODE) == "nul" ? std::byte { 0 } : std::byte { 0xff };
     }
-    if (std::string_view(mode) == "cancel_first")
-        start = encode_worker_cancel(std::string(SESSION)).value();
-    worker_stream_decoder decoder{std::string(SESSION)};
-    bool sent{}, rejected{};
+    if (std::string_view(K_MODE) == "cancel_first")
+        start = encode_worker_cancel(std::string(K_SESSION)).value();
+    WorkerStreamDecoder decoder { std::string(K_SESSION) };
+    bool sent {}, rejected {};
     std::stop_source cancellation;
-    const auto executed =
-        execute_process({WE_TEST_PYTHON, "-u", script.string(), "--wire-bindings",
-                         WE_TEST_WIRE_BINDINGS, "--wire-session", std::string(SESSION)},
+    const auto K_EXECUTED =
+        execute_process({WE_TEST_PYTHON,
+                         "-u",
+                         K_SCRIPT.string(),
+                         "--wire-bindings",
+                         WE_TEST_WIRE_BINDINGS,
+                         "--wire-session",
+                         std::string(K_SESSION)},
                         cancellation.get_token(),
                         [&](const std::string& bytes) {
-                            const auto decoded = decoder.feed(
+                            const auto K_DECODED = decoder.feed(
                                 std::as_bytes(std::span(bytes.data(), bytes.size())),
-                                [&](const worker_event& event) {
-                                    if (const auto* failure = std::get_if<worker_failure>(&event))
-                                        rejected = failure->code == "PROTOCOL_INVALID";
+                                [&](const WorkerEvent& event) {
+                                    if (const auto* failure = std::get_if<WorkerFailure>(&event))
+                                        rejected = failure->m_code == "PROTOCOL_INVALID";
                                 });
-                            if (!decoded)
-                                cancellation.request_stop();
+                            if (!K_DECODED) cancellation.request_stop();
                         },
                         {},
-                        {[&](bool) -> result<std::vector<std::byte>> {
-                             if (sent)
-                                 return std::vector<std::byte>{};
+                        {[&](bool) -> Result<std::vector<std::byte>> {
+                             if (sent) return std::vector<std::byte> {};
                              sent = true;
                              return start;
                          },
                          {}});
-    REQUIRE(executed);
-    CHECK(*executed == 2);
-    CHECK(decoder.finish(*executed));
+    REQUIRE(K_EXECUTED);
+    CHECK(*K_EXECUTED == 2);
+    CHECK(decoder.finish(*K_EXECUTED));
     CHECK(rejected);
-    CHECK_FALSE(std::filesystem::exists(marker));
+    CHECK_FALSE(std::filesystem::exists(K_MARKER));
 }
 
 TEST_CASE("typed worker cancellation acknowledges cooperative stop and bounds an ignored request") {
-    temporary_worker worker;
-    const auto script = worker.directory / "control.py";
-    const auto marker = worker.directory / "launches";
-    control_fixture(script);
-    const auto mode = GENERATE("wait", "ignore", "before_start", "slow_ready");
+    TemporaryWorker worker;
+    const auto K_SCRIPT = worker.m_directory / "control.py";
+    const auto K_MARKER = worker.m_directory / "launches";
+    control_fixture(K_SCRIPT);
+    const auto K_MODE = GENERATE("wait", "ignore", "before_start", "slow_ready");
     std::stop_source cancellation;
-    bool start_ack{}, cancel_ack{};
+    bool start_ack {}, cancel_ack {};
     std::string log;
-    const auto began = std::chrono::steady_clock::now();
+    const auto K_BEGAN = std::chrono::steady_clock::now();
     std::optional<std::chrono::steady_clock::time_point> cancel_began;
-    const auto result = execute_worker_protocol(
-        WE_TEST_PYTHON, script, {mode, marker.string()}, cancellation.get_token(),
+    const auto K_RESULT = execute_worker_protocol(
+        WE_TEST_PYTHON,
+        K_SCRIPT,
+        {K_MODE, K_MARKER.string()},
+        cancellation.get_token(),
         [&](const std::string& text) { log += text; },
-        [&](const worker_event& event) {
-            if (const auto* ack = std::get_if<worker_command_acknowledged>(&event)) {
-                start_ack |= ack->kind == worker_command_kind::START;
-                cancel_ack |= ack->kind == worker_command_kind::CANCEL;
+        [&](const WorkerEvent& event) {
+            if (const auto* ack = std::get_if<WorkerCommandAcknowledged>(&event)) {
+                start_ack |= ack->m_kind == WorkerCommandKind::START;
+                cancel_ack |= ack->m_kind == WorkerCommandKind::CANCEL;
             }
-            if ((std::string_view(mode) == "before_start" &&
-                 std::holds_alternative<worker_handshake>(event)) ||
-                std::holds_alternative<worker_progress>(event)) {
-                if (!cancel_began)
-                    cancel_began = std::chrono::steady_clock::now();
+            if ((std::string_view(K_MODE) == "before_start" &&
+                 std::holds_alternative<WorkerHandshake>(event)) ||
+                std::holds_alternative<WorkerProgress>(event)) {
+                if (!cancel_began) cancel_began = std::chrono::steady_clock::now();
                 cancellation.request_stop();
             }
         });
-    const auto ended = std::chrono::steady_clock::now();
-    CAPTURE(mode);
+    const auto K_ENDED = std::chrono::steady_clock::now();
+    CAPTURE(K_MODE);
     INFO(log);
-    REQUIRE_FALSE(result);
-    CHECK(result.error().code == error_code::CANCELLED);
+    REQUIRE_FALSE(K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::CANCELLED);
     if (cancel_began) {
-        INFO(
-            "pre-cancel seconds: " << std::chrono::duration<double>(*cancel_began - began).count());
+        INFO("pre-cancel seconds: "
+             << std::chrono::duration<double>(*cancel_began - K_BEGAN).count());
         INFO("cancellation seconds: "
-             << std::chrono::duration<double>(ended - *cancel_began).count());
+             << std::chrono::duration<double>(K_ENDED - *cancel_began).count());
         // Startup and work before the request do not consume the cancellation bound.
-        CHECK(ended - *cancel_began < std::chrono::seconds(6));
-        if (std::string_view(mode) == "slow_ready")
-            CHECK(*cancel_began - began >= std::chrono::seconds(6));
+        CHECK(K_ENDED - *cancel_began < std::chrono::seconds(6));
+        if (std::string_view(K_MODE) == "slow_ready")
+            CHECK(*cancel_began - K_BEGAN >= std::chrono::seconds(6));
     } else {
         FAIL("Worker fixture never requested cancellation");
     }
-    if (std::string_view(mode) == "before_start") {
+    if (std::string_view(K_MODE) == "before_start") {
         CHECK_FALSE(start_ack);
-        CHECK_FALSE(std::filesystem::exists(marker));
+        CHECK_FALSE(std::filesystem::exists(K_MARKER));
     } else {
         CHECK(start_ack);
         CHECK(cancel_ack);
-        CHECK(std::filesystem::exists(marker));
-        auto checkpoint = marker;
+        CHECK(std::filesystem::exists(K_MARKER));
+        auto checkpoint = K_MARKER;
         checkpoint.replace_extension(".checkpoint");
-        CHECK(std::filesystem::exists(checkpoint) == (std::string_view(mode) != "ignore"));
+        CHECK(std::filesystem::exists(checkpoint) == (std::string_view(K_MODE) != "ignore"));
 #ifdef __linux__
-        if (std::string_view(mode) == "ignore") {
-            auto child_marker = marker;
+        if (std::string_view(K_MODE) == "ignore") {
+            auto child_marker = K_MARKER;
             child_marker.replace_extension(".child");
             std::ifstream child_info(child_marker);
-            int child_pid{}, group{}, owner_group{};
+            int child_pid {}, group {}, owner_group {};
             REQUIRE(static_cast<bool>(child_info >> child_pid >> group >> owner_group));
             REQUIRE(child_pid > 0);
             CHECK(group == owner_group);
             std::ifstream status("/proc/" + std::to_string(child_pid) + "/stat");
             std::string line;
             if (std::getline(status, line)) {
-                const auto state = line.at(line.rfind(')') + 2);
-                CHECK((state == 'Z' || state == 'X'));
-                if (state != 'Z' && state != 'X')
-                    kill(child_pid, SIGKILL); // Only this fixture's recorded child.
+                const auto K_STATE = line.at(line.rfind(')') + 2);
+                CHECK((K_STATE == 'Z' || K_STATE == 'X'));
+                if (K_STATE != 'Z' && K_STATE != 'X')
+                    kill(child_pid, SIGKILL);  // Only this fixture's recorded child.
             }
         }
 #endif
@@ -491,66 +572,86 @@ TEST_CASE("typed worker cancellation acknowledges cooperative stop and bounds an
 }
 
 TEST_CASE("worker command retries execute once and reject changed operation content") {
-    temporary_worker worker;
-    const auto script = worker.directory / "control.py";
-    const auto marker = worker.directory / "launches";
-    control_fixture(script);
-    bool changed{}, fragmented{}, alternate_encoding{};
-    SECTION("identical START and CANCEL retries") {}
-    SECTION("fragmented START prefix and body") { fragmented = true; }
-    SECTION("equivalent START with explicit default fields") { alternate_encoding = true; }
-    SECTION("different content under START operation 1") { changed = true; }
-    const auto start =
-        encode_worker_start(std::string(SESSION), {changed ? "wait" : "retry", marker.string()})
+    TemporaryWorker worker;
+    const auto K_SCRIPT = worker.m_directory / "control.py";
+    const auto K_MARKER = worker.m_directory / "launches";
+    control_fixture(K_SCRIPT);
+    bool changed {}, fragmented {}, alternate_encoding {};
+    SECTION("identical START and CANCEL retries") {
+    }
+    SECTION("fragmented START prefix and body") {
+        fragmented = true;
+    }
+    SECTION("equivalent START with explicit default fields") {
+        alternate_encoding = true;
+    }
+    SECTION("different content under START operation 1") {
+        changed = true;
+    }
+    const auto K_START =
+        encode_worker_start(std::string(K_SESSION), {changed ? "wait" : "retry", K_MARKER.string()})
             .value();
     auto retry =
-        changed ? encode_worker_start(std::string(SESSION), {"different", marker.string()}).value()
-                : start;
+        changed
+            ? encode_worker_start(std::string(K_SESSION), {"different", K_MARKER.string()}).value()
+            : K_START;
     if (alternate_encoding) {
         flatbuffers::FlatBufferBuilder builder;
         builder.ForceDefaults(true);
-        const auto args = builder.CreateVector(
-            std::vector{builder.CreateString("retry"), builder.CreateString(marker.string())});
-        const auto body = control::Createstart_command(builder, args);
+        const auto K_ARGS = builder.CreateVector(
+            std::vector { builder.CreateString("retry"), builder.CreateString(K_MARKER.string()) });
+        const auto K_BODY = control::Createstart_command(builder, K_ARGS);
         control::FinishSizePrefixedcommand_envelopeBuffer(
             builder,
-            control::Createcommand_envelope(builder, 2, 0, builder.CreateString(SESSION), 0, 1,
-                                            control::command_payload::start_command, body.Union()));
-        const auto bytes = std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
-        retry.assign(bytes.begin(), bytes.end());
-        REQUIRE(retry != start);
+            control::Createcommand_envelope(builder,
+                                            2,
+                                            0,
+                                            builder.CreateString(K_SESSION),
+                                            0,
+                                            1,
+                                            control::command_payload::start_command,
+                                            K_BODY.Union()));
+        const auto K_BYTES =
+            std::as_bytes(std::span(builder.GetBufferPointer(), builder.GetSize()));
+        retry.assign(K_BYTES.begin(), K_BYTES.end());
+        REQUIRE(retry != K_START);
     }
-    const auto cancel = encode_worker_cancel(std::string(SESSION)).value();
-    worker_stream_decoder decoder{std::string(SESSION)};
+    const auto K_CANCEL = encode_worker_cancel(std::string(K_SESSION)).value();
+    WorkerStreamDecoder decoder { std::string(K_SESSION) };
     decoder.expect_start();
-    std::size_t start_acks{}, cancel_acks{}, sent{}, fragment_offset{};
-    bool invalid_operation{};
-    const auto executed = execute_process(
-        {WE_TEST_PYTHON, "-u", script.string(), "--wire-bindings", WE_TEST_WIRE_BINDINGS,
-         "--wire-session", std::string(SESSION)},
+    std::size_t start_acks {}, cancel_acks {}, sent {}, fragment_offset {};
+    bool invalid_operation {};
+    const auto K_EXECUTED = execute_process(
+        {WE_TEST_PYTHON,
+         "-u",
+         K_SCRIPT.string(),
+         "--wire-bindings",
+         WE_TEST_WIRE_BINDINGS,
+         "--wire-session",
+         std::string(K_SESSION)},
         {},
         [&](const std::string& bytes) {
             REQUIRE(decoder.feed(
                 std::as_bytes(std::span(bytes.data(), bytes.size())),
-                [&](const worker_event& event) {
-                    if (const auto* ack = std::get_if<worker_command_acknowledged>(&event)) {
-                        start_acks += ack->kind == worker_command_kind::START ? 1 : 0;
-                        cancel_acks += ack->kind == worker_command_kind::CANCEL ? 1 : 0;
+                [&](const WorkerEvent& event) {
+                    if (const auto* ack = std::get_if<WorkerCommandAcknowledged>(&event)) {
+                        start_acks += ack->m_kind == WorkerCommandKind::START ? 1 : 0;
+                        cancel_acks += ack->m_kind == WorkerCommandKind::CANCEL ? 1 : 0;
                     }
-                    if (const auto* failure = std::get_if<worker_failure>(&event))
-                        invalid_operation = failure->code == "PROTOCOL_INVALID";
+                    if (const auto* failure = std::get_if<WorkerFailure>(&event))
+                        invalid_operation = failure->m_code == "PROTOCOL_INVALID";
                 }));
         },
         {},
-        {[&](bool) -> result<std::vector<std::byte>> {
+        {[&](bool) -> Result<std::vector<std::byte>> {
              if (sent == 0) {
                  if (fragmented && fragment_offset == 0) {
                      fragment_offset = 3;
-                     return std::vector<std::byte>(start.begin(), start.begin() + 3);
+                     return std::vector<std::byte>(K_START.begin(), K_START.begin() + 3);
                  }
                  ++sent;
                  return std::vector<std::byte>(
-                     start.begin() + static_cast<std::ptrdiff_t>(fragment_offset), start.end());
+                     K_START.begin() + static_cast<std::ptrdiff_t>(fragment_offset), K_START.end());
              }
              if (sent == 1 && start_acks == 1) {
                  ++sent;
@@ -559,22 +660,22 @@ TEST_CASE("worker command retries execute once and reject changed operation cont
              if (!changed && sent == 2 && start_acks == 2) {
                  ++sent;
                  decoder.expect_cancel();
-                 return cancel;
+                 return K_CANCEL;
              }
              if (!changed && sent == 3 && cancel_acks == 1) {
                  ++sent;
-                 return cancel;
+                 return K_CANCEL;
              }
-             return std::vector<std::byte>{};
+             return std::vector<std::byte> {};
          },
          {}});
-    REQUIRE(executed);
-    CHECK(*executed == 130);
-    CHECK(decoder.finish(*executed));
+    REQUIRE(K_EXECUTED);
+    CHECK(*K_EXECUTED == 130);
+    CHECK(decoder.finish(*K_EXECUTED));
     CHECK(invalid_operation == changed);
     CHECK(start_acks == (changed ? 1 : 2));
     CHECK(cancel_acks == (changed ? 0 : 2));
-    std::ifstream launches(marker);
+    std::ifstream launches(K_MARKER);
     std::string line;
     REQUIRE(std::getline(launches, line));
     CHECK(line == "one invocation");
@@ -583,9 +684,9 @@ TEST_CASE("worker command retries execute once and reject changed operation cont
 
 #ifndef _WIN32
 TEST_CASE("worker launch reserves descriptors when the desktop host has no stdin") {
-    temporary_worker worker;
-    const auto script = worker.directory / "capabilities.py";
-    std::ofstream file(script);
+    TemporaryWorker worker;
+    const auto K_SCRIPT = worker.m_directory / "capabilities.py";
+    std::ofstream file(K_SCRIPT);
     file << "import sys\nsys.path.insert(0," << nlohmann::json(WE_TEST_PROTOCOL_MODULE).dump()
          << ")\nimport we_protocol as p\n"
             "p.configure(sys.argv,backend='synthetic_closed_stdin',backend_version='1',"
@@ -594,19 +695,24 @@ TEST_CASE("worker launch reserves descriptors when the desktop host has no stdin
             "limits={'max_frames':120,'max_source_bytes':1024,'max_output_bytes':1024})\n"
             "p.completed('capabilities')\n";
     file.close();
-    struct stdin_guard {
-        int original{dup(STDIN_FILENO)};
-        stdin_guard() { close(STDIN_FILENO); }
-        ~stdin_guard() {
-            if (original >= 0) {
-                dup2(original, STDIN_FILENO);
-                close(original);
+
+    struct StdinGuard {
+        int m_original { dup(STDIN_FILENO) };
+
+        StdinGuard() { close(STDIN_FILENO); }
+
+        ~StdinGuard() {
+            if (m_original >= 0) {
+                dup2(m_original, STDIN_FILENO);
+                close(m_original);
             }
         }
     } restore;
-    const auto result = execute_worker_protocol(WE_TEST_PYTHON, script, {"capabilities"}, {}, {});
-    INFO((result ? "completed" : result.error().message));
-    REQUIRE(result);
-    CHECK(*result == 0);
+
+    const auto K_RESULT =
+        execute_worker_protocol(WE_TEST_PYTHON, K_SCRIPT, {"capabilities"}, {}, {});
+    INFO((K_RESULT ? "completed" : K_RESULT.error().m_message));
+    REQUIRE(K_RESULT);
+    CHECK(*K_RESULT == 0);
 }
 #endif

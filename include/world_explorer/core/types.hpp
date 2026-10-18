@@ -6,34 +6,39 @@
 #include <cstdint>
 
 namespace world_explorer {
-template <class tag> struct typed_id {
-    std::uint64_t value{};
-    auto operator<=>(const typed_id&) const = default;
-};
-using capture_id = typed_id<struct capture_tag>;
-using frame_id = typed_id<struct frame_tag>;
-using calibration_id = typed_id<struct calibration_tag>;
-using submap_id = typed_id<struct submap_tag>;
-using scene_id = typed_id<struct scene_tag>;
-using chunk_id = typed_id<struct chunk_tag>;
-using operation_id = typed_id<struct operation_tag>;
-using scene_revision_id = typed_id<struct scene_revision_tag>;
-using map_revision_id = typed_id<struct map_revision_tag>;
-using world_epoch = typed_id<struct world_epoch_tag>;
-using update_ticket = typed_id<struct update_ticket_tag>;
-using observation_ticket = typed_id<struct observation_ticket_tag>;
-struct byte_budget {
-    std::size_t bytes{};
-};
-struct event_budget {
-    std::size_t count{};
-};
-enum class scale_status : std::uint8_t { ARBITRARY, METRIC_MEASURED };
-struct source_timestamp {
-    std::int64_t pts{};
-    std::int32_t time_base_numerator{1};
-    std::int32_t time_base_denominator{1};
-};
-} // namespace world_explorer
 
-#endif // WORLD_EXPLORER_CORE_TYPES_HPP
+template <class Tag> struct TypedId {
+    std::uint64_t m_value {};
+    auto operator<=>(const TypedId&) const = default;
+};
+using CaptureId = TypedId<struct capture_tag>;
+using FrameId = TypedId<struct frame_tag>;
+using CalibrationId = TypedId<struct calibration_tag>;
+using SubmapId = TypedId<struct submap_tag>;
+using SceneId = TypedId<struct scene_tag>;
+using ChunkId = TypedId<struct chunk_tag>;
+using OperationId = TypedId<struct operation_tag>;
+using SceneRevisionId = TypedId<struct scene_revision_tag>;
+using MapRevisionId = TypedId<struct map_revision_tag>;
+using WorldEpoch = TypedId<struct world_epoch_tag>;
+using UpdateTicket = TypedId<struct update_ticket_tag>;
+using ObservationTicket = TypedId<struct observation_ticket_tag>;
+
+struct ByteBudget {
+    std::size_t m_bytes {};
+};
+
+struct EventBudget {
+    std::size_t m_count {};
+};
+enum class ScaleStatus : std::uint8_t { ARBITRARY, METRIC_MEASURED };
+
+struct SourceTimestamp {
+    std::int64_t m_pts {};
+    std::int32_t m_time_base_numerator { 1 };
+    std::int32_t m_time_base_denominator { 1 };
+};
+
+}  // namespace world_explorer
+
+#endif  // WORLD_EXPLORER_CORE_TYPES_HPP

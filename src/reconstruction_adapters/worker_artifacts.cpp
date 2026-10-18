@@ -1,85 +1,88 @@
 #include "world_explorer/reconstruction_adapters/worker_artifacts.hpp"
+
 #include "artifact_io.hpp"
 #include "world_explorer/core/hash.hpp"
+
 #include <new>
 
 namespace world_explorer {
-result<verified_worker_stage> verify_committed_stage(const std::filesystem::path& directory,
-                                                     const std::string& key,
-                                                     const std::stop_token& stop,
-                                                     worker_stage_limits limits) {
+
+Result<VerifiedWorkerStage> verify_committed_stage(const std::filesystem::path& directory,
+                                                   const std::string& key,
+                                                   const std::stop_token& stop,
+                                                   WorkerStageLimits limits) {
     try {
-        constexpr std::size_t MAX_MANIFEST = std::size_t{16} * 1024 * 1024;
-        constexpr std::uint64_t MAX_BYTES = 32ULL * 1024 * 1024 * 1024;
+        constexpr std::size_t K_MAX_MANIFEST { 16uz * 1024uz * 1024uz };
+        constexpr std::uint64_t K_MAX_BYTES { 32ULL * 1024 * 1024 * 1024 };
         if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Stage verification cancelled");
-        if (!limits.maximum_bytes || limits.maximum_bytes > MAX_BYTES || !limits.maximum_files ||
-            limits.maximum_files > 4096 || !limits.maximum_manifest_bytes ||
-            limits.maximum_manifest_bytes > MAX_MANIFEST)
-            return fail(error_code::INVALID_ARGUMENT, "Invalid committed stage limits");
+            return fail(ErrorCode::CANCELLED, "Stage verification cancelled");
+        if (!limits.m_maximum_bytes || limits.m_maximum_bytes > K_MAX_BYTES ||
+            !limits.m_maximum_files || limits.m_maximum_files > 4096 ||
+            !limits.m_maximum_manifest_bytes || limits.m_maximum_manifest_bytes > K_MAX_MANIFEST)
+            return fail(ErrorCode::INVALID_ARGUMENT, "Invalid committed stage limits");
         if (!adapter_detail::valid_digest(key))
-            return fail(error_code::INVALID_ARGUMENT, "Invalid committed stage key");
-        verified_worker_stage stage;
-        stage.directory = std::filesystem::canonical(directory);
-        const auto completion_file = stage.directory / "completion.json";
-        const auto initial_hash = sha256_file(completion_file, limits.maximum_manifest_bytes, stop);
-        if (!initial_hash)
-            return std::unexpected(initial_hash.error());
-        stage.completion_sha256 = *initial_hash;
-        const auto manifest = adapter_detail::read_json(
-            completion_file, limits.maximum_manifest_bytes, *initial_hash);
-        const auto& files = manifest.at("files");
-        if (manifest.at("schema_version") != 1 || manifest.at("status") != "complete" ||
-            manifest.at("key") != key || !files.is_array() || files.empty() ||
-            files.size() > limits.maximum_files)
-            return fail(error_code::INVALID_DATA, "Invalid committed stage inventory");
-        std::uint64_t total{};
+            return fail(ErrorCode::INVALID_ARGUMENT, "Invalid committed stage key");
+        VerifiedWorkerStage stage;
+        stage.m_directory = std::filesystem::canonical(directory);
+        const auto K_COMPLETION_FILE = stage.m_directory / "completion.json";
+        const auto K_INITIAL_HASH =
+            sha256_file(K_COMPLETION_FILE, limits.m_maximum_manifest_bytes, stop);
+        if (!K_INITIAL_HASH) return std::unexpected(K_INITIAL_HASH.error());
+        stage.m_completion_sha256 = *K_INITIAL_HASH;
+        const auto K_MANIFEST = adapter_detail::read_json(
+            K_COMPLETION_FILE, limits.m_maximum_manifest_bytes, *K_INITIAL_HASH);
+        const auto& files = K_MANIFEST.at("files");
+        if (K_MANIFEST.at("schema_version") != 1 || K_MANIFEST.at("status") != "complete" ||
+            K_MANIFEST.at("key") != key || !files.is_array() || files.empty() ||
+            files.size() > limits.m_maximum_files)
+            return fail(ErrorCode::INVALID_DATA, "Invalid committed stage inventory");
+        std::uint64_t total {};
         for (const auto& entry : files) {
-            const auto name = entry.at("path").get<std::string>();
-            const auto bytes = adapter_detail::unsigned_value(entry.at("bytes"));
-            const auto digest = entry.at("sha256").get<std::string>();
-            if (name == "completion.json" || !adapter_detail::valid_digest(digest) ||
-                !stage.assets.emplace(name, verified_worker_asset{bytes, digest}).second)
-                return fail(error_code::INVALID_DATA, "Invalid or duplicate stage asset");
-            if (bytes > limits.maximum_bytes - total)
-                return fail(error_code::RESOURCE_EXHAUSTED, "Stage exceeds byte budget");
-            total += bytes;
-            const auto path = adapter_detail::contained_file(stage.directory, name);
-            if (std::filesystem::file_size(path) != bytes)
-                return fail(error_code::INVALID_DATA, "Stage asset byte count changed: " + name);
-            const auto actual = sha256_file(path, static_cast<std::size_t>(bytes), stop);
-            if (!actual)
-                return std::unexpected(actual.error());
-            if (*actual != digest)
-                return fail(error_code::INVALID_DATA, "Stage asset checksum changed: " + name);
+            const auto K_NAME = entry.at("path").get<std::string>();
+            const auto K_BYTES = adapter_detail::unsigned_value(entry.at("bytes"));
+            const auto K_DIGEST = entry.at("sha256").get<std::string>();
+            if (K_NAME == "completion.json" || !adapter_detail::valid_digest(K_DIGEST) ||
+                !stage.m_assets.emplace(K_NAME, VerifiedWorkerAsset { K_BYTES, K_DIGEST }).second)
+                return fail(ErrorCode::INVALID_DATA, "Invalid or duplicate stage asset");
+            if (K_BYTES > limits.m_maximum_bytes - total)
+                return fail(ErrorCode::RESOURCE_EXHAUSTED, "Stage exceeds byte budget");
+            total += K_BYTES;
+            const auto K_PATH = adapter_detail::contained_file(stage.m_directory, K_NAME);
+            if (std::filesystem::file_size(K_PATH) != K_BYTES)
+                return fail(ErrorCode::INVALID_DATA, "Stage asset byte count changed: " + K_NAME);
+            const auto K_ACTUAL = sha256_file(K_PATH, static_cast<std::size_t>(K_BYTES), stop);
+            if (!K_ACTUAL) return std::unexpected(K_ACTUAL.error());
+            if (*K_ACTUAL != K_DIGEST)
+                return fail(ErrorCode::INVALID_DATA, "Stage asset checksum changed: " + K_NAME);
         }
-        std::size_t actual_files{}, entries{};
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(stage.directory)) {
+        std::size_t actual_files {}, entries {};
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(stage.m_directory)) {
             if (stop.stop_requested())
-                return fail(error_code::CANCELLED, "Stage verification cancelled");
+                return fail(ErrorCode::CANCELLED, "Stage verification cancelled");
             if (++entries > 8192)
-                return fail(error_code::RESOURCE_EXHAUSTED, "Stage entry count exceeded");
+                return fail(ErrorCode::RESOURCE_EXHAUSTED, "Stage entry count exceeded");
             if (entry.is_symlink())
-                return fail(error_code::INVALID_DATA, "Stage contains a symlink");
-            if (entry.is_regular_file() && entry.path() != completion_file) {
-                const auto relative =
-                    entry.path().lexically_relative(stage.directory).generic_u8string();
-                if (!stage.assets.contains(std::string(relative.begin(), relative.end())))
-                    return fail(error_code::INVALID_DATA, "Uncommitted file in stage");
+                return fail(ErrorCode::INVALID_DATA, "Stage contains a symlink");
+            if (entry.is_regular_file() && entry.path() != K_COMPLETION_FILE) {
+                const auto K_RELATIVE =
+                    entry.path().lexically_relative(stage.m_directory).generic_u8string();
+                if (!stage.m_assets.contains(std::string(K_RELATIVE.begin(), K_RELATIVE.end())))
+                    return fail(ErrorCode::INVALID_DATA, "Uncommitted file in stage");
                 ++actual_files;
             }
         }
-        const auto final_hash = sha256_file(completion_file, limits.maximum_manifest_bytes, stop);
-        if (!final_hash)
-            return std::unexpected(final_hash.error());
-        if (actual_files != files.size() || *final_hash != *initial_hash)
-            return fail(error_code::INVALID_DATA, "Stage inventory changed during verification");
+        const auto K_FINAL_HASH =
+            sha256_file(K_COMPLETION_FILE, limits.m_maximum_manifest_bytes, stop);
+        if (!K_FINAL_HASH) return std::unexpected(K_FINAL_HASH.error());
+        if (actual_files != files.size() || *K_FINAL_HASH != *K_INITIAL_HASH)
+            return fail(ErrorCode::INVALID_DATA, "Stage inventory changed during verification");
         return stage;
     } catch (const std::bad_alloc&) {
-        return fail(error_code::RESOURCE_EXHAUSTED, "Stage verification allocation failed");
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Stage verification allocation failed");
     } catch (const std::exception& exception) {
-        return fail(error_code::INVALID_DATA,
+        return fail(ErrorCode::INVALID_DATA,
                     std::string("Stage verification failed: ") + exception.what());
     }
 }
-} // namespace world_explorer
+
+}  // namespace world_explorer

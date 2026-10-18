@@ -63,11 +63,13 @@
 //   - West const: `const T&`.
 //   - One declaration per line.
 //   - `auto` per section 3.
-//   - Brace initialization: spaces inside the braces, `{}` when empty. A space
-//     before `{` when declaring a variable or member (`int count { 0 };`); no
-//     space when creating a temporary (`std::string{ text }`).
+//   - Brace initialization: spaces inside non-empty braces and `{}` when empty.
+//     Use direct-list initialization for spelled types (`int count { 0 };`); no
+//     space before the brace for a temporary (`std::string{ text }`). `auto`
+//     declarations use `=` as shown in section 3.
 //   - Trailing commas in multi-line initializer/enumerator lists.
-//   - Line breaks: break before binary operators; align wrapped arguments
+//   - Line breaks: break after binary operators so a continued condition keeps
+//     its operator at the end of the preceding line; align wrapped arguments
 //     with the opening bracket, or use a hanging indent of 4 when impossible.
 //   - Align consecutive enumerator values, one-line `case` returns and one-line
 //     accessor groups in columns; never align across a blank line or a comment.
@@ -87,8 +89,9 @@
 //     specifier, except when it is the first line of the class.
 //   - Inside functions: one blank line after a block of local declarations and
 //     after the closing `}` of a compound statement when another statement
-//     follows. No blank line before `else`, `catch` or a closing brace, and none
-//     between closely related statements.
+//     follows. Use blank lines to separate logical groups; do not add one between
+//     each statement or between closely related operations. No blank line before
+//     `else`, `catch` or a closing brace.
 //   - A comment block sits directly above the declaration it documents, with one
 //     blank line before the comment block. Free-standing comments have a blank
 //     line before and after.
@@ -100,7 +103,7 @@
 //     only when it is a single `return` and fits the column limit; every other
 //     body breaks after `{`.
 //   - When a call, template argument list or initializer list does not fit on
-//     one line, put every element on its own line (no bin-packing). Break before
+//     one line, put every element on its own line (no bin-packing). Break after
 //     `|`, `.`, `?`, `:` and binary operators. `template <...>` and `requires`
 //     clauses each get their own line.
 //
@@ -174,24 +177,24 @@
 #include <version>
 
 #if defined(__cpp_impl_reflection)
-#    include <meta>
+#include <meta>
 #endif
 
 #if defined(__cpp_lib_senders)
-#    include <execution>
+#include <execution>
 #endif
 
 // Preprocessor: `#` at column 0; directives inside conditionals are
 //   indented one space after `#` per nesting level.
 #if defined(__linux__)
-#    define ACME_PLATFORM_NAME "linux"
-#    define ACME_EXPORT __attribute__((visibility("default")))
+#define ACME_PLATFORM_NAME "linux"
+#define ACME_EXPORT __attribute__((visibility("default")))
 #elif defined(_WIN32)
-#    define ACME_PLATFORM_NAME "windows"
-#    define ACME_EXPORT __declspec(dllexport)
+#define ACME_PLATFORM_NAME "windows"
+#define ACME_EXPORT __declspec(dllexport)
 #else
-#    define ACME_PLATFORM_NAME "unknown"
-#    define ACME_EXPORT
+#define ACME_PLATFORM_NAME "unknown"
+#define ACME_EXPORT
 #endif
 
 // Macros: avoid. Allowed only for (a) include guards/platform
@@ -201,12 +204,12 @@
 //   Never macro constants, inline functions, or types.
 //   Multi-statement macros use do { ... } while (false).
 #if defined(__cpp_contracts)
-#    define ACME_ASSERT(condition) contract_assert(condition)
+#define ACME_ASSERT(condition) contract_assert(condition)
 #else
-#    define ACME_ASSERT(condition) \
-        do { \
-            if (!(condition)) std::terminate(); \
-        } while (false)
+#define ACME_ASSERT(condition)                                                                     \
+    do {                                                                                           \
+        if (!(condition)) std::terminate();                                                        \
+    } while (false)
 #endif
 
 // Binary embedding: prefer `#embed` over xxd-generated arrays.
@@ -233,7 +236,7 @@ namespace acme::style {
 //   Anonymous namespaces belong in .cpp files, never in headers.
 namespace {
 
-[[maybe_unused]] constexpr std::size_t K_INTERNAL_BUFFER_SIZE { 256 };
+[[maybe_unused]] constexpr std::size_t K_INTERNAL_BUFFER_SIZE { 256uz };
 
 }  // namespace
 
@@ -256,6 +259,7 @@ inline namespace v1 {
 inline constexpr int K_MAX_RETRIES { 3 };
 inline constexpr double K_PI { 3.141592653589793 };
 inline constexpr std::string_view K_DEFAULT_NAME { "unnamed" };
+constexpr std::size_t K_MAX_BYTES { 256uz * 1024uz * 1024uz };
 constinit thread_local int g_thread_counter { 0 };  // Mutable globals: g_ prefix.
 
 // Fixed-width types for storage/serialization (std::int32_t);
@@ -291,7 +295,15 @@ inline void initialization_examples() {
     [[maybe_unused]] const std::size_t total { values.size() };  // Spelled: not obvious.
 
     // Placeholder `_` for intentionally unused names (C++26).
-    [[maybe_unused]] auto [_, inserted] = std::map<int, int>{}.try_emplace(1, 2);
+    [[maybe_unused]] auto [_, inserted] = std::map<int, int> {}.try_emplace(1, 2);
+}
+
+inline int sum_values(std::span<const int> values) {
+    int sum { 0 };
+    for (std::size_t index { 0uz }; index < values.size(); ++index) {
+        sum += values[index];
+    }
+    return sum;
 }
 
 // Casts: never C-style `(T)x` or functional `T(x)` for conversions.
@@ -333,9 +345,9 @@ enum class Color : std::uint8_t {
 };
 
 enum class Permission : std::uint32_t {
-    None    = 0,
-    Read    = 1U << 0,
-    Write   = 1U << 1,
+    None = 0,
+    Read = 1U << 0,
+    Write = 1U << 1,
     Execute = 1U << 2,
 };
 
@@ -349,9 +361,12 @@ enum class Permission : std::uint32_t {
 
 [[nodiscard]] constexpr std::string_view to_string(Color color) noexcept {
     switch (color) {  // No default: -Wswitch catches new enumerators.
-        case Color::Red:   return "red";
-        case Color::Green: return "green";
-        case Color::Blue:  return "blue";
+    case Color::Red:
+        return "red";
+    case Color::Green:
+        return "green";
+    case Color::Blue:
+        return "blue";
     }
 
     std::unreachable();
@@ -386,18 +401,16 @@ struct Square {
 
 using Shape = std::variant<Circle, Square>;
 
-template <typename... Fs>
-struct Overloaded : Fs... {
+template <typename... Fs> struct Overloaded : Fs... {
     using Fs::operator()...;
 };
 
 [[nodiscard]] inline double area(const Shape& shape) {
-    return std::visit(
-        Overloaded{
-            [](const Circle& c) { return K_PI * c.m_radius * c.m_radius; },
-            [](const Square& s) { return s.m_side * s.m_side; },
-        },
-        shape);
+    return std::visit(Overloaded {
+                          [](const Circle& c) { return K_PI * c.m_radius * c.m_radius; },
+                          [](const Square& s) { return s.m_side * s.m_side; },
+                      },
+                      shape);
 }
 
 // -----------------------------------------------------------------------------
@@ -426,7 +439,7 @@ struct Overloaded : Fs... {
 
     for (const char character : text) {
         if (character < '0' || character > '9') {
-            return std::unexpected{ std::format("invalid character '{}'", character) };
+            return std::unexpected {std::format("invalid character '{}'", character)};
         }
 
         value = (value * 10) + static_cast<std::uint32_t>(character - '0');
@@ -462,7 +475,7 @@ void draw(const Widget& widget);
 //   or call unmarked third-party code. Conditional noexcept via noexcept(expr).
 // `= delete("reason")` (C++26) to forbid overloads with a message.
 void accepts_only_int(int value);
-void accepts_only_int(double) = delete("implicit double->int conversion is lossy");
+void accepts_only_int(double) = delete ("implicit double->int conversion is lossy");
 
 // constexpr: mark everything that can be constexpr. `consteval` only
 //   for functions that must never run at runtime. `inline` is implicit for
@@ -529,7 +542,7 @@ inline void for_each_value(std::span<const int> data, std::function_ref<void(int
 template <typename T, std::size_t Capacity>
     requires(Capacity > 0 && std::movable<T> && std::default_initializable<T>)
 class RingBuffer {
-public:
+  public:
     using value_type = T;
     using size_type = std::size_t;
 
@@ -537,8 +550,10 @@ public:
 
     RingBuffer() = default;
 
-    [[nodiscard]] constexpr bool empty()     const noexcept { return m_size == 0; }
-    [[nodiscard]] constexpr bool full()      const noexcept { return m_size == Capacity; }
+    [[nodiscard]] constexpr bool empty() const noexcept { return m_size == 0; }
+
+    [[nodiscard]] constexpr bool full() const noexcept { return m_size == Capacity; }
+
     [[nodiscard]] constexpr size_type size() const noexcept { return m_size; }
 
     // Deducing this (C++23) replaces const/non-const accessor pairs.
@@ -569,7 +584,7 @@ public:
         return value;
     }
 
-private:
+  private:
     std::array<T, Capacity> m_storage {};
     size_type m_head { 0 };
     size_type m_size { 0 };
@@ -578,7 +593,7 @@ private:
 // Resource-owning class: rule of five spelled out; copy deleted.
 //   Definitions live in file_handle.cpp.
 class FileHandle final {
-public:
+  public:
     explicit FileHandle(const std::filesystem::path& path);
     ~FileHandle();
 
@@ -589,7 +604,7 @@ public:
 
     [[nodiscard]] bool is_open() const noexcept { return m_handle != nullptr; }
 
-private:
+  private:
     void* m_handle { nullptr };
 };
 
@@ -605,22 +620,20 @@ private:
 //     instead of raw owning pointers to a base.
 //   - Virtual calls in ctor/dtor are banned.
 class Logger {
-public:
+  public:
     virtual ~Logger() = default;
 
     virtual void log(std::string_view message) = 0;
 
-protected:
+  protected:
     Logger() = default;
     Logger(const Logger&) = default;
     Logger& operator=(const Logger&) = default;
 };
 
 class StdoutLogger final : public Logger {
-public:
-    void log(std::string_view message) override {
-        std::println("{}", message);
-    }
+  public:
+    void log(std::string_view message) override { std::println("{}", message); }
 };
 
 // Operators:
@@ -676,14 +689,13 @@ concept Serializable = requires(const T& value, std::string& out) {
     { value.serialize(out) } -> std::same_as<void>;
 };
 
-template <Numeric T>
-[[nodiscard]] constexpr T clamp_to_unit(T value) noexcept {
+template <Numeric T> [[nodiscard]] constexpr T clamp_to_unit(T value) noexcept {
     return std::clamp(value, T{ 0 }, T{ 1 });
 }
 
 template <typename Range, typename Predicate>
-    requires std::ranges::input_range<Range>
-          && std::predicate<Predicate, std::ranges::range_reference_t<Range>>
+    requires std::ranges::input_range<Range> &&
+             std::predicate<Predicate, std::ranges::range_reference_t<Range>>
 [[nodiscard]] auto count_matching(Range&& range, Predicate predicate) {
     return std::ranges::count_if(std::forward<Range>(range), std::move(predicate));
 }
@@ -691,8 +703,7 @@ template <typename Range, typename Predicate>
 // `typename` (not `class`) for type parameters.
 // Variadics: fold expressions over recursion; pack indexing (C++26)
 //   over std::tuple_element when selecting by index.
-template <typename... Ts>
-[[nodiscard]] constexpr auto sum_all(Ts... values) {
+template <typename... Ts> [[nodiscard]] constexpr auto sum_all(Ts... values) {
     return (values + ... + 0);
 }
 
@@ -706,23 +717,19 @@ template <typename... Ts>
 
 // Non-type template params: `auto` NTTP; class-type NTTP allowed
 //   for structural types (e.g. fixed strings).
-template <auto Value>
-struct Constant {
+template <auto Value> struct Constant {
     static constexpr auto value = Value;
 };
 
 // Specialization: prefer overloads and `if constexpr` to full
 //   specialization; if specializing, use partial specialization of a trait
 //   struct, and variable template `_v` / alias template `_t` helpers.
-template <typename T>
-struct IsSmallType : std::bool_constant<(sizeof(T) <= 2 * sizeof(void*))> {};
+template <typename T> struct IsSmallType : std::bool_constant<(sizeof(T) <= 2 * sizeof(void*))> { };
 
-template <typename T>
-inline constexpr bool is_small_type_v { IsSmallType<T>::value };
+template <typename T> inline constexpr bool is_small_type_v { IsSmallType<T>::value };
 
 // `if constexpr` for type-dependent branches (not tag dispatch).
-template <typename T>
-[[nodiscard]] std::string describe(const T& value) {
+template <typename T> [[nodiscard]] std::string describe(const T& value) {
     if constexpr (std::is_arithmetic_v<T>) {
         return std::format("number({})", value);
     } else if constexpr (std::convertible_to<const T&, std::string_view>) {
@@ -763,7 +770,7 @@ static_assert(std::is_trivially_copyable_v<Version>, "Version must stay triviall
 //   - Catch by const reference. Throw by value. No exception specs.
 //   - Destructors never throw.
 class ConfigError : public std::runtime_error {
-public:
+  public:
     using std::runtime_error::runtime_error;
 };
 
@@ -771,8 +778,7 @@ public:
 /// @post result >= 0
 [[nodiscard]] inline int absolute_value(int value)
 #if defined(__cpp_contracts)
-    pre(value != std::numeric_limits<int>::min())
-    post(result: result >= 0)
+    pre(value != std::numeric_limits<int>::min()) post(result : result >= 0)
 #endif
 {
     return value < 0 ? -value : value;
@@ -847,9 +853,8 @@ inline void assert_example(int index, std::size_t size) {
 //   pipelines. Constrained algorithms (std::ranges::) over legacy ones.
 //   Pipelines longer than ~4 stages go into named intermediate variables.
 [[nodiscard]] inline std::vector<int> ranges_example(const std::vector<int>& input) {
-    auto even_squares = input
-                        | std::views::filter([](int v) { return v % 2 == 0; })
-                        | std::views::transform([](int v) { return v * v; });
+    auto even_squares = input | std::views::filter([](int v) { return v % 2 == 0; }) |
+                        std::views::transform([](int v) { return v * v; });
 
     return std::ranges::to<std::vector>(even_squares);
 }
@@ -860,7 +865,7 @@ inline void assert_example(int index, std::size_t size) {
 //   formatting. String literals: "..." (UTF-8 by default); use u8"" only
 //   when explicit encoding matters. Raw strings R"(...)" for regex/JSON.
 inline void string_examples(std::string_view name) {
-    std::string greeting { std::format("hello, {}!", name) };
+    std::string greeting {std::format("hello, {}!", name)};
     constexpr auto K_TIMEOUT = std::chrono::milliseconds{ 250 };
 
     std::println("{} (timeout {} ms)", greeting, K_TIMEOUT.count());
@@ -890,6 +895,12 @@ inline void string_examples(std::string_view name) {
 // Conditions: braces per the rule in section 0; `else` on the same line as
 //   the closing brace; early return preferred to deep nesting; init-statement
 //   in if/switch to limit variable scope; no assignment in conditions.
+//   Keep logical operators at the end of a continued condition line:
+//   if (!first_asset_present ||
+//       !second_asset_present ||
+//       !third_asset_present) {
+//       return false;
+//   }
 // switch: braces around each case that declares variables;
 //   `[[fallthrough]];` for intentional fallthrough; no `default:` over enums
 //   (see section 4); `default:` otherwise, with explicit handling.
@@ -902,15 +913,15 @@ inline void string_examples(std::string_view name) {
 // Boolean expression wrapping: break before `&&` / `||`.
 [[nodiscard]] inline std::string control_flow_examples(const std::map<std::string, int>& scores) {
     switch (const auto count = scores.size(); count) {
-        case 0:
-            return "no scores";
-        case 1: {
-            const auto& [name, score] = *scores.begin();
+    case 0:
+        return "no scores";
+    case 1: {
+        const auto& [name, score] = *scores.begin();
 
-            return std::format("{}: {}", name, score);
-        }
-        default:
-            break;
+        return std::format("{}: {}", name, score);
+    }
+    default:
+        break;
     }
 
     std::string out;
@@ -954,7 +965,7 @@ constexpr int compile_time_or_runtime(int x) {
 // Immutable data shared across threads: std::shared_ptr<const T> or
 //   RCU / hazard pointers (<rcu>, <hazard_pointer>) in expert code.
 class Counter {
-public:
+  public:
     [[nodiscard]] int value() const {
         std::scoped_lock _ { m_mutex };
 
@@ -966,20 +977,18 @@ public:
         ++m_value;
     }
 
-private:
+  private:
     mutable std::mutex m_mutex;  // Mutable: locked inside const member functions.
-    int m_value { 0 };           // GUARDED_BY(m_mutex)
+    int m_value { 0 };             // GUARDED_BY(m_mutex)
 };
 
 class StopFlag {
-public:
+  public:
     [[nodiscard]] bool requested() const noexcept { return m_requested.load(); }
 
-    void request() noexcept {
-        m_requested.store(true);
-    }
+    void request() noexcept { m_requested.store(true); }
 
-private:
+  private:
     std::atomic<bool> m_requested { false };
 };
 
@@ -1001,8 +1010,7 @@ inline void jthread_example() {
 // Structured async: std::execution senders/receivers.
 #if defined(__cpp_lib_senders)
 [[nodiscard]] inline int execution_example() {
-    auto work = std::execution::just(20)
-                | std::execution::then([](int v) { return v + 22; });
+    auto work = std::execution::just(20) | std::execution::then([](int v) { return v + 22; });
     auto [result] = std::this_thread::sync_wait(std::move(work)).value();
 
     return result;
@@ -1043,8 +1051,7 @@ template <typename E>
 // Expansion statements (`template for`, C++26): preferred over
 //   recursive templates or index_sequence tricks for iterating packs/tuples.
 //   Always guard with __cpp_expansion_statements; fall back to a fold expression.
-template <typename... Ts>
-inline void print_all(const Ts&... values) {
+template <typename... Ts> inline void print_all(const Ts&... values) {
 #if defined(__cpp_expansion_statements)
     template for (const auto& v : std::tie(values...)) {
         std::println("{}", v);
@@ -1067,7 +1074,6 @@ inline void print_all(const Ts&... values) {
 extern "C" {
 
 ACME_EXPORT int acme_style_version(void);
-
 }
 
 // Bit manipulation: <bit> (std::popcount, std::countl_zero,
@@ -1108,8 +1114,7 @@ int legacy_parse_port(const char* text);
 // STANDARD TEMPLATE SPECIALIZATIONS (global scope, after the project namespace)
 // -----------------------------------------------------------------------------
 
-template <>
-struct std::formatter<acme::style::Version> {
+template <> struct std::formatter<acme::style::Version> {
     constexpr auto parse(std::format_parse_context& context) {
         auto it = context.begin();
 
@@ -1121,11 +1126,8 @@ struct std::formatter<acme::style::Version> {
     }
 
     auto format(const acme::style::Version& version, std::format_context& context) const {
-        return std::format_to(context.out(),
-                              "{}.{}.{}",
-                              version.m_major,
-                              version.m_minor,
-                              version.m_patch);
+        return std::format_to(
+            context.out(), "{}.{}.{}", version.m_major, version.m_minor, version.m_patch);
     }
 };
 

@@ -1,27 +1,27 @@
 #include "../gpu/fit_view_selection.hpp"
-#include <catch2/catch_test_macros.hpp>
+
 #include <string>
+
+#include <catch2/catch_test_macros.hpp>
 
 using namespace world_explorer;
 
 TEST_CASE("calibrated diagnostic fit indices preserve explicit order and all camera boundaries") {
-    const auto selected = parse_fit_view_indices("79,0,40", 80);
-    REQUIRE(selected);
-    REQUIRE(*selected == std::vector<std::size_t>{79, 0, 40});
-    const auto single = parse_fit_view_indices("0", 3);
-    REQUIRE(single);
-    REQUIRE(*single == std::vector<std::size_t>{0});
+    const auto K_SELECTED = parse_fit_view_indices("79,0,40", 80);
+    REQUIRE(K_SELECTED);
+    REQUIRE(*K_SELECTED == std::vector<std::size_t> {79, 0, 40});
+    const auto K_SINGLE = parse_fit_view_indices("0", 3);
+    REQUIRE(K_SINGLE);
+    REQUIRE(*K_SINGLE == std::vector<std::size_t> {0});
     std::string all;
-    for (std::size_t index = 0; index < 120; ++index) {
-        if (index != 0)
-            all += ',';
+    for (std::size_t index { 0uz }; index < 120uz; ++index) {
+        if (index != 0) all += ',';
         all += std::to_string(index);
     }
-    const auto complete = parse_fit_view_indices(all, 120);
-    REQUIRE(complete);
-    REQUIRE(complete->size() == 120);
-    for (std::size_t index = 0; index < 120; ++index)
-        REQUIRE(complete->at(index) == index);
+    const auto K_COMPLETE = parse_fit_view_indices(all, 120);
+    REQUIRE(K_COMPLETE);
+    REQUIRE(K_COMPLETE->size() == 120);
+    for (std::size_t index { 0uz }; index < 120uz; ++index) REQUIRE(K_COMPLETE->at(index) == index);
 }
 
 TEST_CASE("calibrated diagnostic fit indices reject ambiguous unbounded and duplicate selections") {
@@ -30,9 +30,9 @@ TEST_CASE("calibrated diagnostic fit indices reject ambiguous unbounded and dupl
                               "1 ", "1, 2", "80", "120", "999",  "1000", "18446744073709551616",
                               "0\n"}) {
         INFO(input);
-        const auto rejected = parse_fit_view_indices(input, 80);
-        REQUIRE(!rejected.has_value());
-        REQUIRE(rejected.error().code == error_code::INVALID_ARGUMENT);
+        const auto K_REJECTED = parse_fit_view_indices(input, 80);
+        REQUIRE(!K_REJECTED.has_value());
+        REQUIRE(K_REJECTED.error().m_code == ErrorCode::INVALID_ARGUMENT);
     }
     REQUIRE(!parse_fit_view_indices(std::string(480, '0'), 120).has_value());
     REQUIRE(!parse_fit_view_indices("0", 2).has_value());

@@ -2,402 +2,407 @@
 #include "world_explorer/core/asset_files.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
+
 #include <algorithm>
 #include <atomic>
 #include <bit>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
 #include <chrono>
 #include <fstream>
 #include <iterator>
 #include <limits>
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <nlohmann/json.hpp>
 
 using namespace world_explorer;
+
 namespace {
-depth_image_asset fixture() {
-    depth_image_asset asset;
-    asset.metadata.dependency = {
-        {7}, {9}, {9007199254740993ULL}, {3}, std::string(64, 'a'), std::string(64, 'b')};
-    asset.metadata.width = 3;
-    asset.metadata.height = 2;
-    asset.metadata.camera = {2, 4, 1, .5};
-    asset.metadata.calibrated_image_sha256 = std::string(64, 'c');
-    asset.metadata.recipe_sha256 = std::string(64, 'd');
-    asset.axial_depth = {2, 0, 4, 1, 8, 0};
-    asset.valid = {1, 0, 1, 1, 1, 0};
-    asset.confidence = {.5, 0, 1, 0, .25, 0};
-    asset.support_count = {2, 0, 4, 1, 3, 0};
+
+DepthImageAsset fixture() {
+    DepthImageAsset asset;
+    asset.m_metadata.m_dependency = {
+        { 7 }, { 9 }, { 9007199254740993ULL }, { 3 }, std::string(64, 'a'), std::string(64, 'b') };
+    asset.m_metadata.m_width = 3;
+    asset.m_metadata.m_height = 2;
+    asset.m_metadata.m_camera = { 2, 4, 1, .5 };
+    asset.m_metadata.m_calibrated_image_sha256 = std::string(64, 'c');
+    asset.m_metadata.m_recipe_sha256 = std::string(64, 'd');
+    asset.m_axial_depth = { 2, 0, 4, 1, 8, 0 };
+    asset.m_valid = { 1, 0, 1, 1, 1, 0 };
+    asset.m_confidence = { .5, 0, 1, 0, .25, 0 };
+    asset.m_support_count = { 2, 0, 4, 1, 3, 0 };
     return asset;
 }
-struct directory {
-    std::filesystem::path path;
-    directory() {
-        static std::atomic<unsigned> sequence{};
-        path = std::filesystem::temp_directory_path() /
-               ("we_depth_" +
-                std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "_" +
-                std::to_string(sequence++));
-        REQUIRE(std::filesystem::create_directory(path));
+
+struct Directory {
+    std::filesystem::path m_path;
+
+    Directory() {
+        static std::atomic<unsigned> sequence {};
+        m_path = std::filesystem::temp_directory_path() /
+                 ("we_depth_" +
+                  std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
+                  "_" + std::to_string(sequence++));
+        REQUIRE(std::filesystem::create_directory(m_path));
     }
-    ~directory() {
+
+    ~Directory() {
         std::error_code ignored;
-        std::filesystem::remove_all(path, ignored);
+        std::filesystem::remove_all(m_path, ignored);
     }
 };
+
 // Fixed wire offsets are independent of the production encoder's implementation.
 void put_u32(std::vector<std::byte>& bytes, std::size_t offset, std::uint32_t value) {
-    for (std::size_t i = 0; i < 4; ++i) {
+    for (std::size_t i { 0uz }; i < 4uz; ++i) {
         bytes.at(offset + i) = static_cast<std::byte>(value & 255U);
         value >>= 8U;
     }
 }
-} // namespace
+
+}  // namespace
 
 TEST_CASE("depth planes preserve explicit unknowns camera units and wide frame identities",
           "[depth]") {
-    const auto asset = fixture();
-    const auto encoded = encode_depth_asset(asset);
-    REQUIRE(encoded);
-    CHECK(encoded->size() == 356 + 6 * 13);
-    const auto decoded = decode_depth_asset(*encoded, sha256(*encoded));
-    REQUIRE(decoded);
-    CHECK(decoded->metadata.dependency.frame.value == 9007199254740993ULL);
-    CHECK(decoded->metadata.camera.cy == .5);
-    CHECK(decoded->axial_depth == asset.axial_depth);
-    CHECK(decoded->valid == asset.valid);
-    CHECK(decoded->confidence == asset.confidence);
-    CHECK(decoded->support_count == asset.support_count);
-    CHECK((decoded->standard_deviation).has_value() == false);
-    CHECK(admit_depth_asset(*decoded, asset.metadata));
-    CHECK(*encode_depth_asset(*decoded) == *encoded);
-    std::vector<std::byte> unaligned(encoded->size() + 1);
-    std::copy(encoded->begin(), encoded->end(), unaligned.begin() + 1);
-    CHECK(decode_depth_asset(std::span(unaligned).subspan(1), sha256(*encoded)));
+    const auto K_ASSET = fixture();
+    const auto K_ENCODED = encode_depth_asset(K_ASSET);
+    REQUIRE(K_ENCODED);
+    CHECK(K_ENCODED->size() == 356 + 6 * 13);
+    const auto K_DECODED = decode_depth_asset(*K_ENCODED, sha256(*K_ENCODED));
+    REQUIRE(K_DECODED);
+    CHECK(K_DECODED->m_metadata.m_dependency.m_frame.m_value == 9007199254740993ULL);
+    CHECK(K_DECODED->m_metadata.m_camera.m_cy == .5);
+    CHECK(K_DECODED->m_axial_depth == K_ASSET.m_axial_depth);
+    CHECK(K_DECODED->m_valid == K_ASSET.m_valid);
+    CHECK(K_DECODED->m_confidence == K_ASSET.m_confidence);
+    CHECK(K_DECODED->m_support_count == K_ASSET.m_support_count);
+    CHECK((K_DECODED->m_standard_deviation).has_value() == false);
+    CHECK(admit_depth_asset(*K_DECODED, K_ASSET.m_metadata));
+    CHECK(*encode_depth_asset(*K_DECODED) == *K_ENCODED);
+    std::vector<std::byte> unaligned(K_ENCODED->size() + 1);
+    std::copy(K_ENCODED->begin(), K_ENCODED->end(), unaligned.begin() + 1);
+    CHECK(decode_depth_asset(std::span(unaligned).subspan(1), sha256(*K_ENCODED)));
     // Off-axis axial Z=4 is (2,-.5,4), whose range is greater than 4.
-    const auto point = unproject(decoded->metadata.camera, {2, 0}, decoded->axial_depth[2]);
-    REQUIRE(point);
-    CHECK(*point == vec3d{2, -.5, 4});
-    CHECK(std::sqrt(dot(*point, *point)) > 4);
-    CHECK((*project(decoded->metadata.camera, *point))[0] == 2);
+    const auto K_POINT =
+        unproject(K_DECODED->m_metadata.m_camera, {2, 0}, K_DECODED->m_axial_depth[2]);
+    REQUIRE(K_POINT);
+    CHECK(*K_POINT == Vec3d { 2, -.5, 4 });
+    CHECK(std::sqrt(dot(*K_POINT, *K_POINT)) > 4);
+    CHECK((*project(K_DECODED->m_metadata.m_camera, *K_POINT))[0] == 2);
 }
 
 TEST_CASE("depth wire planes have independent little endian scalar oracles", "[depth]") {
     auto asset = fixture();
-    asset.standard_deviation = std::vector<float>{.25, 0, .5, 0, 1, 0};
-    const auto bytes = encode_depth_asset(asset);
-    REQUIRE(bytes);
-    CHECK(bytes->size() == 356 + 6 * 17);
+    asset.m_standard_deviation = std::vector<float> {.25, 0, .5, 0, 1, 0};
+    const auto K_BYTES = encode_depth_asset(asset);
+    REQUIRE(K_BYTES);
+    CHECK(K_BYTES->size() == 356 + 6 * 17);
     // First depth=2: IEEE 0x40000000; validity begins after six floats.
-    CHECK(bytes->at(356) == std::byte{0});
-    CHECK(bytes->at(359) == std::byte{0x40});
-    CHECK(bytes->at(380) == std::byte{1});
-    CHECK(bytes->at(381) == std::byte{0});
+    CHECK(K_BYTES->at(356) == std::byte { 0 });
+    CHECK(K_BYTES->at(359) == std::byte { 0x40 });
+    CHECK(K_BYTES->at(380) == std::byte { 1 });
+    CHECK(K_BYTES->at(381) == std::byte { 0 });
     // Confidence=.5 at 386; support=2 at 410; sigma=.25 at 434.
-    CHECK(bytes->at(389) == std::byte{0x3f});
-    CHECK(bytes->at(410) == std::byte{2});
-    CHECK(bytes->at(437) == std::byte{0x3e});
-    const auto decoded = decode_depth_asset(*bytes, sha256(*bytes));
-    REQUIRE(decoded);
-    CHECK(decoded->standard_deviation == asset.standard_deviation);
-    CHECK(decoded->metadata.producer == depth_producer_kind::SYNTHETIC_DIAGNOSTIC);
+    CHECK(K_BYTES->at(389) == std::byte { 0x3f });
+    CHECK(K_BYTES->at(410) == std::byte { 2 });
+    CHECK(K_BYTES->at(437) == std::byte { 0x3e });
+    const auto K_DECODED = decode_depth_asset(*K_BYTES, sha256(*K_BYTES));
+    REQUIRE(K_DECODED);
+    CHECK(K_DECODED->m_standard_deviation == asset.m_standard_deviation);
+    CHECK(K_DECODED->m_metadata.m_producer == DepthProducerKind::SYNTHETIC_DIAGNOSTIC);
 }
 
 TEST_CASE(
     "depth rejects rehashed unsupported semantics dimensions and identities before allocation",
     "[depth]") {
-    const auto offset = GENERATE(std::size_t{8}, 12, 16, 20, 24, 28, 32, 100);
-    const auto value = GENERATE(0U, 0xffffffffU);
-    const auto original = encode_depth_asset(fixture());
-    REQUIRE(original);
-    auto bytes = *original;
-    put_u32(bytes, offset, value);
-    const auto decoded = decode_depth_asset(bytes, sha256(bytes));
+    const auto K_OFFSET = GENERATE(8uz, 12, 16, 20, 24, 28, 32, 100);
+    const auto K_VALUE = GENERATE(0U, 0xffffffffU);
+    const auto K_ORIGINAL = encode_depth_asset(fixture());
+    REQUIRE(K_ORIGINAL);
+    auto bytes = *K_ORIGINAL;
+    put_u32(bytes, K_OFFSET, K_VALUE);
+    const auto K_DECODED = decode_depth_asset(bytes, sha256(bytes));
     // Scale=0 is its existing arbitrary-unit encoding; uncertainty=0 is absent.
-    if ((offset == 20 || offset == 32) && value == 0)
-        CHECK(decoded);
-    else
-        CHECK((decoded).has_value() == false);
-    CHECK(*encode_depth_asset(fixture()) == *original);
+    if ((K_OFFSET == 20 || K_OFFSET == 32) && K_VALUE == 0) CHECK(K_DECODED);
+    else CHECK((K_DECODED).has_value() == false);
+    CHECK(*encode_depth_asset(fixture()) == *K_ORIGINAL);
 }
 
 TEST_CASE("depth rejects rehashed malformed samples in every serialized plane", "[depth]") {
-    const auto offset = GENERATE(std::size_t{356}, 386, 410, 434);
+    const auto K_OFFSET = GENERATE(356uz, 386, 410, 434);
     auto asset = fixture();
-    asset.standard_deviation = std::vector<float>{.25, 0, .5, .125, 1, 0};
-    const auto original = encode_depth_asset(asset);
-    REQUIRE(original);
-    auto bytes = *original;
-    put_u32(bytes, offset, 0x7fc00000U);
+    asset.m_standard_deviation = std::vector<float> {.25, 0, .5, .125, 1, 0};
+    const auto K_ORIGINAL = encode_depth_asset(asset);
+    REQUIRE(K_ORIGINAL);
+    auto bytes = *K_ORIGINAL;
+    put_u32(bytes, K_OFFSET, 0x7fc00000U);
     CHECK((decode_depth_asset(bytes, sha256(bytes))).has_value() == false);
-    bytes = *original;
-    bytes.at(380) = std::byte{2};
+    bytes = *K_ORIGINAL;
+    bytes.at(380) = std::byte { 2 };
     CHECK((decode_depth_asset(bytes, sha256(bytes))).has_value() == false);
 }
 
 TEST_CASE("depth validates sample support masks confidence and optional uncertainty", "[depth]") {
     auto asset = fixture();
-    const auto original = *encode_depth_asset(asset);
-    const auto mutation = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
-    switch (mutation) {
+    const auto K_ORIGINAL = *encode_depth_asset(asset);
+    const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+    switch (K_MUTATION) {
     case 0:
-        asset.axial_depth[0] = 0;
+        asset.m_axial_depth[0] = 0;
         break;
     case 1:
-        asset.axial_depth[1] = 1;
+        asset.m_axial_depth[1] = 1;
         break;
     case 2:
-        asset.axial_depth[1] = -0.0F;
+        asset.m_axial_depth[1] = -0.0F;
         break;
     case 3:
-        asset.confidence[0] = 1.01F;
+        asset.m_confidence[0] = 1.01F;
         break;
     case 4:
-        asset.confidence[1] = .1F;
+        asset.m_confidence[1] = .1F;
         break;
     case 5:
-        asset.support_count[0] = 0;
+        asset.m_support_count[0] = 0;
         break;
     case 6:
-        asset.support_count[1] = 1;
+        asset.m_support_count[1] = 1;
         break;
     case 7:
-        asset.support_count[0] = 1000001;
+        asset.m_support_count[0] = 1000001;
         break;
     case 8:
-        asset.confidence.pop_back();
+        asset.m_confidence.pop_back();
         break;
     case 9:
-        asset.standard_deviation = std::vector<float>(5);
+        asset.m_standard_deviation = std::vector<float>(5);
         break;
     case 10:
-        asset.standard_deviation = std::vector<float>{-1, 0, .5, 0, 1, 0};
+        asset.m_standard_deviation = std::vector<float> {-1, 0, .5, 0, 1, 0};
         break;
     case 11:
-        asset.standard_deviation = std::vector<float>{1, 1, 1, 1, 1, 1};
+        asset.m_standard_deviation = std::vector<float> {1, 1, 1, 1, 1, 1};
         break;
     default:
         FAIL("Unknown mutation");
     }
-    const auto rejected = encode_depth_asset(asset);
-    REQUIRE((rejected).has_value() == false);
-    CHECK(rejected.error().code == error_code::INVALID_DATA);
-    CHECK(*encode_depth_asset(fixture()) == original);
+    const auto K_REJECTED = encode_depth_asset(asset);
+    REQUIRE((K_REJECTED).has_value() == false);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(*encode_depth_asset(fixture()) == K_ORIGINAL);
 }
 
 TEST_CASE("depth enforces independent exact pixel payload and encoded byte budgets", "[depth]") {
-    const auto asset = fixture();
-    depth_asset_limits exact;
-    exact.max_dimension = 3;
-    exact.max_pixels = 6;
-    exact.payload_bytes.bytes = 78;
-    exact.encoded_bytes.bytes = 434;
-    const auto encoded = encode_depth_asset(asset, exact);
-    REQUIRE(encoded);
-    REQUIRE(decode_depth_asset(*encoded, sha256(*encoded), exact));
-    const auto limit = GENERATE(0, 1, 2, 3, 4);
-    switch (limit) {
+    const auto K_ASSET = fixture();
+    DepthAssetLimits exact;
+    exact.m_max_dimension = 3;
+    exact.m_max_pixels = 6;
+    exact.m_payload_bytes.m_bytes = 78;
+    exact.m_encoded_bytes.m_bytes = 434;
+    const auto K_ENCODED = encode_depth_asset(K_ASSET, exact);
+    REQUIRE(K_ENCODED);
+    REQUIRE(decode_depth_asset(*K_ENCODED, sha256(*K_ENCODED), exact));
+    const auto K_LIMIT = GENERATE(0, 1, 2, 3, 4);
+    switch (K_LIMIT) {
     case 0:
-        --exact.max_pixels;
+        --exact.m_max_pixels;
         break;
     case 1:
-        --exact.max_dimension;
+        --exact.m_max_dimension;
         break;
     case 2:
-        --exact.payload_bytes.bytes;
+        --exact.m_payload_bytes.m_bytes;
         break;
     case 3:
-        --exact.encoded_bytes.bytes;
+        --exact.m_encoded_bytes.m_bytes;
         break;
     case 4:
-        exact.max_support_count = 3;
+        exact.m_max_support_count = 3;
         break;
     default:
         FAIL("Unknown budget");
     }
-    CHECK((encode_depth_asset(asset, exact)).has_value() == false);
-    CHECK((decode_depth_asset(*encoded, sha256(*encoded), exact)).has_value() == false);
+    CHECK((encode_depth_asset(K_ASSET, exact)).has_value() == false);
+    CHECK((decode_depth_asset(*K_ENCODED, sha256(*K_ENCODED), exact)).has_value() == false);
 }
 
 TEST_CASE("depth checksum version truncation and trailing data fail without caller mutation",
           "[depth]") {
-    const auto original = *encode_depth_asset(fixture());
-    for (std::size_t length = 0; length < original.size(); ++length) {
-        const auto bytes = std::span(original).first(length);
-        CHECK((decode_depth_asset(bytes, sha256(bytes))).has_value() == false);
+    const auto K_ORIGINAL = *encode_depth_asset(fixture());
+    for (std::size_t length { 0uz }; length < K_ORIGINAL.size(); ++length) {
+        const auto K_BYTES = std::span(K_ORIGINAL).first(length);
+        CHECK((decode_depth_asset(K_BYTES, sha256(K_BYTES))).has_value() == false);
     }
-    auto appended = original;
-    appended.push_back(std::byte{0});
+    auto appended = K_ORIGINAL;
+    appended.push_back(std::byte { 0 });
     CHECK((decode_depth_asset(appended, sha256(appended))).has_value() == false);
-    CHECK((decode_depth_asset(original, std::string(64, 'f'))).has_value() == false);
-    CHECK((decode_depth_asset(original, "INVALID")).has_value() == false);
-    CHECK(*encode_depth_asset(fixture()) == original);
+    CHECK((decode_depth_asset(K_ORIGINAL, std::string(64, 'f'))).has_value() == false);
+    CHECK((decode_depth_asset(K_ORIGINAL, "INVALID")).has_value() == false);
+    CHECK(*encode_depth_asset(fixture()) == K_ORIGINAL);
 }
 
 TEST_CASE("depth wrong epoch revision and dependency require resynchronization", "[depth]") {
-    const auto asset = fixture();
-    const auto original = *encode_depth_asset(asset);
-    auto expected = asset.metadata;
-    const auto mutation = GENERATE(0, 1, 2);
-    const auto code = mutation == 0   ? error_code::WRONG_EPOCH
-                      : mutation == 1 ? error_code::WRONG_BASE
-                                      : error_code::RESYNC_REQUIRED;
-    if (mutation == 0)
-        ++expected.dependency.epoch.value;
-    if (mutation == 1)
-        ++expected.dependency.pose_revision.value;
-    if (mutation == 2)
-        expected.dependency.pose_asset_sha256 = std::string(64, 'e');
-    const auto rejected = admit_depth_asset(asset, expected);
-    REQUIRE((rejected).has_value() == false);
-    CHECK(rejected.error().code == code);
-    CHECK(*encode_depth_asset(asset) == original);
+    const auto K_ASSET = fixture();
+    const auto K_ORIGINAL = *encode_depth_asset(K_ASSET);
+    auto expected = K_ASSET.m_metadata;
+    const auto K_MUTATION = GENERATE(0, 1, 2);
+    const auto K_CODE = K_MUTATION == 0   ? ErrorCode::WRONG_EPOCH
+                        : K_MUTATION == 1 ? ErrorCode::WRONG_BASE
+                                          : ErrorCode::RESYNC_REQUIRED;
+    if (K_MUTATION == 0) ++expected.m_dependency.m_epoch.m_value;
+    if (K_MUTATION == 1) ++expected.m_dependency.m_pose_revision.m_value;
+    if (K_MUTATION == 2) expected.m_dependency.m_pose_asset_sha256 = std::string(64, 'e');
+    const auto K_REJECTED = admit_depth_asset(K_ASSET, expected);
+    REQUIRE((K_REJECTED).has_value() == false);
+    CHECK(K_REJECTED.error().m_code == K_CODE);
+    CHECK(*encode_depth_asset(K_ASSET) == K_ORIGINAL);
 }
 
 TEST_CASE("depth admission binds the full calibrated domain recipe and source observation",
           "[depth]") {
-    const auto asset = fixture();
-    auto expected = asset.metadata;
-    const auto mutation = GENERATE(0, 1, 2, 3, 4, 5, 6, 7);
-    switch (mutation) {
+    const auto K_ASSET = fixture();
+    auto expected = K_ASSET.m_metadata;
+    const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6, 7);
+    switch (K_MUTATION) {
     case 0:
-        ++expected.dependency.frame.value;
+        ++expected.m_dependency.m_frame.m_value;
         break;
     case 1:
-        ++expected.dependency.calibration.value;
+        ++expected.m_dependency.m_calibration.m_value;
         break;
     case 2:
-        expected.dependency.observation_image_sha256 = std::string(64, 'e');
+        expected.m_dependency.m_observation_image_sha256 = std::string(64, 'e');
         break;
     case 3:
-        expected.calibrated_image_sha256 = std::string(64, 'e');
+        expected.m_calibrated_image_sha256 = std::string(64, 'e');
         break;
     case 4:
-        expected.recipe_sha256 = std::string(64, 'e');
+        expected.m_recipe_sha256 = std::string(64, 'e');
         break;
     case 5:
-        expected.camera.cx += .5;
+        expected.m_camera.m_cx += .5;
         break;
     case 6:
-        expected.width = 2;
+        expected.m_width = 2;
         break;
     case 7:
-        expected.producer = depth_producer_kind::MULTIVIEW_STEREO;
+        expected.m_producer = DepthProducerKind::MULTIVIEW_STEREO;
         break;
     default:
         FAIL("Unknown metadata change");
     }
-    CHECK((admit_depth_asset(asset, expected)).has_value() == false);
+    CHECK((admit_depth_asset(K_ASSET, expected)).has_value() == false);
 }
 
 TEST_CASE("depth metric range and invalid limit claims remain unsupported", "[depth]") {
     auto asset = fixture();
-    SECTION("ray range") { asset.metadata.convention = depth_convention::RAY_RANGE; }
-    SECTION("measured units") { asset.metadata.scale = scale_status::METRIC_MEASURED; }
-    const auto checked = encode_depth_asset(asset);
-    REQUIRE((checked).has_value() == false);
-    CHECK(checked.error().code == error_code::UNSUPPORTED_OPERATION);
+    SECTION("ray range") {
+        asset.m_metadata.m_convention = DepthConvention::RAY_RANGE;
+    }
+    SECTION("measured units") {
+        asset.m_metadata.m_scale = ScaleStatus::METRIC_MEASURED;
+    }
+    const auto K_CHECKED = encode_depth_asset(asset);
+    REQUIRE((K_CHECKED).has_value() == false);
+    CHECK(K_CHECKED.error().m_code == ErrorCode::UNSUPPORTED_OPERATION);
 }
 
 TEST_CASE("depth file publication preserves existing entries and admission failures", "[depth]") {
-    directory root;
-    const auto asset = fixture();
-    const auto path = root.path / "image.wedepth";
-    const auto digest = write_depth_asset(path, asset);
-    REQUIRE(digest);
-    const auto loaded = read_depth_asset(path, *digest, asset.metadata);
-    REQUIRE(loaded);
-    const auto original = *asset_files::read_bytes(path, 1024, {});
-    auto changed = asset;
-    changed.axial_depth[0] = 3;
-    CHECK((write_depth_asset(path, changed)).has_value() == false);
-    auto expected = asset.metadata;
-    ++expected.dependency.pose_revision.value;
-    CHECK((read_depth_asset(path, *digest, expected)).has_value() == false);
-    CHECK(*asset_files::read_bytes(path, 1024, {}) == original);
-    const auto inspected = inspect_depth_file(path, *digest);
-    REQUIRE(inspected);
-    const auto summary = nlohmann::json::parse(*inspected);
-    CHECK(summary["producer"] == "SYNTHETIC_DIAGNOSTIC");
-    CHECK(summary["frame"].get<std::uint64_t>() == 9007199254740993ULL);
-    CHECK(summary["valid_pixels"] == 4);
-    CHECK(summary["unknown_pixels"] == 2);
-    CHECK(summary["uncertainty"] == "UNAVAILABLE");
-    CHECK((write_depth_asset(root.path, asset)).has_value() == false);
-    CHECK((write_depth_asset(root.path / "missing/image.wedepth", asset)).has_value() == false);
-    CHECK(std::distance(std::filesystem::directory_iterator(root.path),
-                        std::filesystem::directory_iterator{}) == 1);
+    Directory root;
+    const auto K_ASSET = fixture();
+    const auto K_PATH = root.m_path / "image.wedepth";
+    const auto K_DIGEST = write_depth_asset(K_PATH, K_ASSET);
+    REQUIRE(K_DIGEST);
+    const auto K_LOADED = read_depth_asset(K_PATH, *K_DIGEST, K_ASSET.m_metadata);
+    REQUIRE(K_LOADED);
+    const auto K_ORIGINAL = *asset_files::read_bytes(K_PATH, 1024, {});
+    auto changed = K_ASSET;
+    changed.m_axial_depth[0] = 3;
+    CHECK((write_depth_asset(K_PATH, changed)).has_value() == false);
+    auto expected = K_ASSET.m_metadata;
+    ++expected.m_dependency.m_pose_revision.m_value;
+    CHECK((read_depth_asset(K_PATH, *K_DIGEST, expected)).has_value() == false);
+    CHECK(*asset_files::read_bytes(K_PATH, 1024, {}) == K_ORIGINAL);
+    const auto K_INSPECTED = inspect_depth_file(K_PATH, *K_DIGEST);
+    REQUIRE(K_INSPECTED);
+    const auto K_SUMMARY = nlohmann::json::parse(*K_INSPECTED);
+    CHECK(K_SUMMARY["producer"] == "SYNTHETIC_DIAGNOSTIC");
+    CHECK(K_SUMMARY["frame"].get<std::uint64_t>() == 9007199254740993ULL);
+    CHECK(K_SUMMARY["valid_pixels"] == 4);
+    CHECK(K_SUMMARY["unknown_pixels"] == 2);
+    CHECK(K_SUMMARY["uncertainty"] == "UNAVAILABLE");
+    CHECK((write_depth_asset(root.m_path, K_ASSET)).has_value() == false);
+    CHECK((write_depth_asset(root.m_path / "missing/image.wedepth", K_ASSET)).has_value() == false);
+    CHECK(std::distance(std::filesystem::directory_iterator(root.m_path),
+                        std::filesystem::directory_iterator {}) == 1);
 }
 
 TEST_CASE("depth pre cancellation preserves files planes and publication state", "[depth]") {
-    directory root;
-    const auto asset = fixture();
-    const auto bytes = *encode_depth_asset(asset);
+    Directory root;
+    const auto K_ASSET = fixture();
+    const auto K_BYTES = *encode_depth_asset(K_ASSET);
     std::stop_source source;
     source.request_stop();
-    const auto token = source.get_token();
-    const auto path = root.path / "cancelled.wedepth";
-    const auto require_cancelled = [](const auto& result) {
+    const auto K_TOKEN = source.get_token();
+    const auto K_PATH = root.m_path / "cancelled.wedepth";
+    const auto K_REQUIRE_CANCELLED = [](const auto& result) {
         REQUIRE(result.has_value() == false);
-        CHECK(result.error().code == error_code::CANCELLED);
+        CHECK(result.error().m_code == ErrorCode::CANCELLED);
     };
-    require_cancelled(encode_depth_asset(asset, {}, token));
-    require_cancelled(decode_depth_asset(bytes, sha256(bytes), {}, token));
-    require_cancelled(admit_depth_asset(asset, asset.metadata, {}, token));
-    require_cancelled(write_depth_asset(path, asset, {}, token));
-    require_cancelled(read_depth_asset(path, sha256(bytes), asset.metadata, {}, token));
-    require_cancelled(inspect_depth_file(path, sha256(bytes), {}, token));
-    require_cancelled(load_pose_bound_depth({}, {}, token));
-    CHECK(std::filesystem::is_empty(root.path));
-    CHECK(*encode_depth_asset(asset) == bytes);
+    K_REQUIRE_CANCELLED(encode_depth_asset(K_ASSET, {}, K_TOKEN));
+    K_REQUIRE_CANCELLED(decode_depth_asset(K_BYTES, sha256(K_BYTES), {}, K_TOKEN));
+    K_REQUIRE_CANCELLED(admit_depth_asset(K_ASSET, K_ASSET.m_metadata, {}, K_TOKEN));
+    K_REQUIRE_CANCELLED(write_depth_asset(K_PATH, K_ASSET, {}, K_TOKEN));
+    K_REQUIRE_CANCELLED(read_depth_asset(K_PATH, sha256(K_BYTES), K_ASSET.m_metadata, {}, K_TOKEN));
+    K_REQUIRE_CANCELLED(inspect_depth_file(K_PATH, sha256(K_BYTES), {}, K_TOKEN));
+    K_REQUIRE_CANCELLED(load_pose_bound_depth({}, {}, K_TOKEN));
+    CHECK(std::filesystem::is_empty(root.m_path));
+    CHECK(*encode_depth_asset(K_ASSET) == K_BYTES);
 }
 
 TEST_CASE("depth scalar wire tags never alias through narrowing", "[depth]") {
-    const auto offset = GENERATE(std::size_t{12}, 16, 20);
-    const auto original = *encode_depth_asset(fixture());
-    auto bytes = original;
-    put_u32(bytes, offset, offset == 20 ? 256 : 257);
+    const auto K_OFFSET = GENERATE(12uz, 16, 20);
+    const auto K_ORIGINAL = *encode_depth_asset(fixture());
+    auto bytes = K_ORIGINAL;
+    put_u32(bytes, K_OFFSET, K_OFFSET == 20 ? 256 : 257);
     CHECK(decode_depth_asset(bytes, sha256(bytes)).has_value() == false);
 }
 
 TEST_CASE("depth admission verifies the independent canonical pose file", "[depth]") {
-    directory root;
+    Directory root;
     auto depth = fixture();
-    map_store store;
-    map_transaction transaction;
-    transaction.new_revision = {1};
-    transaction.operation = {1};
-    const auto frame = depth.metadata.dependency.frame;
-    transaction.calibrations = {{{3}, {2, 4, 1, .5}, 3, 2}};
-    transaction.observations = {
-        {frame, {1}, {3}, {0, 1, 30}, std::chrono::nanoseconds{0}, std::string(64, 'b')}};
-    transaction.alignments = {{{1}, {1}, {}}};
-    transaction.poses = {
-        {frame, {1}, {}, std::chrono::nanoseconds{0}, {1}, tracking_state::TRACKING, {}}};
+    MapStore store;
+    MapTransaction transaction;
+    transaction.m_new_revision = { 1 };
+    transaction.m_operation = { 1 };
+    const auto K_FRAME = depth.m_metadata.m_dependency.m_frame;
+    transaction.m_calibrations = { { { 3 }, { 2, 4, 1, .5 }, 3, 2 } };
+    transaction.m_observations = {
+        { K_FRAME, { 1 }, { 3 }, { 0, 1, 30 }, std::chrono::nanoseconds { 0 }, std::string(64, 'b') } };
+    transaction.m_alignments = { { { 1 }, { 1 }, {} } };
+    transaction.m_poses = {
+        { K_FRAME, { 1 }, {}, std::chrono::nanoseconds { 0 }, { 1 }, TrackingState::TRACKING, {} } };
     REQUIRE(store.commit(transaction));
-    canonical_pose_asset poses{
+    CanonicalPoseAsset poses {
         store.acquire_snapshot(),
         {std::string(64, '1'), std::string(64, '2'), std::string(64, '3'), {}}};
-    const auto mutation = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-    if (mutation >= 7) {
-        auto map = std::make_shared<map_state>(*poses.snapshot);
-        if (mutation == 7)
-            map->invalidated_frames.insert(frame);
-        if (mutation == 8)
-            map->poses.at(frame).tracking = tracking_state::LOST;
-        if (mutation == 9)
-            map->poses.at(frame).tracking = tracking_state::INITIALIZING;
-        if (mutation == 10)
-            map->poses.at(frame).tracking = tracking_state::FINISHED;
-        poses.snapshot = map;
+    const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    if (K_MUTATION >= 7) {
+        auto map = std::make_shared<MapState>(*poses.m_snapshot);
+        if (K_MUTATION == 7) map->m_invalidated_frames.insert(K_FRAME);
+        if (K_MUTATION == 8) map->m_poses.at(K_FRAME).m_tracking = TrackingState::LOST;
+        if (K_MUTATION == 9) map->m_poses.at(K_FRAME).m_tracking = TrackingState::INITIALIZING;
+        if (K_MUTATION == 10) map->m_poses.at(K_FRAME).m_tracking = TrackingState::FINISHED;
+        poses.m_snapshot = map;
     }
-    const auto pose_path = root.path / "source.weposes";
-    const auto pose_digest = write_pose_asset(pose_path, poses);
-    REQUIRE(pose_digest);
-    depth.metadata.dependency.pose_asset_sha256 = *pose_digest;
-    depth.metadata.dependency.epoch = {0};
-    depth.metadata.dependency.pose_revision = {1};
-    switch (mutation) {
+    const auto K_POSE_PATH = root.m_path / "source.weposes";
+    const auto K_POSE_DIGEST = write_pose_asset(K_POSE_PATH, poses);
+    REQUIRE(K_POSE_DIGEST);
+    depth.m_metadata.m_dependency.m_pose_asset_sha256 = *K_POSE_DIGEST;
+    depth.m_metadata.m_dependency.m_epoch = { 0 };
+    depth.m_metadata.m_dependency.m_pose_revision = { 1 };
+    switch (K_MUTATION) {
     case 0:
     case 7:
     case 8:
@@ -405,87 +410,87 @@ TEST_CASE("depth admission verifies the independent canonical pose file", "[dept
     case 10:
         break;
     case 1:
-        depth.metadata.dependency.observation_image_sha256 = std::string(64, 'e');
+        depth.m_metadata.m_dependency.m_observation_image_sha256 = std::string(64, 'e');
         break;
     case 2:
-        ++depth.metadata.dependency.frame.value;
+        ++depth.m_metadata.m_dependency.m_frame.m_value;
         break;
     case 3:
-        ++depth.metadata.dependency.calibration.value;
+        ++depth.m_metadata.m_dependency.m_calibration.m_value;
         break;
     case 4:
-        ++depth.metadata.dependency.epoch.value;
+        ++depth.m_metadata.m_dependency.m_epoch.m_value;
         break;
     case 5:
-        ++depth.metadata.dependency.pose_revision.value;
+        ++depth.m_metadata.m_dependency.m_pose_revision.m_value;
         break;
     case 6:
-        depth.metadata.dependency.pose_asset_sha256 = std::string(64, 'e');
+        depth.m_metadata.m_dependency.m_pose_asset_sha256 = std::string(64, 'e');
         break;
     default:
         FAIL("Unknown dependency change");
     }
-    const auto depth_path = root.path / "image.wedepth";
-    const auto depth_digest = write_depth_asset(depth_path, depth);
-    REQUIRE(depth_digest);
-    const auto admitted =
-        load_pose_bound_depth({depth_path, pose_path, *depth_digest, *pose_digest, depth.metadata});
-    if (mutation == 0 || mutation == 10) {
-        REQUIRE(admitted);
-        CHECK(admitted->axial_depth == depth.axial_depth);
+    const auto K_DEPTH_PATH = root.m_path / "image.wedepth";
+    const auto K_DEPTH_DIGEST = write_depth_asset(K_DEPTH_PATH, depth);
+    REQUIRE(K_DEPTH_DIGEST);
+    const auto K_ADMITTED = load_pose_bound_depth(
+        {K_DEPTH_PATH, K_POSE_PATH, *K_DEPTH_DIGEST, *K_POSE_DIGEST, depth.m_metadata});
+    if (K_MUTATION == 0 || K_MUTATION == 10) {
+        REQUIRE(K_ADMITTED);
+        CHECK(K_ADMITTED->m_axial_depth == depth.m_axial_depth);
     } else {
-        REQUIRE(admitted.has_value() == false);
-        const auto expected = mutation == 4   ? error_code::WRONG_EPOCH
-                              : mutation == 5 ? error_code::WRONG_BASE
-                              : (mutation == 2 || mutation == 6 || mutation >= 7)
-                                  ? error_code::RESYNC_REQUIRED
-                                  : error_code::INVALID_DATA;
-        CHECK(admitted.error().code == expected);
+        REQUIRE(K_ADMITTED.has_value() == false);
+        const auto K_EXPECTED = K_MUTATION == 4   ? ErrorCode::WRONG_EPOCH
+                                : K_MUTATION == 5 ? ErrorCode::WRONG_BASE
+                                : (K_MUTATION == 2 || K_MUTATION == 6 || K_MUTATION >= 7)
+                                    ? ErrorCode::RESYNC_REQUIRED
+                                    : ErrorCode::INVALID_DATA;
+        CHECK(K_ADMITTED.error().m_code == K_EXPECTED);
     }
-    CHECK(*sha256_file(depth_path, 4096) == *depth_digest);
-    CHECK(*sha256_file(pose_path, 65536) == *pose_digest);
+    CHECK(*sha256_file(K_DEPTH_PATH, 4096) == *K_DEPTH_DIGEST);
+    CHECK(*sha256_file(K_POSE_PATH, 65536) == *K_POSE_DIGEST);
 }
 
 TEST_CASE("depth invalid limits and symbolic links preserve existing caller files", "[depth]") {
-    const auto mutation = GENERATE(0, 1, 2, 3, 4);
-    depth_asset_limits limits;
-    switch (mutation) {
+    const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4);
+    DepthAssetLimits limits;
+    switch (K_MUTATION) {
     case 0:
-        limits.max_dimension = 0;
+        limits.m_max_dimension = 0;
         break;
     case 1:
-        limits.max_pixels = 0;
+        limits.m_max_pixels = 0;
         break;
     case 2:
-        limits.payload_bytes.bytes = 0;
+        limits.m_payload_bytes.m_bytes = 0;
         break;
     case 3:
-        limits.encoded_bytes.bytes = std::numeric_limits<std::size_t>::max();
+        limits.m_encoded_bytes.m_bytes = std::numeric_limits<std::size_t>::max();
         break;
     case 4:
-        limits.max_support_count = 0;
+        limits.m_max_support_count = 0;
         break;
     default:
         FAIL("Unknown invalid limit");
     }
-    const auto invalid = encode_depth_asset(fixture(), limits);
-    REQUIRE(invalid.has_value() == false);
-    CHECK(invalid.error().code == error_code::INVALID_ARGUMENT);
-    directory root;
-    const auto path = root.path / "image.wedepth";
-    const auto asset = fixture();
-    const auto digest = write_depth_asset(path, asset);
-    REQUIRE(digest);
-    const auto link = root.path / "link.wedepth";
+    const auto K_INVALID = encode_depth_asset(fixture(), limits);
+    REQUIRE(K_INVALID.has_value() == false);
+    CHECK(K_INVALID.error().m_code == ErrorCode::INVALID_ARGUMENT);
+    Directory root;
+    const auto K_PATH = root.m_path / "image.wedepth";
+    const auto K_ASSET = fixture();
+    const auto K_DIGEST = write_depth_asset(K_PATH, K_ASSET);
+    REQUIRE(K_DIGEST);
+    const auto K_LINK = root.m_path / "link.wedepth";
     std::error_code error;
-    std::filesystem::create_symlink(path, link, error);
+    std::filesystem::create_symlink(K_PATH, K_LINK, error);
 #ifdef _WIN32
     if (error == std::errc::operation_not_permitted || error == std::errc::permission_denied)
         SKIP("Native symbolic-link creation unavailable to this Windows account");
 #endif
     REQUIRE(!error);
-    CHECK(read_depth_asset(link, *digest, asset.metadata).has_value() == false);
-    CHECK(write_depth_asset(link, asset).has_value() == false);
-    CHECK(*sha256_file(path, 4096) == *digest);
-    CHECK(std::filesystem::is_symlink(link));
+    CHECK(read_depth_asset(K_LINK, *K_DIGEST, K_ASSET.m_metadata).has_value() == false);
+    CHECK(write_depth_asset(K_LINK, K_ASSET).has_value() == false);
+    CHECK(*sha256_file(K_PATH, 4096) == *K_DIGEST);
+    CHECK(std::filesystem::is_symlink(K_LINK));
 }

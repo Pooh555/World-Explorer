@@ -1,5 +1,7 @@
 #include "vulkan_swapchain.hpp"
+
 #include "vulkan_device.hpp"
+
 #include <algorithm>
 #include <limits>
 #include <ranges>
@@ -7,71 +9,77 @@
 #include <utility>
 
 namespace world_explorer {
+
 #if defined(WE_VULKAN_TEST_FAULTS)
 namespace detail {
-thread_local bool fail_swapchain_after_create{};
-void fail_next_swapchain_after_create() noexcept { fail_swapchain_after_create = true; }
-} // namespace detail
+
+thread_local bool fail_swapchain_after_create {};
+
+void fail_next_swapchain_after_create() noexcept {
+    fail_swapchain_after_create = true;
+}
+
+}  // namespace detail
 #endif
 
-vulkan_swapchain::vulkan_swapchain(vulkan_device& device, VkSurfaceKHR surface,
+vulkan_swapchain::vulkan_swapchain(vulkan_device& device,
+                                   VkSurfaceKHR surface,
                                    VkFormat preferred_format)
     : device_(device.device()), physical_device_(device.physical_device()), surface_(surface),
-      preferred_format_(preferred_format) {}
+      preferred_format_(preferred_format) {
+}
 
 vulkan_swapchain::vulkan_swapchain(const vulkan_swapchain& source, bool /*staged*/)
     : device_(source.device_), physical_device_(source.physical_device_), surface_(source.surface_),
       render_pass_(source.render_pass_),
       preferred_format_(source.format_ == VK_FORMAT_UNDEFINED ? source.preferred_format_
                                                               : source.format_),
-      owns_render_pass_(source.render_pass_ == VK_NULL_HANDLE) {}
+      owns_render_pass_(source.render_pass_ == VK_NULL_HANDLE) {
+}
 
 vulkan_swapchain::~vulkan_swapchain() {
     cleanup();
-    if (render_pass_ && owns_render_pass_)
-        vkDestroyRenderPass(device_, render_pass_, nullptr);
+    if (render_pass_ && owns_render_pass_) vkDestroyRenderPass(device_, render_pass_, nullptr);
 }
 
 VkExtent2D vulkan_swapchain::extent_for_window(SDL_Window* window) const {
     int width = 0, height = 0;
     if (!SDL_GetWindowSizeInPixels(window, &width, &height))
         throw std::runtime_error(SDL_GetError());
-    if (width <= 0 || height <= 0)
-        return {};
+    if (width <= 0 || height <= 0) return {};
 
     // Vulkan fills every field before any enum is inspected.
     // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization)
-    VkSurfaceCapabilitiesKHR supported{};
+    VkSurfaceCapabilitiesKHR supported {};
     detail::check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device_, surface_, &supported),
                   "query surface capabilities");
     auto requested = supported.currentExtent;
     if (requested.width == std::numeric_limits<std::uint32_t>::max()) {
-        requested = {std::clamp(static_cast<std::uint32_t>(width), supported.minImageExtent.width,
+        requested = { std::clamp(static_cast<std::uint32_t>(width),
+                                supported.minImageExtent.width,
                                 supported.maxImageExtent.width),
-                     std::clamp(static_cast<std::uint32_t>(height), supported.minImageExtent.height,
-                                supported.maxImageExtent.height)};
+                     std::clamp(static_cast<std::uint32_t>(height),
+                                supported.minImageExtent.height,
+                                supported.maxImageExtent.height) };
     }
     return requested;
 }
 
 bool vulkan_swapchain::create(SDL_Window* window, std::optional<VkExtent2D> expected_extent) {
-    const auto requested_extent = extent_for_window(window);
-    if (!requested_extent.width || !requested_extent.height)
-        return false;
-    if (expected_extent && (requested_extent.width != expected_extent->width ||
-                            requested_extent.height != expected_extent->height))
+    const auto K_REQUESTED_EXTENT = extent_for_window(window);
+    if (!K_REQUESTED_EXTENT.width || !K_REQUESTED_EXTENT.height) return false;
+    if (expected_extent && (K_REQUESTED_EXTENT.width != expected_extent->width ||
+                            K_REQUESTED_EXTENT.height != expected_extent->height))
         throw std::runtime_error("surface extent changed during swapchain preparation");
 
-    if (swapchain_)
-        detail::check(vkDeviceWaitIdle(device_), "wait for swapchain resize");
+    if (swapchain_) detail::check(vkDeviceWaitIdle(device_), "wait for swapchain resize");
     vulkan_swapchain next(*this, true);
     bool handoff_attempted = false;
     try {
-        next.create_resources(requested_extent, swapchain_, handoff_attempted);
+        next.create_resources(K_REQUESTED_EXTENT, swapchain_, handoff_attempted);
     } catch (...) {
         // Vulkan retires oldSwapchain when the create call starts, even if it fails.
-        if (handoff_attempted)
-            cleanup();
+        if (handoff_attempted) cleanup();
         throw;
     }
     cleanup();
@@ -91,11 +99,12 @@ bool vulkan_swapchain::create(SDL_Window* window, std::optional<VkExtent2D> expe
     return true;
 }
 
-void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchainKHR old_swapchain,
+void vulkan_swapchain::create_resources(VkExtent2D requested_extent,
+                                        VkSwapchainKHR old_swapchain,
                                         bool& handoff_attempted) {
     // Vulkan fills every field before any enum is inspected.
     // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization)
-    VkSurfaceCapabilitiesKHR supported{};
+    VkSurfaceCapabilitiesKHR supported {};
     detail::check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device_, surface_, &supported),
                   "query surface capabilities");
     if (supported.currentExtent.width != std::numeric_limits<std::uint32_t>::max() &&
@@ -111,21 +120,20 @@ void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchain
         vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device_, surface_, &count, formats.data()),
         "query surface formats");
 
-    const auto selected = std::ranges::find_if(formats, [](auto item) {
+    const auto K_SELECTED = std::ranges::find_if(formats, [](auto item) {
         return (item.format == VK_FORMAT_B8G8R8A8_UNORM ||
                 item.format == VK_FORMAT_R8G8B8A8_UNORM) &&
                item.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     });
-    if (selected == formats.end())
+    if (K_SELECTED == formats.end())
         throw std::runtime_error(
             "surface has no SDR UNORM format for display-encoded Gaussian compositing");
 
-    format_ = preferred_format_ == VK_FORMAT_UNDEFINED ? selected->format : preferred_format_;
+    format_ = preferred_format_ == VK_FORMAT_UNDEFINED ? K_SELECTED->format : preferred_format_;
     extent_ = requested_extent;
     minimum_images_ = std::max(2U, supported.minImageCount);
     std::uint32_t image_count = minimum_images_ + 1;
-    if (supported.maxImageCount)
-        image_count = std::min(image_count, supported.maxImageCount);
+    if (supported.maxImageCount) image_count = std::min(image_count, supported.maxImageCount);
     if (image_count < 2)
         throw std::runtime_error("surface requires unsupported single-image presentation");
 
@@ -134,19 +142,19 @@ void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchain
     info.surface = surface_;
     info.minImageCount = image_count;
     info.imageFormat = format_;
-    info.imageColorSpace = selected->colorSpace;
+    info.imageColorSpace = K_SELECTED->colorSpace;
     info.imageExtent = extent_;
     info.imageArrayLayers = 1;
     info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     screenshot_supported_ = (supported.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) != 0;
-    if (screenshot_supported_)
-        info.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    if (screenshot_supported_) info.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     info.preTransform = supported.currentTransform;
     info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    for (auto mode :
-         {VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
-          VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR, VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR}) {
+    for (auto mode : {VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+                      VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+                      VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+                      VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR}) {
         if (supported.supportedCompositeAlpha & mode) {
             info.compositeAlpha = mode;
             break;
@@ -172,36 +180,36 @@ void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchain
                   "query swapchain images");
 
     if (!render_pass_) {
-        const VkAttachmentDescription display{0,
-                                              format_,
-                                              VK_SAMPLE_COUNT_1_BIT,
-                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                              VK_ATTACHMENT_STORE_OP_STORE,
-                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                              VK_IMAGE_LAYOUT_UNDEFINED,
-                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
-        const VkAttachmentReference output{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription subpass{};
+        const VkAttachmentDescription K_DISPLAY {0,
+                                                 format_,
+                                                 VK_SAMPLE_COUNT_1_BIT,
+                                                 VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                 VK_ATTACHMENT_STORE_OP_STORE,
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                 VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                 VK_IMAGE_LAYOUT_UNDEFINED,
+                                                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
+        const VkAttachmentReference K_OUTPUT { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+        VkSubpassDescription subpass {};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &output;
-        const VkSubpassDependency dependency{VK_SUBPASS_EXTERNAL,
-                                             0,
-                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                             0,
-                                             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                             VK_DEPENDENCY_BY_REGION_BIT};
+        subpass.pColorAttachments = &K_OUTPUT;
+        const VkSubpassDependency K_DEPENDENCY {VK_SUBPASS_EXTERNAL,
+                                                0,
+                                                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                0,
+                                                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                VK_DEPENDENCY_BY_REGION_BIT};
 
         auto pass =
             detail::structure<VkRenderPassCreateInfo>(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
         pass.attachmentCount = 1;
-        pass.pAttachments = &display;
+        pass.pAttachments = &K_DISPLAY;
         pass.subpassCount = 1;
         pass.pSubpasses = &subpass;
         pass.dependencyCount = 1;
-        pass.pDependencies = &dependency;
+        pass.pDependencies = &K_DEPENDENCY;
         detail::check(vkCreateRenderPass(device_, &pass, nullptr, &render_pass_),
                       "create scene render pass");
     }
@@ -212,8 +220,8 @@ void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchain
         view.image = image;
         view.viewType = VK_IMAGE_VIEW_TYPE_2D;
         view.format = format_;
-        view.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-        VkImageView handle{};
+        view.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+        VkImageView handle {};
         detail::check(vkCreateImageView(device_, &view, nullptr, &handle), "create swapchain view");
         views_.push_back(handle);
 
@@ -225,14 +233,14 @@ void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchain
         framebuffer.width = extent_.width;
         framebuffer.height = extent_.height;
         framebuffer.layers = 1;
-        VkFramebuffer frame_handle{};
+        VkFramebuffer frame_handle {};
         detail::check(vkCreateFramebuffer(device_, &framebuffer, nullptr, &frame_handle),
                       "create framebuffer");
         framebuffers_.push_back(frame_handle);
 
         auto semaphore =
             detail::structure<VkSemaphoreCreateInfo>(VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO);
-        VkSemaphore finished{};
+        VkSemaphore finished {};
         detail::check(vkCreateSemaphore(device_, &semaphore, nullptr, &finished),
                       "create per-image present semaphore");
         present_semaphores_.push_back(finished);
@@ -240,14 +248,11 @@ void vulkan_swapchain::create_resources(VkExtent2D requested_extent, VkSwapchain
 }
 
 void vulkan_swapchain::cleanup() {
-    for (auto framebuffer : framebuffers_)
-        vkDestroyFramebuffer(device_, framebuffer, nullptr);
+    for (auto framebuffer : framebuffers_) vkDestroyFramebuffer(device_, framebuffer, nullptr);
     framebuffers_.clear();
-    for (auto view : views_)
-        vkDestroyImageView(device_, view, nullptr);
+    for (auto view : views_) vkDestroyImageView(device_, view, nullptr);
     views_.clear();
-    for (auto semaphore : present_semaphores_)
-        vkDestroySemaphore(device_, semaphore, nullptr);
+    for (auto semaphore : present_semaphores_) vkDestroySemaphore(device_, semaphore, nullptr);
     present_semaphores_.clear();
     images_.clear();
     if (swapchain_) {
@@ -256,4 +261,4 @@ void vulkan_swapchain::cleanup() {
     }
 }
 
-} // namespace world_explorer
+}  // namespace world_explorer

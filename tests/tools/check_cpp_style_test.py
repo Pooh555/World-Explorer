@@ -26,13 +26,44 @@ class CheckCppStyleTests(unittest.TestCase):
         ]
         database = [
             {"file": str(ROOT / "src/application/scenes.cpp")},
-            {"file": str(ROOT / "build/dev/_deps/catch2-src/src/catch2/benchmark/detail/catch_analyse.cpp")},
+            {
+                "file": str(
+                    ROOT / "build/dev/_deps/catch2-src/src/catch2/benchmark/detail/catch_analyse.cpp"
+                )
+            },
         ]
         self.assertEqual(MODULE.select_tidy_files(files, None), files)
         self.assertEqual(
             MODULE.select_tidy_files(files, ROOT / "build/dev/compile_commands.json"),
             [ROOT / "src/application/scenes.cpp"],
         )
+
+    def test_brace_space_normalization_preserves_clang_format_comparison(self):
+        self.assertEqual(
+            MODULE.normalize_brace_spacing("int count { 123 };\nif (ready) {\n    run();\n}\n"),
+            "int count {123};\nif (ready) {\n    run();\n}\n",
+        )
+
+    def test_template_initialization_rejects_size_t_equals_and_temporary_literals(self):
+        source = (
+            "for (std::size_t index = 0; index < 4; ++index) {}\n"
+            "auto count = std::size_t{4};\n"
+        )
+        with mock.patch.object(MODULE.Path, "read_text", return_value=source):
+            with mock.patch("builtins.print") as print_output:
+                self.assertEqual(MODULE.check_template_initialization([ROOT / "sample.cpp"]), 1)
+        self.assertTrue(print_output.called)
+
+    def test_template_initialization_rejects_missing_brace_spaces_and_size_suffixes(self):
+        source = (
+            "std::size_t count { 256uz * 1024 * 1024 };\n"
+            "int value {123};\n"
+            "value = { 1,2 };\n"
+        )
+        with mock.patch.object(MODULE.Path, "read_text", return_value=source):
+            with mock.patch("builtins.print") as print_output:
+                self.assertEqual(MODULE.check_template_initialization([ROOT / "sample.cpp"]), 1)
+        self.assertTrue(print_output.called)
 
     def test_repo_quality_checks_run_docs_and_boundaries(self):
         with mock.patch.object(MODULE, "run_command") as run_command:

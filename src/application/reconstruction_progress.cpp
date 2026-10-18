@@ -1,62 +1,63 @@
 #include "world_explorer/application/reconstruction_progress.hpp"
+
 #include <cmath>
-#include <nlohmann/json.hpp>
 #include <stdexcept>
 
+#include <nlohmann/json.hpp>
+
 namespace world_explorer {
-std::string_view reconstruction_stage_name(reconstruction_stage stage) {
+
+std::string_view reconstruction_stage_name(ReconstructionStage stage) {
     switch (stage) {
-    case reconstruction_stage::VALIDATING:
+    case ReconstructionStage::VALIDATING:
         return "Validating reconstruction request";
-    case reconstruction_stage::INSPECTING:
+    case ReconstructionStage::INSPECTING:
         return "Inspecting video";
-    case reconstruction_stage::DECODING:
+    case ReconstructionStage::DECODING:
         return "Preparing selected frames";
-    case reconstruction_stage::POSES:
+    case ReconstructionStage::POSES:
         return "Preparing camera poses";
-    case reconstruction_stage::MAP:
+    case ReconstructionStage::MAP:
         return "Preparing pose map";
-    case reconstruction_stage::FITTING:
+    case ReconstructionStage::FITTING:
         return "Fitting appearance";
-    case reconstruction_stage::VERIFYING_FIT:
+    case ReconstructionStage::VERIFYING_FIT:
         return "Verifying completed appearance";
-    case reconstruction_stage::COMPILING:
+    case ReconstructionStage::COMPILING:
         return "Compiling and publishing scene";
-    case reconstruction_stage::LOADING_SCENE:
+    case ReconstructionStage::LOADING_SCENE:
         return "Loading published scene";
     }
     return "Reconstruction";
 }
 
-std::optional<reconstruction_progress>
-checked_reconstruction_progress(const worker_event& event, reconstruction_stage expected_stage,
-                                std::uint32_t fit_steps) {
-    const auto* value = std::get_if<worker_progress>(&event);
-    if (!value || !std::isfinite(value->elapsed_seconds) || value->elapsed_seconds < 0)
+std::optional<ReconstructionProgress> checked_reconstruction_progress(
+    const WorkerEvent& event, ReconstructionStage expected_stage, std::uint32_t fit_steps) {
+    const auto* value = std::get_if<WorkerProgress>(&event);
+    if (!value || !std::isfinite(value->m_elapsed_seconds) || value->m_elapsed_seconds < 0)
         return {};
-    const auto expected = expected_stage == reconstruction_stage::INSPECTING ? "inspect"
-                          : expected_stage == reconstruction_stage::DECODING ? "decode"
-                          : expected_stage == reconstruction_stage::POSES    ? "poses"
-                          : expected_stage == reconstruction_stage::FITTING  ? "appearance"
-                                                                             : "";
-    if (expected[0] == '\0' || value->stage != expected)
-        return {};
-    reconstruction_progress progress{expected_stage, value->elapsed_seconds, {}, 0};
-    if (expected_stage == reconstruction_stage::FITTING && fit_steps > 0 &&
-        value->message.size() <= 65536) {
+    const auto K_EXPECTED = expected_stage == ReconstructionStage::INSPECTING ? "inspect"
+                            : expected_stage == ReconstructionStage::DECODING ? "decode"
+                            : expected_stage == ReconstructionStage::POSES    ? "poses"
+                            : expected_stage == ReconstructionStage::FITTING  ? "appearance"
+                                                                              : "";
+    if (K_EXPECTED[0] == '\0' || value->m_stage != K_EXPECTED) return {};
+    ReconstructionProgress progress {expected_stage, value->m_elapsed_seconds, {}, 0};
+    if (expected_stage == ReconstructionStage::FITTING && fit_steps > 0 &&
+        value->m_message.size() <= 65536) {
         try {
-            const auto message = nlohmann::json::parse(
-                value->message, [](int depth, nlohmann::json::parse_event_t, nlohmann::json&) {
+            const auto K_MESSAGE = nlohmann::json::parse(
+                value->m_message, [](int depth, nlohmann::json::parse_event_t, nlohmann::json&) {
                     if (depth > 8)
                         throw std::runtime_error("Progress metadata exceeds nesting limit");
                     return true;
                 });
-            if (message.is_object() && message.contains("step") &&
-                message.at("step").is_number_unsigned()) {
-                const auto step = message.at("step").get<std::uint64_t>();
-                if (step <= fit_steps) {
-                    progress.fit_step = static_cast<std::uint32_t>(step);
-                    progress.fit_steps = fit_steps;
+            if (K_MESSAGE.is_object() && K_MESSAGE.contains("step") &&
+                K_MESSAGE.at("step").is_number_unsigned()) {
+                const auto K_STEP = K_MESSAGE.at("step").get<std::uint64_t>();
+                if (K_STEP <= fit_steps) {
+                    progress.m_fit_step = static_cast<std::uint32_t>(K_STEP);
+                    progress.m_fit_steps = fit_steps;
                 }
             }
         } catch (const nlohmann::json::exception&) {
@@ -68,4 +69,5 @@ checked_reconstruction_progress(const worker_event& event, reconstruction_stage 
     }
     return progress;
 }
-} // namespace world_explorer
+
+}  // namespace world_explorer

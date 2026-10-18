@@ -20,7 +20,19 @@
 - `clang`, `asan`, `tsan` are independent presets; TSan must not combine with ASan.
 - `release-vcpkg` uses the immutable dependency baseline; qualification remains separate.
 - Development archives are SHA-256 pinned in `cmake/dependencies.cmake`.
-- Format first-party C++ with clang-format 23.1.1 and `.clang-format`.
+- Format first-party C++ with clang-format 23.1.1 and `.clang-format`. Follow
+  `docs/coding_style_templates/style_template.cpp` for C++ conventions: PascalCase
+  types/concepts, SNAKE_CASE_UPPER enumerators, `m_snake_case` data members,
+  `K_SNAKE_CASE_UPPER` constants, `g_snake_case` mutable globals, and
+  project-prefixed uppercase macros. Use direct-list initialization for spelled
+  types (`int count { 123 };`), with one space inside non-empty braces and `{}`
+  for empty lists; retain `=` for `auto`. Avoid temporary `std::size_t{...}`
+  casts when a `uz` literal expresses the size directly. Use `uz` / `z` suffixes
+  for size and index literals, including every numeric factor and typed loop
+  initializer. Keep blank lines to logical groups instead of separating related
+  statements. The repo style gate checks these conventions because clang-format
+  does not preserve spaces inside C++ braced lists.
+  Keep required standard-library spellings unchanged.
 - Run the repo gate `python3 tools/check_cpp_style.py` before finishing C++ work; it enforces formatting, optional clang-tidy, and whitespace checks together.
 - Static analysis uses clang-tidy 23.1.1; do not weaken warnings to pass.
 - GPU execution requires native device access; sandbox driver-load failure is not GPU absence.
@@ -44,7 +56,8 @@
 
 ## Correctness and data handling
 - Use RAII, `std::expected`, bounded queues and explicit cancellation.
-- Snake case for project types/functions/variables; uppercase enum values and macros.
+- Use snake_case for functions, variables, parameters, namespaces and file names.
+  Avoid raw unions and unowned raw pointers.
 - Validate sizes, arithmetic, paths, schemas, checksums and finite values before use.
 - Avoid shell command construction. Child processes use argument arrays.
 - Keep processing local; no implicit model downloads or remote fallback.

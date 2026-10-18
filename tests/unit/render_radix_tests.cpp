@@ -1,8 +1,11 @@
 #include "world_explorer/render_core/radix.hpp"
-#include <catch2/catch_test_macros.hpp>
+
 #include <limits>
 
+#include <catch2/catch_test_macros.hpp>
+
 using namespace world_explorer;
+
 TEST_CASE("tile radix passes preserve ping-pong output across key width boundaries") {
     REQUIRE(tile_radix_passes(0) == 0);
     REQUIRE(tile_radix_passes(1) == 2);
@@ -13,10 +16,10 @@ TEST_CASE("tile radix passes preserve ping-pong output across key width boundari
     REQUIRE(tile_radix_passes(16777215) == 6);
     REQUIRE(tile_radix_passes(16777216) == 8);
     REQUIRE(tile_radix_passes(std::numeric_limits<std::uint32_t>::max()) == 8);
-    for (std::uint32_t bit = 0; bit < 32; ++bit) {
-        const auto key = std::uint32_t{1} << bit;
-        const auto passes = tile_radix_passes(key);
-        REQUIRE(passes % 2 == 0);
-        REQUIRE(passes * 4 > bit);
+    for (std::uint32_t bit { 0 }; bit < 32; ++bit) {
+        const auto K_KEY = std::uint32_t { 1 } << bit;
+        const auto K_PASSES = tile_radix_passes(K_KEY);
+        REQUIRE(K_PASSES % 2 == 0);
+        REQUIRE(K_PASSES * 4 > bit);
     }
 }

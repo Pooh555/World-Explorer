@@ -1,297 +1,330 @@
 #include "map_codec.hpp"
+
 #include <algorithm>
 #include <cmath>
+
 namespace world_explorer::map_codec {
 namespace wire = pose_wire;
-constexpr std::size_t MAX_ASSET_BYTES = std::size_t{256} * 1024 * 1024;
-constexpr std::size_t MAX_FRAMES = 1000000;
-constexpr std::size_t MAX_GROUPS = 4096;
+constexpr std::size_t K_MAX_ASSET_BYTES { 256uz * 1024uz * 1024uz };
+constexpr std::size_t K_MAX_FRAMES { 1000000uz };
+constexpr std::size_t K_MAX_GROUPS { 4096uz };
+
 bool digest_valid(std::string_view value) {
     return value.size() == 64 && value.find_first_not_of("0123456789abcdef") == value.npos;
 }
-bool limits_valid(const pose_asset_limits& limits) {
-    return limits.encoded_bytes.bytes > 0 && limits.encoded_bytes.bytes <= MAX_ASSET_BYTES &&
-           limits.records.max_frames > 0 && limits.records.max_frames <= MAX_FRAMES &&
-           limits.records.max_calibrations > 0 && limits.records.max_calibrations <= MAX_GROUPS &&
-           limits.records.max_submaps > 0 && limits.records.max_submaps <= MAX_GROUPS;
+
+bool limits_valid(const PoseAssetLimits& limits) {
+    return limits.m_encoded_bytes.m_bytes > 0 &&
+           limits.m_encoded_bytes.m_bytes <= K_MAX_ASSET_BYTES &&
+           limits.m_records.m_max_frames > 0 && limits.m_records.m_max_frames <= K_MAX_FRAMES &&
+           limits.m_records.m_max_calibrations > 0 &&
+           limits.m_records.m_max_calibrations <= K_MAX_GROUPS &&
+           limits.m_records.m_max_submaps > 0 && limits.m_records.m_max_submaps <= K_MAX_GROUPS;
 }
-similarity_transform compose(const similarity_transform& a, const similarity_transform& b) {
-    const auto p = a.rotation;
-    const auto q = b.rotation;
-    return {{p.w * q.w - p.x * q.x - p.y * q.y - p.z * q.z,
-             p.w * q.x + p.x * q.w + p.y * q.z - p.z * q.y,
-             p.w * q.y - p.x * q.z + p.y * q.w + p.z * q.x,
-             p.w * q.z + p.x * q.y - p.y * q.x + p.z * q.w},
-            transform_point(a, b.translation),
-            a.scale * b.scale};
+
+SimilarityTransform compose(const SimilarityTransform& a, const SimilarityTransform& b) {
+    const auto K_P = a.m_rotation;
+    const auto K_Q = b.m_rotation;
+    return {{K_P.m_w * K_Q.m_w - K_P.m_x * K_Q.m_x - K_P.m_y * K_Q.m_y - K_P.m_z * K_Q.m_z,
+             K_P.m_w * K_Q.m_x + K_P.m_x * K_Q.m_w + K_P.m_y * K_Q.m_z - K_P.m_z * K_Q.m_y,
+             K_P.m_w * K_Q.m_y - K_P.m_x * K_Q.m_z + K_P.m_y * K_Q.m_w + K_P.m_z * K_Q.m_x,
+             K_P.m_w * K_Q.m_z + K_P.m_x * K_Q.m_y - K_P.m_y * K_Q.m_x + K_P.m_z * K_Q.m_w},
+            transform_point(a, b.m_translation),
+            a.m_scale * b.m_scale};
 }
-wire::transform pack(const similarity_transform& t) {
-    return {t.rotation.w,    t.rotation.x,    t.rotation.y,    t.rotation.z,
-            t.translation.x, t.translation.y, t.translation.z, t.scale};
+
+wire::transform pack(const SimilarityTransform& t) {
+    return {t.m_rotation.m_w,
+            t.m_rotation.m_x,
+            t.m_rotation.m_y,
+            t.m_rotation.m_z,
+            t.m_translation.m_x,
+            t.m_translation.m_y,
+            t.m_translation.m_z,
+            t.m_scale};
 }
-similarity_transform unpack(const wire::transform& t) {
+
+SimilarityTransform unpack(const wire::transform& t) {
     return {{t.qw(), t.qx(), t.qy(), t.qz()}, {t.tx(), t.ty(), t.tz()}, t.scale()};
 }
-bool same_transform(const similarity_transform& a, const similarity_transform& b) {
+
+bool same_transform(const SimilarityTransform& a, const SimilarityTransform& b) {
     // Compare rotation separately so a large translation cannot hide an
     // inconsistent orientation. q and -q represent the same rotation.
-    const double sign = a.rotation.w * b.rotation.w + a.rotation.x * b.rotation.x +
-                                    a.rotation.y * b.rotation.y + a.rotation.z * b.rotation.z <
-                                0
-                            ? -1
-                            : 1;
-    for (const auto& pair : {std::pair{a.rotation.w, sign * b.rotation.w},
-                             std::pair{a.rotation.x, sign * b.rotation.x},
-                             std::pair{a.rotation.y, sign * b.rotation.y},
-                             std::pair{a.rotation.z, sign * b.rotation.z}})
-        if (std::abs(pair.first - pair.second) > 1e-12)
-            return false;
-    for (const auto& pair :
-         {std::pair{a.translation.x, b.translation.x}, std::pair{a.translation.y, b.translation.y},
-          std::pair{a.translation.z, b.translation.z}, std::pair{a.scale, b.scale}})
+    const double K_SIGN =
+        a.m_rotation.m_w * b.m_rotation.m_w + a.m_rotation.m_x * b.m_rotation.m_x +
+                    a.m_rotation.m_y * b.m_rotation.m_y + a.m_rotation.m_z * b.m_rotation.m_z <
+                0
+            ? -1
+            : 1;
+    for (const auto& pair : {std::pair { a.m_rotation.m_w, K_SIGN * b.m_rotation.m_w },
+                             std::pair { a.m_rotation.m_x, K_SIGN * b.m_rotation.m_x },
+                             std::pair { a.m_rotation.m_y, K_SIGN * b.m_rotation.m_y },
+                             std::pair { a.m_rotation.m_z, K_SIGN * b.m_rotation.m_z }})
+        if (std::abs(pair.first - pair.second) > 1e-12) return false;
+    for (const auto& pair : {std::pair { a.m_translation.m_x, b.m_translation.m_x },
+                             std::pair { a.m_translation.m_y, b.m_translation.m_y },
+                             std::pair { a.m_translation.m_z, b.m_translation.m_z },
+                             std::pair { a.m_scale, b.m_scale }})
         if (std::abs(pair.first - pair.second) >
             1e-12 * std::max({1.0, std::abs(pair.first), std::abs(pair.second)}))
             return false;
     return true;
 }
+
 bool covariance_valid(const std::array<double, 36>& values) {
-    double magnitude{1};
+    double magnitude { 1 };
     for (double value : values) {
-        if (!std::isfinite(value))
-            return false;
+        if (!std::isfinite(value)) return false;
         magnitude = std::max(magnitude, std::abs(value));
     }
-    const double tolerance = magnitude * 1e-12;
+    const double K_TOLERANCE = magnitude * 1e-12;
     std::array<double, 36> residual = values;
-    for (std::size_t i = 0; i < 6; ++i)
-        for (std::size_t j = 0; j < 6; ++j)
-            if (std::abs(values[i * 6 + j] - values[j * 6 + i]) > tolerance)
-                return false;
+    for (std::size_t i { 0uz }; i < 6uz; ++i)
+        for (std::size_t j { 0uz }; j < 6uz; ++j)
+            if (std::abs(values[i * 6 + j] - values[j * 6 + i]) > K_TOLERANCE) return false;
     // Symmetric pivoted Schur complements accept positive semidefinite matrices,
     // including singular covariances, without inventing backend uncertainty.
-    for (std::size_t k = 0; k < 6; ++k) {
+    for (std::size_t k { 0uz }; k < 6uz; ++k) {
         std::size_t pivot = k;
-        for (std::size_t i = k + 1; i < 6; ++i)
-            if (residual[i * 6 + i] > residual[pivot * 6 + pivot])
-                pivot = i;
+        for (std::size_t i { k + 1uz }; i < 6uz; ++i)
+            if (residual[i * 6 + i] > residual[pivot * 6 + pivot]) pivot = i;
         if (pivot != k) {
-            for (std::size_t i = 0; i < 6; ++i)
+            for (std::size_t i { 0uz }; i < 6uz; ++i)
                 std::swap(residual[k * 6 + i], residual[pivot * 6 + i]);
-            for (std::size_t i = 0; i < 6; ++i)
+            for (std::size_t i { 0uz }; i < 6uz; ++i)
                 std::swap(residual[i * 6 + k], residual[i * 6 + pivot]);
         }
-        const double diagonal = residual[k * 6 + k];
-        if (diagonal < -tolerance)
-            return false;
-        if (diagonal <= tolerance) {
-            for (std::size_t i = k; i < 6; ++i)
-                for (std::size_t j = k; j < 6; ++j)
-                    if (std::abs(residual[i * 6 + j]) > tolerance)
-                        return false;
+        const double K_DIAGONAL = residual[k * 6 + k];
+        if (K_DIAGONAL < -K_TOLERANCE) return false;
+        if (K_DIAGONAL <= K_TOLERANCE) {
+            for (std::size_t i { k }; i < 6uz; ++i)
+                for (std::size_t j { k }; j < 6uz; ++j)
+                    if (std::abs(residual[i * 6 + j]) > K_TOLERANCE) return false;
             return true;
         }
-        for (std::size_t i = k + 1; i < 6; ++i)
-            for (std::size_t j = k + 1; j < 6; ++j)
-                residual[i * 6 + j] -= (residual[i * 6 + k] / diagonal) * residual[k * 6 + j];
+        for (std::size_t i { k + 1uz }; i < 6uz; ++i)
+            for (std::size_t j { k + 1uz }; j < 6uz; ++j)
+                residual[i * 6 + j] -= (residual[i * 6 + k] / K_DIAGONAL) * residual[k * 6 + j];
     }
     return true;
 }
-result<void> validate_state(const map_state& map, const pose_asset_limits& limits,
-                            const std::stop_token& stop) {
-    if (stop.stop_requested())
-        return fail(error_code::CANCELLED, "Map validation cancelled");
-    if (!limits_valid(limits))
-        return fail(error_code::INVALID_ARGUMENT, "Invalid map codec limits");
-    if (map.scale != scale_status::ARBITRARY)
-        return fail(error_code::UNSUPPORTED_OPERATION, "Measured map scale is not implemented");
-    if (map.initial_pose_asset_sha256 && !digest_valid(*map.initial_pose_asset_sha256))
-        return fail(error_code::INVALID_DATA, "Invalid initial pose asset dependency");
-    if (!map.revision.value &&
-        (map.initial_pose_asset_sha256 || !map.calibrations.empty() || !map.observations.empty() ||
-         !map.poses.empty() || !map.world_from_submap.empty() || !map.invalidated_frames.empty()))
-        return fail(error_code::INVALID_DATA, "Revision zero map must be empty");
-    if (map.observations.size() > limits.records.max_frames ||
-        map.poses.size() > limits.records.max_frames ||
-        map.invalidated_frames.size() > limits.records.max_frames ||
-        map.calibrations.size() > limits.records.max_calibrations ||
-        map.world_from_submap.size() > limits.records.max_submaps)
-        return fail(error_code::RESOURCE_EXHAUSTED, "Pose asset record budget exceeded");
-    for (const auto& [id, calibration] : map.calibrations)
-        if (id != calibration.id || !valid(calibration))
-            return fail(error_code::INVALID_DATA, "Invalid pose asset calibration");
-    for (const auto& [id, observation] : map.observations) {
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Pose asset cancelled");
-        if (!id.value || id != observation.id || !observation.capture.value ||
-            !map.calibrations.contains(observation.calibration) ||
-            observation.timestamp.time_base_numerator <= 0 ||
-            observation.timestamp.time_base_denominator <= 0 ||
-            observation.capture_time.count() < 0 || !digest_valid(observation.image_sha256))
-            return fail(error_code::INVALID_DATA, "Invalid pose asset observation");
+
+Result<void>
+validate_state(const MapState& map, const PoseAssetLimits& limits, const std::stop_token& stop) {
+    if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Map validation cancelled");
+    if (!limits_valid(limits)) return fail(ErrorCode::INVALID_ARGUMENT, "Invalid map codec limits");
+    if (map.m_scale != ScaleStatus::ARBITRARY)
+        return fail(ErrorCode::UNSUPPORTED_OPERATION, "Measured map scale is not implemented");
+    if (map.m_initial_pose_asset_sha256 && !digest_valid(*map.m_initial_pose_asset_sha256))
+        return fail(ErrorCode::INVALID_DATA, "Invalid initial pose asset dependency");
+    if (!map.m_revision.m_value &&
+        (map.m_initial_pose_asset_sha256 || !map.m_calibrations.empty() ||
+         !map.m_observations.empty() || !map.m_poses.empty() || !map.m_world_from_submap.empty() ||
+         !map.m_invalidated_frames.empty()))
+        return fail(ErrorCode::INVALID_DATA, "Revision zero map must be empty");
+    if (map.m_observations.size() > limits.m_records.m_max_frames ||
+        map.m_poses.size() > limits.m_records.m_max_frames ||
+        map.m_invalidated_frames.size() > limits.m_records.m_max_frames ||
+        map.m_calibrations.size() > limits.m_records.m_max_calibrations ||
+        map.m_world_from_submap.size() > limits.m_records.m_max_submaps)
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Pose asset record budget exceeded");
+    for (const auto& [K_ID, K_CALIBRATION] : map.m_calibrations)
+        if (K_ID != K_CALIBRATION.m_id || !valid(K_CALIBRATION))
+            return fail(ErrorCode::INVALID_DATA, "Invalid pose asset calibration");
+    for (const auto& [K_ID, K_OBSERVATION] : map.m_observations) {
+        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Pose asset cancelled");
+        if (!K_ID.m_value || K_ID != K_OBSERVATION.m_id || !K_OBSERVATION.m_capture.m_value ||
+            !map.m_calibrations.contains(K_OBSERVATION.m_calibration) ||
+            K_OBSERVATION.m_timestamp.m_time_base_numerator <= 0 ||
+            K_OBSERVATION.m_timestamp.m_time_base_denominator <= 0 ||
+            K_OBSERVATION.m_capture_time.count() < 0 || !digest_valid(K_OBSERVATION.m_image_sha256))
+            return fail(ErrorCode::INVALID_DATA, "Invalid pose asset observation");
     }
-    for (const auto& [id, alignment] : map.world_from_submap)
-        if (!id.value || !valid(alignment))
-            return fail(error_code::INVALID_DATA, "Invalid pose asset alignment");
-    for (const auto& [id, pose] : map.poses) {
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Pose asset cancelled");
-        if (id != pose.frame || !map.observations.contains(id) ||
-            !map.world_from_submap.contains(pose.submap) ||
-            pose.capture_time != map.observations.at(id).capture_time || !pose.revision.value ||
-            pose.revision.value > map.revision.value || !valid(pose.submap_from_camera) ||
-            std::abs(pose.submap_from_camera.scale - 1) > 1e-12 ||
-            static_cast<std::uint8_t>(pose.tracking) >
-                static_cast<std::uint8_t>(tracking_state::FINISHED) ||
-            (pose.covariance && !covariance_valid(*pose.covariance)))
-            return fail(error_code::INVALID_DATA, "Invalid pose asset pose or covariance");
-        if (!valid(compose(map.world_from_submap.at(pose.submap), pose.submap_from_camera)))
-            return fail(error_code::INVALID_DATA, "Pose asset world transform overflow");
+    for (const auto& [K_ID, K_ALIGNMENT] : map.m_world_from_submap)
+        if (!K_ID.m_value || !valid(K_ALIGNMENT))
+            return fail(ErrorCode::INVALID_DATA, "Invalid pose asset alignment");
+    for (const auto& [K_ID, K_POSE] : map.m_poses) {
+        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Pose asset cancelled");
+        if (K_ID != K_POSE.m_frame || !map.m_observations.contains(K_ID) ||
+            !map.m_world_from_submap.contains(K_POSE.m_submap) ||
+            K_POSE.m_capture_time != map.m_observations.at(K_ID).m_capture_time ||
+            !K_POSE.m_revision.m_value || K_POSE.m_revision.m_value > map.m_revision.m_value ||
+            !valid(K_POSE.m_submap_from_camera) ||
+            std::abs(K_POSE.m_submap_from_camera.m_scale - 1) > 1e-12 ||
+            static_cast<std::uint8_t>(K_POSE.m_tracking) >
+                static_cast<std::uint8_t>(TrackingState::FINISHED) ||
+            (K_POSE.m_covariance && !covariance_valid(*K_POSE.m_covariance)))
+            return fail(ErrorCode::INVALID_DATA, "Invalid pose asset pose or covariance");
+        if (!valid(
+                compose(map.m_world_from_submap.at(K_POSE.m_submap), K_POSE.m_submap_from_camera)))
+            return fail(ErrorCode::INVALID_DATA, "Pose asset world transform overflow");
     }
-    for (auto id : map.invalidated_frames)
-        if (!id.value)
-            return fail(error_code::INVALID_DATA, "Invalid pose invalidation ID");
+    for (auto id : map.m_invalidated_frames)
+        if (!id.m_value) return fail(ErrorCode::INVALID_DATA, "Invalid pose invalidation ID");
     return {};
 }
-std::array<double, 4> unpack(const wire::coefficients& v) { return {v.a(), v.b(), v.c(), v.d()}; }
-result<record_offsets> encode_records(flatbuffers::FlatBufferBuilder& builder, const map_state& map,
-                                      const pose_asset_limits& limits,
+
+std::array<double, 4> unpack(const wire::coefficients& v) {
+    return { v.a(), v.b(), v.c(), v.d() };
+}
+
+Result<record_offsets> encode_records(flatbuffers::FlatBufferBuilder& builder,
+                                      const MapState& map,
+                                      const PoseAssetLimits& limits,
                                       const std::stop_token& stop) {
     record_offsets encoded;
-    const auto budget_check = [&]() -> result<void> {
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Pose asset cancelled");
-        if (builder.GetSize() > limits.encoded_bytes.bytes)
-            return fail(error_code::RESOURCE_EXHAUSTED, "Encoded pose asset exceeds budget");
+    const auto K_BUDGET_CHECK = [&]() -> Result<void> {
+        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Pose asset cancelled");
+        if (builder.GetSize() > limits.m_encoded_bytes.m_bytes)
+            return fail(ErrorCode::RESOURCE_EXHAUSTED, "Encoded pose asset exceeds budget");
         return {};
     };
     auto& calibrations = encoded.calibrations;
-    calibrations.reserve(map.calibrations.size());
-    for (const auto& [id, c] : map.calibrations) {
-        const wire::coefficients intrinsics(c.camera.fx, c.camera.fy, c.camera.cx, c.camera.cy);
-        const wire::coefficients distortion(c.distortion[0], c.distortion[1], c.distortion[2],
-                                            c.distortion[3]);
-        const wire::coefficients image(c.image_transform[0], c.image_transform[1],
-                                       c.image_transform[2], c.image_transform[3]);
-        calibrations.push_back(wire::Createcalibration(builder, id.value, c.width, c.height,
-                                                       static_cast<wire::camera_model>(c.model),
-                                                       &intrinsics, &distortion, &image));
-        const auto admitted = budget_check();
-        if (!admitted)
-            return std::unexpected(admitted.error());
+    calibrations.reserve(map.m_calibrations.size());
+    for (const auto& [K_ID, K_C] : map.m_calibrations) {
+        const wire::coefficients K_INTRINSICS(
+            K_C.m_camera.m_fx, K_C.m_camera.m_fy, K_C.m_camera.m_cx, K_C.m_camera.m_cy);
+        const wire::coefficients K_DISTORTION(
+            K_C.m_distortion[0], K_C.m_distortion[1], K_C.m_distortion[2], K_C.m_distortion[3]);
+        const wire::coefficients K_IMAGE(K_C.m_image_transform[0],
+                                         K_C.m_image_transform[1],
+                                         K_C.m_image_transform[2],
+                                         K_C.m_image_transform[3]);
+        calibrations.push_back(wire::Createcalibration(builder,
+                                                       K_ID.m_value,
+                                                       K_C.m_width,
+                                                       K_C.m_height,
+                                                       static_cast<wire::camera_model>(K_C.m_model),
+                                                       &K_INTRINSICS,
+                                                       &K_DISTORTION,
+                                                       &K_IMAGE));
+        const auto K_ADMITTED = K_BUDGET_CHECK();
+        if (!K_ADMITTED) return std::unexpected(K_ADMITTED.error());
     }
     auto& observations = encoded.observations;
-    observations.reserve(map.observations.size());
-    for (const auto& [id, o] : map.observations) {
-        const auto image_hash = builder.CreateString(o.image_sha256);
-        observations.push_back(wire::Createobservation(
-            builder, id.value, o.capture.value, o.calibration.value, o.timestamp.pts,
-            o.timestamp.time_base_numerator, o.timestamp.time_base_denominator,
-            o.capture_time.count(), image_hash));
-        const auto admitted = budget_check();
-        if (!admitted)
-            return std::unexpected(admitted.error());
+    observations.reserve(map.m_observations.size());
+    for (const auto& [K_ID, K_O] : map.m_observations) {
+        const auto K_IMAGE_HASH = builder.CreateString(K_O.m_image_sha256);
+        observations.push_back(wire::Createobservation(builder,
+                                                       K_ID.m_value,
+                                                       K_O.m_capture.m_value,
+                                                       K_O.m_calibration.m_value,
+                                                       K_O.m_timestamp.m_pts,
+                                                       K_O.m_timestamp.m_time_base_numerator,
+                                                       K_O.m_timestamp.m_time_base_denominator,
+                                                       K_O.m_capture_time.count(),
+                                                       K_IMAGE_HASH));
+        const auto K_ADMITTED = K_BUDGET_CHECK();
+        if (!K_ADMITTED) return std::unexpected(K_ADMITTED.error());
     }
     auto& alignments = encoded.alignments;
-    alignments.reserve(map.world_from_submap.size());
-    for (const auto& [id, t] : map.world_from_submap) {
-        const auto transform = pack(t);
-        alignments.push_back(wire::Createalignment(builder, id.value, &transform));
-        const auto admitted = budget_check();
-        if (!admitted)
-            return std::unexpected(admitted.error());
+    alignments.reserve(map.m_world_from_submap.size());
+    for (const auto& [K_ID, K_T] : map.m_world_from_submap) {
+        const auto K_TRANSFORM = pack(K_T);
+        alignments.push_back(wire::Createalignment(builder, K_ID.m_value, &K_TRANSFORM));
+        const auto K_ADMITTED = K_BUDGET_CHECK();
+        if (!K_ADMITTED) return std::unexpected(K_ADMITTED.error());
     }
     auto& poses = encoded.poses;
-    poses.reserve(map.poses.size());
-    for (const auto& [id, p] : map.poses) {
-        const auto local = pack(p.submap_from_camera);
-        const auto world = pack(compose(map.world_from_submap.at(p.submap), p.submap_from_camera));
-        const auto covariance =
-            p.covariance ? builder.CreateVector(p.covariance->data(), p.covariance->size()) : 0;
-        poses.push_back(wire::Createpose(
-            builder, id.value, p.submap.value, p.revision.value, p.capture_time.count(),
-            static_cast<wire::tracking_state>(p.tracking), &local, &world, covariance));
-        const auto admitted = budget_check();
-        if (!admitted)
-            return std::unexpected(admitted.error());
+    poses.reserve(map.m_poses.size());
+    for (const auto& [K_ID, K_P] : map.m_poses) {
+        const auto K_LOCAL = pack(K_P.m_submap_from_camera);
+        const auto K_WORLD =
+            pack(compose(map.m_world_from_submap.at(K_P.m_submap), K_P.m_submap_from_camera));
+        const auto K_COVARIANCE = K_P.m_covariance ? builder.CreateVector(K_P.m_covariance->data(),
+                                                                          K_P.m_covariance->size())
+                                                   : 0;
+        poses.push_back(wire::Createpose(builder,
+                                         K_ID.m_value,
+                                         K_P.m_submap.m_value,
+                                         K_P.m_revision.m_value,
+                                         K_P.m_capture_time.count(),
+                                         static_cast<wire::tracking_state>(K_P.m_tracking),
+                                         &K_LOCAL,
+                                         &K_WORLD,
+                                         K_COVARIANCE));
+        const auto K_ADMITTED = K_BUDGET_CHECK();
+        if (!K_ADMITTED) return std::unexpected(K_ADMITTED.error());
     }
-    encoded.invalidated.reserve(map.invalidated_frames.size());
-    for (auto id : map.invalidated_frames)
-        encoded.invalidated.push_back(id.value);
+    encoded.invalidated.reserve(map.m_invalidated_frames.size());
+    for (auto id : map.m_invalidated_frames) encoded.invalidated.push_back(id.m_value);
     return encoded;
 }
-result<map_snapshot> decode_records(record_view records, const pose_asset_limits& limits,
-                                    const std::stop_token& stop) {
-    if (records.calibrations->size() > limits.records.max_calibrations ||
-        records.observations->size() > limits.records.max_frames ||
-        records.poses->size() > limits.records.max_frames ||
-        records.alignments->size() > limits.records.max_submaps ||
-        records.invalidated_frames->size() > limits.records.max_frames)
-        return fail(error_code::RESOURCE_EXHAUSTED, "Map record budget exceeded");
-    auto map = std::make_shared<map_state>();
-    map->epoch = {records.epoch};
-    map->revision = {records.revision};
+
+Result<MapSnapshot>
+decode_records(record_view records, const PoseAssetLimits& limits, const std::stop_token& stop) {
+    if (records.calibrations->size() > limits.m_records.m_max_calibrations ||
+        records.observations->size() > limits.m_records.m_max_frames ||
+        records.poses->size() > limits.m_records.m_max_frames ||
+        records.alignments->size() > limits.m_records.m_max_submaps ||
+        records.invalidated_frames->size() > limits.m_records.m_max_frames)
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Map record budget exceeded");
+    auto map = std::make_shared<MapState>();
+    map->m_epoch = { records.epoch };
+    map->m_revision = { records.revision };
     for (const auto* c : *records.calibrations) {
-        const auto intrinsic = unpack(*c->intrinsics());
-        calibration_record calibration{{c->id()},
-                                       {intrinsic[0], intrinsic[1], intrinsic[2], intrinsic[3]},
-                                       c->width(),
-                                       c->height(),
-                                       static_cast<calibration_model>(c->model()),
-                                       unpack(*c->distortion()),
-                                       unpack(*c->image_transform())};
-        if (!map->calibrations.emplace(calibration.id, calibration).second)
-            return fail(error_code::INVALID_DATA, "Duplicate pose calibration ID");
+        const auto K_INTRINSIC = unpack(*c->intrinsics());
+        CalibrationRecord calibration {
+            {c->id()},
+            {K_INTRINSIC[0], K_INTRINSIC[1], K_INTRINSIC[2], K_INTRINSIC[3]},
+            c->width(),
+            c->height(),
+            static_cast<CalibrationModel>(c->model()),
+            unpack(*c->distortion()),
+            unpack(*c->image_transform())};
+        if (!map->m_calibrations.emplace(calibration.m_id, calibration).second)
+            return fail(ErrorCode::INVALID_DATA, "Duplicate pose calibration ID");
     }
     for (const auto* o : *records.observations) {
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Pose asset cancelled");
+        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Pose asset cancelled");
         if (o->image_sha256()->size() != 64)
-            return fail(error_code::INVALID_DATA, "Invalid image hash length");
-        observation_record observation{
+            return fail(ErrorCode::INVALID_DATA, "Invalid image hash length");
+        ObservationRecord observation {
             {o->frame()},
             {o->capture()},
             {o->calibration_id()},
             {o->original_pts(), o->time_base_numerator(), o->time_base_denominator()},
             std::chrono::nanoseconds(o->capture_nanoseconds()),
             o->image_sha256()->str()};
-        if (!map->observations.emplace(observation.id, std::move(observation)).second)
-            return fail(error_code::INVALID_DATA, "Duplicate pose observation ID");
+        if (!map->m_observations.emplace(observation.m_id, std::move(observation)).second)
+            return fail(ErrorCode::INVALID_DATA, "Duplicate pose observation ID");
     }
     for (const auto* a : *records.alignments)
-        if (!map->world_from_submap.emplace(submap_id{a->submap()}, unpack(*a->world_from_submap()))
+        if (!map->m_world_from_submap
+                 .emplace(SubmapId { a->submap() }, unpack(*a->world_from_submap()))
                  .second)
-            return fail(error_code::INVALID_DATA, "Duplicate pose submap ID");
+            return fail(ErrorCode::INVALID_DATA, "Duplicate pose submap ID");
     for (const auto* p : *records.poses) {
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Pose asset cancelled");
-        pose_estimate pose{{p->frame()},
+        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Pose asset cancelled");
+        PoseEstimate pose {{p->frame()},
                            {p->submap()},
                            unpack(*p->submap_from_camera()),
                            std::chrono::nanoseconds(p->capture_nanoseconds()),
                            {p->revision()},
-                           static_cast<tracking_state>(p->tracking()),
+                           static_cast<TrackingState>(p->tracking()),
                            {}};
         if (p->covariance()) {
             if (p->covariance()->size() != 36)
-                return fail(error_code::INVALID_DATA, "Pose covariance must be 6x6");
-            pose.covariance.emplace();
-            std::copy(p->covariance()->begin(), p->covariance()->end(), pose.covariance->begin());
+                return fail(ErrorCode::INVALID_DATA, "Pose covariance must be 6x6");
+            pose.m_covariance.emplace();
+            std::copy(p->covariance()->begin(), p->covariance()->end(), pose.m_covariance->begin());
         }
-        const auto alignment = map->world_from_submap.find(pose.submap);
-        const auto world = unpack(*p->world_from_camera());
-        if (alignment == map->world_from_submap.end() || !valid(world) ||
-            !same_transform(compose(alignment->second, pose.submap_from_camera), world))
-            return fail(error_code::INVALID_DATA,
+        const auto K_ALIGNMENT = map->m_world_from_submap.find(pose.m_submap);
+        const auto K_WORLD = unpack(*p->world_from_camera());
+        if (K_ALIGNMENT == map->m_world_from_submap.end() || !valid(K_WORLD) ||
+            !same_transform(compose(K_ALIGNMENT->second, pose.m_submap_from_camera), K_WORLD))
+            return fail(ErrorCode::INVALID_DATA,
                         "Pose world transform disagrees with submap dependencies");
-        if (!map->poses.emplace(pose.frame, pose).second)
-            return fail(error_code::INVALID_DATA, "Duplicate pose frame ID");
+        if (!map->m_poses.emplace(pose.m_frame, pose).second)
+            return fail(ErrorCode::INVALID_DATA, "Duplicate pose frame ID");
     }
     for (auto id : *records.invalidated_frames)
-        if (!map->invalidated_frames.emplace(frame_id{id}).second)
-            return fail(error_code::INVALID_DATA, "Duplicate pose invalidation ID");
-    const auto valid = validate_state(*map, limits, stop);
-    if (!valid)
-        return std::unexpected(valid.error());
-    return map_snapshot(std::move(map));
+        if (!map->m_invalidated_frames.emplace(FrameId { id }).second)
+            return fail(ErrorCode::INVALID_DATA, "Duplicate pose invalidation ID");
+    const auto K_VALID = validate_state(*map, limits, stop);
+    if (!K_VALID) return std::unexpected(K_VALID.error());
+    return MapSnapshot(std::move(map));
 }
-} // namespace world_explorer::map_codec
+
+}  // namespace world_explorer::map_codec

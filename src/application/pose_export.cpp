@@ -1,31 +1,32 @@
 #include "world_explorer/application/pose_export.hpp"
+
 #include "pose_pipeline.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
+
 #include <new>
 
 namespace world_explorer {
-result<std::string> export_completed_pose_asset(const pose_export_request& request,
+
+Result<std::string> export_completed_pose_asset(const PoseExportRequest& request,
                                                 const std::stop_token& stop,
-                                                const log_callback& log) {
+                                                const LogCallback& log) {
     try {
-        if (log)
-            log("Verifying retained poses for canonical export; no solve or fit.\n");
-        const auto digest = sha256_file(request.completed.video, 16ULL * 1024 * 1024 * 1024, stop);
-        if (!digest)
-            return std::unexpected(digest.error());
-        const auto loaded = load_completed_poses(
-            {request.completed.pose_job, *digest, request.completed.decode_stage}, stop);
-        if (!loaded)
-            return std::unexpected(loaded.error());
-        const auto asset = pose_pipeline::canonical(**loaded, stop);
-        if (!asset)
-            return std::unexpected(asset.error());
-        return write_pose_asset(request.destination, *asset, {}, stop);
+        if (log) log("Verifying retained poses for canonical export; no solve or fit.\n");
+        const auto K_DIGEST =
+            sha256_file(request.m_completed.m_video, 16ULL * 1024 * 1024 * 1024, stop);
+        if (!K_DIGEST) return std::unexpected(K_DIGEST.error());
+        const auto K_LOADED = load_completed_poses(
+            {request.m_completed.m_pose_job, *K_DIGEST, request.m_completed.m_decode_stage}, stop);
+        if (!K_LOADED) return std::unexpected(K_LOADED.error());
+        const auto K_ASSET = pose_pipeline::canonical(**K_LOADED, stop);
+        if (!K_ASSET) return std::unexpected(K_ASSET.error());
+        return write_pose_asset(request.m_destination, *K_ASSET, {}, stop);
     } catch (const std::bad_alloc&) {
-        return fail(error_code::RESOURCE_EXHAUSTED, "Pose export allocation failed");
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Pose export allocation failed");
     } catch (const std::exception& e) {
-        return fail(error_code::INVALID_DATA, std::string("Pose export failed: ") + e.what());
+        return fail(ErrorCode::INVALID_DATA, std::string("Pose export failed: ") + e.what());
     }
 }
-} // namespace world_explorer
+
+}  // namespace world_explorer

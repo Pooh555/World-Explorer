@@ -1,10 +1,10 @@
 #ifndef WORLD_EXPLORER_CAPTURE_FRAME_SOURCE_HPP
 #define WORLD_EXPLORER_CAPTURE_FRAME_SOURCE_HPP
-#include <cstdint>
-
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/core/types.hpp"
+
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <stop_token>
@@ -12,51 +12,62 @@
 #include <vector>
 
 namespace world_explorer {
-enum class pixel_format : std::uint8_t { RGB8, GRAY8, DEPTH_FLOAT32 };
-struct image_lease {
-    std::shared_ptr<const std::vector<std::byte>> bytes;
-    std::uint32_t width{}, height{}, row_stride{};
-    pixel_format format{pixel_format::RGB8};
+
+enum class PixelFormat : std::uint8_t { RGB8, GRAY8, DEPTH_FLOAT32 };
+
+struct ImageLease {
+    std::shared_ptr<const std::vector<std::byte>> m_bytes;
+    std::uint32_t m_width {}, m_height {}, m_row_stride {};
+    PixelFormat m_format { PixelFormat::RGB8 };
 };
-struct imu_sample {
-    std::chrono::nanoseconds capture_time;
-    vec3d acceleration, angular_velocity;
+
+struct ImuSample {
+    std::chrono::nanoseconds m_capture_time;
+    Vec3d m_acceleration, m_angular_velocity;
 };
-struct frame_packet {
-    frame_id id;
-    capture_id capture;
-    std::chrono::nanoseconds capture_time;
-    source_timestamp original_timestamp;
-    calibration_id calibration;
-    image_lease pixels;
-    std::optional<image_lease> measured_depth;
-    std::vector<imu_sample> imu_samples;
+
+struct FramePacket {
+    FrameId m_id;
+    CaptureId m_capture;
+    std::chrono::nanoseconds m_capture_time;
+    SourceTimestamp m_original_timestamp;
+    CalibrationId m_calibration;
+    ImageLease m_pixels;
+    std::optional<ImageLease> m_measured_depth;
+    std::vector<ImuSample> m_imu_samples;
 };
-struct frame_gap {
-    frame_id after;
-    std::chrono::nanoseconds duration;
+
+struct FrameGap {
+    FrameId m_after;
+    std::chrono::nanoseconds m_duration;
 };
-struct source_reset {
-    capture_id capture;
-    world_epoch epoch;
+
+struct SourceReset {
+    CaptureId m_capture;
+    WorldEpoch m_epoch;
 };
-struct source_end {};
-using source_event = std::variant<frame_packet, frame_gap, source_reset, source_end>;
-struct source_capabilities {
-    bool seekable{};
-    bool measured_depth{};
-    bool imu{};
-    byte_budget max_image_bytes;
+
+struct SourceEnd {   };
+
+using SourceEvent = std::variant<FramePacket, FrameGap, SourceReset, SourceEnd>;
+
+struct SourceCapabilities {
+    bool m_seekable {};
+    bool m_measured_depth {};
+    bool m_imu {};
+    ByteBudget m_max_image_bytes;
 };
+
 // One source owner calls read/seek. stop interrupts I/O. Pixels remain alive through
 // immutable leases. Capture times are monotonic within each source_reset segment.
-class frame_source {
+class FrameSource {
   public:
-    virtual ~frame_source() = default;
-    virtual source_capabilities capabilities() const noexcept = 0;
-    virtual result<source_event> read_next(std::stop_token stop) = 0;
-    virtual result<void> seek(source_timestamp target) = 0;
+    virtual ~FrameSource() = default;
+    virtual SourceCapabilities capabilities() const noexcept = 0;
+    virtual Result<SourceEvent> read_next(std::stop_token stop) = 0;
+    virtual Result<void> seek(SourceTimestamp target) = 0;
 };
-} // namespace world_explorer
 
-#endif // WORLD_EXPLORER_CAPTURE_FRAME_SOURCE_HPP
+}  // namespace world_explorer
+
+#endif  // WORLD_EXPLORER_CAPTURE_FRAME_SOURCE_HPP

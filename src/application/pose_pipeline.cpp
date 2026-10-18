@@ -1,138 +1,131 @@
 #include "pose_pipeline.hpp"
+
 #include "world_explorer/core/hash.hpp"
 
 namespace world_explorer::pose_pipeline {
-result<std::vector<pose_event>> consume(frame_source& source, pose_estimator& estimator,
-                                        const std::stop_token& stop) {
+
+Result<std::vector<PoseEvent>>
+consume(FrameSource& source, PoseEstimator& estimator, const std::stop_token& stop) {
     std::stop_callback forward(stop, [&] { estimator.request_stop(); });
-    std::vector<pose_event> collected;
-    bool finished{};
-    const auto drain = [&]() -> result<std::size_t> {
+    std::vector<PoseEvent> collected;
+    bool finished {};
+    const auto K_DRAIN = [&]() -> Result<std::size_t> {
         auto events = estimator.drain_events({2});
-        if (!events)
-            return std::unexpected(events.error());
+        if (!events) return std::unexpected(events.error());
         if (events->size() > 2 || collected.size() + events->size() > 128)
-            return fail(error_code::RESOURCE_EXHAUSTED,
-                        "Selected-frame pose event budget exceeded");
+            return fail(ErrorCode::RESOURCE_EXHAUSTED, "Selected-frame pose event budget exceeded");
         for (auto& event : *events) {
-            if (std::holds_alternative<estimator_finished>(event))
-                finished = true;
+            if (std::holds_alternative<EstimatorFinished>(event)) finished = true;
             collected.push_back(std::move(event));
         }
         return events->size();
     };
-    std::uint64_t operation{};
-    capture_id capture;
+    std::uint64_t operation {};
+    CaptureId capture;
     while (true) {
         auto event = source.read_next(stop);
-        if (!event)
-            return std::unexpected(event.error());
-        if (std::holds_alternative<source_end>(*event))
-            break;
-        if (const auto* reset = std::get_if<source_reset>(&*event)) {
-            if (capture.value || reset->epoch.value != 0 || !reset->capture.value)
-                return fail(error_code::INVALID_DATA,
+        if (!event) return std::unexpected(event.error());
+        if (std::holds_alternative<SourceEnd>(*event)) break;
+        if (const auto* reset = std::get_if<SourceReset>(&*event)) {
+            if (capture.m_value || reset->m_epoch.m_value != 0 || !reset->m_capture.m_value)
+                return fail(ErrorCode::INVALID_DATA,
                             "Unexpected reset during selected-frame poses");
-            capture = reset->capture;
+            capture = reset->m_capture;
             continue;
         }
-        auto* frame = std::get_if<frame_packet>(&*event);
-        if (!frame || !capture.value || frame->capture != capture || operation >= 120)
-            return fail(error_code::INVALID_DATA,
+        auto* frame = std::get_if<FramePacket>(&*event);
+        if (!frame || !capture.m_value || frame->m_capture != capture || operation >= 120)
+            return fail(ErrorCode::INVALID_DATA,
                         "Unexpected source event during selected-frame poses");
-        frame_observation observation{{++operation}, std::move(*frame)};
+        FrameObservation observation {{++operation}, std::move(*frame)};
         while (true) {
-            const auto admitted = estimator.submit(observation);
-            if (admitted)
-                break;
-            if (admitted.error().code != error_code::WOULD_BLOCK)
-                return std::unexpected(admitted.error());
-            const auto count = drain();
-            if (!count)
-                return std::unexpected(count.error());
-            if (*count == 0)
-                return fail(error_code::BACKEND_FAILURE, "Pose admission made no progress");
+            const auto K_ADMITTED = estimator.submit(observation);
+            if (K_ADMITTED) break;
+            if (K_ADMITTED.error().m_code != ErrorCode::WOULD_BLOCK)
+                return std::unexpected(K_ADMITTED.error());
+            const auto K_COUNT = K_DRAIN();
+            if (!K_COUNT) return std::unexpected(K_COUNT.error());
+            if (*K_COUNT == 0)
+                return fail(ErrorCode::BACKEND_FAILURE, "Pose admission made no progress");
         }
     }
-    const auto closed = estimator.finish();
-    if (!closed)
-        return std::unexpected(closed.error());
+    const auto K_CLOSED = estimator.finish();
+    if (!K_CLOSED) return std::unexpected(K_CLOSED.error());
     while (!finished) {
-        const auto count = drain();
-        if (!count)
-            return std::unexpected(count.error());
-        if (*count == 0)
-            return fail(error_code::BACKEND_FAILURE, "Pose estimator missing terminal event");
+        const auto K_COUNT = K_DRAIN();
+        if (!K_COUNT) return std::unexpected(K_COUNT.error());
+        if (*K_COUNT == 0)
+            return fail(ErrorCode::BACKEND_FAILURE, "Pose estimator missing terminal event");
     }
     if (stop.stop_requested())
-        return fail(error_code::CANCELLED, "Pose processing cancelled before map commit");
+        return fail(ErrorCode::CANCELLED, "Pose processing cancelled before map commit");
     return collected;
 }
-result<map_snapshot> publish(const completed_pose_dataset& dataset,
-                             const std::vector<pose_event>& events, const std::stop_token& stop) {
-    map_transaction transaction;
-    transaction.epoch = dataset.epoch;
-    transaction.new_revision = dataset.revision;
-    transaction.operation = {1};
-    transaction.calibrations = dataset.calibrations;
-    transaction.observations = dataset.observations;
+
+Result<MapSnapshot> publish(const CompletedPoseDataset& dataset,
+                            const std::vector<PoseEvent>& events,
+                            const std::stop_token& stop) {
+    MapTransaction transaction;
+    transaction.m_epoch = dataset.m_epoch;
+    transaction.m_new_revision = dataset.m_revision;
+    transaction.m_operation = { 1 };
+    transaction.m_calibrations = dataset.m_calibrations;
+    transaction.m_observations = dataset.m_observations;
     for (const auto& event : events) {
-        if (const auto* pose = std::get_if<pose_estimate>(&event))
-            transaction.poses.push_back(*pose);
-        if (const auto* alignment = std::get_if<map_alignment>(&event))
-            transaction.alignments.push_back(*alignment);
+        if (const auto* pose = std::get_if<PoseEstimate>(&event))
+            transaction.m_poses.push_back(*pose);
+        if (const auto* alignment = std::get_if<MapAlignment>(&event))
+            transaction.m_alignments.push_back(*alignment);
     }
-    if (transaction.poses.size() != dataset.poses.size())
-        return fail(error_code::INVALID_DATA, "Pose event inventory differs from dataset");
-    map_store maps;
-    const auto committed = maps.commit(transaction, stop);
-    if (!committed)
-        return std::unexpected(committed.error());
+    if (transaction.m_poses.size() != dataset.m_poses.size())
+        return fail(ErrorCode::INVALID_DATA, "Pose event inventory differs from dataset");
+    MapStore maps;
+    const auto K_COMMITTED = maps.commit(transaction, stop);
+    if (!K_COMMITTED) return std::unexpected(K_COMMITTED.error());
     return maps.acquire_snapshot();
 }
-result<canonical_pose_asset> canonical(const completed_pose_dataset& dataset,
-                                       const std::stop_token& stop) {
-    std::vector<pose_event> events;
-    events.emplace_back(map_alignment{dataset.submap, dataset.revision, {}});
-    for (const auto& pose : dataset.poses)
-        events.emplace_back(pose);
-    const auto snapshot = publish(dataset, events, stop);
-    if (!snapshot)
-        return std::unexpected(snapshot.error());
-    return canonical_pose_asset{*snapshot,
-                                {dataset.source_sha256, dataset.decode_completion_sha256,
-                                 dataset.pose_completion_sha256, dataset.journal_sha256}};
+
+Result<CanonicalPoseAsset> canonical(const CompletedPoseDataset& dataset,
+                                     const std::stop_token& stop) {
+    std::vector<PoseEvent> events;
+    events.emplace_back(MapAlignment {dataset.m_submap, dataset.m_revision, {}});
+    for (const auto& pose : dataset.m_poses) events.emplace_back(pose);
+    const auto K_SNAPSHOT = publish(dataset, events, stop);
+    if (!K_SNAPSHOT) return std::unexpected(K_SNAPSHOT.error());
+    return CanonicalPoseAsset {*K_SNAPSHOT,
+                               {dataset.m_source_sha256,
+                                dataset.m_decode_completion_sha256,
+                                dataset.m_pose_completion_sha256,
+                                dataset.m_journal_sha256}};
 }
-result<prepared_pose_map> persist(const canonical_pose_asset& asset,
-                                  const std::filesystem::path& directory,
-                                  const std::stop_token& stop) {
+
+Result<PreparedPoseMap> persist(const CanonicalPoseAsset& asset,
+                                const std::filesystem::path& directory,
+                                const std::stop_token& stop) {
     if (directory.empty())
-        return fail(error_code::INVALID_ARGUMENT, "Pose preparation requires a map directory");
-    const auto bytes = encode_pose_asset(asset, {}, stop);
-    if (!bytes)
-        return std::unexpected(bytes.error());
-    const auto hash = sha256(*bytes);
+        return fail(ErrorCode::INVALID_ARGUMENT, "Pose preparation requires a map directory");
+    const auto K_BYTES = encode_pose_asset(asset, {}, stop);
+    if (!K_BYTES) return std::unexpected(K_BYTES.error());
+    const auto K_HASH = sha256(*K_BYTES);
     auto store =
-        map_store::open_persistent({.directory = directory, .create_if_missing = true}, stop);
-    if (!store)
-        return std::unexpected(store.error());
-    const auto prior = (*store)->acquire_snapshot();
-    if (prior->epoch.value || prior->revision.value > 1 ||
-        (prior->revision.value == 1 && prior->initial_pose_asset_sha256 != hash))
+        MapStore::open_persistent({.m_directory = directory, .m_create_if_missing = true}, stop);
+    if (!store) return std::unexpected(store.error());
+    const auto K_PRIOR = (*store)->acquire_snapshot();
+    if (K_PRIOR->m_epoch.m_value || K_PRIOR->m_revision.m_value > 1 ||
+        (K_PRIOR->m_revision.m_value == 1 && K_PRIOR->m_initial_pose_asset_sha256 != K_HASH))
         return fail(
-            error_code::RESYNC_REQUIRED,
+            ErrorCode::RESYNC_REQUIRED,
             "Pose map has a different dependency or revision; select a fresh map directory");
-    if (prior->revision.value == 1) {
-        const auto retained = encode_pose_asset({prior, asset.provenance}, {}, stop);
-        if (!retained)
-            return std::unexpected(retained.error());
-        if (*retained != *bytes)
-            return fail(error_code::RESYNC_REQUIRED,
+    if (K_PRIOR->m_revision.m_value == 1) {
+        const auto K_RETAINED = encode_pose_asset({K_PRIOR, asset.m_provenance}, {}, stop);
+        if (!K_RETAINED) return std::unexpected(K_RETAINED.error());
+        if (*K_RETAINED != *K_BYTES)
+            return fail(ErrorCode::RESYNC_REQUIRED,
                         "Retained pose map differs from its initial solve");
     }
-    const auto imported = (*store)->import_pose_asset(asset, {1}, stop);
-    if (!imported)
-        return std::unexpected(imported.error());
-    return prepared_pose_map{std::move(*store), asset.provenance, hash};
+    const auto K_IMPORTED = (*store)->import_pose_asset(asset, {1}, stop);
+    if (!K_IMPORTED) return std::unexpected(K_IMPORTED.error());
+    return PreparedPoseMap { std::move(*store), asset.m_provenance, K_HASH };
 }
-} // namespace world_explorer::pose_pipeline
+
+}  // namespace world_explorer::pose_pipeline

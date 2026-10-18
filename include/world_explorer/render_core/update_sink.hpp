@@ -1,6 +1,7 @@
 #ifndef WORLD_EXPLORER_RENDER_CORE_UPDATE_SINK_HPP
 #define WORLD_EXPLORER_RENDER_CORE_UPDATE_SINK_HPP
 #include "world_explorer/scene_store/scene.hpp"
+
 #include <cstdint>
 #include <deque>
 #include <mutex>
@@ -9,7 +10,8 @@
 #include <utility>
 
 namespace world_explorer {
-enum class update_state : std::uint8_t {
+
+enum class UpdateState : std::uint8_t {
     ACCEPTED,
     ASSETS_AVAILABLE,
     UPLOADED,
@@ -18,96 +20,109 @@ enum class update_state : std::uint8_t {
     CANCELLED,
     FAILED
 };
-struct update_progress {
-    update_state state{update_state::FAILED};
-    scene_revision_id revision{};
-    std::uint64_t timeline_value{};
-    std::optional<error> failure;
+
+struct UpdateProgress {
+    UpdateState m_state { UpdateState::FAILED };
+    SceneRevisionId m_revision {};
+    std::uint64_t m_timeline_value {};
+    std::optional<Error> m_failure;
 };
-struct residency_budget {
-    std::size_t bytes{512ULL * 1024 * 1024};
-    std::size_t max_splats{250000};
-    std::size_t max_pending{4};
+
+struct ResidencyBudget {
+    std::size_t m_bytes { 512uz * 1024uz * 1024uz };
+    std::size_t m_max_splats { 250000uz };
+    std::size_t m_max_pending { 4uz };
 };
-struct admitted_update {
-    update_ticket ticket;
-    scene_delta_batch batch;
+
+struct AdmittedUpdate {
+    UpdateTicket m_ticket;
+    SceneDeltaBatch m_batch;
 };
+
 // Prepared off the render admission path. The snapshot remains immutable for the
 // lifetime of this value; a failed enqueue leaves the value available for retry.
-class prepared_scene_update {
+class PreparedSceneUpdate {
   public:
-    prepared_scene_update(const prepared_scene_update&) = delete;
-    prepared_scene_update& operator=(const prepared_scene_update&) = delete;
-    prepared_scene_update(prepared_scene_update&&) noexcept = default;
-    prepared_scene_update& operator=(prepared_scene_update&&) noexcept = default;
+    PreparedSceneUpdate(const PreparedSceneUpdate&) = delete;
+    PreparedSceneUpdate& operator=(const PreparedSceneUpdate&) = delete;
+    PreparedSceneUpdate(PreparedSceneUpdate&&) noexcept = default;
+    PreparedSceneUpdate& operator=(PreparedSceneUpdate&&) noexcept = default;
 
   private:
-    friend class renderer_update_sink;
-    prepared_scene_update(scene_delta_batch batch, std::size_t bytes, std::string hash,
-                          residency_budget budget)
-        : batch_(std::move(batch)), bytes_(bytes), hash_(std::move(hash)), budget_(budget) {}
-    scene_delta_batch batch_;
-    std::size_t bytes_{};
-    std::string hash_;
-    residency_budget budget_;
+    friend class RendererUpdateSink;
+
+    PreparedSceneUpdate(SceneDeltaBatch batch,
+                        std::size_t bytes,
+                        std::string hash,
+                        ResidencyBudget budget)
+        : m_batch(std::move(batch)), m_bytes(bytes), m_hash(std::move(hash)), m_budget(budget) { }
+
+    SceneDeltaBatch m_batch;
+    std::size_t m_bytes {};
+    std::string m_hash;
+    ResidencyBudget m_budget;
 };
+
 // Multi-producer, single render-consumer. Snapshots are immutable. Failed enqueue
 // preserves its argument. Tickets and duplicate operations are retained for a
 // bounded 256-operation replay window; consumers must resync after losing it.
-class renderer_update_sink {
+class RendererUpdateSink {
   public:
-    explicit renderer_update_sink(residency_budget budget = {});
-    result<prepared_scene_update> prepare(const scene_delta_batch& batch) const;
-    result<update_ticket> enqueue(prepared_scene_update& prepared);
-    result<update_ticket> enqueue(scene_delta_batch& batch);
-    result<update_progress> query_progress(update_ticket ticket) const;
-    result<void> set_residency_budget(residency_budget budget);
+    explicit RendererUpdateSink(ResidencyBudget budget = {});
+    Result<PreparedSceneUpdate> prepare(const SceneDeltaBatch& batch) const;
+    Result<UpdateTicket> enqueue(PreparedSceneUpdate& prepared);
+    Result<UpdateTicket> enqueue(SceneDeltaBatch& batch);
+    Result<UpdateProgress> query_progress(UpdateTicket ticket) const;
+    Result<void> set_residency_budget(ResidencyBudget budget);
     void cancel_pending();
-    scene_snapshot visible_snapshot() const;
+    SceneSnapshot visible_snapshot() const;
     std::size_t queued_bytes() const;
     // Render-owner lifecycle operations. GPU timeline completion governs release.
-    std::optional<admitted_update> take_next();
-    void acknowledge_uploaded(update_ticket ticket, std::uint64_t timeline);
-    void acknowledge_visible(update_ticket ticket, scene_snapshot snapshot, std::uint64_t timeline);
+    std::optional<AdmittedUpdate> take_next();
+    void acknowledge_uploaded(UpdateTicket ticket, std::uint64_t timeline);
+    void acknowledge_visible(UpdateTicket ticket, SceneSnapshot snapshot, std::uint64_t timeline);
     void retire_completed(std::uint64_t completed_timeline);
-    void fail_update(update_ticket ticket, error failure);
+    void fail_update(UpdateTicket ticket, Error failure);
 
   private:
-    struct record {
-        update_ticket ticket;
-        operation_id operation;
-        scene_id scene;
-        world_epoch epoch;
-        scene_revision_id base;
-        update_progress progress;
-        std::size_t bytes{};
-        std::string content_hash;
+    struct Record {
+        UpdateTicket m_ticket;
+        OperationId m_operation;
+        SceneId m_scene;
+        WorldEpoch m_epoch;
+        SceneRevisionId m_base;
+        UpdateProgress m_progress;
+        std::size_t m_bytes {};
+        std::string m_content_hash;
     };
-    void cancel_pending_locked();
-    record* find(update_ticket ticket);
-    std::string fingerprint(const scene_state& scene) const;
-    std::string chunk_fingerprint(const std::shared_ptr<const scene_chunk>& chunk) const;
-    struct cached_chunk_fingerprint {
-        std::weak_ptr<const scene_chunk> owner;
-        std::string hash;
-    };
-    mutable std::mutex fingerprint_mutex_;
-    mutable std::deque<cached_chunk_fingerprint> fingerprint_cache_;
-    mutable std::mutex mutex_;
-    residency_budget budget_;
-    std::deque<admitted_update> pending_;
-    std::deque<record> history_;
-    scene_snapshot visible_;
-    std::optional<update_ticket> visible_ticket_;
-    std::optional<update_ticket> active_ticket_;
-    scene_id accepted_scene_;
-    world_epoch accepted_epoch_;
-    scene_revision_id accepted_revision_;
-    std::size_t queued_bytes_{};
-    std::size_t retired_bytes_{};
-    std::uint64_t next_ticket_{1};
-};
-} // namespace world_explorer
 
-#endif // WORLD_EXPLORER_RENDER_CORE_UPDATE_SINK_HPP
+    void cancel_pending_locked();
+    Record* find(UpdateTicket ticket);
+    std::string fingerprint(const SceneState& scene) const;
+    std::string chunk_fingerprint(const std::shared_ptr<const SceneChunk>& chunk) const;
+
+    struct CachedChunkFingerprint {
+        std::weak_ptr<const SceneChunk> m_owner;
+        std::string m_hash;
+    };
+
+    mutable std::mutex m_fingerprint_mutex;
+    mutable std::deque<CachedChunkFingerprint> m_fingerprint_cache;
+    mutable std::mutex m_mutex;
+    ResidencyBudget m_budget;
+    std::deque<AdmittedUpdate> m_pending;
+    std::deque<Record> m_history;
+    SceneSnapshot m_visible;
+    std::optional<UpdateTicket> m_visible_ticket;
+    std::optional<UpdateTicket> m_active_ticket;
+    SceneId m_accepted_scene;
+    WorldEpoch m_accepted_epoch;
+    SceneRevisionId m_accepted_revision;
+    std::size_t m_queued_bytes {};
+    std::size_t m_retired_bytes {};
+    std::uint64_t m_next_ticket { 1 };
+};
+
+}  // namespace world_explorer
+
+#endif  // WORLD_EXPLORER_RENDER_CORE_UPDATE_SINK_HPP

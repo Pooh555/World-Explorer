@@ -2,38 +2,43 @@
 #define WORLD_EXPLORER_SCENE_STORE_SCENE_STORE_HPP
 
 #include "world_explorer/scene_store/scene.hpp"
+
 #include <deque>
 #include <mutex>
 
 namespace world_explorer {
-struct scene_store_limits {
-    scene_limits scene;
-    std::size_t journal_entries{128};
-    std::size_t remembered_operations{1024};
+
+struct SceneStoreLimits {
+    SceneLimits m_scene;
+    std::size_t m_journal_entries { 128uz };
+    std::size_t m_remembered_operations { 1024uz };
 };
+
 // All methods thread-safe. A successful transaction atomically publishes an
 // immutable snapshot. Journal eviction requires snapshot resync for old clients.
-class scene_store {
+class SceneStore {
   public:
-    explicit scene_store(scene_id id, scene_store_limits limits = {});
-    result<scene_revision_id> commit(const scene_transaction& transaction);
-    scene_snapshot acquire_snapshot() const;
-    result<scene_delta_batch> changes_since(scene_revision_id revision, byte_budget budget) const;
-    result<void> reset(const scene_snapshot& snapshot);
+    explicit SceneStore(SceneId id, SceneStoreLimits limits = {});
+    Result<SceneRevisionId> commit(const SceneTransaction& transaction);
+    SceneSnapshot acquire_snapshot() const;
+    Result<SceneDeltaBatch> changes_since(SceneRevisionId revision, ByteBudget budget) const;
+    Result<void> reset(const SceneSnapshot& snapshot);
 
   private:
-    struct committed_operation {
-        operation_id operation;
-        scene_revision_id base, new_revision;
-        world_epoch epoch;
-        std::uint64_t fingerprint{};
+    struct CommittedOperation {
+        OperationId m_operation;
+        SceneRevisionId m_base, m_new_revision;
+        WorldEpoch m_epoch;
+        std::uint64_t m_fingerprint {};
     };
-    mutable std::mutex mutex_;
-    scene_store_limits limits_;
-    scene_snapshot current_;
-    std::deque<committed_operation> operations_;
-    std::deque<scene_revision_id> journal_;
-};
-} // namespace world_explorer
 
-#endif // WORLD_EXPLORER_SCENE_STORE_SCENE_STORE_HPP
+    mutable std::mutex m_mutex;
+    SceneStoreLimits m_limits;
+    SceneSnapshot m_current;
+    std::deque<CommittedOperation> m_operations;
+    std::deque<SceneRevisionId> m_journal;
+};
+
+}  // namespace world_explorer
+
+#endif  // WORLD_EXPLORER_SCENE_STORE_SCENE_STORE_HPP

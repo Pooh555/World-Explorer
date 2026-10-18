@@ -1,16 +1,21 @@
 #ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_ARTIFACT_IO_HPP
 #define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_ARTIFACT_IO_HPP
 #include "world_explorer/core/hash.hpp"
+
 #include <filesystem>
 #include <fstream>
-#include <nlohmann/json.hpp>
 #include <stdexcept>
 
+#include <nlohmann/json.hpp>
+
 namespace world_explorer::adapter_detail {
+
 inline bool valid_digest(const std::string& digest) {
     return digest.size() == 64 && digest.find_first_not_of("0123456789abcdef") == std::string::npos;
 }
-inline nlohmann::json read_json(const std::filesystem::path& path, std::size_t maximum,
+
+inline nlohmann::json read_json(const std::filesystem::path& path,
+                                std::size_t maximum,
                                 const std::string& expected_sha256 = {}) {
     if (!std::filesystem::is_regular_file(std::filesystem::symlink_status(path)) ||
         std::filesystem::file_size(path) > maximum)
@@ -32,6 +37,7 @@ inline nlohmann::json read_json(const std::filesystem::path& path, std::size_t m
             return true;
         });
 }
+
 inline std::filesystem::path contained_file(const std::filesystem::path& root,
                                             const std::string& name) {
     if (name.empty() || name.size() > 4096 || name.find('\0') != std::string::npos ||
@@ -41,18 +47,19 @@ inline std::filesystem::path contained_file(const std::filesystem::path& root,
     if (relative.is_absolute() || relative.has_root_name())
         throw std::invalid_argument("Artifact path must be relative");
     for (const auto& part : relative)
-        if (part == "." || part == "..")
-            throw std::invalid_argument("Unsafe artifact path");
+        if (part == "." || part == "..") throw std::invalid_argument("Unsafe artifact path");
     const auto path = std::filesystem::canonical(root / relative);
     if (path.lexically_relative(root) != relative ||
         !std::filesystem::is_regular_file(std::filesystem::symlink_status(root / relative)))
         throw std::invalid_argument("Artifact escapes its directory or uses a symlink");
     return path;
 }
+
 inline std::uint64_t unsigned_value(const nlohmann::json& value) {
     if (!value.is_number_unsigned())
         throw std::invalid_argument("Expected unsigned artifact metadata");
     return value.get<std::uint64_t>();
 }
-} // namespace world_explorer::adapter_detail
+
+}  // namespace world_explorer::adapter_detail
 #endif

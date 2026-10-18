@@ -1,7 +1,7 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
-#include <SDL3/SDL.h>
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -12,7 +12,6 @@
 #include <iostream>
 #include <limits>
 #include <memory>
-#include <nlohmann/json.hpp>
 #include <optional>
 #include <span>
 #include <sstream>
@@ -20,15 +19,19 @@
 #include <string>
 #include <string_view>
 
+#include <SDL3/SDL.h>
+#include <nlohmann/json.hpp>
+
 using namespace world_explorer;
+
 namespace {
-using json = nlohmann::json;
-using steady_clock = std::chrono::steady_clock;
-using seconds = std::chrono::seconds;
+
+using Json = nlohmann::json;
+using SteadyClock = std::chrono::steady_clock;
+using Seconds = std::chrono::seconds;
 
 void require(bool valid, const std::string& message) {
-    if (!valid)
-        throw std::runtime_error(message);
+    if (!valid) throw std::runtime_error(message);
 }
 
 std::optional<std::size_t> process_status_bytes(std::string_view field) {
@@ -39,7 +42,7 @@ std::optional<std::size_t> process_status_bytes(std::string_view field) {
         if (line.starts_with(field)) {
             std::istringstream entry(line);
             std::string key, unit;
-            std::size_t value{};
+            std::size_t value {};
             if (entry >> key >> value >> unit && unit == "kB" &&
                 value <= std::numeric_limits<std::size_t>::max() / 1024)
                 return value * 1024;
@@ -52,7 +55,7 @@ std::optional<std::size_t> process_status_bytes(std::string_view field) {
     return {};
 }
 
-void write_event(std::ofstream& stream, const json& event) {
+void write_event(std::ofstream& stream, const Json& event) {
     stream << event.dump() << '\n';
     stream.flush();
     require(static_cast<bool>(stream), "stress event log write failed");
@@ -61,24 +64,24 @@ void write_event(std::ofstream& stream, const json& event) {
 bool full_revision(std::uint64_t revision, bool resident_mode) {
     return resident_mode ? revision % 3 != 0 : revision % 2 != 0;
 }
-scene_snapshot revision_of(const scene_snapshot& original, std::uint64_t revision,
-                           bool resident_mode) {
-    auto copy = std::make_shared<scene_state>(*original);
-    copy->revision = {revision};
-    if (!full_revision(revision, resident_mode))
-        copy->chunks.clear();
+
+SceneSnapshot
+revision_of(const SceneSnapshot& original, std::uint64_t revision, bool resident_mode) {
+    auto copy = std::make_shared<SceneState>(*original);
+    copy->m_revision = { revision };
+    if (!full_revision(revision, resident_mode)) copy->m_chunks.clear();
     return copy;
 }
 
-camera_view source_camera(const scene_state& scene) {
-    const auto view = source_view(scene);
-    require(view.has_value(), view ? "" : view.error().message);
-    camera_view camera;
-    camera.position = view->camera.position;
-    camera.right = view->camera.right();
-    camera.down = view->camera.down();
-    camera.forward = view->camera.forward();
-    camera.vertical_fov_radians = view->vertical_fov_radians;
+CameraView source_camera(const SceneState& scene) {
+    const auto K_VIEW = source_view(scene);
+    require(K_VIEW.has_value(), K_VIEW ? "" : K_VIEW.error().m_message);
+    CameraView camera;
+    camera.m_position = K_VIEW->m_camera.m_position;
+    camera.m_right = K_VIEW->m_camera.right();
+    camera.m_down = K_VIEW->m_camera.down();
+    camera.m_forward = K_VIEW->m_camera.forward();
+    camera.m_vertical_fov_radians = K_VIEW->m_vertical_fov_radians;
     return camera;
 }
 
@@ -86,322 +89,337 @@ void set_extent(SDL_Window* window, std::uint32_t width, std::uint32_t height) {
     require(SDL_SetWindowSize(window, static_cast<int>(width), static_cast<int>(height)),
             SDL_GetError());
     require(SDL_SyncWindow(window), SDL_GetError());
-    int actual_width{}, actual_height{};
+    int actual_width {}, actual_height {};
     require(SDL_GetWindowSizeInPixels(window, &actual_width, &actual_height), SDL_GetError());
     require(actual_width == static_cast<int>(width) && actual_height == static_cast<int>(height),
             "compositor did not apply requested stress extent");
 }
 
-struct stress_context {
-    vulkan_renderer& renderer;
-    SDL_Window* window;
-    const camera_view& camera;
-    std::size_t residency_bytes;
-    std::size_t full_splats;
-    std::size_t& peak_owned_bytes;
-    std::uint64_t& frames;
-    bool resident_mode{};
-    std::uint64_t last_timing{};
-    std::size_t host_copy_bytes{}, resident_copy_bytes{};
+struct StressContext {
+    VulkanRenderer& m_renderer;
+    SDL_Window* m_window;
+    const CameraView& m_camera;
+    std::size_t m_residency_bytes;
+    std::size_t m_full_splats;
+    std::size_t& m_peak_owned_bytes;
+    std::uint64_t& m_frames;
+    bool m_resident_mode {};
+    std::uint64_t m_last_timing {};
+    std::size_t m_host_copy_bytes {}, m_resident_copy_bytes {};
 };
 
-void check_frame(stress_context& context) {
+void check_frame(StressContext& context) {
     SDL_PumpEvents();
-    const auto drawn = context.renderer.draw(context.camera);
-    require(drawn.has_value(), drawn ? "" : drawn.error().message);
-    const auto stats = context.renderer.diagnostics();
-    require(stats.validation_errors == 0, "Vulkan validation error during stress");
-    require(stats.allocated_bytes <= context.residency_bytes,
+    const auto K_DRAWN = context.m_renderer.draw(context.m_camera);
+    require(K_DRAWN.has_value(), K_DRAWN ? "" : K_DRAWN.error().m_message);
+    const auto K_STATS = context.m_renderer.diagnostics();
+    require(K_STATS.m_validation_errors == 0, "Vulkan validation error during stress");
+    require(K_STATS.m_allocated_bytes <= context.m_residency_bytes,
             "renderer owned-byte budget exceeded");
-    const auto visible = context.renderer.updates().visible_snapshot();
-    if (visible)
-        require(stats.resident_splat_count ==
-                    (full_revision(visible->revision.value, context.resident_mode)
-                         ? context.full_splats
+    const auto K_VISIBLE = context.m_renderer.updates().visible_snapshot();
+    if (K_VISIBLE)
+        require(K_STATS.m_resident_splat_count ==
+                    (full_revision(K_VISIBLE->m_revision.m_value, context.m_resident_mode)
+                         ? context.m_full_splats
                          : 0),
                 "resident splat count differs from visible revision");
-    context.peak_owned_bytes = std::max(context.peak_owned_bytes, stats.allocated_bytes);
-    context.frames = stats.submitted_frames;
-    auto latest = context.last_timing;
-    for (const auto& sample : stats.completed_timings)
-        if (sample.sequence > context.last_timing) {
-            context.host_copy_bytes += sample.host_copy_bytes;
-            context.resident_copy_bytes += sample.resident_copy_bytes;
-            latest = std::max(latest, sample.sequence);
+    context.m_peak_owned_bytes = std::max(context.m_peak_owned_bytes, K_STATS.m_allocated_bytes);
+    context.m_frames = K_STATS.m_submitted_frames;
+    auto latest = context.m_last_timing;
+    for (const auto& sample : K_STATS.m_completed_timings)
+        if (sample.m_sequence > context.m_last_timing) {
+            context.m_host_copy_bytes += sample.m_host_copy_bytes;
+            context.m_resident_copy_bytes += sample.m_resident_copy_bytes;
+            latest = std::max(latest, sample.m_sequence);
         }
-    context.last_timing = latest;
+    context.m_last_timing = latest;
 }
 
-void wait_for_revision(stress_context& context, update_ticket ticket) {
-    const auto deadline = steady_clock::now() + seconds(60);
-    while (steady_clock::now() < deadline) {
+void wait_for_revision(StressContext& context, UpdateTicket ticket) {
+    const auto K_DEADLINE = SteadyClock::now() + Seconds(60);
+    while (SteadyClock::now() < K_DEADLINE) {
         check_frame(context);
-        const auto progress = context.renderer.updates().query_progress(ticket);
-        require(progress.has_value(), progress ? "" : progress.error().message);
-        if (progress->state == update_state::RENDER_VISIBLE)
-            return;
-        require(progress->state != update_state::FAILED &&
-                    progress->state != update_state::CANCELLED,
+        const auto K_PROGRESS = context.m_renderer.updates().query_progress(ticket);
+        require(K_PROGRESS.has_value(), K_PROGRESS ? "" : K_PROGRESS.error().m_message);
+        if (K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) return;
+        require(K_PROGRESS->m_state != UpdateState::FAILED &&
+                    K_PROGRESS->m_state != UpdateState::CANCELLED,
                 "stress scene update failed or was cancelled");
         SDL_Delay(20);
     }
     throw std::runtime_error("stress scene revision did not become visible within 60 seconds");
 }
 
-std::string capture(stress_context& context, const std::filesystem::path& path) {
-    set_extent(context.window, 1280, 720);
-    const auto requested = context.renderer.request_screenshot(path);
-    require(requested.has_value(), requested ? "" : requested.error().message);
+std::string capture(StressContext& context, const std::filesystem::path& path) {
+    set_extent(context.m_window, 1280, 720);
+    const auto K_REQUESTED = context.m_renderer.request_screenshot(path);
+    require(K_REQUESTED.has_value(), K_REQUESTED ? "" : K_REQUESTED.error().m_message);
     check_frame(context);
     require(std::filesystem::is_regular_file(path), "stress screenshot missing");
-    const auto hash = sha256_file(path, std::size_t{4} * 1024 * 1024);
-    require(hash.has_value(), hash ? "" : hash.error().message);
-    return *hash;
+    const auto K_HASH = sha256_file(path, 4uz * 1024 * 1024);
+    require(K_HASH.has_value(), K_HASH ? "" : K_HASH.error().m_message);
+    return *K_HASH;
 }
-} // namespace
+
+}  // namespace
 
 int main(int argc, char** argv) try {
     require(argc >= 4 && argc <= 6,
             "usage: we_gpu_lifetime_stress <retained-scene> <new-output-dir> <seconds> "
             "[--resident-reuse] [--fp16-sh]");
-    const std::span<char*> arguments(argv, static_cast<std::size_t>(argc));
+    const std::span<char*> K_ARGUMENTS(argv, static_cast<std::size_t>(argc));
     bool resident_mode = false, packed = false;
-    for (const auto* argument : arguments.subspan(4)) {
-        const std::string_view option(argument);
-        if (option == "--resident-reuse" && !resident_mode)
-            resident_mode = true;
-        else if (option == "--fp16-sh" && !packed)
-            packed = true;
-        else
-            throw std::runtime_error("unknown or duplicate stress option");
+    for (const auto* argument : K_ARGUMENTS.subspan(4)) {
+        const std::string_view K_OPTION(argument);
+        if (K_OPTION == "--resident-reuse" && !resident_mode) resident_mode = true;
+        else if (K_OPTION == "--fp16-sh" && !packed) packed = true;
+        else throw std::runtime_error("unknown or duplicate stress option");
     }
-    const std::string_view duration_text(arguments[3]);
-    std::uint64_t duration{};
-    const auto parsed = std::from_chars(duration_text.data(),
-                                        duration_text.data() + duration_text.size(), duration);
-    require(parsed.ec == std::errc{} && parsed.ptr == duration_text.data() + duration_text.size(),
+    const std::string_view K_DURATION_TEXT(K_ARGUMENTS[3]);
+    std::uint64_t duration {};
+    const auto K_PARSED = std::from_chars(
+        K_DURATION_TEXT.data(), K_DURATION_TEXT.data() + K_DURATION_TEXT.size(), duration);
+    require(K_PARSED.ec == std::errc {} &&
+                K_PARSED.ptr == K_DURATION_TEXT.data() + K_DURATION_TEXT.size(),
             "stress duration must be an integer");
     require(duration >= 10 && duration <= 7200, "stress duration must be 10–7200 seconds");
-    const std::filesystem::path output(argv[2]);
-    require(!std::filesystem::exists(output), "stress output directory already exists");
-    require(std::filesystem::exists(output.parent_path()),
+    const std::filesystem::path K_OUTPUT(argv[2]);
+    require(!std::filesystem::exists(K_OUTPUT), "stress output directory already exists");
+    require(std::filesystem::exists(K_OUTPUT.parent_path()),
             "stress output parent directory is missing");
-    const auto scene = load_bundle(argv[1]);
-    require(scene.has_value(), scene ? "" : scene.error().message);
-    const auto& original = *scene;
-    const auto camera = source_camera(*original);
-    const auto scene_hash = scene_content_hash(*original);
-    std::size_t full_splats{};
-    for (const auto& [id, chunk] : original->chunks) {
-        static_cast<void>(id);
-        full_splats += chunk->splats.size();
+    const auto K_SCENE = load_bundle(argv[1]);
+    require(K_SCENE.has_value(), K_SCENE ? "" : K_SCENE.error().m_message);
+    const auto& original = *K_SCENE;
+    const auto K_CAMERA = source_camera(*original);
+    const auto K_SCENE_HASH = scene_content_hash(*original);
+    std::size_t full_splats {};
+    for (const auto& [K_ID, K_CHUNK] : original->m_chunks) {
+        static_cast<void>(K_ID);
+        full_splats += K_CHUNK->m_splats.size();
     }
     require(full_splats > 0 && full_splats <= 1000000,
             "stress requires a nonempty scene of at most one million splats");
     require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
-    struct sdl_owner {
-        ~sdl_owner() { SDL_Quit(); }
+
+    struct SdlOwner {
+        ~SdlOwner() { SDL_Quit(); }
     } sdl;
+
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
-        SDL_CreateWindow("World Explorer lifetime stress", 1280, 720,
+        SDL_CreateWindow("World Explorer lifetime stress",
+                         1280,
+                         720,
                          SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
         SDL_DestroyWindow);
     require(window != nullptr, SDL_GetError());
-    renderer_options options;
-    if (packed)
-        options.splat_storage = gpu_splat_storage::FP32_GEOMETRY_FP16_SH;
-    options.max_splats = 1000000;
-    options.shader_directory = WE_SHADER_DIRECTORY;
-    options.collect_timings = resident_mode;
-    auto created = vulkan_renderer::create(window.get(), options);
-    require(created.has_value(), created ? "" : created.error().message);
+    RendererOptions options;
+    if (packed) options.m_splat_storage = GpuSplatStorage::FP32_GEOMETRY_FP16_SH;
+    options.m_max_splats = 1000000;
+    options.m_shader_directory = WE_SHADER_DIRECTORY;
+    options.m_collect_timings = resident_mode;
+    auto created = VulkanRenderer::create(window.get(), options);
+    require(created.has_value(), created ? "" : created.error().m_message);
     auto renderer = std::move(*created);
-    require(renderer->capabilities().validation_enabled, "stress requires Vulkan validation");
-    const auto stride = renderer->capabilities().splat_stride_bytes;
-    require(stride == (packed ? 160U : 256U), "stress storage stride differs from selection");
-    const auto payload_bytes = full_splats * stride;
-    std::filesystem::create_directory(output);
-    std::ofstream events(output / "events.jsonl", std::ios::binary);
+    require(renderer->capabilities().m_validation_enabled, "stress requires Vulkan validation");
+    const auto K_STRIDE = renderer->capabilities().m_splat_stride_bytes;
+    require(K_STRIDE == (packed ? 160U : 256U), "stress storage stride differs from selection");
+    const auto K_PAYLOAD_BYTES = full_splats * K_STRIDE;
+    std::filesystem::create_directory(K_OUTPUT);
+    std::ofstream events(K_OUTPUT / "events.jsonl", std::ios::binary);
     require(static_cast<bool>(events), "cannot open stress event log");
-    std::size_t peak_owned_bytes{};
-    std::uint64_t frames{}, revision = 1, updates{}, resizes{}, captures{};
-    stress_context context{*renderer,   window.get(),     camera, options.residency_bytes,
-                           full_splats, peak_owned_bytes, frames, resident_mode};
+    std::size_t peak_owned_bytes {};
+    std::uint64_t frames {}, revision = 1, updates {}, resizes {}, captures {};
+    StressContext context {*renderer,
+                           window.get(),
+                           K_CAMERA,
+                           options.m_residency_bytes,
+                           full_splats,
+                           peak_owned_bytes,
+                           frames,
+                           resident_mode};
     auto initial = make_snapshot_batch(revision_of(original, revision, resident_mode), {revision});
-    require(initial.has_value(), initial ? "" : initial.error().message);
-    const auto initial_ticket = renderer->updates().enqueue(*initial);
-    require(initial_ticket.has_value(), initial_ticket ? "" : initial_ticket.error().message);
-    wait_for_revision(context, *initial_ticket);
-    const auto start = steady_clock::now();
-    const auto baseline = capture(context, output / "capture-0.ppm");
+    require(initial.has_value(), initial ? "" : initial.error().m_message);
+    const auto K_INITIAL_TICKET = renderer->updates().enqueue(*initial);
+    require(K_INITIAL_TICKET.has_value(),
+            K_INITIAL_TICKET ? "" : K_INITIAL_TICKET.error().m_message);
+    wait_for_revision(context, *K_INITIAL_TICKET);
+    const auto K_START = SteadyClock::now();
+    const auto K_BASELINE = capture(context, K_OUTPUT / "capture-0.ppm");
     ++captures;
-    write_event(events, {{"event", "start"},
-                         {"scene_content_sha256", scene_hash},
-                         {"scene_splats", full_splats},
-                         {"gpu_storage", packed ? "fp16_sh" : "fp32"},
-                         {"splat_stride_bytes", stride},
-                         {"scene_payload_bytes", payload_bytes},
-                         {"device", renderer->capabilities().device_name},
-                         {"duration_seconds", duration},
-                         {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
-                         {"process_rss_bytes", process_status_bytes("VmRSS:")},
-                         {"baseline_readback_sha256", baseline}});
-    struct extent {
-        std::uint32_t width, height;
+    write_event(events,
+                {{"event", "start"},
+                 {"scene_content_sha256", K_SCENE_HASH},
+                 {"scene_splats", full_splats},
+                 {"gpu_storage", packed ? "fp16_sh" : "fp32"},
+                 {"splat_stride_bytes", K_STRIDE},
+                 {"scene_payload_bytes", K_PAYLOAD_BYTES},
+                 {"device", renderer->capabilities().m_device_name},
+                 {"duration_seconds", duration},
+                 {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
+                 {"process_rss_bytes", process_status_bytes("VmRSS:")},
+                 {"baseline_readback_sha256", K_BASELINE}});
+
+    struct Extent {
+        std::uint32_t m_width, m_height;
     };
-    const std::array<extent, 4> extents{{{1024, 640}, {1600, 900}, {1920, 1080}, {1280, 720}}};
-    std::size_t extent_index{};
-    auto next_update = start + seconds(15);
-    auto next_resize = start + seconds(20);
-    auto next_capture = start + seconds(600);
-    auto next_sample = start + seconds(60);
-    std::optional<update_ticket> pending;
-    while (steady_clock::now() - start < seconds(duration)) {
-        const auto now = steady_clock::now();
+
+    const std::array<Extent, 4> K_EXTENTS {{{1024, 640}, {1600, 900}, {1920, 1080}, {1280, 720}}};
+    std::size_t extent_index {};
+    auto next_update = K_START + Seconds(15);
+    auto next_resize = K_START + Seconds(20);
+    auto next_capture = K_START + Seconds(600);
+    auto next_sample = K_START + Seconds(60);
+    std::optional<UpdateTicket> pending;
+    while (SteadyClock::now() - K_START < Seconds(duration)) {
+        const auto K_NOW = SteadyClock::now();
         if (pending) {
-            const auto progress = renderer->updates().query_progress(*pending);
-            require(progress.has_value(), progress ? "" : progress.error().message);
-            require(progress->state != update_state::FAILED &&
-                        progress->state != update_state::CANCELLED,
+            const auto K_PROGRESS = renderer->updates().query_progress(*pending);
+            require(K_PROGRESS.has_value(), K_PROGRESS ? "" : K_PROGRESS.error().m_message);
+            require(K_PROGRESS->m_state != UpdateState::FAILED &&
+                        K_PROGRESS->m_state != UpdateState::CANCELLED,
                     "stress scene update failed or was cancelled");
-            if (progress->state == update_state::RENDER_VISIBLE) {
+            if (K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
                 pending.reset();
                 ++updates;
                 write_event(
                     events,
                     {{"event", "revision"},
-                     {"elapsed_seconds", std::chrono::duration<double>(now - start).count()},
+                     {"elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count()},
                      {"revision", revision},
                      {"splats", full_revision(revision, resident_mode) ? full_splats : 0}});
             }
         }
-        if (!pending && now >= next_update) {
-            const auto next_revision = revision + 1;
-            auto batch = make_snapshot_batch(revision_of(original, next_revision, resident_mode),
-                                             operation_id{next_revision});
-            require(batch.has_value(), batch ? "" : batch.error().message);
-            batch->full_snapshot = false;
-            batch->base_revision = {revision};
+        if (!pending && K_NOW >= next_update) {
+            const auto K_NEXT_REVISION = revision + 1;
+            auto batch = make_snapshot_batch(revision_of(original, K_NEXT_REVISION, resident_mode),
+                                             OperationId { K_NEXT_REVISION });
+            require(batch.has_value(), batch ? "" : batch.error().m_message);
+            batch->m_full_snapshot = false;
+            batch->m_base_revision = { revision };
             auto admitted = renderer->updates().enqueue(*batch);
             if (admitted) {
                 pending = *admitted;
-                revision = next_revision;
-                next_update = now + seconds(15);
+                revision = K_NEXT_REVISION;
+                next_update = K_NOW + Seconds(15);
             } else
-                require(admitted.error().code == error_code::WOULD_BLOCK,
-                        "stress update admission failed: " + admitted.error().message);
+                require(admitted.error().m_code == ErrorCode::WOULD_BLOCK,
+                        "stress update admission failed: " + admitted.error().m_message);
         }
-        if (now >= next_resize) {
-            const auto extent = extents[extent_index++ % extents.size()];
-            set_extent(window.get(), extent.width, extent.height);
+        if (K_NOW >= next_resize) {
+            const auto K_EXTENT = K_EXTENTS[extent_index++ % K_EXTENTS.size()];
+            set_extent(window.get(), K_EXTENT.m_width, K_EXTENT.m_height);
             ++resizes;
-            next_resize = now + seconds(20);
-            write_event(events,
-                        {{"event", "resize"},
-                         {"elapsed_seconds", std::chrono::duration<double>(now - start).count()},
-                         {"width", extent.width},
-                         {"height", extent.height}});
+            next_resize = K_NOW + Seconds(20);
+            write_event(
+                events,
+                {{"event", "resize"},
+                 {"elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count()},
+                 {"width", K_EXTENT.m_width},
+                 {"height", K_EXTENT.m_height}});
         }
-        const bool take_capture =
-            now >= next_capture && !pending && full_revision(revision, resident_mode);
-        if (take_capture) {
-            const auto path = output / ("capture-" + std::to_string(captures) + ".ppm");
-            const auto hash = capture(context, path);
-            require(hash == baseline, "stress full-scene readback differs from baseline");
+        const bool K_TAKE_CAPTURE =
+            K_NOW >= next_capture && !pending && full_revision(revision, resident_mode);
+        if (K_TAKE_CAPTURE) {
+            const auto K_PATH = K_OUTPUT / ("capture-" + std::to_string(captures) + ".ppm");
+            const auto K_HASH = capture(context, K_PATH);
+            require(K_HASH == K_BASELINE, "stress full-scene readback differs from baseline");
             ++captures;
-            next_capture = now + seconds(600);
-            write_event(events,
-                        {{"event", "capture"},
-                         {"elapsed_seconds", std::chrono::duration<double>(now - start).count()},
-                         {"revision", revision},
-                         {"sha256", hash}});
-        } else
-            check_frame(context);
-        if (now >= next_sample) {
-            const auto stats = renderer->diagnostics();
-            write_event(events,
-                        {{"event", "sample"},
-                         {"elapsed_seconds", std::chrono::duration<double>(now - start).count()},
-                         {"revision", renderer->updates().visible_snapshot()->revision.value},
-                         {"submitted_frames", stats.submitted_frames},
-                         {"completed_timeline", stats.completed_timeline},
-                         {"owned_bytes", stats.allocated_bytes},
-                         {"peak_owned_bytes", peak_owned_bytes},
-                         {"host_copy_bytes", context.host_copy_bytes},
-                         {"resident_copy_bytes", context.resident_copy_bytes},
-                         {"process_rss_bytes", process_status_bytes("VmRSS:")},
-                         {"process_peak_rss_bytes", process_status_bytes("VmHWM:")},
-                         {"validation_errors", stats.validation_errors}});
-            next_sample = now + seconds(60);
+            next_capture = K_NOW + Seconds(600);
+            write_event(
+                events,
+                {{"event", "capture"},
+                 {"elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count()},
+                 {"revision", revision},
+                 {"sha256", K_HASH}});
+        } else check_frame(context);
+        if (K_NOW >= next_sample) {
+            const auto K_STATS = renderer->diagnostics();
+            write_event(
+                events,
+                {{"event", "sample"},
+                 {"elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count()},
+                 {"revision", renderer->updates().visible_snapshot()->m_revision.m_value},
+                 {"submitted_frames", K_STATS.m_submitted_frames},
+                 {"completed_timeline", K_STATS.m_completed_timeline},
+                 {"owned_bytes", K_STATS.m_allocated_bytes},
+                 {"peak_owned_bytes", peak_owned_bytes},
+                 {"host_copy_bytes", context.m_host_copy_bytes},
+                 {"resident_copy_bytes", context.m_resident_copy_bytes},
+                 {"process_rss_bytes", process_status_bytes("VmRSS:")},
+                 {"process_peak_rss_bytes", process_status_bytes("VmHWM:")},
+                 {"validation_errors", K_STATS.m_validation_errors}});
+            next_sample = K_NOW + Seconds(60);
         }
         SDL_Delay(20);
     }
     if (pending) {
         wait_for_revision(context, *pending);
         ++updates;
-        write_event(events, {{"event", "revision"},
-                             {"elapsed_seconds",
-                              std::chrono::duration<double>(steady_clock::now() - start).count()},
-                             {"revision", revision},
-                             {"splats", full_revision(revision, resident_mode) ? full_splats : 0},
-                             {"awaited_after_duration", true}});
+        write_event(events,
+                    {{"event", "revision"},
+                     {"elapsed_seconds",
+                      std::chrono::duration<double>(SteadyClock::now() - K_START).count()},
+                     {"revision", revision},
+                     {"splats", full_revision(revision, resident_mode) ? full_splats : 0},
+                     {"awaited_after_duration", true}});
     }
     if (!full_revision(revision, resident_mode)) {
         auto final = make_snapshot_batch(revision_of(original, revision + 1, resident_mode),
-                                         operation_id{revision + 1});
-        require(final.has_value(), final ? "" : final.error().message);
-        final->full_snapshot = false;
-        final->base_revision = {revision};
-        const auto admitted = renderer->updates().enqueue(*final);
-        require(admitted.has_value(), admitted ? "" : admitted.error().message);
+                                         OperationId { revision + 1 });
+        require(final.has_value(), final ? "" : final.error().m_message);
+        final->m_full_snapshot = false;
+        final->m_base_revision = { revision };
+        const auto K_ADMITTED = renderer->updates().enqueue(*final);
+        require(K_ADMITTED.has_value(), K_ADMITTED ? "" : K_ADMITTED.error().m_message);
         ++revision;
-        wait_for_revision(context, *admitted);
+        wait_for_revision(context, *K_ADMITTED);
         ++updates;
     }
-    const auto final_hash = capture(context, output / "capture-final.ppm");
-    require(final_hash == baseline, "final full-scene readback differs from baseline");
+    const auto K_FINAL_HASH = capture(context, K_OUTPUT / "capture-final.ppm");
+    require(K_FINAL_HASH == K_BASELINE, "final full-scene readback differs from baseline");
     ++captures;
-    const auto idle = renderer->wait_for_idle();
-    require(idle.has_value(), idle ? "" : idle.error().message);
-    const auto stats = renderer->diagnostics();
-    require(stats.validation_errors == 0, "Vulkan validation error at stress completion");
+    const auto K_IDLE = renderer->wait_for_idle();
+    require(K_IDLE.has_value(), K_IDLE ? "" : K_IDLE.error().m_message);
+    const auto K_STATS = renderer->diagnostics();
+    require(K_STATS.m_validation_errors == 0, "Vulkan validation error at stress completion");
     require(updates + 1 == revision, "stress visible revision/update counts disagree");
-    require(!resident_mode || duration < 30 || context.resident_copy_bytes > 0,
+    require(!resident_mode || duration < 30 || context.m_resident_copy_bytes > 0,
             "resident stress did not observe a device-to-device copy");
     // Empty revisions still transfer the renderer's 16-byte zero sentinel.
-    const auto expected_host_bytes = ((revision + 2) / 3) * payload_bytes + (revision / 3) * 16;
-    const auto expected_resident_bytes = ((revision + 1) / 3) * payload_bytes;
-    require(!resident_mode || (context.host_copy_bytes == expected_host_bytes &&
-                               context.resident_copy_bytes == expected_resident_bytes),
+    const auto K_EXPECTED_HOST_BYTES = ((revision + 2) / 3) * K_PAYLOAD_BYTES + (revision / 3) * 16;
+    const auto K_EXPECTED_RESIDENT_BYTES = ((revision + 1) / 3) * K_PAYLOAD_BYTES;
+    require(!resident_mode || (context.m_host_copy_bytes == K_EXPECTED_HOST_BYTES &&
+                               context.m_resident_copy_bytes == K_EXPECTED_RESIDENT_BYTES),
             "stress transfer byte totals differ from the full/full/empty sequence");
-    const auto elapsed = std::chrono::duration<double>(steady_clock::now() - start).count();
-    json summary{{"passed", true},
-                 {"scope", "native read-only retained-scene update/resize stress"},
-                 {"elapsed_seconds", elapsed},
-                 {"requested_seconds", duration},
-                 {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
-                 {"scene_content_sha256", scene_hash},
-                 {"scene_splats", full_splats},
-                 {"gpu_storage", packed ? "fp16_sh" : "fp32"},
-                 {"splat_stride_bytes", stride},
-                 {"scene_payload_bytes", payload_bytes},
-                 {"device", renderer->capabilities().device_name},
-                 {"updates_visible", updates},
-                 {"last_visible_revision", renderer->updates().visible_snapshot()->revision.value},
-                 {"resizes", resizes},
-                 {"captures", captures},
-                 {"readback_sha256", baseline},
-                 {"submitted_frames", frames},
-                 {"peak_owned_bytes", peak_owned_bytes},
-                 {"host_copy_bytes", context.host_copy_bytes},
-                 {"resident_copy_bytes", context.resident_copy_bytes},
-                 {"process_rss_bytes", process_status_bytes("VmRSS:")},
-                 {"process_peak_rss_bytes", process_status_bytes("VmHWM:")},
-                 {"validation_errors", stats.validation_errors}};
-    std::ofstream result(output / "summary.json", std::ios::binary);
+    const auto K_ELAPSED = std::chrono::duration<double>(SteadyClock::now() - K_START).count();
+    Json summary {
+        {"passed", true},
+        {"scope", "native read-only retained-scene update/resize stress"},
+        {"elapsed_seconds", K_ELAPSED},
+        {"requested_seconds", duration},
+        {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
+        {"scene_content_sha256", K_SCENE_HASH},
+        {"scene_splats", full_splats},
+        {"gpu_storage", packed ? "fp16_sh" : "fp32"},
+        {"splat_stride_bytes", K_STRIDE},
+        {"scene_payload_bytes", K_PAYLOAD_BYTES},
+        {"device", renderer->capabilities().m_device_name},
+        {"updates_visible", updates},
+        {"last_visible_revision", renderer->updates().visible_snapshot()->m_revision.m_value},
+        {"resizes", resizes},
+        {"captures", captures},
+        {"readback_sha256", K_BASELINE},
+        {"submitted_frames", frames},
+        {"peak_owned_bytes", peak_owned_bytes},
+        {"host_copy_bytes", context.m_host_copy_bytes},
+        {"resident_copy_bytes", context.m_resident_copy_bytes},
+        {"process_rss_bytes", process_status_bytes("VmRSS:")},
+        {"process_peak_rss_bytes", process_status_bytes("VmHWM:")},
+        {"validation_errors", K_STATS.m_validation_errors}};
+    std::ofstream result(K_OUTPUT / "summary.json", std::ios::binary);
     result << summary.dump(2) << '\n';
     require(static_cast<bool>(result), "stress summary write failed");
-    write_event(events, {{"event", "complete"}, {"elapsed_seconds", elapsed}});
+    write_event(events, {{"event", "complete"}, {"elapsed_seconds", K_ELAPSED}});
     std::cout << summary.dump() << '\n';
     return 0;
 } catch (const std::exception& exception) {

@@ -1,8 +1,9 @@
 #include "../fixtures/scale_fixture.hpp"
+
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
-#include <SDL3/SDL.h>
+
 #include <algorithm>
 #include <charconv>
 #include <chrono>
@@ -10,28 +11,32 @@
 #include <iostream>
 #include <limits>
 #include <map>
-#include <nlohmann/json.hpp>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
 
+#include <SDL3/SDL.h>
+#include <nlohmann/json.hpp>
+
 using namespace world_explorer;
+
 namespace {
-using json = nlohmann::json;
+
+using Json = nlohmann::json;
+
 void require(bool condition, const std::string& message) {
-    if (!condition)
-        throw std::runtime_error(message);
+    if (!condition) throw std::runtime_error(message);
 }
+
 std::optional<std::size_t> process_bytes(std::string_view field, bool rollup = false) {
 #if defined(__linux__)
     std::ifstream status(rollup ? "/proc/self/smaps_rollup" : "/proc/self/status");
     std::string line;
     while (std::getline(status, line)) {
-        if (!line.starts_with(field))
-            continue;
+        if (!line.starts_with(field)) continue;
         std::istringstream stream(line);
         std::string key, unit;
-        std::size_t value{};
+        std::size_t value {};
         if (stream >> key >> value >> unit && unit == "kB" &&
             value <= std::numeric_limits<std::size_t>::max() / 1024)
             return value * 1024;
@@ -43,144 +48,149 @@ std::optional<std::size_t> process_bytes(std::string_view field, bool rollup = f
 #endif
     return {};
 }
-json optional_bytes(std::optional<std::size_t> value) {
-    return value ? json(*value) : json(nullptr);
+
+Json optional_bytes(std::optional<std::size_t> value) {
+    return value ? Json(*value) : Json(nullptr);
 }
+
 std::string digest(const std::filesystem::path& path) {
-    const auto hash = sha256_file(path, 16ULL * 1024 * 1024);
-    require(hash.has_value(), "cannot hash diagnostic capture");
-    return *hash;
+    const auto K_HASH = sha256_file(path, 16ULL * 1024 * 1024);
+    require(K_HASH.has_value(), "cannot hash diagnostic capture");
+    return *K_HASH;
 }
+
 std::size_t foreground(const std::filesystem::path& path) {
     std::ifstream image(path, std::ios::binary);
     std::string magic;
-    unsigned width{}, height{}, maximum{};
+    unsigned width {}, height {}, maximum {};
     image >> magic >> width >> height >> maximum;
-    require(magic == "P6" && width == SCALE_FIXTURE_WIDTH && height == SCALE_FIXTURE_HEIGHT &&
+    require(magic == "P6" && width == K_SCALE_FIXTURE_WIDTH && height == K_SCALE_FIXTURE_HEIGHT &&
                 maximum == 255 && image.get() == '\n',
             "invalid full-size RGB8 readback");
-    std::vector<unsigned char> pixels(std::size_t{width} * height * 3);
+    std::vector<unsigned char> pixels(std::size_t { width } * height * 3);
     image.read(reinterpret_cast<char*>(pixels.data()), static_cast<std::streamsize>(pixels.size()));
     require(image.gcount() == static_cast<std::streamsize>(pixels.size()) && image.peek() == EOF,
             "invalid readback byte count");
-    constexpr std::array<int, 3> BACKGROUND{11, 13, 16};
-    std::size_t count{};
-    for (std::size_t pixel = 0; pixel < pixels.size(); pixel += 3)
-        if (std::abs(static_cast<int>(pixels[pixel]) - BACKGROUND[0]) > 8 ||
-            std::abs(static_cast<int>(pixels[pixel + 1]) - BACKGROUND[1]) > 8 ||
-            std::abs(static_cast<int>(pixels[pixel + 2]) - BACKGROUND[2]) > 8)
+    constexpr std::array<int, 3> K_BACKGROUND { 11, 13, 16 };
+    std::size_t count {};
+    for (std::size_t pixel { 0uz }; pixel < pixels.size(); pixel += 3uz)
+        if (std::abs(static_cast<int>(pixels[pixel]) - K_BACKGROUND[0]) > 8 ||
+            std::abs(static_cast<int>(pixels[pixel + 1]) - K_BACKGROUND[1]) > 8 ||
+            std::abs(static_cast<int>(pixels[pixel + 2]) - K_BACKGROUND[2]) > 8)
             ++count;
     return count;
 }
-} // namespace
+
+}  // namespace
 int main(int argc, char** argv) try {
-    require(argc >= 3, "usage: we_gpu_scale_fixture FIXED_BUNDLE NEW_DIRECTORY "
-                       "[--fp16-sh] [--budget-mib N]");
+    require(argc >= 3,
+            "usage: we_gpu_scale_fixture FIXED_BUNDLE NEW_DIRECTORY "
+            "[--fp16-sh] [--budget-mib N]");
     bool packed = false, budget_set = false;
     std::size_t budget_mib = 2048;
-    for (int argument = 3; argument < argc; ++argument) {
-        const std::string_view option(argv[argument]);
-        if (option == "--fp16-sh" && !packed)
-            packed = true;
-        else if (option == "--budget-mib" && !budget_set && argument + 1 < argc) {
-            const std::string_view text(argv[++argument]);
-            const auto parsed = std::from_chars(text.data(), text.data() + text.size(), budget_mib);
-            require(parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size() &&
+    for (int argument { 3 }; argument < argc; ++argument) {
+        const std::string_view K_OPTION(argv[argument]);
+        if (K_OPTION == "--fp16-sh" && !packed) packed = true;
+        else if (K_OPTION == "--budget-mib" && !budget_set && argument + 1 < argc) {
+            const std::string_view K_TEXT(argv[++argument]);
+            const auto K_PARSED =
+                std::from_chars(K_TEXT.data(), K_TEXT.data() + K_TEXT.size(), budget_mib);
+            require(K_PARSED.ec == std::errc {} && K_PARSED.ptr == K_TEXT.data() + K_TEXT.size() &&
                         budget_mib >= 512 && budget_mib <= 4096,
                     "budget must be an integer from 512 through 4096 MiB");
             budget_set = true;
-        } else
-            throw std::runtime_error("unknown, duplicate or missing diagnostic option");
+        } else throw std::runtime_error("unknown, duplicate or missing diagnostic option");
     }
-    const std::filesystem::path output(argv[2]);
-    require(std::filesystem::create_directory(output), "output must be a new directory");
-    json report{{"scope", "synthetic 2M resident admission/memory; no FPS or capture gate"},
-                {"passed", false},
-                {"storage", packed ? "FP32_GEOMETRY_FP16_SH" : "FP32"},
-                {"residency_budget_bytes", budget_mib * 1024 * 1024},
-                {"frames", json::array()},
-                {"views", json::array()}};
+    const std::filesystem::path K_OUTPUT(argv[2]);
+    require(std::filesystem::create_directory(K_OUTPUT), "output must be a new directory");
+    Json report {{"scope", "synthetic 2M resident admission/memory; no FPS or capture gate"},
+                 {"passed", false},
+                 {"storage", packed ? "FP32_GEOMETRY_FP16_SH" : "FP32"},
+                 {"residency_budget_bytes", budget_mib * 1024 * 1024},
+                 {"frames", Json::array()},
+                 {"views", Json::array()}};
     try {
-        bundle_limits limits;
-        limits.scene.max_splats = SCALE_FIXTURE_SPLATS;
-        limits.scene.max_chunks = 8;
-        limits.scene.max_payload_bytes = 512ULL * 1024 * 1024;
-        const auto scene = load_bundle(argv[1], limits);
-        require(scene.has_value(), scene ? "" : scene.error().message);
-        const auto content = scene_content_hash(**scene);
-        require(content == SCALE_FIXTURE_SHA256, "bundle differs from frozen scale fixture");
-        report["scene_content_sha256"] = content;
-        const auto payload = validate_scene(**scene, limits.scene);
-        require(payload.has_value(), "invalid full fixture payload");
-        report["cpu_payload_bytes"] = *payload;
+        BundleLimits limits;
+        limits.m_scene.m_max_splats = K_SCALE_FIXTURE_SPLATS;
+        limits.m_scene.m_max_chunks = 8;
+        limits.m_scene.m_max_payload_bytes = 512ULL * 1024 * 1024;
+        const auto K_SCENE = load_bundle(argv[1], limits);
+        require(K_SCENE.has_value(), K_SCENE ? "" : K_SCENE.error().m_message);
+        const auto K_CONTENT = scene_content_hash(**K_SCENE);
+        require(K_CONTENT == K_SCALE_FIXTURE_SHA256, "bundle differs from frozen scale fixture");
+        report["scene_content_sha256"] = K_CONTENT;
+        const auto K_PAYLOAD = validate_scene(**K_SCENE, limits.m_scene);
+        require(K_PAYLOAD.has_value(), "invalid full fixture payload");
+        report["cpu_payload_bytes"] = *K_PAYLOAD;
         require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
-        struct sdl_owner {
-            ~sdl_owner() { SDL_Quit(); }
+
+        struct SdlOwner {
+            ~SdlOwner() { SDL_Quit(); }
         } sdl;
+
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
-            SDL_CreateWindow("Synthetic World Explorer 2M scale check", SCALE_FIXTURE_WIDTH,
-                             SCALE_FIXTURE_HEIGHT, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN),
+            SDL_CreateWindow("Synthetic World Explorer 2M scale check",
+                             K_SCALE_FIXTURE_WIDTH,
+                             K_SCALE_FIXTURE_HEIGHT,
+                             SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN),
             SDL_DestroyWindow);
         require(window != nullptr, SDL_GetError());
-        renderer_options options;
-        options.max_splats = SCALE_FIXTURE_SPLATS;
-        options.residency_bytes = budget_mib * 1024 * 1024;
-        options.collect_timings = true;
-        options.splat_storage =
-            packed ? gpu_splat_storage::FP32_GEOMETRY_FP16_SH : gpu_splat_storage::FP32;
-        options.shader_directory = WE_SHADER_DIRECTORY;
-        auto created = vulkan_renderer::create(window.get(), options);
-        require(created.has_value(), created ? "" : created.error().message);
+        RendererOptions options;
+        options.m_max_splats = K_SCALE_FIXTURE_SPLATS;
+        options.m_residency_bytes = budget_mib * 1024 * 1024;
+        options.m_collect_timings = true;
+        options.m_splat_storage =
+            packed ? GpuSplatStorage::FP32_GEOMETRY_FP16_SH : GpuSplatStorage::FP32;
+        options.m_shader_directory = WE_SHADER_DIRECTORY;
+        auto created = VulkanRenderer::create(window.get(), options);
+        require(created.has_value(), created ? "" : created.error().m_message);
         auto renderer = std::move(*created);
-        require(renderer->capabilities().validation_enabled, "native Vulkan validation required");
-        report["device"] = renderer->capabilities().device_name;
+        require(renderer->capabilities().m_validation_enabled, "native Vulkan validation required");
+        report["device"] = renderer->capabilities().m_device_name;
         report["video_driver"] = SDL_GetCurrentVideoDriver();
-        report["splat_stride_bytes"] = renderer->capabilities().splat_stride_bytes;
-        report["gpu_timestamps_supported"] = renderer->capabilities().gpu_timestamps_supported;
-        std::size_t peak_owned{}, peak_staging{}, peak_scratch{}, peak_framebuffer{};
+        report["splat_stride_bytes"] = renderer->capabilities().m_splat_stride_bytes;
+        report["gpu_timestamps_supported"] = renderer->capabilities().m_gpu_timestamps_supported;
+        std::size_t peak_owned {}, peak_staging {}, peak_scratch {}, peak_framebuffer {};
         std::optional<std::size_t> peak_hwm, peak_rss;
-        std::map<std::uint64_t, renderer_frame_timing> samples;
-        const auto sample = [&] {
-            const auto stats = renderer->diagnostics();
-            require(stats.validation_errors == 0 &&
-                        stats.allocated_bytes <= options.residency_bytes,
+        std::map<std::uint64_t, RendererFrameTiming> samples;
+        const auto K_SAMPLE = [&] {
+            const auto K_STATS = renderer->diagnostics();
+            require(K_STATS.m_validation_errors == 0 &&
+                        K_STATS.m_allocated_bytes <= options.m_residency_bytes,
                     "validation or residency failure");
-            require(stats.framebuffer_width == SCALE_FIXTURE_WIDTH &&
-                        stats.framebuffer_height == SCALE_FIXTURE_HEIGHT,
+            require(K_STATS.m_framebuffer_width == K_SCALE_FIXTURE_WIDTH &&
+                        K_STATS.m_framebuffer_height == K_SCALE_FIXTURE_HEIGHT,
                     "framebuffer differs from fixed 1080p calibration");
-            peak_owned = std::max(peak_owned, stats.allocated_bytes);
-            peak_staging = std::max(peak_staging, stats.staging_bytes);
-            peak_scratch = std::max(peak_scratch, stats.scratch_bytes);
-            peak_framebuffer = std::max(peak_framebuffer, stats.framebuffer_bytes);
-            for (const auto& timing : stats.completed_timings)
-                if (timing.sequence)
-                    samples.try_emplace(timing.sequence, timing);
+            peak_owned = std::max(peak_owned, K_STATS.m_allocated_bytes);
+            peak_staging = std::max(peak_staging, K_STATS.m_staging_bytes);
+            peak_scratch = std::max(peak_scratch, K_STATS.m_scratch_bytes);
+            peak_framebuffer = std::max(peak_framebuffer, K_STATS.m_framebuffer_bytes);
+            for (const auto& timing : K_STATS.m_completed_timings)
+                if (timing.m_sequence) samples.try_emplace(timing.m_sequence, timing);
             // status RSS/HWM counters are approximate and can fluctuate. Retain
             // every raw sample and its maximum; rollup provides a separate RSS
             // observation with explicit sampling scope.
-            const auto hwm = process_bytes("VmHWM:");
-            const auto rss = process_bytes("Rss:", true);
-            if (hwm)
-                peak_hwm = std::max(peak_hwm.value_or(0), *hwm);
-            if (rss)
-                peak_rss = std::max(peak_rss.value_or(0), *rss);
-            report["frames"].push_back({{"sequence", stats.submitted_frames},
-                                        {"resident_splats", stats.resident_splat_count},
-                                        {"references", stats.tile_reference_count},
-                                        {"owned_bytes", stats.allocated_bytes},
-                                        {"staging_bytes", stats.staging_bytes},
-                                        {"scratch_bytes", stats.scratch_bytes},
-                                        {"framebuffer_bytes", stats.framebuffer_bytes},
+            const auto K_HWM = process_bytes("VmHWM:");
+            const auto K_RSS = process_bytes("Rss:", true);
+            if (K_HWM) peak_hwm = std::max(peak_hwm.value_or(0), *K_HWM);
+            if (K_RSS) peak_rss = std::max(peak_rss.value_or(0), *K_RSS);
+            report["frames"].push_back({{"sequence", K_STATS.m_submitted_frames},
+                                        {"resident_splats", K_STATS.m_resident_splat_count},
+                                        {"references", K_STATS.m_tile_reference_count},
+                                        {"owned_bytes", K_STATS.m_allocated_bytes},
+                                        {"staging_bytes", K_STATS.m_staging_bytes},
+                                        {"scratch_bytes", K_STATS.m_scratch_bytes},
+                                        {"framebuffer_bytes", K_STATS.m_framebuffer_bytes},
                                         {"rss_bytes", optional_bytes(process_bytes("VmRSS:"))},
-                                        {"process_hwm_bytes", optional_bytes(hwm)},
-                                        {"smaps_rss_bytes", optional_bytes(rss)}});
+                                        {"process_hwm_bytes", optional_bytes(K_HWM)},
+                                        {"smaps_rss_bytes", optional_bytes(K_RSS)}});
             report["peak_sampled_owned_bytes"] = peak_owned;
             report["peak_sampled_staging_bytes"] = peak_staging;
             report["peak_sampled_scratch_bytes"] = peak_scratch;
             report["framebuffer_bytes"] = peak_framebuffer;
             report["process_hwm_bytes"] = optional_bytes(peak_hwm);
             report["peak_sampled_rss_bytes"] = optional_bytes(peak_rss);
-            report["validation_errors"] = stats.validation_errors;
+            report["validation_errors"] = K_STATS.m_validation_errors;
             if (peak_hwm)
                 require(*peak_hwm <= 4ULL * 1024 * 1024 * 1024,
                         "sampled process high-water exceeds the unchanged 4 GiB bound");
@@ -188,110 +198,112 @@ int main(int argc, char** argv) try {
                 require(*peak_rss <= 4ULL * 1024 * 1024 * 1024,
                         "sampled process RSS exceeds the unchanged 4 GiB bound");
         };
-        const auto draw = [&](const camera_view& camera) {
+        const auto K_DRAW = [&](const CameraView& camera) {
             SDL_PumpEvents();
-            const auto drawn = renderer->draw(camera);
-            require(drawn.has_value(), drawn ? "" : drawn.error().message);
-            sample();
+            const auto K_DRAWN = renderer->draw(camera);
+            require(K_DRAWN.has_value(), K_DRAWN ? "" : K_DRAWN.error().m_message);
+            K_SAMPLE();
         };
-        const auto capture = [&](const char* name, const camera_view& camera) {
-            const auto path = output / (std::string(name) + ".ppm");
-            require(renderer->request_screenshot(path).has_value(), "readback request failed");
-            for (int frame = 0; frame < 8 && !std::filesystem::exists(path); ++frame)
-                draw(camera);
-            require(std::filesystem::exists(path), "readback did not complete");
+        const auto K_CAPTURE = [&](const char* name, const CameraView& camera) {
+            const auto K_PATH = K_OUTPUT / (std::string(name) + ".ppm");
+            require(renderer->request_screenshot(K_PATH).has_value(), "readback request failed");
+            for (int frame { 0 }; frame < 8 && !std::filesystem::exists(K_PATH); ++frame)
+                K_DRAW(camera);
+            require(std::filesystem::exists(K_PATH), "readback did not complete");
             require(renderer->wait_for_idle().has_value(), "GPU drain failed");
-            sample();
-            return digest(path);
+            K_SAMPLE();
+            return digest(K_PATH);
         };
-        const auto admit = [&](const scene_snapshot& snapshot, operation_id operation) {
+        const auto K_ADMIT = [&](const SceneSnapshot& snapshot, OperationId operation) {
             auto batch = make_snapshot_batch(snapshot, operation);
             require(batch.has_value(), "fixture snapshot is invalid");
-            const auto ticket = renderer->updates().enqueue(*batch);
-            require(ticket.has_value(), ticket ? "" : ticket.error().message);
-            return *ticket;
+            const auto K_TICKET = renderer->updates().enqueue(*batch);
+            require(K_TICKET.has_value(), K_TICKET ? "" : K_TICKET.error().m_message);
+            return *K_TICKET;
         };
-        const auto await = [&](update_ticket ticket) {
-            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
-            for (int frame = 0; frame < 256 && std::chrono::steady_clock::now() < deadline;
+        const auto K_AWAIT = [&](UpdateTicket ticket) {
+            const auto K_DEADLINE = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+            for (int frame { 0 }; frame < 256 && std::chrono::steady_clock::now() < K_DEADLINE;
                  ++frame) {
-                draw(scale_fixture_camera());
-                const auto progress = renderer->updates().query_progress(ticket);
-                require(progress.has_value(), "upload progress missing");
-                if (progress->state == update_state::FAILED ||
-                    progress->state == update_state::RENDER_VISIBLE)
-                    return *progress;
+                K_DRAW(scale_fixture_camera());
+                const auto K_PROGRESS = renderer->updates().query_progress(ticket);
+                require(K_PROGRESS.has_value(), "upload progress missing");
+                if (K_PROGRESS->m_state == UpdateState::FAILED ||
+                    K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE)
+                    return *K_PROGRESS;
             }
             throw std::runtime_error("bounded fixture upload did not complete");
         };
-        auto empty = std::make_shared<scene_state>(**scene);
-        empty->chunks.clear();
-        require(await(admit(empty, {1})).state == update_state::RENDER_VISIBLE,
+        auto empty = std::make_shared<SceneState>(**K_SCENE);
+        empty->m_chunks.clear();
+        require(K_AWAIT(K_ADMIT(empty, {1})).m_state == UpdateState::RENDER_VISIBLE,
                 "empty baseline failed");
-        const auto baseline_hash = capture("baseline", scale_fixture_camera());
-        auto full = std::make_shared<scene_state>(**scene);
-        full->revision = {2};
-        const auto full_hash = scene_content_hash(*full);
-        report["upload_scene_content_sha256"] = full_hash;
-        const auto progress = await(admit(full, {2}));
-        if (progress.state == update_state::FAILED) {
-            report["admission_error"] = progress.failure ? progress.failure->message : "unknown";
+        const auto K_BASELINE_HASH = K_CAPTURE("baseline", scale_fixture_camera());
+        auto full = std::make_shared<SceneState>(**K_SCENE);
+        full->m_revision = { 2 };
+        const auto K_FULL_HASH = scene_content_hash(*full);
+        report["upload_scene_content_sha256"] = K_FULL_HASH;
+        const auto K_PROGRESS = K_AWAIT(K_ADMIT(full, {2}));
+        if (K_PROGRESS.m_state == UpdateState::FAILED) {
+            report["admission_error"] =
+                K_PROGRESS.m_failure ? K_PROGRESS.m_failure->m_message : "unknown";
             report["rejected_admission_preserved"] =
                 renderer->updates().visible_snapshot() == empty &&
-                renderer->diagnostics().resident_splat_count == 0 &&
-                capture("rejected", scale_fixture_camera()) == baseline_hash &&
-                scene_content_hash(*full) == full_hash;
+                renderer->diagnostics().m_resident_splat_count == 0 &&
+                K_CAPTURE("rejected", scale_fixture_camera()) == K_BASELINE_HASH &&
+                scene_content_hash(*full) == K_FULL_HASH;
             require(report.at("rejected_admission_preserved").get<bool>(),
                     "rejected admission changed prior scene or caller data");
             throw std::runtime_error("full scale fixture was rejected: " +
                                      report.at("admission_error").get<std::string>());
         }
         std::array<std::string, 3> hashes;
-        constexpr std::array NAMES{"front", "reverse", "front-return"};
-        for (std::size_t view = 0; view < NAMES.size(); ++view) {
-            const auto camera = scale_fixture_camera(view == 1);
-            for (int warmup = 0; warmup < 4; ++warmup)
-                draw(camera);
-            hashes[view] = capture(NAMES[view], camera);
-            const auto stats = renderer->diagnostics();
-            require(stats.resident_splat_count == SCALE_FIXTURE_SPLATS &&
-                        stats.tile_reference_count == SCALE_FIXTURE_REFERENCES,
+        constexpr std::array K_NAMES { "front", "reverse", "front-return" };
+        for (std::size_t view { 0uz }; view < K_NAMES.size(); ++view) {
+            const auto K_CAMERA = scale_fixture_camera(view == 1);
+            for (int warmup { 0 }; warmup < 4; ++warmup) K_DRAW(K_CAMERA);
+            hashes[view] = K_CAPTURE(K_NAMES[view], K_CAMERA);
+            const auto K_STATS = renderer->diagnostics();
+            require(K_STATS.m_resident_splat_count == K_SCALE_FIXTURE_SPLATS &&
+                        K_STATS.m_tile_reference_count == K_SCALE_FIXTURE_REFERENCES,
                     "full resident count or analytic tile coverage differs");
-            const auto pixels = foreground(output / (std::string(NAMES[view]) + ".ppm"));
-            require(pixels > std::size_t{SCALE_FIXTURE_WIDTH} * SCALE_FIXTURE_HEIGHT / 4,
+            const auto K_PIXELS = foreground(K_OUTPUT / (std::string(K_NAMES[view]) + ".ppm"));
+            require(K_PIXELS > std::size_t { K_SCALE_FIXTURE_WIDTH } * K_SCALE_FIXTURE_HEIGHT / 4,
                     "capture lacks the full bank's foreground");
-            report["views"].push_back({{"view", NAMES[view]},
+            report["views"].push_back({{"view", K_NAMES[view]},
                                        {"sha256", hashes[view]},
-                                       {"resident_splats", stats.resident_splat_count},
-                                       {"tile_references", stats.tile_reference_count},
-                                       {"foreground_pixels", pixels}});
+                                       {"resident_splats", K_STATS.m_resident_splat_count},
+                                       {"tile_references", K_STATS.m_tile_reference_count},
+                                       {"foreground_pixels", K_PIXELS}});
         }
         require(hashes[0] == hashes[2] && hashes[0] != hashes[1],
                 "bank switch or return pixels differ from fixture invariants");
-        std::size_t host{}, resident{};
-        for (const auto& [sequence, timing] : samples) {
-            static_cast<void>(sequence);
-            require(timing.host_copy_bytes + timing.resident_copy_bytes <= 15ULL * 1024 * 1024,
+        std::size_t host {}, resident {};
+        for (const auto& [K_SEQUENCE, K_TIMING] : samples) {
+            static_cast<void>(K_SEQUENCE);
+            require(K_TIMING.m_host_copy_bytes + K_TIMING.m_resident_copy_bytes <=
+                        15ULL * 1024 * 1024,
                     "per-frame transfer budget exceeded");
-            host += timing.host_copy_bytes;
-            resident += timing.resident_copy_bytes;
+            host += K_TIMING.m_host_copy_bytes;
+            resident += K_TIMING.m_resident_copy_bytes;
         }
-        require(host == 16 + SCALE_FIXTURE_SPLATS * renderer->capabilities().splat_stride_bytes &&
+        require(host == 16 + K_SCALE_FIXTURE_SPLATS *
+                                 renderer->capabilities().m_splat_stride_bytes &&
                     resident == 0,
                 "upload bytes differ from the complete resident payload");
         report["host_copy_bytes"] = host;
         report["resident_copy_bytes"] = resident;
-        report["canonical_scene_unchanged"] = scene_content_hash(*full) == full_hash;
+        report["canonical_scene_unchanged"] = scene_content_hash(*full) == K_FULL_HASH;
         require(report.at("canonical_scene_unchanged").get<bool>(), "caller scene changed");
         report["passed"] = true;
     } catch (const std::exception& error) {
         report["error"] = error.what();
     }
-    std::ofstream stream(output / "native.json", std::ios::binary | std::ios::noreplace);
+    std::ofstream stream(K_OUTPUT / "native.json", std::ios::binary | std::ios::noreplace);
     stream << report.dump(2) << '\n';
     stream.close();
     require(stream.good(), "cannot save scale diagnostic report");
-    std::cout << report.at("passed") << " " << report.value("error", std::string{}) << '\n';
+    std::cout << report.at("passed") << " " << report.value("error", std::string {}) << '\n';
     return report.at("passed").get<bool>() ? 0 : 2;
 } catch (const std::exception& error) {
     std::cerr << "Scale diagnostic failed: " << error.what() << '\n';

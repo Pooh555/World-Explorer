@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -87,6 +88,92 @@ def run_command(command: list[str]) -> int:
     return subprocess.run(command, cwd=str(ROOT)).returncode
 
 
+def normalize_brace_spacing(source: str) -> str:
+    """Ignore C++11 braced-list interior spaces that clang-format cannot retain."""
+    source = re.sub(r"\{[ \t]+", "{", source)
+    return re.sub(r"[ \t]+\}", "}", source)
+
+
+def check_template_initialization(files: list[Path]) -> int:
+    violations: list[str] = []
+    typed_loop = re.compile(
+        r"\bfor\s*\(\s*(?:std::size_t|(?:std::)?size_t|int|unsigned|"
+        r"std::u?int\d+_t)\s+\w+\s*="
+    )
+    size_t_temporary = re.compile(r"\bstd::size_t\s*\{\s*\d+")
+    size_t_declaration = re.compile(r"\bstd::size_t\s+\w+\s*\{([^{}\n]*)\}")
+    spelled_declaration = re.compile(
+        r"\b(?:(?:const|constexpr|inline|static|volatile|extern)\s+)*"
+        r"(?:std::(?:size_t|u?int\d+_t|[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)|"
+        r"(?:u?int\d+_t|size_t|int|unsigned(?:\s+int)?|long(?:\s+long)?|"
+        r"float|double|bool|char|auto))\s+\w+\s*\{([^{}\n]*)\}"
+    )
+    assigned_list = re.compile(r"(?<![=!<>])=(?!=)\s*\{([^{}\n]*)\}")
+    integer = re.compile(r"(?<![\w.])(\d+)([uUlLzZ]*)(?![\w.])")
+    string_literal = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
+    for path in files:
+        source = path.read_text(encoding="utf-8")
+        for line_number, line in enumerate(source.splitlines(), start=1):
+            code_line = string_literal.sub('""', line)
+            if typed_loop.search(line):
+                violations.append(f"{path}:{line_number}: use direct-list initialization in typed loops")
+            if size_t_temporary.search(line):
+                violations.append(f"{path}:{line_number}: use uz literals instead of std::size_t temporaries")
+            for match in spelled_declaration.finditer(line):
+                initializer = match.group(1)
+                if initializer.strip() and not (
+                    initializer.startswith(" ") and initializer.endswith(" ")
+                ):
+                    violations.append(
+                        f"{path}:{line_number}: put spaces inside non-empty initializer braces"
+                    )
+            for match in assigned_list.finditer(code_line):
+                initializer = match.group(1)
+                if initializer.strip() and not (
+                    initializer.startswith(" ") and initializer.endswith(" ")
+                ):
+                    violations.append(
+                        f"{path}:{line_number}: put spaces inside non-empty initializer braces"
+                    )
+            for match in size_t_declaration.finditer(line):
+                initializer = match.group(1)
+                if initializer.strip() and not (
+                    initializer.startswith(" ") and initializer.endswith(" ")
+                ):
+                    violations.append(f"{path}:{line_number}: put spaces inside std::size_t initializer braces")
+                for literal in integer.finditer(initializer):
+                    if literal.group(2).lower() != "uz":
+                        violations.append(f"{path}:{line_number}: use uz suffixes for std::size_t literals")
+    if violations:
+        print("Template initialization checks failed:", file=sys.stderr)
+        print("\n".join(violations), file=sys.stderr)
+        return 1
+    return 0
+
+
+def check_format(format_executable: str, files: list[Path]) -> int:
+    failed = False
+    for path in files:
+        relative = str(path.relative_to(ROOT))
+        formatted = subprocess.run(
+            [format_executable, relative],
+            cwd=str(ROOT),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if formatted.returncode != 0:
+            print(formatted.stderr, file=sys.stderr)
+            failed = True
+            continue
+        actual = normalize_brace_spacing(path.read_text(encoding="utf-8"))
+        expected = normalize_brace_spacing(formatted.stdout)
+        if actual != expected:
+            print(f"clang-format check failed: {relative}", file=sys.stderr)
+            failed = True
+    return int(failed)
+
+
 def run_repo_quality_checks() -> int:
     quality_checks = [
         ["python3", str(ROOT / "tools/check_docs.py")],
@@ -130,10 +217,14 @@ def main() -> int:
 
     relative_files = [str(path.relative_to(ROOT)) for path in files]
 
-    format_rc = run_command([format_executable, "--dry-run", "--Werror", *relative_files])
+    format_rc = check_format(format_executable, files)
     if format_rc != 0:
         print("clang-format check failed; run 'clang-format -i ...' on the listed files.", file=sys.stderr)
         return format_rc
+
+    initialization_rc = check_template_initialization(files)
+    if initialization_rc != 0:
+        return initialization_rc
 
     build_dir = (ROOT / args.build_dir).resolve()
     compile_db = build_dir / "compile_commands.json"

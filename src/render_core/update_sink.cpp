@@ -1,310 +1,334 @@
 #include "world_explorer/render_core/update_sink.hpp"
+
 #include "world_explorer/core/hash.hpp"
+
 #include <algorithm>
 #include <array>
 #include <utility>
 
 namespace world_explorer {
 namespace {
-void add_u64(sha256_builder& hash, std::uint64_t value) {
-    std::array<std::byte, 8> bytes{};
-    for (unsigned index = 0; index < 8; ++index)
+
+void add_u64(Sha256Builder& hash, std::uint64_t value) {
+    std::array<std::byte, 8> bytes {};
+    for (unsigned index { 0 }; index < 8; ++index)
         bytes[index] = static_cast<std::byte>((value >> (8U * index)) & 255U);
     hash.update(bytes);
 }
-void add_string(sha256_builder& hash, const std::string& value) {
+
+void add_string(Sha256Builder& hash, const std::string& value) {
     add_u64(hash, value.size());
     hash.update(std::as_bytes(std::span(value.data(), value.size())));
 }
-} // namespace
-renderer_update_sink::renderer_update_sink(residency_budget budget) : budget_(budget) {}
-renderer_update_sink::record* renderer_update_sink::find(update_ticket ticket) {
-    const auto found = std::find_if(history_.begin(), history_.end(),
-                                    [&](const auto& item) { return item.ticket == ticket; });
-    return found == history_.end() ? nullptr : &*found;
+
+}  // namespace
+
+RendererUpdateSink::RendererUpdateSink(ResidencyBudget budget) : m_budget(budget) {
 }
+
+RendererUpdateSink::Record* RendererUpdateSink::find(UpdateTicket ticket) {
+    const auto K_FOUND = std::find_if(m_history.begin(), m_history.end(), [&](const auto& item) {
+        return item.m_ticket == ticket;
+    });
+    return K_FOUND == m_history.end() ? nullptr : &*K_FOUND;
+}
+
 std::string
-renderer_update_sink::chunk_fingerprint(const std::shared_ptr<const scene_chunk>& chunk) const {
+RendererUpdateSink::chunk_fingerprint(const std::shared_ptr<const SceneChunk>& chunk) const {
     {
-        std::lock_guard lock(fingerprint_mutex_);
-        for (const auto& entry : fingerprint_cache_)
-            if (entry.owner.lock() == chunk)
-                return entry.hash;
+        std::lock_guard lock(m_fingerprint_mutex);
+        for (const auto& entry : m_fingerprint_cache)
+            if (entry.m_owner.lock() == chunk) return entry.m_hash;
     }
     auto hash = scene_chunk_content_hash(*chunk);
-    std::lock_guard lock(fingerprint_mutex_);
-    for (const auto& entry : fingerprint_cache_)
-        if (entry.owner.lock() == chunk)
-            return entry.hash;
-    if (fingerprint_cache_.size() >= 4096) {
-        std::erase_if(fingerprint_cache_, [](const auto& entry) { return entry.owner.expired(); });
-        if (fingerprint_cache_.size() >= 4096)
-            fingerprint_cache_.pop_front();
+    std::lock_guard lock(m_fingerprint_mutex);
+    for (const auto& entry : m_fingerprint_cache)
+        if (entry.m_owner.lock() == chunk) return entry.m_hash;
+    if (m_fingerprint_cache.size() >= 4096) {
+        std::erase_if(m_fingerprint_cache,
+                      [](const auto& entry) { return entry.m_owner.expired(); });
+        if (m_fingerprint_cache.size() >= 4096) m_fingerprint_cache.pop_front();
     }
-    fingerprint_cache_.push_back({chunk, hash});
+    m_fingerprint_cache.push_back({chunk, hash});
     return hash;
 }
-std::string renderer_update_sink::fingerprint(const scene_state& scene) const {
-    sha256_builder hash;
-    add_u64(hash, scene.id.value);
-    add_u64(hash, scene.epoch.value);
-    add_u64(hash, scene.revision.value);
-    add_u64(hash, static_cast<std::uint64_t>(scene.scale));
-    add_u64(hash, scene.provenance.size());
-    for (const auto& [key, value] : scene.provenance) {
-        add_string(hash, key);
-        add_string(hash, value);
+
+std::string RendererUpdateSink::fingerprint(const SceneState& scene) const {
+    Sha256Builder hash;
+    add_u64(hash, scene.m_id.m_value);
+    add_u64(hash, scene.m_epoch.m_value);
+    add_u64(hash, scene.m_revision.m_value);
+    add_u64(hash, static_cast<std::uint64_t>(scene.m_scale));
+    add_u64(hash, scene.m_provenance.size());
+    for (const auto& [K_KEY, K_VALUE] : scene.m_provenance) {
+        add_string(hash, K_KEY);
+        add_string(hash, K_VALUE);
     }
-    add_u64(hash, scene.chunks.size());
-    for (const auto& [id, chunk] : scene.chunks) {
-        add_u64(hash, id.value);
-        const auto chunk_hash = chunk_fingerprint(chunk);
-        hash.update(std::as_bytes(std::span(chunk_hash.data(), chunk_hash.size())));
+    add_u64(hash, scene.m_chunks.size());
+    for (const auto& [K_ID, K_CHUNK] : scene.m_chunks) {
+        add_u64(hash, K_ID.m_value);
+        const auto K_CHUNK_HASH = chunk_fingerprint(K_CHUNK);
+        hash.update(std::as_bytes(std::span(K_CHUNK_HASH.data(), K_CHUNK_HASH.size())));
     }
     return hash.finish();
 }
-result<prepared_scene_update> renderer_update_sink::prepare(const scene_delta_batch& batch) const {
-    if (!batch.snapshot)
-        return fail(error_code::INVALID_DATA, "Missing renderer snapshot");
-    residency_budget validated_budget;
+
+Result<PreparedSceneUpdate> RendererUpdateSink::prepare(const SceneDeltaBatch& batch) const {
+    if (!batch.m_snapshot) return fail(ErrorCode::INVALID_DATA, "Missing renderer snapshot");
+    ResidencyBudget validated_budget;
     {
-        std::lock_guard lock(mutex_);
-        validated_budget = budget_;
+        std::lock_guard lock(m_mutex);
+        validated_budget = m_budget;
     }
-    auto bytes = validate_scene(
-        *batch.snapshot, {4096, validated_budget.max_splats, validated_budget.bytes, 1000000});
-    if (!bytes)
-        return std::unexpected(bytes.error());
-    return prepared_scene_update(batch, *bytes, fingerprint(*batch.snapshot), validated_budget);
+    auto bytes =
+        validate_scene(*batch.m_snapshot,
+                       {4096, validated_budget.m_max_splats, validated_budget.m_bytes, 1000000});
+    if (!bytes) return std::unexpected(bytes.error());
+    return PreparedSceneUpdate(batch, *bytes, fingerprint(*batch.m_snapshot), validated_budget);
 }
-result<update_ticket> renderer_update_sink::enqueue(scene_delta_batch& batch) {
-    if (!batch.snapshot)
-        return fail(error_code::INVALID_DATA, "Missing renderer snapshot");
+
+Result<UpdateTicket> RendererUpdateSink::enqueue(SceneDeltaBatch& batch) {
+    if (!batch.m_snapshot) return fail(ErrorCode::INVALID_DATA, "Missing renderer snapshot");
     {
-        std::lock_guard lock(mutex_);
-        const auto duplicate =
-            std::find_if(history_.begin(), history_.end(),
-                         [&](const auto& item) { return item.operation == batch.operation; });
-        if (duplicate == history_.end()) {
+        std::lock_guard lock(m_mutex);
+        const auto K_DUPLICATE =
+            std::find_if(m_history.begin(), m_history.end(), [&](const auto& item) {
+                return item.m_operation == batch.m_operation;
+            });
+        if (K_DUPLICATE == m_history.end()) {
             // A new operation cannot enter a full queue. Keep this check ahead of
             // full-snapshot validation and hashing so a retry cannot starve the
             // render consumer while it waits for capacity.
-            if (pending_.size() >= budget_.max_pending)
-                return fail(error_code::WOULD_BLOCK, "renderer pending update queue is full");
+            if (m_pending.size() >= m_budget.m_max_pending)
+                return fail(ErrorCode::WOULD_BLOCK, "renderer pending update queue is full");
             std::size_t estimated_bytes = 0;
             bool can_estimate = true;
-            for (const auto& [id, chunk] : batch.snapshot->chunks) {
-                static_cast<void>(id);
-                if (!chunk) {
+            for (const auto& [K_ID, K_CHUNK] : batch.m_snapshot->m_chunks) {
+                static_cast<void>(K_ID);
+                if (!K_CHUNK) {
                     can_estimate = false;
                     break;
                 }
-                if (chunk->splats.size() > (budget_.bytes - estimated_bytes) / sizeof(gaussian)) {
+                if (K_CHUNK->m_splats.size() >
+                    (m_budget.m_bytes - estimated_bytes) / sizeof(Gaussian)) {
                     can_estimate = false;
                     break;
                 }
-                estimated_bytes += chunk->splats.size() * sizeof(gaussian);
+                estimated_bytes += K_CHUNK->m_splats.size() * sizeof(Gaussian);
             }
             if (can_estimate) {
-                const auto* visible = visible_ticket_ ? find(*visible_ticket_) : nullptr;
-                const auto resident = (visible ? visible->bytes : 0) + retired_bytes_;
-                if (queued_bytes_ > budget_.bytes ||
-                    estimated_bytes > budget_.bytes - queued_bytes_ ||
-                    resident > budget_.bytes - queued_bytes_ - estimated_bytes)
-                    return fail(error_code::WOULD_BLOCK,
+                const auto* visible = m_visible_ticket ? find(*m_visible_ticket) : nullptr;
+                const auto K_RESIDENT = (visible ? visible->m_bytes : 0) + m_retired_bytes;
+                if (m_queued_bytes > m_budget.m_bytes ||
+                    estimated_bytes > m_budget.m_bytes - m_queued_bytes ||
+                    K_RESIDENT > m_budget.m_bytes - m_queued_bytes - estimated_bytes)
+                    return fail(ErrorCode::WOULD_BLOCK,
                                 "renderer upload or replacement residency budget is full");
             }
         }
     }
     auto prepared = prepare(batch);
-    if (!prepared)
-        return std::unexpected(prepared.error());
+    if (!prepared) return std::unexpected(prepared.error());
     auto ticket = enqueue(*prepared);
-    if (ticket && !prepared->batch_.snapshot)
-        batch = {};
+    if (ticket && !prepared->m_batch.m_snapshot) batch = {};
     return ticket;
 }
-result<update_ticket> renderer_update_sink::enqueue(prepared_scene_update& prepared) {
-    auto& batch = prepared.batch_;
-    if (!batch.snapshot)
-        return fail(error_code::INVALID_DATA, "Missing renderer snapshot");
-    std::lock_guard lock(mutex_);
-    const auto duplicate = std::find_if(history_.begin(), history_.end(), [&](const auto& item) {
-        return item.operation == batch.operation;
-    });
-    if (duplicate != history_.end()) {
-        if (duplicate->scene != batch.id || duplicate->epoch != batch.epoch ||
-            duplicate->base != batch.base_revision ||
-            duplicate->progress.revision != batch.new_revision ||
-            duplicate->content_hash != prepared.hash_)
-            return fail(error_code::DUPLICATE_OPERATION,
+
+Result<UpdateTicket> RendererUpdateSink::enqueue(PreparedSceneUpdate& prepared) {
+    auto& batch = prepared.m_batch;
+    if (!batch.m_snapshot) return fail(ErrorCode::INVALID_DATA, "Missing renderer snapshot");
+    std::lock_guard lock(m_mutex);
+    const auto K_DUPLICATE =
+        std::find_if(m_history.begin(), m_history.end(), [&](const auto& item) {
+            return item.m_operation == batch.m_operation;
+        });
+    if (K_DUPLICATE != m_history.end()) {
+        if (K_DUPLICATE->m_scene != batch.m_id || K_DUPLICATE->m_epoch != batch.m_epoch ||
+            K_DUPLICATE->m_base != batch.m_base_revision ||
+            K_DUPLICATE->m_progress.m_revision != batch.m_new_revision ||
+            K_DUPLICATE->m_content_hash != prepared.m_hash)
+            return fail(ErrorCode::DUPLICATE_OPERATION,
                         "renderer operation ID reused for a different revision");
-        return duplicate->ticket;
+        return K_DUPLICATE->m_ticket;
     }
-    if (budget_.max_splats != prepared.budget_.max_splats ||
-        budget_.bytes != prepared.budget_.bytes)
-        return fail(error_code::WOULD_BLOCK,
+    if (m_budget.m_max_splats != prepared.m_budget.m_max_splats ||
+        m_budget.m_bytes != prepared.m_budget.m_bytes)
+        return fail(ErrorCode::WOULD_BLOCK,
                     "renderer residency budget changed during update validation; retry");
-    if (!batch.snapshot || batch.operation.value == 0 || batch.snapshot->id != batch.id ||
-        batch.snapshot->epoch != batch.epoch || batch.snapshot->revision != batch.new_revision)
-        return fail(error_code::INVALID_DATA,
+    if (!batch.m_snapshot || batch.m_operation.m_value == 0 ||
+        batch.m_snapshot->m_id != batch.m_id || batch.m_snapshot->m_epoch != batch.m_epoch ||
+        batch.m_snapshot->m_revision != batch.m_new_revision)
+        return fail(ErrorCode::INVALID_DATA,
                     "renderer batch metadata does not match its immutable snapshot");
     // Full snapshots may establish a new epoch only when earlier uploads have drained.
-    if (batch.full_snapshot) {
-        if (queued_bytes_ != 0 || !pending_.empty())
-            return fail(error_code::WOULD_BLOCK, "resync waits for pending renderer updates");
+    if (batch.m_full_snapshot) {
+        if (m_queued_bytes != 0 || !m_pending.empty())
+            return fail(ErrorCode::WOULD_BLOCK, "resync waits for pending renderer updates");
     } else {
-        if (batch.id != accepted_scene_ || batch.epoch != accepted_epoch_)
-            return fail(error_code::WRONG_EPOCH,
+        if (batch.m_id != m_accepted_scene || batch.m_epoch != m_accepted_epoch)
+            return fail(ErrorCode::WRONG_EPOCH,
                         "renderer requires a full snapshot for this scene epoch");
-        if (batch.base_revision != accepted_revision_)
-            return fail(error_code::RESYNC_REQUIRED,
+        if (batch.m_base_revision != m_accepted_revision)
+            return fail(ErrorCode::RESYNC_REQUIRED,
                         "renderer missed the batch base revision; send a full snapshot");
-        if (batch.new_revision.value <= batch.base_revision.value)
-            return fail(error_code::INVALID_DATA, "renderer revisions must increase");
+        if (batch.m_new_revision.m_value <= batch.m_base_revision.m_value)
+            return fail(ErrorCode::INVALID_DATA, "renderer revisions must increase");
     }
-    const auto* visible = visible_ticket_ ? find(*visible_ticket_) : nullptr;
-    const std::size_t resident = (visible ? visible->bytes : 0) + retired_bytes_;
-    if (pending_.size() >= budget_.max_pending || prepared.bytes_ > budget_.bytes ||
-        queued_bytes_ > budget_.bytes - prepared.bytes_ ||
-        resident > budget_.bytes - prepared.bytes_ - queued_bytes_)
-        return fail(error_code::WOULD_BLOCK,
+    const auto* visible = m_visible_ticket ? find(*m_visible_ticket) : nullptr;
+    const std::size_t K_RESIDENT = (visible ? visible->m_bytes : 0) + m_retired_bytes;
+    if (m_pending.size() >= m_budget.m_max_pending || prepared.m_bytes > m_budget.m_bytes ||
+        m_queued_bytes > m_budget.m_bytes - prepared.m_bytes ||
+        K_RESIDENT > m_budget.m_bytes - prepared.m_bytes - m_queued_bytes)
+        return fail(ErrorCode::WOULD_BLOCK,
                     "renderer upload or replacement residency budget is full");
-    while (history_.size() >= 256) {
-        const auto state = history_.front().progress.state;
-        if (state != update_state::RETIRED && state != update_state::CANCELLED &&
-            state != update_state::FAILED)
-            return fail(error_code::WOULD_BLOCK, "renderer acknowledgement replay window is full");
-        history_.pop_front();
+    while (m_history.size() >= 256) {
+        const auto K_STATE = m_history.front().m_progress.m_state;
+        if (K_STATE != UpdateState::RETIRED && K_STATE != UpdateState::CANCELLED &&
+            K_STATE != UpdateState::FAILED)
+            return fail(ErrorCode::WOULD_BLOCK, "renderer acknowledgement replay window is full");
+        m_history.pop_front();
     }
-    const update_ticket ticket{next_ticket_++};
-    history_.push_back({ticket,
-                        batch.operation,
-                        batch.id,
-                        batch.epoch,
-                        batch.base_revision,
-                        {update_state::ACCEPTED, batch.new_revision, 0, {}},
-                        prepared.bytes_,
-                        prepared.hash_});
-    accepted_scene_ = batch.id;
-    accepted_epoch_ = batch.epoch;
-    accepted_revision_ = batch.new_revision;
-    queued_bytes_ += prepared.bytes_;
-    batch.upload_bytes = prepared.bytes_;
-    pending_.push_back({ticket, std::move(batch)});
+    const UpdateTicket K_TICKET { m_next_ticket++ };
+    m_history.push_back({K_TICKET,
+                         batch.m_operation,
+                         batch.m_id,
+                         batch.m_epoch,
+                         batch.m_base_revision,
+                         {UpdateState::ACCEPTED, batch.m_new_revision, 0, {}},
+                         prepared.m_bytes,
+                         prepared.m_hash});
+    m_accepted_scene = batch.m_id;
+    m_accepted_epoch = batch.m_epoch;
+    m_accepted_revision = batch.m_new_revision;
+    m_queued_bytes += prepared.m_bytes;
+    batch.m_upload_bytes = prepared.m_bytes;
+    m_pending.push_back({K_TICKET, std::move(batch)});
     batch = {};
-    return ticket;
+    return K_TICKET;
 }
-result<update_progress> renderer_update_sink::query_progress(update_ticket ticket) const {
-    std::lock_guard lock(mutex_);
-    for (const auto& item : history_)
-        if (item.ticket == ticket)
-            return item.progress;
-    return fail(error_code::NOT_FOUND,
+
+Result<UpdateProgress> RendererUpdateSink::query_progress(UpdateTicket ticket) const {
+    std::lock_guard lock(m_mutex);
+    for (const auto& item : m_history)
+        if (item.m_ticket == ticket) return item.m_progress;
+    return fail(ErrorCode::NOT_FOUND,
                 "renderer ticket absent or outside the 256-operation replay window");
 }
-result<void> renderer_update_sink::set_residency_budget(residency_budget budget) {
-    std::lock_guard lock(mutex_);
-    if (!budget.bytes || !budget.max_splats || !budget.max_pending)
-        return fail(error_code::INVALID_ARGUMENT, "renderer budgets must be positive");
-    if (queued_bytes_ > budget.bytes || retired_bytes_ > budget.bytes - queued_bytes_)
-        return fail(error_code::WOULD_BLOCK, "new renderer budget is smaller than pending uploads");
-    if (visible_) {
-        auto size = validate_scene(*visible_, {4096, budget.max_splats, budget.bytes, 1000000});
-        if (!size || *size > budget.bytes - queued_bytes_ - retired_bytes_)
-            return fail(error_code::WOULD_BLOCK,
+
+Result<void> RendererUpdateSink::set_residency_budget(ResidencyBudget budget) {
+    std::lock_guard lock(m_mutex);
+    if (!budget.m_bytes || !budget.m_max_splats || !budget.m_max_pending)
+        return fail(ErrorCode::INVALID_ARGUMENT, "renderer budgets must be positive");
+    if (m_queued_bytes > budget.m_bytes || m_retired_bytes > budget.m_bytes - m_queued_bytes)
+        return fail(ErrorCode::WOULD_BLOCK, "new renderer budget is smaller than pending uploads");
+    if (m_visible) {
+        auto size =
+            validate_scene(*m_visible, {4096, budget.m_max_splats, budget.m_bytes, 1000000});
+        if (!size || *size > budget.m_bytes - m_queued_bytes - m_retired_bytes)
+            return fail(ErrorCode::WOULD_BLOCK,
                         "new budget cannot hold visible and pending snapshots");
     }
-    budget_ = budget;
+    m_budget = budget;
     return {};
 }
-void renderer_update_sink::cancel_pending_locked() {
-    for (const auto& item : pending_)
-        if (auto* entry = find(item.ticket)) {
-            entry->progress.state = update_state::CANCELLED;
-            queued_bytes_ -= entry->bytes;
+
+void RendererUpdateSink::cancel_pending_locked() {
+    for (const auto& item : m_pending)
+        if (auto* entry = find(item.m_ticket)) {
+            entry->m_progress.m_state = UpdateState::CANCELLED;
+            m_queued_bytes -= entry->m_bytes;
         }
-    pending_.clear();
-    accepted_scene_ = visible_ ? visible_->id : scene_id{};
-    accepted_epoch_ = visible_ ? visible_->epoch : world_epoch{};
-    accepted_revision_ = visible_ ? visible_->revision : scene_revision_id{};
-    if (active_ticket_) {
-        const auto* active = find(*active_ticket_);
-        accepted_scene_ = active->scene;
-        accepted_epoch_ = active->epoch;
-        accepted_revision_ = active->progress.revision;
+    m_pending.clear();
+    m_accepted_scene = m_visible ? m_visible->m_id : SceneId {};
+    m_accepted_epoch = m_visible ? m_visible->m_epoch : WorldEpoch {};
+    m_accepted_revision = m_visible ? m_visible->m_revision : SceneRevisionId {};
+    if (m_active_ticket) {
+        const auto* active = find(*m_active_ticket);
+        m_accepted_scene = active->m_scene;
+        m_accepted_epoch = active->m_epoch;
+        m_accepted_revision = active->m_progress.m_revision;
     }
 }
-void renderer_update_sink::cancel_pending() {
-    std::lock_guard lock(mutex_);
+
+void RendererUpdateSink::cancel_pending() {
+    std::lock_guard lock(m_mutex);
     cancel_pending_locked();
 }
-scene_snapshot renderer_update_sink::visible_snapshot() const {
-    std::lock_guard lock(mutex_);
-    return visible_;
+
+SceneSnapshot RendererUpdateSink::visible_snapshot() const {
+    std::lock_guard lock(m_mutex);
+    return m_visible;
 }
-std::size_t renderer_update_sink::queued_bytes() const {
-    std::lock_guard lock(mutex_);
-    return queued_bytes_;
+
+std::size_t RendererUpdateSink::queued_bytes() const {
+    std::lock_guard lock(m_mutex);
+    return m_queued_bytes;
 }
-std::optional<admitted_update> renderer_update_sink::take_next() {
-    std::lock_guard lock(mutex_);
-    if (pending_.empty() || active_ticket_)
-        return {};
-    auto update = std::move(pending_.front());
-    pending_.pop_front();
-    find(update.ticket)->progress.state = update_state::ASSETS_AVAILABLE;
-    active_ticket_ = update.ticket;
+
+std::optional<AdmittedUpdate> RendererUpdateSink::take_next() {
+    std::lock_guard lock(m_mutex);
+    if (m_pending.empty() || m_active_ticket) return {};
+    auto update = std::move(m_pending.front());
+    m_pending.pop_front();
+    find(update.m_ticket)->m_progress.m_state = UpdateState::ASSETS_AVAILABLE;
+    m_active_ticket = update.m_ticket;
     return update;
 }
-void renderer_update_sink::acknowledge_uploaded(update_ticket ticket, std::uint64_t timeline) {
-    std::lock_guard lock(mutex_);
-    if (auto* item = find(ticket); item && active_ticket_ == ticket &&
-                                   item->progress.state == update_state::ASSETS_AVAILABLE) {
-        item->progress.state = update_state::UPLOADED;
-        item->progress.timeline_value = timeline;
+
+void RendererUpdateSink::acknowledge_uploaded(UpdateTicket ticket, std::uint64_t timeline) {
+    std::lock_guard lock(m_mutex);
+    if (auto* item = find(ticket); item && m_active_ticket == ticket &&
+                                   item->m_progress.m_state == UpdateState::ASSETS_AVAILABLE) {
+        item->m_progress.m_state = UpdateState::UPLOADED;
+        item->m_progress.m_timeline_value = timeline;
     }
 }
-void renderer_update_sink::acknowledge_visible(update_ticket ticket, scene_snapshot snapshot,
-                                               std::uint64_t timeline) {
-    std::lock_guard lock(mutex_);
+
+void RendererUpdateSink::acknowledge_visible(UpdateTicket ticket,
+                                             SceneSnapshot snapshot,
+                                             std::uint64_t timeline) {
+    std::lock_guard lock(m_mutex);
     auto* incoming = find(ticket);
-    if (!incoming || active_ticket_ != ticket ||
-        incoming->progress.state != update_state::UPLOADED || !snapshot ||
-        snapshot->id != incoming->scene || snapshot->epoch != incoming->epoch ||
-        snapshot->revision != incoming->progress.revision)
+    if (!incoming || m_active_ticket != ticket ||
+        incoming->m_progress.m_state != UpdateState::UPLOADED || !snapshot ||
+        snapshot->m_id != incoming->m_scene || snapshot->m_epoch != incoming->m_epoch ||
+        snapshot->m_revision != incoming->m_progress.m_revision)
         return;
-    if (visible_ticket_)
-        if (auto* previous = find(*visible_ticket_)) {
-            previous->progress.timeline_value = timeline;
-            retired_bytes_ += previous->bytes;
+    if (m_visible_ticket)
+        if (auto* previous = find(*m_visible_ticket)) {
+            previous->m_progress.m_timeline_value = timeline;
+            m_retired_bytes += previous->m_bytes;
         }
     if (auto* item = find(ticket)) {
-        item->progress.state = update_state::RENDER_VISIBLE;
-        item->progress.timeline_value = timeline;
-        queued_bytes_ -= item->bytes;
+        item->m_progress.m_state = UpdateState::RENDER_VISIBLE;
+        item->m_progress.m_timeline_value = timeline;
+        m_queued_bytes -= item->m_bytes;
     }
-    visible_ = std::move(snapshot);
-    visible_ticket_ = ticket;
-    active_ticket_.reset();
+    m_visible = std::move(snapshot);
+    m_visible_ticket = ticket;
+    m_active_ticket.reset();
 }
-void renderer_update_sink::retire_completed(std::uint64_t completed_timeline) {
-    std::lock_guard lock(mutex_);
-    for (auto& item : history_)
-        if (item.progress.state == update_state::RENDER_VISIBLE && item.ticket != visible_ticket_ &&
-            item.progress.timeline_value <= completed_timeline) {
-            item.progress.state = update_state::RETIRED;
-            retired_bytes_ -= item.bytes;
+
+void RendererUpdateSink::retire_completed(std::uint64_t completed_timeline) {
+    std::lock_guard lock(m_mutex);
+    for (auto& item : m_history)
+        if (item.m_progress.m_state == UpdateState::RENDER_VISIBLE &&
+            item.m_ticket != m_visible_ticket &&
+            item.m_progress.m_timeline_value <= completed_timeline) {
+            item.m_progress.m_state = UpdateState::RETIRED;
+            m_retired_bytes -= item.m_bytes;
         }
 }
-void renderer_update_sink::fail_update(update_ticket ticket, error failure) {
-    std::lock_guard lock(mutex_);
-    if (auto* item = find(ticket); item && active_ticket_ == ticket) {
-        item->progress.state = update_state::FAILED;
-        item->progress.failure = std::move(failure);
-        queued_bytes_ -= item->bytes;
-        active_ticket_.reset();
+
+void RendererUpdateSink::fail_update(UpdateTicket ticket, Error failure) {
+    std::lock_guard lock(m_mutex);
+    if (auto* item = find(ticket); item && m_active_ticket == ticket) {
+        item->m_progress.m_state = UpdateState::FAILED;
+        item->m_progress.m_failure = std::move(failure);
+        m_queued_bytes -= item->m_bytes;
+        m_active_ticket.reset();
     }
     cancel_pending_locked();
 }
-} // namespace world_explorer
+
+}  // namespace world_explorer

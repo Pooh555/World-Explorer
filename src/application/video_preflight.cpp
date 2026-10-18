@@ -1,8 +1,10 @@
 #include "world_explorer/application/video_preflight.hpp"
+
 #include "job_validation.hpp"
 #include "video_preflight_detail.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/worker_artifacts.hpp"
+
 #include <charconv>
 #include <cmath>
 #include <limits>
@@ -12,192 +14,199 @@
 
 namespace world_explorer {
 namespace {
-constexpr std::uint64_t MAX_SOURCE_BYTES = 16ULL * 1024 * 1024 * 1024;
-constexpr std::uint64_t MAX_FREE_BYTES = 32ULL * 1024 * 1024 * 1024;
-constexpr std::uint64_t MAX_INSPECTION_BYTES = 16ULL * 1024 * 1024;
+
+constexpr std::uint64_t K_MAX_SOURCE_BYTES { 16ULL * 1024 * 1024 * 1024 };
+constexpr std::uint64_t K_MAX_FREE_BYTES { 32ULL * 1024 * 1024 * 1024 };
+constexpr std::uint64_t K_MAX_INSPECTION_BYTES { 16ULL * 1024 * 1024 };
 
 std::int64_t positive_integer(std::string_view text) {
-    std::int64_t value{};
-    const auto parsed = std::from_chars(text.data(), text.data() + text.size(), value);
-    if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() || value <= 0)
+    std::int64_t value {};
+    const auto K_PARSED = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (K_PARSED.ec != std::errc {} || K_PARSED.ptr != text.data() + text.size() || value <= 0)
         throw std::invalid_argument("Invalid original stream time base");
     return value;
 }
+
 std::uint64_t unsigned_integer(const nlohmann::json& value) {
     if (!value.is_number_unsigned())
         throw std::invalid_argument("Expected an unsigned metadata integer");
     return value.get<std::uint64_t>();
 }
-} // namespace
+
+}  // namespace
+
 namespace video_detail {
+
 bool overlaps(const std::filesystem::path& first, const std::filesystem::path& second) {
-    const auto relative = first.lexically_relative(second);
-    const auto reverse = second.lexically_relative(first);
-    return first == second || (!relative.empty() && *relative.begin() != "..") ||
-           (!reverse.empty() && *reverse.begin() != "..");
+    const auto K_RELATIVE = first.lexically_relative(second);
+    const auto K_REVERSE = second.lexically_relative(first);
+    return first == second || (!K_RELATIVE.empty() && *K_RELATIVE.begin() != "..") ||
+           (!K_REVERSE.empty() && *K_REVERSE.begin() != "..");
 }
-result<void> check_storage(const std::vector<std::filesystem::path>& outputs,
-                           std::uint64_t minimum_free_bytes, const std::stop_token& stop) {
-    const auto report = inspect_output_storage(outputs, minimum_free_bytes, stop);
-    if (!report)
-        return std::unexpected(report.error());
+
+Result<void> check_storage(const std::vector<std::filesystem::path>& outputs,
+                           std::uint64_t minimum_free_bytes,
+                           const std::stop_token& stop) {
+    const auto K_REPORT = inspect_output_storage(outputs, minimum_free_bytes, stop);
+    if (!K_REPORT) return std::unexpected(K_REPORT.error());
     return {};
 }
-} // namespace video_detail
 
-result<std::vector<output_storage_report>>
+}  // namespace video_detail
+
+Result<std::vector<OutputStorageReport>>
 inspect_output_storage(const std::vector<std::filesystem::path>& outputs,
-                       std::uint64_t minimum_free_bytes, const std::stop_token& stop) {
+                       std::uint64_t minimum_free_bytes,
+                       const std::stop_token& stop) {
     try {
         if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Output storage inspection cancelled");
-        if (minimum_free_bytes == 0 || minimum_free_bytes > MAX_FREE_BYTES || outputs.empty() ||
+            return fail(ErrorCode::CANCELLED, "Output storage inspection cancelled");
+        if (minimum_free_bytes == 0 || minimum_free_bytes > K_MAX_FREE_BYTES || outputs.empty() ||
             outputs.size() > 4)
-            return fail(error_code::INVALID_ARGUMENT, "Invalid output storage requirements");
-        std::vector<output_storage_report> report;
+            return fail(ErrorCode::INVALID_ARGUMENT, "Invalid output storage requirements");
+        std::vector<OutputStorageReport> report;
         report.reserve(outputs.size());
         for (const auto& output : outputs) {
             if (stop.stop_requested())
-                return fail(error_code::CANCELLED, "Video preflight cancelled");
+                return fail(ErrorCode::CANCELLED, "Video preflight cancelled");
             if (output.empty())
-                return fail(error_code::INVALID_ARGUMENT, "Empty output storage path");
-            const auto selected = std::filesystem::weakly_canonical(output);
-            auto ancestor = selected;
+                return fail(ErrorCode::INVALID_ARGUMENT, "Empty output storage path");
+            const auto K_SELECTED = std::filesystem::weakly_canonical(output);
+            auto ancestor = K_SELECTED;
             while (!std::filesystem::exists(ancestor)) {
-                const auto parent = ancestor.parent_path();
-                if (parent == ancestor || parent.empty())
-                    return fail(error_code::IO_ERROR, "No existing output volume for preflight");
-                ancestor = parent;
+                const auto K_PARENT = ancestor.parent_path();
+                if (K_PARENT == ancestor || K_PARENT.empty())
+                    return fail(ErrorCode::IO_ERROR, "No existing output volume for preflight");
+                ancestor = K_PARENT;
             }
             if (!std::filesystem::is_directory(ancestor))
-                return fail(error_code::INVALID_ARGUMENT, "Output ancestor is not a directory");
-            const auto available = std::filesystem::space(ancestor).available;
-            if (available == std::numeric_limits<std::uintmax_t>::max())
-                return fail(error_code::IO_ERROR, "Available output storage is unknown");
-            if (available < minimum_free_bytes)
-                return fail(error_code::RESOURCE_EXHAUSTED,
+                return fail(ErrorCode::INVALID_ARGUMENT, "Output ancestor is not a directory");
+            const auto K_AVAILABLE = std::filesystem::space(ancestor).available;
+            if (K_AVAILABLE == std::numeric_limits<std::uintmax_t>::max())
+                return fail(ErrorCode::IO_ERROR, "Available output storage is unknown");
+            if (K_AVAILABLE < minimum_free_bytes)
+                return fail(ErrorCode::RESOURCE_EXHAUSTED,
                             "Insufficient available space at output: " + output.string());
-            report.push_back({selected, ancestor, available});
+            report.push_back({K_SELECTED, ancestor, K_AVAILABLE});
         }
         return report;
     } catch (const std::bad_alloc&) {
-        return fail(error_code::RESOURCE_EXHAUSTED, "Output storage inspection allocation failed");
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Output storage inspection allocation failed");
     } catch (const std::filesystem::filesystem_error& exception) {
-        return fail(error_code::IO_ERROR,
+        return fail(ErrorCode::IO_ERROR,
                     std::string("Output storage inspection failed: ") + exception.what());
     }
 }
 
-result<video_preflight_report> preflight_video(const video_preflight_request& request,
-                                               const std::stop_token& stop,
-                                               const log_callback& log) {
+Result<VideoPreflightReport> preflight_video(const VideoPreflightRequest& request,
+                                             const std::stop_token& stop,
+                                             const LogCallback& log) {
     try {
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Video preflight cancelled");
-        const auto& selected = request.inspection;
-        if (request.video.empty() || selected.stage.empty() ||
-            !job_detail::valid_digest(selected.completion_sha256) ||
-            selected.minimum_free_bytes == 0 || selected.minimum_free_bytes > MAX_FREE_BYTES ||
-            request.outputs.empty() || request.outputs.size() > 3)
-            return fail(error_code::INVALID_ARGUMENT, "Invalid video preflight request");
-        const auto stage = std::filesystem::canonical(selected.stage);
-        const auto name = stage.filename().string();
-        if (std::filesystem::is_symlink(selected.stage) ||
-            stage.parent_path().filename() != "stages" || !name.starts_with("inspect-") ||
-            !job_detail::valid_digest(name.substr(8)))
-            return fail(error_code::INVALID_DATA, "Select a committed inspect stage explicitly");
-        const auto video = std::filesystem::canonical(request.video);
-        const auto inspection_job = stage.parent_path().parent_path();
-        for (const auto& output : request.outputs) {
+        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Video preflight cancelled");
+        const auto& selected = request.m_inspection;
+        if (request.m_video.empty() || selected.m_stage.empty() ||
+            !job_detail::valid_digest(selected.m_completion_sha256) ||
+            selected.m_minimum_free_bytes == 0 ||
+            selected.m_minimum_free_bytes > K_MAX_FREE_BYTES || request.m_outputs.empty() ||
+            request.m_outputs.size() > 3)
+            return fail(ErrorCode::INVALID_ARGUMENT, "Invalid video preflight request");
+        const auto K_STAGE = std::filesystem::canonical(selected.m_stage);
+        const auto K_NAME = K_STAGE.filename().string();
+        if (std::filesystem::is_symlink(selected.m_stage) ||
+            K_STAGE.parent_path().filename() != "stages" || !K_NAME.starts_with("inspect-") ||
+            !job_detail::valid_digest(K_NAME.substr(8)))
+            return fail(ErrorCode::INVALID_DATA, "Select a committed inspect stage explicitly");
+        const auto K_VIDEO = std::filesystem::canonical(request.m_video);
+        const auto K_INSPECTION_JOB = K_STAGE.parent_path().parent_path();
+        for (const auto& output : request.m_outputs) {
             if (output.empty())
-                return fail(error_code::INVALID_ARGUMENT, "Empty preflight output path");
-            const auto path = std::filesystem::weakly_canonical(output);
-            if (video_detail::overlaps(path, video) || video_detail::overlaps(path, inspection_job))
-                return fail(error_code::INVALID_ARGUMENT, "Preflight output overlaps its inputs");
+                return fail(ErrorCode::INVALID_ARGUMENT, "Empty preflight output path");
+            const auto K_PATH = std::filesystem::weakly_canonical(output);
+            if (video_detail::overlaps(K_PATH, K_VIDEO) ||
+                video_detail::overlaps(K_PATH, K_INSPECTION_JOB))
+                return fail(ErrorCode::INVALID_ARGUMENT, "Preflight output overlaps its inputs");
         }
-        const auto checked =
-            verify_committed_stage(stage, name.substr(8), stop,
-                                   {.maximum_bytes = MAX_INSPECTION_BYTES,
-                                    .maximum_files = 16,
-                                    .maximum_manifest_bytes = std::size_t{64} * 1024});
-        if (!checked)
-            return std::unexpected(checked.error());
-        if (checked->completion_sha256 != selected.completion_sha256 ||
-            !checked->assets.contains("result.json"))
-            return fail(error_code::INVALID_DATA, "Inspection completion differs from selection");
-        const auto metadata = job_detail::read_json(stage / "result.json", std::size_t{64} * 1024,
-                                                    checked->assets.at("result.json").sha256);
-        if (!metadata)
-            return std::unexpected(metadata.error());
-        const auto& stream = metadata->at("stream");
-        const auto codec_name = stream.at("codec_name").get<std::string>();
-        const auto width = unsigned_integer(stream.at("width"));
-        const auto height = unsigned_integer(stream.at("height"));
-        const auto duration = metadata->at("duration_seconds").get<double>();
-        const auto& rotation_value = metadata->at("rotation_degrees");
+        const auto K_CHECKED = verify_committed_stage(K_STAGE,
+                                                      K_NAME.substr(8),
+                                                      stop,
+                                                      {.m_maximum_bytes = K_MAX_INSPECTION_BYTES,
+                                                       .m_maximum_files = 16,
+                                                       .m_maximum_manifest_bytes = 64uz * 1024});
+        if (!K_CHECKED) return std::unexpected(K_CHECKED.error());
+        if (K_CHECKED->m_completion_sha256 != selected.m_completion_sha256 ||
+            !K_CHECKED->m_assets.contains("result.json"))
+            return fail(ErrorCode::INVALID_DATA, "Inspection completion differs from selection");
+        const auto K_METADATA = job_detail::read_json(
+            K_STAGE / "result.json", 64uz * 1024, K_CHECKED->m_assets.at("result.json").m_sha256);
+        if (!K_METADATA) return std::unexpected(K_METADATA.error());
+        const auto& stream = K_METADATA->at("stream");
+        const auto K_CODEC_NAME = stream.at("codec_name").get<std::string>();
+        const auto K_WIDTH = unsigned_integer(stream.at("width"));
+        const auto K_HEIGHT = unsigned_integer(stream.at("height"));
+        const auto K_DURATION = K_METADATA->at("duration_seconds").get<double>();
+        const auto& rotation_value = K_METADATA->at("rotation_degrees");
         if (!rotation_value.is_number_integer() ||
             (rotation_value.is_number_unsigned() && rotation_value.get<std::uint64_t>() > 270))
-            return fail(error_code::INVALID_DATA, "Invalid display rotation");
-        const auto rotation = rotation_value.get<std::int64_t>();
-        if (!metadata->at("schema_version").is_number_unsigned() ||
-            metadata->at("schema_version") != 1 || stream.at("codec_type") != "video" ||
-            codec_name.empty() || codec_name.size() > 256 ||
-            codec_name.find('\0') != std::string::npos || width == 0 || height == 0 ||
-            width > std::uint64_t{4096} * 4096 || height > std::uint64_t{4096} * 4096 ||
-            width * height > std::uint64_t{4096} * 4096 || !std::isfinite(duration) ||
-            duration <= 0 || duration > 1200 || rotation < -270 || rotation > 270 ||
-            rotation % 90 != 0 || metadata->at("audio") != "ignored" ||
-            metadata->at("scale_status") != "ARBITRARY" || metadata->at("color_domain") != "srgb")
-            return fail(error_code::INVALID_DATA, "Unsupported or invalid video metadata");
-        const auto transfer = stream.value("color_transfer", std::string{});
-        if (transfer == "smpte2084" || transfer == "arib-std-b67")
-            return fail(error_code::UNSUPPORTED_OPERATION,
+            return fail(ErrorCode::INVALID_DATA, "Invalid display rotation");
+        const auto K_ROTATION = rotation_value.get<std::int64_t>();
+        if (!K_METADATA->at("schema_version").is_number_unsigned() ||
+            K_METADATA->at("schema_version") != 1 || stream.at("codec_type") != "video" ||
+            K_CODEC_NAME.empty() || K_CODEC_NAME.size() > 256 ||
+            K_CODEC_NAME.find('\0') != std::string::npos || K_WIDTH == 0 || K_HEIGHT == 0 ||
+            K_WIDTH > std::uint64_t { 4096 } * 4096 || K_HEIGHT > std::uint64_t { 4096 } * 4096 ||
+            K_WIDTH * K_HEIGHT > std::uint64_t { 4096 } * 4096 || !std::isfinite(K_DURATION) ||
+            K_DURATION <= 0 || K_DURATION > 1200 || K_ROTATION < -270 || K_ROTATION > 270 ||
+            K_ROTATION % 90 != 0 || K_METADATA->at("audio") != "ignored" ||
+            K_METADATA->at("scale_status") != "ARBITRARY" ||
+            K_METADATA->at("color_domain") != "srgb")
+            return fail(ErrorCode::INVALID_DATA, "Unsupported or invalid video metadata");
+        const auto K_TRANSFER = stream.value("color_transfer", std::string {});
+        if (K_TRANSFER == "smpte2084" || K_TRANSFER == "arib-std-b67")
+            return fail(ErrorCode::UNSUPPORTED_OPERATION,
                         "HDR requires an explicitly calibrated conversion");
-        const auto time_base = stream.at("time_base").get<std::string>();
-        const auto slash = time_base.find('/');
-        if (slash == std::string::npos || time_base.size() > 64)
-            return fail(error_code::INVALID_DATA, "Invalid original stream time base");
-        video_preflight_report report;
-        report.time_base_numerator = positive_integer(std::string_view(time_base).substr(0, slash));
-        report.time_base_denominator =
-            positive_integer(std::string_view(time_base).substr(slash + 1));
-        report.source_bytes = unsigned_integer(metadata->at("source").at("bytes"));
-        if (!report.source_bytes || report.source_bytes > MAX_SOURCE_BYTES ||
-            std::filesystem::file_size(video) != report.source_bytes)
-            return fail(error_code::INVALID_DATA, "Inspection source byte count differs");
-        const auto digest = sha256_file(video, MAX_SOURCE_BYTES, stop);
-        if (!digest)
-            return std::unexpected(digest.error());
-        if (metadata->at("source").at("sha256") != *digest)
-            return fail(error_code::INVALID_DATA, "Inspection belongs to a different video");
-        report.source_sha256 = *digest;
-        report.inspection_completion_sha256 = selected.completion_sha256;
-        report.width = static_cast<std::uint32_t>(width);
-        report.height = static_cast<std::uint32_t>(height);
-        report.duration_seconds = duration;
-        report.rotation_degrees = static_cast<std::int32_t>(rotation);
-        report.codec_name = codec_name;
-        const auto storage =
-            inspect_output_storage(request.outputs, selected.minimum_free_bytes, stop);
-        if (!storage)
-            return std::unexpected(storage.error());
-        report.storage = *storage;
-        const auto final_hash =
-            sha256_file(stage / "completion.json", std::size_t{64} * 1024, stop);
-        if (!final_hash)
-            return std::unexpected(final_hash.error());
-        if (*final_hash != selected.completion_sha256)
-            return fail(error_code::INVALID_DATA, "Inspection changed during preflight");
+        const auto K_TIME_BASE = stream.at("time_base").get<std::string>();
+        const auto K_SLASH = K_TIME_BASE.find('/');
+        if (K_SLASH == std::string::npos || K_TIME_BASE.size() > 64)
+            return fail(ErrorCode::INVALID_DATA, "Invalid original stream time base");
+        VideoPreflightReport report;
+        report.m_time_base_numerator =
+            positive_integer(std::string_view(K_TIME_BASE).substr(0, K_SLASH));
+        report.m_time_base_denominator =
+            positive_integer(std::string_view(K_TIME_BASE).substr(K_SLASH + 1));
+        report.m_source_bytes = unsigned_integer(K_METADATA->at("source").at("bytes"));
+        if (!report.m_source_bytes || report.m_source_bytes > K_MAX_SOURCE_BYTES ||
+            std::filesystem::file_size(K_VIDEO) != report.m_source_bytes)
+            return fail(ErrorCode::INVALID_DATA, "Inspection source byte count differs");
+        const auto K_DIGEST = sha256_file(K_VIDEO, K_MAX_SOURCE_BYTES, stop);
+        if (!K_DIGEST) return std::unexpected(K_DIGEST.error());
+        if (K_METADATA->at("source").at("sha256") != *K_DIGEST)
+            return fail(ErrorCode::INVALID_DATA, "Inspection belongs to a different video");
+        report.m_source_sha256 = *K_DIGEST;
+        report.m_inspection_completion_sha256 = selected.m_completion_sha256;
+        report.m_width = static_cast<std::uint32_t>(K_WIDTH);
+        report.m_height = static_cast<std::uint32_t>(K_HEIGHT);
+        report.m_duration_seconds = K_DURATION;
+        report.m_rotation_degrees = static_cast<std::int32_t>(K_ROTATION);
+        report.m_codec_name = K_CODEC_NAME;
+        const auto K_STORAGE =
+            inspect_output_storage(request.m_outputs, selected.m_minimum_free_bytes, stop);
+        if (!K_STORAGE) return std::unexpected(K_STORAGE.error());
+        report.m_storage = *K_STORAGE;
+        const auto K_FINAL_HASH = sha256_file(K_STAGE / "completion.json", 64uz * 1024, stop);
+        if (!K_FINAL_HASH) return std::unexpected(K_FINAL_HASH.error());
+        if (*K_FINAL_HASH != selected.m_completion_sha256)
+            return fail(ErrorCode::INVALID_DATA, "Inspection changed during preflight");
         if (log)
-            log("Retained video metadata checked: " + std::to_string(report.width) + "x" +
-                std::to_string(report.height) + "; original time base " + time_base +
+            log("Retained video metadata checked: " + std::to_string(report.m_width) + "x" +
+                std::to_string(report.m_height) + "; original time base " + K_TIME_BASE +
                 ". Current output storage checked; no disk reservation.\n");
         return report;
     } catch (const std::bad_alloc&) {
-        return fail(error_code::RESOURCE_EXHAUSTED, "Video preflight allocation failed");
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Video preflight allocation failed");
     } catch (const std::exception& exception) {
-        return fail(error_code::INVALID_DATA,
+        return fail(ErrorCode::INVALID_DATA,
                     std::string("Video preflight failed: ") + exception.what());
     }
 }
-} // namespace world_explorer
+
+}  // namespace world_explorer

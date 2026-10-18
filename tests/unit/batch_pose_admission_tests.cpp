@@ -1,54 +1,61 @@
 #include "pose_fixture.hpp"
 #include "world_explorer/reconstruction_adapters/batch_poses.hpp"
+
 #include <bit>
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
 #include <fstream>
 #include <limits>
 #include <map>
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+
 using namespace world_explorer;
+
 namespace {
+
 using test::path_utf8;
 using test::pose_fixture;
-constexpr std::size_t METADATA_BYTES = std::size_t{2} * 1024 * 1024;
-constexpr pose_estimator_config START{{METADATA_BYTES + 6}, 3};
-constexpr std::size_t PPM_BYTES = std::string_view("P6\n2 1\n255\n").size() + 6;
+constexpr std::size_t K_METADATA_BYTES { 2uz * 1024uz * 1024uz };
+constexpr PoseEstimatorConfig K_START {{K_METADATA_BYTES + 6}, 3};
+constexpr std::size_t K_PPM_BYTES { std::string_view("P6\n2 1uz\n255\n").size() + 6uz };
+
 void write_bytes(const std::filesystem::path& path, std::string_view bytes) {
     std::ofstream output(path, std::ios::binary);
     output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
     output.close();
     REQUIRE(output);
 }
-using file_tree = std::map<std::string, std::string>;
-file_tree snapshot(const std::filesystem::path& root) {
-    file_tree result;
+
+using FileTree = std::map<std::string, std::string>;
+
+FileTree snapshot(const std::filesystem::path& root) {
+    FileTree result;
     for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-        const auto name = path_utf8(entry.path().lexically_relative(root));
-        const auto status = entry.symlink_status();
-        if (std::filesystem::is_symlink(status))
-            result.emplace(name, "link:" + path_utf8(std::filesystem::read_symlink(entry.path())));
-        else if (std::filesystem::is_directory(status))
-            result.emplace(name, "directory");
+        const auto K_NAME = path_utf8(entry.path().lexically_relative(root));
+        const auto K_STATUS = entry.symlink_status();
+        if (std::filesystem::is_symlink(K_STATUS))
+            result.emplace(K_NAME,
+                           "link:" + path_utf8(std::filesystem::read_symlink(entry.path())));
+        else if (std::filesystem::is_directory(K_STATUS)) result.emplace(K_NAME, "directory");
         else {
-            REQUIRE(std::filesystem::is_regular_file(status));
-            REQUIRE(entry.file_size() <= std::size_t{2} * 1024 * 1024);
+            REQUIRE(std::filesystem::is_regular_file(K_STATUS));
+            REQUIRE(entry.file_size() <= 2uz * 1024 * 1024);
             std::ifstream input(entry.path(), std::ios::binary);
             REQUIRE(input);
-            std::string bytes{std::istreambuf_iterator<char>(input), {}};
+            std::string bytes {std::istreambuf_iterator<char>(input), {}};
             REQUIRE(!input.bad());
-            result.emplace(name, "file:" + bytes);
+            result.emplace(K_NAME, "file:" + bytes);
         }
     }
     return result;
 }
-void create_link(const std::filesystem::path& target, const std::filesystem::path& link,
+
+void create_link(const std::filesystem::path& target,
+                 const std::filesystem::path& link,
                  bool directory = false) {
     std::error_code error;
-    if (directory)
-        std::filesystem::create_directory_symlink(target, link, error);
-    else
-        std::filesystem::create_symlink(target, link, error);
+    if (directory) std::filesystem::create_directory_symlink(target, link, error);
+    else std::filesystem::create_symlink(target, link, error);
 #ifdef _WIN32
     if (error == std::errc::operation_not_permitted || error == std::errc::permission_denied)
         SKIP("Native symbolic-link creation is unavailable to this Windows account");
@@ -56,131 +63,124 @@ void create_link(const std::filesystem::path& target, const std::filesystem::pat
     INFO(error.message());
     REQUIRE(!error);
 }
-batch_pose_config configuration(const pose_fixture& fixture) {
-    const auto script = fixture.root / "diagnostic worker.py";
-    write_bytes(script, "raise SystemExit('Synthetic admission test must not launch a worker')\n");
+
+BatchPoseConfig configuration(const pose_fixture& fixture) {
+    const auto K_SCRIPT = fixture.root / "diagnostic worker.py";
+    write_bytes(K_SCRIPT,
+                "raise SystemExit('Synthetic admission test must not launch a worker')\n");
     write_bytes(fixture.root / "caller.txt", "caller data outside batch output");
-    return {.decode_stage = fixture.decoded,
-            .job_directory = fixture.root / "fresh batch",
-            .worker_script = script,
-            .source_sha256 = fixture.source_digest,
-            .worker_python = WE_TEST_PYTHON,
-            .pose_python = WE_TEST_PYTHON};
+    return {.m_decode_stage = fixture.decoded,
+            .m_job_directory = fixture.root / "fresh batch",
+            .m_worker_script = K_SCRIPT,
+            .m_source_sha256 = fixture.source_digest,
+            .m_worker_python = WE_TEST_PYTHON,
+            .m_pose_python = WE_TEST_PYTHON};
 }
-frame_observation observation(const completed_pose_dataset& data, std::size_t index) {
-    const auto& record = data.observations[index];
+
+FrameObservation observation(const CompletedPoseDataset& data, std::size_t index) {
+    const auto& record = data.m_observations[index];
     return {{index + 1},
-            {record.id,
-             record.capture,
-             record.capture_time,
-             record.timestamp,
-             record.calibration,
-             {std::make_shared<const std::vector<std::byte>>(6, std::byte{17}), 2, 1, 6,
-              pixel_format::RGB8},
+            {record.m_id,
+             record.m_capture,
+             record.m_capture_time,
+             record.m_timestamp,
+             record.m_calibration,
+             {std::make_shared<const std::vector<std::byte>>(6, std::byte { 17 }),
+              2,
+              1,
+              6,
+              PixelFormat::RGB8},
              {},
              {}}};
 }
-template <class value> void expect_error(const result<value>& outcome, error_code code) {
-    INFO((outcome ? "unexpected success" : outcome.error().message));
+
+template <class Value> void expect_error(const Result<Value>& outcome, ErrorCode code) {
+    INFO((outcome ? "unexpected success" : outcome.error().m_message));
     REQUIRE(!outcome);
-    CHECK(outcome.error().code == code);
+    CHECK(outcome.error().m_code == code);
 }
-void check_preserved(const frame_observation& actual, const frame_observation& before) {
-    CHECK(actual.operation == before.operation);
-    const auto& frame = actual.frame;
-    const auto& saved = before.frame;
-    CHECK(frame.id == saved.id);
-    CHECK(frame.capture == saved.capture);
-    CHECK(frame.capture_time == saved.capture_time);
-    CHECK(frame.original_timestamp.pts == saved.original_timestamp.pts);
-    CHECK(frame.original_timestamp.time_base_numerator ==
-          saved.original_timestamp.time_base_numerator);
-    CHECK(frame.original_timestamp.time_base_denominator ==
-          saved.original_timestamp.time_base_denominator);
-    CHECK(frame.calibration == saved.calibration);
-    CHECK(frame.pixels.bytes == saved.pixels.bytes);
-    if (frame.pixels.bytes && saved.pixels.bytes)
-        CHECK(*frame.pixels.bytes == *saved.pixels.bytes);
-    CHECK(frame.pixels.width == saved.pixels.width);
-    CHECK(frame.pixels.height == saved.pixels.height);
-    CHECK(frame.pixels.row_stride == saved.pixels.row_stride);
-    CHECK(frame.pixels.format == saved.pixels.format);
-    REQUIRE(frame.measured_depth.has_value() == saved.measured_depth.has_value());
-    if (frame.measured_depth && saved.measured_depth) {
-        CHECK(frame.measured_depth->bytes == saved.measured_depth->bytes);
-        CHECK(frame.measured_depth->width == saved.measured_depth->width);
-        CHECK(frame.measured_depth->height == saved.measured_depth->height);
-        CHECK(frame.measured_depth->row_stride == saved.measured_depth->row_stride);
-        CHECK(frame.measured_depth->format == saved.measured_depth->format);
+
+void check_preserved(const FrameObservation& actual, const FrameObservation& before) {
+    CHECK(actual.m_operation == before.m_operation);
+    const auto& frame = actual.m_frame;
+    const auto& saved = before.m_frame;
+    CHECK(frame.m_id == saved.m_id);
+    CHECK(frame.m_capture == saved.m_capture);
+    CHECK(frame.m_capture_time == saved.m_capture_time);
+    CHECK(frame.m_original_timestamp.m_pts == saved.m_original_timestamp.m_pts);
+    CHECK(frame.m_original_timestamp.m_time_base_numerator ==
+          saved.m_original_timestamp.m_time_base_numerator);
+    CHECK(frame.m_original_timestamp.m_time_base_denominator ==
+          saved.m_original_timestamp.m_time_base_denominator);
+    CHECK(frame.m_calibration == saved.m_calibration);
+    CHECK(frame.m_pixels.m_bytes == saved.m_pixels.m_bytes);
+    if (frame.m_pixels.m_bytes && saved.m_pixels.m_bytes)
+        CHECK(*frame.m_pixels.m_bytes == *saved.m_pixels.m_bytes);
+    CHECK(frame.m_pixels.m_width == saved.m_pixels.m_width);
+    CHECK(frame.m_pixels.m_height == saved.m_pixels.m_height);
+    CHECK(frame.m_pixels.m_row_stride == saved.m_pixels.m_row_stride);
+    CHECK(frame.m_pixels.m_format == saved.m_pixels.m_format);
+    REQUIRE(frame.m_measured_depth.has_value() == saved.m_measured_depth.has_value());
+    if (frame.m_measured_depth && saved.m_measured_depth) {
+        CHECK(frame.m_measured_depth->m_bytes == saved.m_measured_depth->m_bytes);
+        CHECK(frame.m_measured_depth->m_width == saved.m_measured_depth->m_width);
+        CHECK(frame.m_measured_depth->m_height == saved.m_measured_depth->m_height);
+        CHECK(frame.m_measured_depth->m_row_stride == saved.m_measured_depth->m_row_stride);
+        CHECK(frame.m_measured_depth->m_format == saved.m_measured_depth->m_format);
     }
-    REQUIRE(frame.imu_samples.size() == saved.imu_samples.size());
-    for (std::size_t index = 0; index < frame.imu_samples.size(); ++index) {
-        CHECK(frame.imu_samples[index].capture_time == saved.imu_samples[index].capture_time);
-        CHECK(frame.imu_samples[index].acceleration == saved.imu_samples[index].acceleration);
-        CHECK(frame.imu_samples[index].angular_velocity ==
-              saved.imu_samples[index].angular_velocity);
+    REQUIRE(frame.m_imu_samples.size() == saved.m_imu_samples.size());
+    for (std::size_t index { 0uz }; index < frame.m_imu_samples.size(); ++index) {
+        CHECK(frame.m_imu_samples[index].m_capture_time ==
+              saved.m_imu_samples[index].m_capture_time);
+        CHECK(frame.m_imu_samples[index].m_acceleration ==
+              saved.m_imu_samples[index].m_acceleration);
+        CHECK(frame.m_imu_samples[index].m_angular_velocity ==
+              saved.m_imu_samples[index].m_angular_velocity);
     }
 }
-} // namespace
+
+}  // namespace
 
 TEST_CASE("batch factory validates configuration before creating output",
           "[batch_admission][config]") {
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-    CAPTURE(field);
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    CAPTURE(K_FIELD);
     pose_fixture fixture;
-    const auto original = configuration(fixture);
-    auto config = original;
-    if (field == 0)
-        config.source_sha256.clear();
-    if (field == 1)
-        config.source_sha256[0] = 'X';
-    if (field == 2)
-        config.job_directory.clear();
-    if (field == 3)
-        config.worker_python.clear();
-    if (field == 4)
-        config.pose_python.clear();
-    if (field == 5)
-        config.worker_python = std::string(4097, 'x');
-    if (field == 6)
-        config.pose_python = std::string(4097, 'x');
-    if (field == 7)
-        config.worker_python.push_back('\0');
-    if (field == 8)
-        config.pose_python.push_back('\0');
-    if (field == 9)
-        config.cpu_threads = 0;
-    if (field == 10)
-        config.cpu_threads = 5;
-    if (field == 11)
-        config.journal_bytes.bytes = METADATA_BYTES;
-    if (field == 12)
-        config.journal_bytes.bytes = 32ULL * 1024 * 1024 * 1024 + 1;
-    if (field == 13)
-        config.recipe = std::bit_cast<pose_recipe>(std::uint8_t{255});
-    if (field == 14)
-        config.worker_script = fixture.root / "missing worker";
-    if (field == 15)
-        config.worker_script = fixture.decoded;
-    const auto before = snapshot(fixture.root);
-    expect_error(make_batch_pose_estimator(config), error_code::INVALID_ARGUMENT);
-    CHECK(snapshot(fixture.root) == before);
-    REQUIRE(make_batch_pose_estimator(original));
-    CHECK(snapshot(fixture.root) == before);
+    const auto K_ORIGINAL = configuration(fixture);
+    auto config = K_ORIGINAL;
+    if (K_FIELD == 0) config.m_source_sha256.clear();
+    if (K_FIELD == 1) config.m_source_sha256[0] = 'X';
+    if (K_FIELD == 2) config.m_job_directory.clear();
+    if (K_FIELD == 3) config.m_worker_python.clear();
+    if (K_FIELD == 4) config.m_pose_python.clear();
+    if (K_FIELD == 5) config.m_worker_python = std::string(4097, 'x');
+    if (K_FIELD == 6) config.m_pose_python = std::string(4097, 'x');
+    if (K_FIELD == 7) config.m_worker_python.push_back('\0');
+    if (K_FIELD == 8) config.m_pose_python.push_back('\0');
+    if (K_FIELD == 9) config.m_cpu_threads = 0;
+    if (K_FIELD == 10) config.m_cpu_threads = 5;
+    if (K_FIELD == 11) config.m_journal_bytes.m_bytes = K_METADATA_BYTES;
+    if (K_FIELD == 12) config.m_journal_bytes.m_bytes = 32ULL * 1024 * 1024 * 1024 + 1;
+    if (K_FIELD == 13) config.m_recipe = std::bit_cast<PoseRecipe>(std::uint8_t { 255 });
+    if (K_FIELD == 14) config.m_worker_script = fixture.root / "missing worker";
+    if (K_FIELD == 15) config.m_worker_script = fixture.decoded;
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error(make_batch_pose_estimator(config), ErrorCode::INVALID_ARGUMENT);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
+    REQUIRE(make_batch_pose_estimator(K_ORIGINAL));
+    CHECK(snapshot(fixture.root) == K_BEFORE);
 }
 
 TEST_CASE("batch factory propagates cancellation and decoded selection rejection",
           "[batch_admission][config]") {
-    const auto field = GENERATE(0, 1, 2);
-    CAPTURE(field);
+    const auto K_FIELD = GENERATE(0, 1, 2);
+    CAPTURE(K_FIELD);
     pose_fixture fixture;
     auto config = configuration(fixture);
     std::stop_source stop;
-    if (field == 0)
-        stop.request_stop();
-    if (field == 1)
-        config.decode_stage = fixture.root / "missing decode";
-    if (field == 2) {
+    if (K_FIELD == 0) stop.request_stop();
+    if (K_FIELD == 1) config.m_decode_stage = fixture.root / "missing decode";
+    if (K_FIELD == 2) {
         std::ifstream input(fixture.decoded / "result.json");
         auto value = nlohmann::json::parse(input);
         input.close();
@@ -188,447 +188,412 @@ TEST_CASE("batch factory propagates cancellation and decoded selection rejection
         write_bytes(fixture.decoded / "result.json", value.dump());
         fixture.inventory(fixture.decoded);
     }
-    const auto before = snapshot(fixture.root);
+    const auto K_BEFORE = snapshot(fixture.root);
     expect_error(make_batch_pose_estimator(config, stop.get_token()),
-                 field == 0 ? error_code::CANCELLED : error_code::INVALID_DATA);
-    CHECK(snapshot(fixture.root) == before);
+                 K_FIELD == 0 ? ErrorCode::CANCELLED : ErrorCode::INVALID_DATA);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
 }
 
 TEST_CASE("batch start and pre-start operations preserve caller data on rejection",
           "[batch_admission][start]") {
-    const auto field = GENERATE(0, 1, 2, 3, 4);
-    CAPTURE(field);
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4);
+    CAPTURE(K_FIELD);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
-    const auto config = configuration(fixture);
-    auto batch = make_batch_pose_estimator(config);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
+    const auto K_CONFIG = configuration(fixture);
+    auto batch = make_batch_pose_estimator(K_CONFIG);
     REQUIRE(batch);
-    auto frame = observation(**data, 0);
-    const auto saved = frame;
-    const auto before = snapshot(fixture.root);
-    expect_error((*batch)->submit(frame), error_code::INVALID_ARGUMENT);
-    expect_error((*batch)->finish(), error_code::INVALID_ARGUMENT);
-    expect_error((*batch)->drain_events({1}), error_code::INVALID_ARGUMENT);
-    expect_error((*batch)->acquire_dataset(), error_code::WOULD_BLOCK);
-    check_preserved(frame, saved);
-    auto start = START;
-    if (field == 0)
-        start.max_pending_observations = 2;
-    if (field == 1)
-        start.max_pending_observations = 121;
-    if (field == 2)
-        start.memory.bytes = METADATA_BYTES;
-    if (field == 3)
-        start.memory.bytes = 0;
-    if (field == 4)
-        (*batch)->request_stop();
+    auto frame = observation(**K_DATA, 0);
+    const auto K_SAVED = frame;
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error((*batch)->submit(frame), ErrorCode::INVALID_ARGUMENT);
+    expect_error((*batch)->finish(), ErrorCode::INVALID_ARGUMENT);
+    expect_error((*batch)->drain_events({1}), ErrorCode::INVALID_ARGUMENT);
+    expect_error((*batch)->acquire_dataset(), ErrorCode::WOULD_BLOCK);
+    check_preserved(frame, K_SAVED);
+    auto start = K_START;
+    if (K_FIELD == 0) start.m_max_pending_observations = 2;
+    if (K_FIELD == 1) start.m_max_pending_observations = 121;
+    if (K_FIELD == 2) start.m_memory.m_bytes = K_METADATA_BYTES;
+    if (K_FIELD == 3) start.m_memory.m_bytes = 0;
+    if (K_FIELD == 4) (*batch)->request_stop();
     expect_error((*batch)->start(start),
-                 field == 4 ? error_code::CANCELLED : error_code::INVALID_ARGUMENT);
-    CHECK(snapshot(fixture.root) == before);
-    if (field == 4) {
-        expect_error((*batch)->submit(frame), error_code::CANCELLED);
-        expect_error((*batch)->finish(), error_code::CANCELLED);
-        expect_error((*batch)->drain_events({1}), error_code::CANCELLED);
-        check_preserved(frame, saved);
-        CHECK(snapshot(fixture.root) == before);
+                 K_FIELD == 4 ? ErrorCode::CANCELLED : ErrorCode::INVALID_ARGUMENT);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
+    if (K_FIELD == 4) {
+        expect_error((*batch)->submit(frame), ErrorCode::CANCELLED);
+        expect_error((*batch)->finish(), ErrorCode::CANCELLED);
+        expect_error((*batch)->drain_events({1}), ErrorCode::CANCELLED);
+        check_preserved(frame, K_SAVED);
+        CHECK(snapshot(fixture.root) == K_BEFORE);
     } else {
-        REQUIRE((*batch)->start(START));
-        const auto started = snapshot(fixture.root);
-        expect_error((*batch)->start(START), error_code::INVALID_ARGUMENT);
-        CHECK(snapshot(fixture.root) == started);
+        REQUIRE((*batch)->start(K_START));
+        const auto K_STARTED = snapshot(fixture.root);
+        expect_error((*batch)->start(K_START), ErrorCode::INVALID_ARGUMENT);
+        CHECK(snapshot(fixture.root) == K_STARTED);
         REQUIRE((*batch)->submit(frame));
-        CHECK_FALSE(frame.frame.pixels.bytes);
+        CHECK_FALSE(frame.m_frame.m_pixels.m_bytes);
     }
 }
 
 TEST_CASE("batch ordered RGB admission rejects changed headers and unsupported sensors",
           "[batch_admission][observation]") {
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-    CAPTURE(field);
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+    CAPTURE(K_FIELD);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
-    const auto config = configuration(fixture);
-    auto batch = make_batch_pose_estimator(config);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
+    const auto K_CONFIG = configuration(fixture);
+    auto batch = make_batch_pose_estimator(K_CONFIG);
     REQUIRE(batch);
-    REQUIRE((*batch)->start(START));
-    auto frame = observation(**data, 0);
-    if (field == 0)
-        frame.operation = {};
-    if (field == 1)
-        ++frame.frame.id.value;
-    if (field == 2)
-        ++frame.frame.capture.value;
-    if (field == 3)
-        ++frame.frame.calibration.value;
-    if (field == 4)
-        frame.frame.capture_time += std::chrono::nanoseconds(1);
-    if (field == 5)
-        ++frame.frame.original_timestamp.pts;
-    if (field == 6)
-        ++frame.frame.original_timestamp.time_base_numerator;
-    if (field == 7)
-        ++frame.frame.original_timestamp.time_base_denominator;
-    if (field == 8)
-        ++frame.frame.pixels.width;
-    if (field == 9)
-        ++frame.frame.pixels.height;
-    if (field == 10)
-        ++frame.frame.pixels.row_stride;
-    if (field == 11)
-        frame.frame.pixels.bytes.reset();
-    if (field == 12)
-        frame.frame.pixels.bytes = std::make_shared<const std::vector<std::byte>>(5);
-    if (field == 13)
-        frame.frame.pixels.format = pixel_format::GRAY8;
-    if (field == 14)
-        frame.frame.measured_depth = frame.frame.pixels;
-    if (field == 15)
-        frame.frame.imu_samples = {{std::chrono::nanoseconds{4}, {1, 2, 3}, {4, 5, 6}}};
-    if (field == 16)
-        frame = observation(**data, 1);
-    const auto saved = frame;
-    const auto before = snapshot(fixture.root);
-    expect_error((*batch)->submit(frame), field == 0 ? error_code::INVALID_ARGUMENT
-                                          : field >= 13 && field <= 15
-                                              ? error_code::UNSUPPORTED_OPERATION
-                                              : error_code::INVALID_DATA);
-    check_preserved(frame, saved);
-    CHECK(snapshot(fixture.root) == before);
-    auto corrected = observation(**data, 0);
-    const auto lease = corrected.frame.pixels.bytes;
-    const auto ticket = (*batch)->submit(corrected);
-    REQUIRE(ticket);
-    CHECK(ticket->value == 1);
-    CHECK_FALSE(corrected.frame.pixels.bytes);
-    REQUIRE(lease);
-    CHECK(*lease == std::vector<std::byte>(6, std::byte{17}));
-    const auto accepted = snapshot(fixture.root);
-    const auto retry = (*batch)->submit(corrected);
-    REQUIRE(retry);
-    CHECK(retry->value == ticket->value);
-    CHECK(snapshot(fixture.root) == accepted);
+    REQUIRE((*batch)->start(K_START));
+    auto frame = observation(**K_DATA, 0);
+    if (K_FIELD == 0) frame.m_operation = {};
+    if (K_FIELD == 1) ++frame.m_frame.m_id.m_value;
+    if (K_FIELD == 2) ++frame.m_frame.m_capture.m_value;
+    if (K_FIELD == 3) ++frame.m_frame.m_calibration.m_value;
+    if (K_FIELD == 4) frame.m_frame.m_capture_time += std::chrono::nanoseconds(1);
+    if (K_FIELD == 5) ++frame.m_frame.m_original_timestamp.m_pts;
+    if (K_FIELD == 6) ++frame.m_frame.m_original_timestamp.m_time_base_numerator;
+    if (K_FIELD == 7) ++frame.m_frame.m_original_timestamp.m_time_base_denominator;
+    if (K_FIELD == 8) ++frame.m_frame.m_pixels.m_width;
+    if (K_FIELD == 9) ++frame.m_frame.m_pixels.m_height;
+    if (K_FIELD == 10) ++frame.m_frame.m_pixels.m_row_stride;
+    if (K_FIELD == 11) frame.m_frame.m_pixels.m_bytes.reset();
+    if (K_FIELD == 12)
+        frame.m_frame.m_pixels.m_bytes = std::make_shared<const std::vector<std::byte>>(5);
+    if (K_FIELD == 13) frame.m_frame.m_pixels.m_format = PixelFormat::GRAY8;
+    if (K_FIELD == 14) frame.m_frame.m_measured_depth = frame.m_frame.m_pixels;
+    if (K_FIELD == 15)
+        frame.m_frame.m_imu_samples = { { std::chrono::nanoseconds { 4 }, { 1, 2, 3 }, { 4, 5, 6 } } };
+    if (K_FIELD == 16) frame = observation(**K_DATA, 1);
+    const auto K_SAVED = frame;
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error((*batch)->submit(frame),
+                 K_FIELD == 0                     ? ErrorCode::INVALID_ARGUMENT
+                 : K_FIELD >= 13 && K_FIELD <= 15 ? ErrorCode::UNSUPPORTED_OPERATION
+                                                  : ErrorCode::INVALID_DATA);
+    check_preserved(frame, K_SAVED);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
+    auto corrected = observation(**K_DATA, 0);
+    const auto K_LEASE = corrected.m_frame.m_pixels.m_bytes;
+    const auto K_TICKET = (*batch)->submit(corrected);
+    REQUIRE(K_TICKET);
+    CHECK(K_TICKET->m_value == 1);
+    CHECK_FALSE(corrected.m_frame.m_pixels.m_bytes);
+    REQUIRE(K_LEASE);
+    CHECK(*K_LEASE == std::vector<std::byte>(6, std::byte { 17 }));
+    const auto K_ACCEPTED = snapshot(fixture.root);
+    const auto K_RETRY = (*batch)->submit(corrected);
+    REQUIRE(K_RETRY);
+    CHECK(K_RETRY->m_value == K_TICKET->m_value);
+    CHECK(snapshot(fixture.root) == K_ACCEPTED);
 }
 
 TEST_CASE("batch retries preserve receipts and files when headers or pixel content differ",
           "[batch_admission][retry]") {
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5);
-    CAPTURE(field);
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5);
+    CAPTURE(K_FIELD);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
-    const auto config = configuration(fixture);
-    auto batch = make_batch_pose_estimator(config);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
+    const auto K_CONFIG = configuration(fixture);
+    auto batch = make_batch_pose_estimator(K_CONFIG);
     REQUIRE(batch);
-    REQUIRE((*batch)->start(START));
-    auto first = observation(**data, 0);
+    REQUIRE((*batch)->start(K_START));
+    auto first = observation(**K_DATA, 0);
     auto changed = first;
-    const auto lease = first.frame.pixels.bytes;
-    const auto ticket = (*batch)->submit(first);
-    REQUIRE(ticket);
-    if (field == 0)
-        ++changed.frame.capture.value;
-    if (field == 1)
-        changed.frame.pixels.bytes = std::make_shared<const std::vector<std::byte>>(5);
-    if (field == 2)
-        changed.frame.pixels.bytes =
-            std::make_shared<const std::vector<std::byte>>(6, std::byte{18});
-    if (field == 3)
-        changed.frame.measured_depth = changed.frame.pixels;
-    if (field == 4)
-        changed.frame.imu_samples.push_back({});
-    if (field == 5) {
-        changed.frame.pixels.bytes.reset();
-        ++changed.frame.original_timestamp.pts;
+    const auto K_LEASE = first.m_frame.m_pixels.m_bytes;
+    const auto K_TICKET = (*batch)->submit(first);
+    REQUIRE(K_TICKET);
+    if (K_FIELD == 0) ++changed.m_frame.m_capture.m_value;
+    if (K_FIELD == 1)
+        changed.m_frame.m_pixels.m_bytes = std::make_shared<const std::vector<std::byte>>(5);
+    if (K_FIELD == 2)
+        changed.m_frame.m_pixels.m_bytes =
+            std::make_shared<const std::vector<std::byte>>(6, std::byte { 18 });
+    if (K_FIELD == 3) changed.m_frame.m_measured_depth = changed.m_frame.m_pixels;
+    if (K_FIELD == 4) changed.m_frame.m_imu_samples.push_back({});
+    if (K_FIELD == 5) {
+        changed.m_frame.m_pixels.m_bytes.reset();
+        ++changed.m_frame.m_original_timestamp.m_pts;
     }
-    const auto saved = changed;
-    const auto before = snapshot(fixture.root);
-    expect_error((*batch)->submit(changed), error_code::DUPLICATE_OPERATION);
-    check_preserved(changed, saved);
-    CHECK(snapshot(fixture.root) == before);
-    const auto retried = (*batch)->submit(first);
-    REQUIRE(retried);
-    CHECK(retried->value == ticket->value);
-    auto intact = observation(**data, 0);
-    const auto with_pixels = (*batch)->submit(intact);
-    REQUIRE(with_pixels);
-    CHECK(with_pixels->value == ticket->value);
-    CHECK_FALSE(intact.frame.pixels.bytes);
-    CHECK(*lease == std::vector<std::byte>(6, std::byte{17}));
-    CHECK(snapshot(fixture.root) == before);
-    auto second = observation(**data, 1);
-    const auto next = (*batch)->submit(second);
-    REQUIRE(next);
-    CHECK(next->value == 2);
+    const auto K_SAVED = changed;
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error((*batch)->submit(changed), ErrorCode::DUPLICATE_OPERATION);
+    check_preserved(changed, K_SAVED);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
+    const auto K_RETRIED = (*batch)->submit(first);
+    REQUIRE(K_RETRIED);
+    CHECK(K_RETRIED->m_value == K_TICKET->m_value);
+    auto intact = observation(**K_DATA, 0);
+    const auto K_WITH_PIXELS = (*batch)->submit(intact);
+    REQUIRE(K_WITH_PIXELS);
+    CHECK(K_WITH_PIXELS->m_value == K_TICKET->m_value);
+    CHECK_FALSE(intact.m_frame.m_pixels.m_bytes);
+    CHECK(*K_LEASE == std::vector<std::byte>(6, std::byte { 17 }));
+    CHECK(snapshot(fixture.root) == K_BEFORE);
+    auto second = observation(**K_DATA, 1);
+    const auto K_NEXT = (*batch)->submit(second);
+    REQUIRE(K_NEXT);
+    CHECK(K_NEXT->m_value == 2);
 }
 
 TEST_CASE("batch memory and first RGB asset budgets admit the exact bound",
           "[batch_admission][budget]") {
-    const auto field = GENERATE(0, 1);
+    const auto K_FIELD = GENERATE(0, 1);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
     auto config = configuration(fixture);
-    config.journal_bytes.bytes = METADATA_BYTES + PPM_BYTES - (field == 1 ? 1 : 0);
+    config.m_journal_bytes.m_bytes = K_METADATA_BYTES + K_PPM_BYTES - (K_FIELD == 1 ? 1 : 0);
     auto batch = make_batch_pose_estimator(config);
     REQUIRE(batch);
-    auto start = START;
-    if (field == 0)
-        --start.memory.bytes;
+    auto start = K_START;
+    if (K_FIELD == 0) --start.m_memory.m_bytes;
     REQUIRE((*batch)->start(start));
-    auto frame = observation(**data, 0);
-    const auto saved = frame;
-    const auto before = snapshot(fixture.root);
-    expect_error((*batch)->submit(frame), error_code::RESOURCE_EXHAUSTED);
-    check_preserved(frame, saved);
-    CHECK(snapshot(fixture.root) == before);
-    config.job_directory = fixture.root / "exact budget";
-    config.journal_bytes.bytes = METADATA_BYTES + PPM_BYTES;
+    auto frame = observation(**K_DATA, 0);
+    const auto K_SAVED = frame;
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error((*batch)->submit(frame), ErrorCode::RESOURCE_EXHAUSTED);
+    check_preserved(frame, K_SAVED);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
+    config.m_job_directory = fixture.root / "exact budget";
+    config.m_journal_bytes.m_bytes = K_METADATA_BYTES + K_PPM_BYTES;
     auto exact = make_batch_pose_estimator(config);
     REQUIRE(exact);
-    REQUIRE((*exact)->start(START));
+    REQUIRE((*exact)->start(K_START));
     REQUIRE((*exact)->submit(frame));
-    CHECK_FALSE(frame.frame.pixels.bytes);
-    CHECK(std::filesystem::file_size(config.job_directory / "input/1.ppm") == PPM_BYTES);
-    auto second = observation(**data, 1);
-    const auto retained = second;
-    const auto full = snapshot(fixture.root);
-    expect_error((*exact)->submit(second), error_code::RESOURCE_EXHAUSTED);
-    check_preserved(second, retained);
-    CHECK(snapshot(fixture.root) == full);
+    CHECK_FALSE(frame.m_frame.m_pixels.m_bytes);
+    CHECK(std::filesystem::file_size(config.m_job_directory / "input/1.ppm") == K_PPM_BYTES);
+    auto second = observation(**K_DATA, 1);
+    const auto K_RETAINED = second;
+    const auto K_FULL = snapshot(fixture.root);
+    expect_error((*exact)->submit(second), ErrorCode::RESOURCE_EXHAUSTED);
+    check_preserved(second, K_RETAINED);
+    CHECK(snapshot(fixture.root) == K_FULL);
 }
 
 TEST_CASE("batch cumulative disk admission and full capacity preserve receipts for resume",
           "[batch_admission][budget]") {
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
     auto config = configuration(fixture);
-    config.journal_bytes.bytes = METADATA_BYTES + 3 * PPM_BYTES - 1;
+    config.m_journal_bytes.m_bytes = K_METADATA_BYTES + 3 * K_PPM_BYTES - 1;
     auto batch = make_batch_pose_estimator(config);
     REQUIRE(batch);
-    REQUIRE((*batch)->start(START));
-    for (std::size_t index = 0; index < 2; ++index) {
-        auto frame = observation(**data, index);
+    REQUIRE((*batch)->start(K_START));
+    for (std::size_t index { 0uz }; index < 2uz; ++index) {
+        auto frame = observation(**K_DATA, index);
         REQUIRE((*batch)->submit(frame));
     }
-    auto third = observation(**data, 2);
-    const auto saved = third;
-    const auto before = snapshot(fixture.root);
-    expect_error((*batch)->submit(third), error_code::RESOURCE_EXHAUSTED);
-    check_preserved(third, saved);
-    CHECK(snapshot(fixture.root) == before);
+    auto third = observation(**K_DATA, 2);
+    const auto K_SAVED = third;
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error((*batch)->submit(third), ErrorCode::RESOURCE_EXHAUSTED);
+    check_preserved(third, K_SAVED);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
     batch->reset();
-    config.resume_input = true;
-    ++config.journal_bytes.bytes;
+    config.m_resume_input = true;
+    ++config.m_journal_bytes.m_bytes;
     auto resumed = make_batch_pose_estimator(config);
     REQUIRE(resumed);
-    REQUIRE((*resumed)->start(START));
-    for (std::size_t index = 0; index < 3; ++index) {
-        auto frame = observation(**data, index);
-        const auto ticket = (*resumed)->submit(frame);
-        REQUIRE(ticket);
-        CHECK(ticket->value == index + 1);
-        CHECK_FALSE(frame.frame.pixels.bytes);
+    REQUIRE((*resumed)->start(K_START));
+    for (std::size_t index { 0uz }; index < 3uz; ++index) {
+        auto frame = observation(**K_DATA, index);
+        const auto K_TICKET = (*resumed)->submit(frame);
+        REQUIRE(K_TICKET);
+        CHECK(K_TICKET->m_value == index + 1);
+        CHECK_FALSE(frame.m_frame.m_pixels.m_bytes);
     }
-    auto extra = observation(**data, 0);
-    extra.operation = {4};
-    const auto retained = extra;
-    const auto full = snapshot(fixture.root);
-    expect_error((*resumed)->submit(extra), error_code::WOULD_BLOCK);
-    check_preserved(extra, retained);
-    auto retry = observation(**data, 0);
-    const auto ticket = (*resumed)->submit(retry);
-    REQUIRE(ticket);
-    CHECK(ticket->value == 1);
-    CHECK(snapshot(fixture.root) == full);
-    const auto initial = (*resumed)->drain_events({0});
-    REQUIRE(initial);
-    CHECK(initial->empty());
-    const auto event = (*resumed)->drain_events({std::numeric_limits<std::size_t>::max()});
-    REQUIRE(event);
-    REQUIRE(event->size() == 1);
-    CHECK(std::get<tracking_change>(event->front()).state == tracking_state::INITIALIZING);
-    const auto empty = (*resumed)->drain_events({1});
-    REQUIRE(empty);
-    CHECK(empty->empty());
-    CHECK(snapshot(fixture.root) == full);
+    auto extra = observation(**K_DATA, 0);
+    extra.m_operation = { 4 };
+    const auto K_RETAINED = extra;
+    const auto K_FULL = snapshot(fixture.root);
+    expect_error((*resumed)->submit(extra), ErrorCode::WOULD_BLOCK);
+    check_preserved(extra, K_RETAINED);
+    auto retry = observation(**K_DATA, 0);
+    const auto K_TICKET = (*resumed)->submit(retry);
+    REQUIRE(K_TICKET);
+    CHECK(K_TICKET->m_value == 1);
+    CHECK(snapshot(fixture.root) == K_FULL);
+    const auto K_INITIAL = (*resumed)->drain_events({0});
+    REQUIRE(K_INITIAL);
+    CHECK(K_INITIAL->empty());
+    const auto K_EVENT = (*resumed)->drain_events({std::numeric_limits<std::size_t>::max()});
+    REQUIRE(K_EVENT);
+    REQUIRE(K_EVENT->size() == 1);
+    CHECK(std::get<TrackingChange>(K_EVENT->front()).m_state == TrackingState::INITIALIZING);
+    const auto K_EMPTY = (*resumed)->drain_events({1});
+    REQUIRE(K_EMPTY);
+    CHECK(K_EMPTY->empty());
+    CHECK(snapshot(fixture.root) == K_FULL);
 }
 
 TEST_CASE("batch resumed start rejects foreign entries locks and linked inputs without writes",
           "[batch_admission][resume]") {
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6);
-    CAPTURE(field);
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6);
+    CAPTURE(K_FIELD);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
     auto config = configuration(fixture);
     auto initial = make_batch_pose_estimator(config);
     REQUIRE(initial);
-    REQUIRE((*initial)->start(START));
-    auto first = observation(**data, 0);
+    REQUIRE((*initial)->start(K_START));
+    auto first = observation(**K_DATA, 0);
     REQUIRE((*initial)->submit(first));
     initial->reset();
-    config.resume_input = true;
+    config.m_resume_input = true;
     std::filesystem::path obstruction;
-    if (field == 0)
-        obstruction = config.job_directory / "foreign.txt";
-    if (field == 1)
-        obstruction = config.job_directory / "job.lock";
-    if (field == 2)
-        obstruction = config.job_directory / "input/2.ppm.tmp";
-    if (field == 3)
-        obstruction = config.job_directory / "input/2.ppm";
-    if (field == 4)
-        obstruction = config.job_directory / "request.json";
-    if (field == 5)
-        obstruction = config.job_directory / "input/2.ppm";
-    if (field < 3)
-        write_bytes(obstruction, "caller-owned obstruction");
-    if (field == 3)
-        std::filesystem::create_directory(obstruction);
-    if (field == 4 || field == 5)
-        create_link(fixture.root / "caller.txt", obstruction);
-    if (field == 6) {
-        obstruction = config.job_directory / "input";
+    if (K_FIELD == 0) obstruction = config.m_job_directory / "foreign.txt";
+    if (K_FIELD == 1) obstruction = config.m_job_directory / "job.lock";
+    if (K_FIELD == 2) obstruction = config.m_job_directory / "input/2.ppm.tmp";
+    if (K_FIELD == 3) obstruction = config.m_job_directory / "input/2.ppm";
+    if (K_FIELD == 4) obstruction = config.m_job_directory / "request.json";
+    if (K_FIELD == 5) obstruction = config.m_job_directory / "input/2.ppm";
+    if (K_FIELD < 3) write_bytes(obstruction, "caller-owned obstruction");
+    if (K_FIELD == 3) std::filesystem::create_directory(obstruction);
+    if (K_FIELD == 4 || K_FIELD == 5) create_link(fixture.root / "caller.txt", obstruction);
+    if (K_FIELD == 6) {
+        obstruction = config.m_job_directory / "input";
         std::filesystem::rename(obstruction, fixture.root / "caller input");
         create_link(fixture.root / "caller input", obstruction, true);
     }
     auto resumed = make_batch_pose_estimator(config);
     REQUIRE(resumed);
-    const auto before = snapshot(fixture.root);
-    expect_error((*resumed)->start(START),
-                 field == 1 ? error_code::WOULD_BLOCK : error_code::INVALID_DATA);
-    CHECK(snapshot(fixture.root) == before);
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error((*resumed)->start(K_START),
+                 K_FIELD == 1 ? ErrorCode::WOULD_BLOCK : ErrorCode::INVALID_DATA);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
     std::filesystem::remove(obstruction);
-    if (field == 6)
-        std::filesystem::rename(fixture.root / "caller input", obstruction);
-    REQUIRE((*resumed)->start(START));
-    const auto ready = snapshot(fixture.root);
-    auto replay = observation(**data, 0);
+    if (K_FIELD == 6) std::filesystem::rename(fixture.root / "caller input", obstruction);
+    REQUIRE((*resumed)->start(K_START));
+    const auto K_READY = snapshot(fixture.root);
+    auto replay = observation(**K_DATA, 0);
     REQUIRE((*resumed)->submit(replay));
-    CHECK_FALSE(replay.frame.pixels.bytes);
-    CHECK(snapshot(fixture.root) == ready);
+    CHECK_FALSE(replay.m_frame.m_pixels.m_bytes);
+    CHECK(snapshot(fixture.root) == K_READY);
 }
 
 TEST_CASE("batch resumed RGB rejects changed shape content or symlink and permits corrected retry",
           "[batch_admission][resume]") {
-    const auto field = GENERATE(0, 1, 2);
-    CAPTURE(field);
+    const auto K_FIELD = GENERATE(0, 1, 2);
+    CAPTURE(K_FIELD);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
     auto config = configuration(fixture);
     auto initial = make_batch_pose_estimator(config);
     REQUIRE(initial);
-    REQUIRE((*initial)->start(START));
-    auto first = observation(**data, 0);
+    REQUIRE((*initial)->start(K_START));
+    auto first = observation(**K_DATA, 0);
     REQUIRE((*initial)->submit(first));
     initial->reset();
-    config.resume_input = true;
+    config.m_resume_input = true;
     auto resumed = make_batch_pose_estimator(config);
     REQUIRE(resumed);
-    REQUIRE((*resumed)->start(START));
-    const auto path = config.job_directory / "input/1.ppm";
-    if (field < 2)
-        write_bytes(path, std::string(field == 0 ? PPM_BYTES - 1 : PPM_BYTES, 'x'));
+    REQUIRE((*resumed)->start(K_START));
+    const auto K_PATH = config.m_job_directory / "input/1.ppm";
+    if (K_FIELD < 2)
+        write_bytes(K_PATH, std::string(K_FIELD == 0 ? K_PPM_BYTES - 1 : K_PPM_BYTES, 'x'));
     else {
-        std::filesystem::remove(path);
-        create_link(fixture.root / "caller.txt", path);
+        std::filesystem::remove(K_PATH);
+        create_link(fixture.root / "caller.txt", K_PATH);
     }
-    auto replay = observation(**data, 0);
-    const auto saved = replay;
-    const auto before = snapshot(fixture.root);
-    expect_error((*resumed)->submit(replay), error_code::INVALID_DATA);
-    check_preserved(replay, saved);
-    CHECK(snapshot(fixture.root) == before);
-    std::filesystem::remove(path);
-    write_bytes(path, std::string("P6\n2 1\n255\n") + std::string(6, char{17}));
-    const auto ready = snapshot(fixture.root);
-    const auto ticket = (*resumed)->submit(replay);
-    REQUIRE(ticket);
-    CHECK(ticket->value == 1);
-    CHECK_FALSE(replay.frame.pixels.bytes);
-    CHECK(snapshot(fixture.root) == ready);
+    auto replay = observation(**K_DATA, 0);
+    const auto K_SAVED = replay;
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error((*resumed)->submit(replay), ErrorCode::INVALID_DATA);
+    check_preserved(replay, K_SAVED);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
+    std::filesystem::remove(K_PATH);
+    write_bytes(K_PATH, std::string("P6\n2 1\n255\n") + std::string(6, char { 17 }));
+    const auto K_READY = snapshot(fixture.root);
+    const auto K_TICKET = (*resumed)->submit(replay);
+    REQUIRE(K_TICKET);
+    CHECK(K_TICKET->m_value == 1);
+    CHECK_FALSE(replay.m_frame.m_pixels.m_bytes);
+    CHECK(snapshot(fixture.root) == K_READY);
 }
 
 TEST_CASE("batch factory rejects linked job roots without accessing the target",
           "[batch_admission][paths]") {
     pose_fixture fixture;
     auto config = configuration(fixture);
-    const auto target = fixture.root / "caller directory";
-    std::filesystem::create_directory(target);
-    write_bytes(target / "caller.txt", "retained caller data");
-    create_link(target, config.job_directory, true);
-    config.resume_input = true;
-    const auto before = snapshot(fixture.root);
-    expect_error(make_batch_pose_estimator(config), error_code::INVALID_DATA);
-    CHECK(snapshot(fixture.root) == before);
+    const auto K_TARGET = fixture.root / "caller directory";
+    std::filesystem::create_directory(K_TARGET);
+    write_bytes(K_TARGET / "caller.txt", "retained caller data");
+    create_link(K_TARGET, config.m_job_directory, true);
+    config.m_resume_input = true;
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error(make_batch_pose_estimator(config), ErrorCode::INVALID_DATA);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
 }
 
 TEST_CASE("batch failed publication preserves obstructions and freezes closed admission failure",
           "[batch_admission][publication]") {
-    const auto field = GENERATE(0, 1, 2, 3, 4, 5, 6);
-    CAPTURE(field);
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6);
+    CAPTURE(K_FIELD);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
-    const auto config = configuration(fixture);
-    auto batch = make_batch_pose_estimator(config);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
+    const auto K_CONFIG = configuration(fixture);
+    auto batch = make_batch_pose_estimator(K_CONFIG);
     REQUIRE(batch);
-    REQUIRE((*batch)->start(START));
-    for (std::size_t index = 0; index < 3; ++index) {
-        auto frame = observation(**data, index);
+    REQUIRE((*batch)->start(K_START));
+    for (std::size_t index { 0uz }; index < 3uz; ++index) {
+        auto frame = observation(**K_DATA, index);
         REQUIRE((*batch)->submit(frame));
     }
-    const auto journal = config.job_directory / "input/journal.json";
-    const auto request = config.job_directory / "batch-request.json";
-    if (field == 0)
-        write_bytes(journal, "caller journal");
-    if (field == 1)
-        write_bytes(journal.string() + ".tmp", "caller temporary journal");
-    if (field == 2)
-        create_link(fixture.root / "missing caller asset", journal.string() + ".tmp");
-    if (field == 3)
-        write_bytes(request, "caller request");
-    if (field == 4)
-        create_link(fixture.root / "missing caller asset", request.string() + ".tmp");
-    if (field >= 5) {
-        const auto path = field == 5 ? config.job_directory / "input" : config.job_directory;
-        std::filesystem::rename(path, fixture.root / "caller output");
-        create_link(fixture.root / "caller output", path, true);
+    const auto K_JOURNAL = K_CONFIG.m_job_directory / "input/journal.json";
+    const auto K_REQUEST = K_CONFIG.m_job_directory / "batch-request.json";
+    if (K_FIELD == 0) write_bytes(K_JOURNAL, "caller journal");
+    if (K_FIELD == 1) write_bytes(K_JOURNAL.string() + ".tmp", "caller temporary journal");
+    if (K_FIELD == 2)
+        create_link(fixture.root / "missing caller asset", K_JOURNAL.string() + ".tmp");
+    if (K_FIELD == 3) write_bytes(K_REQUEST, "caller request");
+    if (K_FIELD == 4)
+        create_link(fixture.root / "missing caller asset", K_REQUEST.string() + ".tmp");
+    if (K_FIELD >= 5) {
+        const auto K_PATH =
+            K_FIELD == 5 ? K_CONFIG.m_job_directory / "input" : K_CONFIG.m_job_directory;
+        std::filesystem::rename(K_PATH, fixture.root / "caller output");
+        create_link(fixture.root / "caller output", K_PATH, true);
     }
-    const auto before = snapshot(fixture.root);
-    const auto failed = (*batch)->finish();
-    expect_error(failed, field >= 5 ? error_code::INVALID_DATA : error_code::IO_ERROR);
+    const auto K_BEFORE = snapshot(fixture.root);
+    const auto K_FAILED = (*batch)->finish();
+    expect_error(K_FAILED, K_FIELD >= 5 ? ErrorCode::INVALID_DATA : ErrorCode::IO_ERROR);
     auto after = snapshot(fixture.root);
-    if (field == 3 || field == 4) {
+    if (K_FIELD == 3 || K_FIELD == 4) {
         // Journal publication succeeds before the independent request obstruction.
-        REQUIRE(after.erase(path_utf8(journal.lexically_relative(fixture.root))) == 1);
+        REQUIRE(after.erase(path_utf8(K_JOURNAL.lexically_relative(fixture.root))) == 1);
     }
-    CHECK(after == before);
-    const auto frozen = snapshot(fixture.root);
-    const auto retried = (*batch)->finish();
-    expect_error(retried, failed.error().code);
-    CHECK(retried.error().message == failed.error().message);
-    expect_error((*batch)->drain_events({1}), failed.error().code);
-    expect_error((*batch)->acquire_dataset(), failed.error().code);
-    auto new_operation = observation(**data, 0);
-    new_operation.operation = {4};
-    const auto saved = new_operation;
-    expect_error((*batch)->submit(new_operation), error_code::INVALID_ARGUMENT);
-    check_preserved(new_operation, saved);
-    auto acknowledged = observation(**data, 0);
-    const auto ticket = (*batch)->submit(acknowledged);
-    REQUIRE(ticket);
-    CHECK(ticket->value == 1);
-    CHECK_FALSE(acknowledged.frame.pixels.bytes);
-    CHECK(snapshot(fixture.root) == frozen);
+    CHECK(after == K_BEFORE);
+    const auto K_FROZEN = snapshot(fixture.root);
+    const auto K_RETRIED = (*batch)->finish();
+    expect_error(K_RETRIED, K_FAILED.error().m_code);
+    CHECK(K_RETRIED.error().m_message == K_FAILED.error().m_message);
+    expect_error((*batch)->drain_events({1}), K_FAILED.error().m_code);
+    expect_error((*batch)->acquire_dataset(), K_FAILED.error().m_code);
+    auto new_operation = observation(**K_DATA, 0);
+    new_operation.m_operation = { 4 };
+    const auto K_SAVED = new_operation;
+    expect_error((*batch)->submit(new_operation), ErrorCode::INVALID_ARGUMENT);
+    check_preserved(new_operation, K_SAVED);
+    auto acknowledged = observation(**K_DATA, 0);
+    const auto K_TICKET = (*batch)->submit(acknowledged);
+    REQUIRE(K_TICKET);
+    CHECK(K_TICKET->m_value == 1);
+    CHECK_FALSE(acknowledged.m_frame.m_pixels.m_bytes);
+    CHECK(snapshot(fixture.root) == K_FROZEN);
 }
 
 namespace {
-void diagnostic_worker(const batch_pose_config& config, std::string_view mode) {
+
+void diagnostic_worker(const BatchPoseConfig& config, std::string_view mode) {
     std::string script =
         "import sys,json,shutil\nfrom pathlib import Path\n"
         "sys.path.insert(0," +
@@ -666,16 +631,17 @@ void diagnostic_worker(const batch_pose_config& config, std::string_view mode) {
         "else:\n"
         " we_protocol.failure(mode,'poses','synthetic failure; no solver')\n"
         " sys.exit(2)\n";
-    write_bytes(config.worker_script, script);
+    write_bytes(config.m_worker_script, script);
 }
-void force_crlf_text_writes(const batch_pose_config& config) {
-    std::ifstream input(config.worker_script, std::ios::binary);
+
+void force_crlf_text_writes(const BatchPoseConfig& config) {
+    std::ifstream input(config.m_worker_script, std::ios::binary);
     REQUIRE(input);
-    const std::string script{std::istreambuf_iterator<char>(input), {}};
+    const std::string K_SCRIPT {std::istreambuf_iterator<char>(input), {}};
     REQUIRE(!input.bad());
     input.close();
     // Reproduce Windows text-mode translation on every host. Binary files bypass it.
-    write_bytes(config.worker_script,
+    write_bytes(config.m_worker_script,
                 "import pathlib\n"
                 "original_open=pathlib.Path.open\n"
                 "def crlf_open(self,mode='r',*args,**kwargs):\n"
@@ -684,242 +650,247 @@ void force_crlf_text_writes(const batch_pose_config& config) {
                 "  kwargs['newline']='\\r\\n'\n"
                 " return original_open(self,mode,*args,**kwargs)\n"
                 "pathlib.Path.open=crlf_open\n" +
-                    script);
+                    K_SCRIPT);
 }
-} // namespace
+
+}  // namespace
 
 TEST_CASE("batch worker failure mapping retains one launch journal and immutable retry failure",
           "[batch_admission][worker][batch_marker]") {
-    const auto windows_text = GENERATE(false, true);
-    const auto mode = GENERATE("CANCELLED", "RESOURCE_LIMIT", "UNSUPPORTED", "BAD_INPUT",
-                               "CORRUPT_ASSET", "DIAGNOSTIC_FAILURE", "wrong-stage",
-                               "missing-output", "nonzero", "no-batch", "streaming", "capacity");
-    CAPTURE(mode, windows_text);
+    const auto K_WINDOWS_TEXT = GENERATE(false, true);
+    const auto K_MODE = GENERATE("CANCELLED",
+                                 "RESOURCE_LIMIT",
+                                 "UNSUPPORTED",
+                                 "BAD_INPUT",
+                                 "CORRUPT_ASSET",
+                                 "DIAGNOSTIC_FAILURE",
+                                 "wrong-stage",
+                                 "missing-output",
+                                 "nonzero",
+                                 "no-batch",
+                                 "streaming",
+                                 "capacity");
+    CAPTURE(K_MODE, K_WINDOWS_TEXT);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
     auto config = configuration(fixture);
-    diagnostic_worker(config, mode);
-    if (windows_text)
-        force_crlf_text_writes(config);
-    std::size_t handshakes{};
-    config.observed = [&](const worker_event& event) {
-        if (std::holds_alternative<worker_handshake>(event))
-            ++handshakes;
+    diagnostic_worker(config, K_MODE);
+    if (K_WINDOWS_TEXT) force_crlf_text_writes(config);
+    std::size_t handshakes {};
+    config.m_observed = [&](const WorkerEvent& event) {
+        if (std::holds_alternative<WorkerHandshake>(event)) ++handshakes;
     };
     auto batch = make_batch_pose_estimator(config);
     REQUIRE(batch);
-    REQUIRE((*batch)->start(START));
-    for (std::size_t index = 0; index < 3; ++index) {
-        auto frame = observation(**data, index);
+    REQUIRE((*batch)->start(K_START));
+    for (std::size_t index { 0uz }; index < 3uz; ++index) {
+        auto frame = observation(**K_DATA, index);
         REQUIRE((*batch)->submit(frame));
     }
-    const std::string_view name(mode);
-    const bool insufficient = name == "no-batch" || name == "streaming" || name == "capacity";
-    const auto code = name == "CANCELLED"                     ? error_code::CANCELLED
-                      : name == "RESOURCE_LIMIT"              ? error_code::RESOURCE_EXHAUSTED
-                      : name == "UNSUPPORTED" || insufficient ? error_code::UNSUPPORTED_OPERATION
-                      : name == "BAD_INPUT" || name == "CORRUPT_ASSET" || name == "wrong-stage" ||
-                              name == "missing-output" || name == "nonzero"
-                          ? error_code::INVALID_DATA
-                          : error_code::BACKEND_FAILURE;
-    const auto failed = (*batch)->finish();
-    expect_error(failed, code);
+    const std::string_view K_NAME(K_MODE);
+    const bool K_INSUFFICIENT =
+        K_NAME == "no-batch" || K_NAME == "streaming" || K_NAME == "capacity";
+    const auto K_CODE =
+        K_NAME == "CANCELLED"                       ? ErrorCode::CANCELLED
+        : K_NAME == "RESOURCE_LIMIT"                ? ErrorCode::RESOURCE_EXHAUSTED
+        : K_NAME == "UNSUPPORTED" || K_INSUFFICIENT ? ErrorCode::UNSUPPORTED_OPERATION
+        : K_NAME == "BAD_INPUT" || K_NAME == "CORRUPT_ASSET" || K_NAME == "wrong-stage" ||
+                K_NAME == "missing-output" || K_NAME == "nonzero"
+            ? ErrorCode::INVALID_DATA
+            : ErrorCode::BACKEND_FAILURE;
+    const auto K_FAILED = (*batch)->finish();
+    expect_error(K_FAILED, K_CODE);
     CHECK(handshakes == 1);
-    const auto frozen = snapshot(fixture.root);
-    const auto retry = (*batch)->finish();
-    expect_error(retry, code);
-    CHECK(retry.error().message == failed.error().message);
-    expect_error((*batch)->acquire_dataset(), code);
-    expect_error((*batch)->drain_events({1}), insufficient ? error_code::CANCELLED : code);
-    CHECK(snapshot(fixture.root) == frozen);
-    CHECK(std::filesystem::is_regular_file(config.job_directory / "input/journal.json"));
-    if (!insufficient)
-        CHECK(frozen.at(path_utf8(
-                  (config.job_directory / "launches").lexically_relative(fixture.root))) ==
+    const auto K_FROZEN = snapshot(fixture.root);
+    const auto K_RETRY = (*batch)->finish();
+    expect_error(K_RETRY, K_CODE);
+    CHECK(K_RETRY.error().m_message == K_FAILED.error().m_message);
+    expect_error((*batch)->acquire_dataset(), K_CODE);
+    expect_error((*batch)->drain_events({1}), K_INSUFFICIENT ? ErrorCode::CANCELLED : K_CODE);
+    CHECK(snapshot(fixture.root) == K_FROZEN);
+    CHECK(std::filesystem::is_regular_file(config.m_job_directory / "input/journal.json"));
+    if (!K_INSUFFICIENT)
+        CHECK(K_FROZEN.at(path_utf8(
+                  (config.m_job_directory / "launches").lexically_relative(fixture.root))) ==
               "file:launch\n");
 }
 
 TEST_CASE("batch synthetic completion drains ordered events once and retains its acquired dataset",
           "[batch_admission][worker]") {
-    const auto recipe = GENERATE(pose_recipe::SEQUENTIAL, pose_recipe::EXHAUSTIVE_GUIDED);
+    const auto K_RECIPE = GENERATE(PoseRecipe::SEQUENTIAL, PoseRecipe::EXHAUSTIVE_GUIDED);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
     auto config = configuration(fixture);
-    config.recipe = recipe;
+    config.m_recipe = K_RECIPE;
     diagnostic_worker(config, "success");
     auto batch = make_batch_pose_estimator(config);
     REQUIRE(batch);
-    CHECK((*batch)->capabilities().observation_capacity == 3);
-    CHECK((*batch)->capabilities().mode == estimator_mode::BATCH_SOLVE);
-    CHECK_FALSE((*batch)->capabilities().streaming_tracking);
-    CHECK_FALSE((*batch)->capabilities().covariance);
-    REQUIRE((*batch)->start(START));
-    const auto initial = (*batch)->drain_events({1});
-    REQUIRE(initial);
-    REQUIRE(initial->size() == 1);
-    CHECK(std::get<tracking_change>(initial->front()).state == tracking_state::INITIALIZING);
-    for (std::size_t index = 0; index < 3; ++index) {
-        auto frame = observation(**data, index);
+    CHECK((*batch)->capabilities().m_observation_capacity == 3);
+    CHECK((*batch)->capabilities().m_mode == EstimatorMode::BATCH_SOLVE);
+    CHECK_FALSE((*batch)->capabilities().m_streaming_tracking);
+    CHECK_FALSE((*batch)->capabilities().m_covariance);
+    REQUIRE((*batch)->start(K_START));
+    const auto K_INITIAL = (*batch)->drain_events({1});
+    REQUIRE(K_INITIAL);
+    REQUIRE(K_INITIAL->size() == 1);
+    CHECK(std::get<TrackingChange>(K_INITIAL->front()).m_state == TrackingState::INITIALIZING);
+    for (std::size_t index { 0uz }; index < 3uz; ++index) {
+        auto frame = observation(**K_DATA, index);
         REQUIRE((*batch)->submit(frame));
     }
     REQUIRE((*batch)->finish());
-    const auto retained = (*batch)->acquire_dataset();
-    REQUIRE(retained);
-    const auto frozen = snapshot(fixture.root);
+    const auto K_RETAINED = (*batch)->acquire_dataset();
+    REQUIRE(K_RETAINED);
+    const auto K_FROZEN = snapshot(fixture.root);
     REQUIRE((*batch)->finish());
-    CHECK(snapshot(fixture.root) == frozen);
-    const auto zero = (*batch)->drain_events({0});
-    REQUIRE(zero);
-    CHECK(zero->empty());
-    std::vector<pose_event> events;
-    for (int index = 0; index < 7; ++index) {
+    CHECK(snapshot(fixture.root) == K_FROZEN);
+    const auto K_ZERO = (*batch)->drain_events({0});
+    REQUIRE(K_ZERO);
+    CHECK(K_ZERO->empty());
+    std::vector<PoseEvent> events;
+    for (int index { 0 }; index < 7; ++index) {
         auto event = (*batch)->drain_events({1});
         REQUIRE(event);
         REQUIRE(event->size() == 1);
         events.push_back(event->front());
     }
-    CHECK(std::get<submap_created>(events[0]).submap == (*data)->submap);
-    CHECK(std::get<map_alignment>(events[1]).world_from_submap.scale == 1);
-    for (std::size_t index = 0; index < 3; ++index) {
-        const auto& pose = std::get<pose_estimate>(events[index + 2]);
-        CHECK(pose.frame == (*data)->poses[index].frame);
-        CHECK(pose.capture_time == (*data)->poses[index].capture_time);
-        CHECK(pose.submap_from_camera.translation ==
-              (*data)->poses[index].submap_from_camera.translation);
-        CHECK(pose.revision == (*data)->revision);
-        CHECK(pose.tracking == tracking_state::TRACKING);
-        CHECK_FALSE(pose.covariance);
+    CHECK(std::get<SubmapCreated>(events[0]).m_submap == (*K_DATA)->m_submap);
+    CHECK(std::get<MapAlignment>(events[1]).m_world_from_submap.m_scale == 1);
+    for (std::size_t index { 0uz }; index < 3uz; ++index) {
+        const auto& pose = std::get<PoseEstimate>(events[index + 2]);
+        CHECK(pose.m_frame == (*K_DATA)->m_poses[index].m_frame);
+        CHECK(pose.m_capture_time == (*K_DATA)->m_poses[index].m_capture_time);
+        CHECK(pose.m_submap_from_camera.m_translation ==
+              (*K_DATA)->m_poses[index].m_submap_from_camera.m_translation);
+        CHECK(pose.m_revision == (*K_DATA)->m_revision);
+        CHECK(pose.m_tracking == TrackingState::TRACKING);
+        CHECK_FALSE(pose.m_covariance);
     }
-    CHECK(std::get<tracking_change>(events[5]).state == tracking_state::FINISHED);
-    CHECK(std::holds_alternative<estimator_finished>(events[6]));
-    const auto empty = (*batch)->drain_events({std::numeric_limits<std::size_t>::max()});
-    REQUIRE(empty);
-    CHECK(empty->empty());
+    CHECK(std::get<TrackingChange>(events[5]).m_state == TrackingState::FINISHED);
+    CHECK(std::holds_alternative<EstimatorFinished>(events[6]));
+    const auto K_EMPTY = (*batch)->drain_events({std::numeric_limits<std::size_t>::max()});
+    REQUIRE(K_EMPTY);
+    CHECK(K_EMPTY->empty());
     batch->reset();
-    CHECK((*retained)->source_sha256 == fixture.source_digest);
-    CHECK((*retained)->observations.size() == 3);
-    CHECK((*retained)->poses.size() == 3);
-    CHECK(snapshot(fixture.root) == frozen);
+    CHECK((*K_RETAINED)->m_source_sha256 == fixture.source_digest);
+    CHECK((*K_RETAINED)->m_observations.size() == 3);
+    CHECK((*K_RETAINED)->m_poses.size() == 3);
+    CHECK(snapshot(fixture.root) == K_FROZEN);
 }
 
 TEST_CASE("batch resumed publication reuses identical manifests and preserves changed caller files",
           "[batch_admission][publication][batch_marker]") {
-    const auto windows_text = GENERATE(false, true);
-    const auto field = GENERATE(0, 1, 2, 3, 4);
-    CAPTURE(field, windows_text);
+    const auto K_WINDOWS_TEXT = GENERATE(false, true);
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4);
+    CAPTURE(K_FIELD, K_WINDOWS_TEXT);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
     auto config = configuration(fixture);
     diagnostic_worker(config, "DIAGNOSTIC_FAILURE");
-    if (windows_text)
-        force_crlf_text_writes(config);
+    if (K_WINDOWS_TEXT) force_crlf_text_writes(config);
     auto initial = make_batch_pose_estimator(config);
     REQUIRE(initial);
-    REQUIRE((*initial)->start(START));
-    for (std::size_t index = 0; index < 3; ++index) {
-        auto frame = observation(**data, index);
+    REQUIRE((*initial)->start(K_START));
+    for (std::size_t index { 0uz }; index < 3uz; ++index) {
+        auto frame = observation(**K_DATA, index);
         REQUIRE((*initial)->submit(frame));
     }
-    expect_error((*initial)->finish(), error_code::BACKEND_FAILURE);
+    expect_error((*initial)->finish(), ErrorCode::BACKEND_FAILURE);
     initial->reset();
     // Explicitly remove this diagnostic worker's marker before owned resume admission.
-    std::filesystem::remove(config.job_directory / "launches");
-    config.resume_input = true;
+    std::filesystem::remove(config.m_job_directory / "launches");
+    config.m_resume_input = true;
     auto resumed = make_batch_pose_estimator(config);
     REQUIRE(resumed);
-    REQUIRE((*resumed)->start(START));
-    for (std::size_t index = 0; index < 3; ++index) {
-        auto frame = observation(**data, index);
+    REQUIRE((*resumed)->start(K_START));
+    for (std::size_t index { 0uz }; index < 3uz; ++index) {
+        auto frame = observation(**K_DATA, index);
         REQUIRE((*resumed)->submit(frame));
     }
-    const auto journal = config.job_directory / "input/journal.json";
-    const auto request = config.job_directory / "batch-request.json";
-    if (field == 0)
-        write_bytes(journal, "changed caller journal");
-    if (field == 1)
-        write_bytes(request, "changed caller request");
-    if (field == 2) {
-        std::filesystem::remove(journal);
-        create_link(fixture.root / "caller.txt", journal);
+    const auto K_JOURNAL = config.m_job_directory / "input/journal.json";
+    const auto K_REQUEST = config.m_job_directory / "batch-request.json";
+    if (K_FIELD == 0) write_bytes(K_JOURNAL, "changed caller journal");
+    if (K_FIELD == 1) write_bytes(K_REQUEST, "changed caller request");
+    if (K_FIELD == 2) {
+        std::filesystem::remove(K_JOURNAL);
+        create_link(fixture.root / "caller.txt", K_JOURNAL);
     }
-    if (field == 3)
-        write_bytes(journal, std::string(512 * 1024 + 1, 'x'));
-    const auto before = snapshot(fixture.root);
+    if (K_FIELD == 3) write_bytes(K_JOURNAL, std::string(512 * 1024 + 1, 'x'));
+    const auto K_BEFORE = snapshot(fixture.root);
     expect_error((*resumed)->finish(),
-                 field == 4 ? error_code::BACKEND_FAILURE : error_code::IO_ERROR);
+                 K_FIELD == 4 ? ErrorCode::BACKEND_FAILURE : ErrorCode::IO_ERROR);
     auto after = snapshot(fixture.root);
-    if (field == 4) {
-        const auto marker =
-            path_utf8((config.job_directory / "launches").lexically_relative(fixture.root));
-        CHECK(after.at(marker) == "file:launch\n");
-        after.erase(marker);
+    if (K_FIELD == 4) {
+        const auto K_MARKER =
+            path_utf8((config.m_job_directory / "launches").lexically_relative(fixture.root));
+        CHECK(after.at(K_MARKER) == "file:launch\n");
+        after.erase(K_MARKER);
     }
-    CHECK(after == before);
+    CHECK(after == K_BEFORE);
 }
 
 TEST_CASE("batch cancellation after admission preserves persisted input and caller retry lease",
           "[batch_admission][cancel]") {
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
-    const auto config = configuration(fixture);
-    auto batch = make_batch_pose_estimator(config);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
+    const auto K_CONFIG = configuration(fixture);
+    auto batch = make_batch_pose_estimator(K_CONFIG);
     REQUIRE(batch);
-    REQUIRE((*batch)->start(START));
-    auto first = observation(**data, 0);
-    const auto lease = first.frame.pixels.bytes;
+    REQUIRE((*batch)->start(K_START));
+    auto first = observation(**K_DATA, 0);
+    const auto K_LEASE = first.m_frame.m_pixels.m_bytes;
     REQUIRE((*batch)->submit(first));
-    auto next = observation(**data, 1);
-    const auto saved = next;
-    const auto before = snapshot(fixture.root);
+    auto next = observation(**K_DATA, 1);
+    const auto K_SAVED = next;
+    const auto K_BEFORE = snapshot(fixture.root);
     (*batch)->request_stop();
-    expect_error((*batch)->submit(next), error_code::CANCELLED);
-    expect_error((*batch)->submit(first), error_code::CANCELLED);
-    expect_error((*batch)->finish(), error_code::CANCELLED);
-    expect_error((*batch)->drain_events({1}), error_code::CANCELLED);
-    check_preserved(next, saved);
+    expect_error((*batch)->submit(next), ErrorCode::CANCELLED);
+    expect_error((*batch)->submit(first), ErrorCode::CANCELLED);
+    expect_error((*batch)->finish(), ErrorCode::CANCELLED);
+    expect_error((*batch)->drain_events({1}), ErrorCode::CANCELLED);
+    check_preserved(next, K_SAVED);
     batch->reset();
-    CHECK(*lease == std::vector<std::byte>(6, std::byte{17}));
-    CHECK(snapshot(fixture.root) == before);
+    CHECK(*K_LEASE == std::vector<std::byte>(6, std::byte { 17 }));
+    CHECK(snapshot(fixture.root) == K_BEFORE);
 }
 
 TEST_CASE("batch RGB admission rejects dangling output links and linked input directories",
           "[batch_admission][paths]") {
-    const auto field = GENERATE(0, 1, 2);
-    CAPTURE(field);
+    const auto K_FIELD = GENERATE(0, 1, 2);
+    CAPTURE(K_FIELD);
     pose_fixture fixture;
-    const auto data = fixture.load();
-    REQUIRE(data);
-    const auto config = configuration(fixture);
-    auto batch = make_batch_pose_estimator(config);
+    const auto K_DATA = fixture.load();
+    REQUIRE(K_DATA);
+    const auto K_CONFIG = configuration(fixture);
+    auto batch = make_batch_pose_estimator(K_CONFIG);
     REQUIRE(batch);
-    REQUIRE((*batch)->start(START));
-    const auto input = config.job_directory / "input";
-    if (field < 2)
+    REQUIRE((*batch)->start(K_START));
+    const auto K_INPUT = K_CONFIG.m_job_directory / "input";
+    if (K_FIELD < 2)
         create_link(fixture.root / "missing caller output",
-                    input / (field == 0 ? "1.ppm.tmp" : "1.ppm"));
+                    K_INPUT / (K_FIELD == 0 ? "1.ppm.tmp" : "1.ppm"));
     else {
-        std::filesystem::rename(input, fixture.root / "caller directory");
-        create_link(fixture.root / "caller directory", input, true);
+        std::filesystem::rename(K_INPUT, fixture.root / "caller directory");
+        create_link(fixture.root / "caller directory", K_INPUT, true);
     }
-    auto frame = observation(**data, 0);
-    const auto saved = frame;
-    const auto before = snapshot(fixture.root);
-    expect_error((*batch)->submit(frame), error_code::INVALID_DATA);
-    check_preserved(frame, saved);
-    CHECK(snapshot(fixture.root) == before);
-    if (field < 2)
-        std::filesystem::remove(input / (field == 0 ? "1.ppm.tmp" : "1.ppm"));
+    auto frame = observation(**K_DATA, 0);
+    const auto K_SAVED = frame;
+    const auto K_BEFORE = snapshot(fixture.root);
+    expect_error((*batch)->submit(frame), ErrorCode::INVALID_DATA);
+    check_preserved(frame, K_SAVED);
+    CHECK(snapshot(fixture.root) == K_BEFORE);
+    if (K_FIELD < 2) std::filesystem::remove(K_INPUT / (K_FIELD == 0 ? "1.ppm.tmp" : "1.ppm"));
     else {
-        std::filesystem::remove(input);
-        std::filesystem::rename(fixture.root / "caller directory", input);
+        std::filesystem::remove(K_INPUT);
+        std::filesystem::rename(fixture.root / "caller directory", K_INPUT);
     }
-    const auto accepted = (*batch)->submit(frame);
-    REQUIRE(accepted);
-    CHECK(accepted->value == 1);
-    CHECK_FALSE(frame.frame.pixels.bytes);
-    CHECK(saved.frame.pixels.bytes->size() == 6);
+    const auto K_ACCEPTED = (*batch)->submit(frame);
+    REQUIRE(K_ACCEPTED);
+    CHECK(K_ACCEPTED->m_value == 1);
+    CHECK_FALSE(frame.m_frame.m_pixels.m_bytes);
+    CHECK(K_SAVED.m_frame.m_pixels.m_bytes->size() == 6);
 }

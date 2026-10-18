@@ -5,15 +5,18 @@
 #include "world_explorer/reconstruction_adapters/batch_poses.hpp"
 
 namespace world_explorer {
-struct pose_solve_request {
-    std::filesystem::path video;
-    batch_pose_config batch;
+
+struct PoseSolveRequest {
+    std::filesystem::path m_video;
+    BatchPoseConfig m_batch;
 };
+
 // Selected-frame native admission -> isolated CPU batch solve -> checked map.
 // Source digest is computed here; output must be fresh. Publishes canonical
 // poses and an initial durable map at sibling NEW_JOB.map. No appearance fitting.
-result<map_snapshot> solve_selected_pose_map(pose_solve_request request,
-                                             const std::stop_token& stop,
-                                             const log_callback& log = {});
-} // namespace world_explorer
+Result<MapSnapshot> solve_selected_pose_map(PoseSolveRequest request,
+                                            const std::stop_token& stop,
+                                            const LogCallback& log = {});
+
+}  // namespace world_explorer
 #endif

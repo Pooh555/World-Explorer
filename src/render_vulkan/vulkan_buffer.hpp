@@ -5,27 +5,31 @@
 #include <vk_mem_alloc.h>
 
 namespace world_explorer::detail {
+
 struct gpu_buffer {
-    VmaAllocator allocator{};
-    VkBuffer buffer{};
-    VmaAllocation allocation{};
-    VkDeviceSize bytes{};
-    VkDeviceSize allocation_bytes{};
-    void* mapped{};
+    VmaAllocator allocator {};
+    VkBuffer buffer {};
+    VmaAllocation allocation {};
+    VkDeviceSize bytes {};
+    VkDeviceSize allocation_bytes {};
+    void* mapped {};
 
     gpu_buffer() = default;
     gpu_buffer(const gpu_buffer&) = delete;
     gpu_buffer& operator=(const gpu_buffer&) = delete;
+
     gpu_buffer(gpu_buffer&& other) noexcept { swap(other); }
+
     gpu_buffer& operator=(gpu_buffer&& other) noexcept {
         gpu_buffer temporary(std::move(other));
         swap(temporary);
         return *this;
     }
+
     ~gpu_buffer() {
-        if (buffer)
-            vmaDestroyBuffer(allocator, buffer, allocation);
+        if (buffer) vmaDestroyBuffer(allocator, buffer, allocation);
     }
+
     void swap(gpu_buffer& other) noexcept {
         std::swap(allocator, other.allocator);
         std::swap(buffer, other.buffer);
@@ -35,6 +39,7 @@ struct gpu_buffer {
         std::swap(mapped, other.mapped);
     }
 };
-} // namespace world_explorer::detail
 
-#endif // WORLD_EXPLORER_RENDER_VULKAN_BUFFER_HPP
+}  // namespace world_explorer::detail
+
+#endif  // WORLD_EXPLORER_RENDER_VULKAN_BUFFER_HPP

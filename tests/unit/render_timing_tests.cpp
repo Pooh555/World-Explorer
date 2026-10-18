@@ -1,7 +1,9 @@
 #include "world_explorer/render_core/timing.hpp"
+
 #include <catch2/catch_test_macros.hpp>
 
 using namespace world_explorer;
+
 TEST_CASE("GPU timestamp durations validate scales and handle counter wrapping") {
     REQUIRE(timestamp_duration_ms(10, 30, 64, 50000).value() == 1);
     REQUIRE(timestamp_duration_ms(0xfffffff0, 0x10, 32, 31250).value() == 1);
@@ -14,6 +16,6 @@ TEST_CASE("GPU timestamp durations validate scales and handle counter wrapping")
     REQUIRE(!timestamp_duration_ms(0, 1, 64, -1));
     REQUIRE(!timestamp_duration_ms(0, 1, 64, std::numeric_limits<double>::infinity()));
     REQUIRE(!timestamp_duration_ms(0, 1, 64, std::numeric_limits<double>::quiet_NaN()));
-    REQUIRE(!timestamp_duration_ms(0, std::numeric_limits<std::uint64_t>::max(), 64,
-                                   std::numeric_limits<double>::max()));
+    REQUIRE(!timestamp_duration_ms(
+        0, std::numeric_limits<std::uint64_t>::max(), 64, std::numeric_limits<double>::max()));
 }

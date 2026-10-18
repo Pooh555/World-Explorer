@@ -3,73 +3,94 @@
 #include "world_explorer/core/result.hpp"
 #include "world_explorer/core/types.hpp"
 #include "world_explorer/reconstruction_adapters/process.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <span>
 #include <variant>
+
 namespace world_explorer {
-inline constexpr std::size_t WORKER_MESSAGE_LIMIT = std::size_t{1024} * 1024;
-enum class worker_command_kind : std::uint8_t { START, CANCEL };
-struct worker_command_acknowledged {
-    worker_command_kind kind;
-    operation_id operation;
+
+inline constexpr std::size_t K_WORKER_MESSAGE_LIMIT { 1024uz * 1024uz };
+enum class WorkerCommandKind : std::uint8_t { START, CANCEL };
+
+struct WorkerCommandAcknowledged {
+    WorkerCommandKind m_kind;
+    OperationId m_operation;
 };
-struct worker_handshake {
-    std::string backend, backend_version, checkpoint_semantics, checkpoint_rights;
-    std::vector<std::string> sensors, device_options;
-    bool batch{}, streaming_tracking{};
-    std::uint32_t max_frames{};
-    std::uint64_t max_source_bytes{}, max_output_bytes{};
+
+struct WorkerHandshake {
+    std::string m_backend, m_backend_version, m_checkpoint_semantics, m_checkpoint_rights;
+    std::vector<std::string> m_sensors, m_device_options;
+    bool m_batch {}, m_streaming_tracking {};
+    std::uint32_t m_max_frames {};
+    std::uint64_t m_max_source_bytes {}, m_max_output_bytes {};
 };
-struct worker_progress {
-    std::string stage, message;
-    double elapsed_seconds{};
+
+struct WorkerProgress {
+    std::string m_stage, m_message;
+    double m_elapsed_seconds {};
 };
-struct worker_artifact {
-    std::filesystem::path path;
-    std::string sha256;
-    std::uint64_t bytes{};
+
+struct WorkerArtifact {
+    std::filesystem::path m_path;
+    std::string m_sha256;
+    std::uint64_t m_bytes {};
 };
-struct worker_completed {
-    std::string stage;
-    std::optional<worker_artifact> artifact;
+
+struct WorkerCompleted {
+    std::string m_stage;
+    std::optional<WorkerArtifact> m_artifact;
 };
-struct worker_failure {
-    std::string code, stage, message, recovery;
+
+struct WorkerFailure {
+    std::string m_code, m_stage, m_message, m_recovery;
 };
-using worker_event = std::variant<worker_handshake, worker_progress, worker_completed,
-                                  worker_failure, worker_command_acknowledged>;
-using worker_event_callback = std::function<void(const worker_event&)>;
+
+using WorkerEvent = std::variant<WorkerHandshake,
+                                 WorkerProgress,
+                                 WorkerCompleted,
+                                 WorkerFailure,
+                                 WorkerCommandAcknowledged>;
+using WorkerEventCallback = std::function<void(const WorkerEvent&)>;
+
 // Single owner. Bounded framing, structural verification and ordered v2 session
 // validation precede every callback. A failed stream is permanently invalid.
-class worker_stream_decoder {
+class WorkerStreamDecoder {
   public:
-    explicit worker_stream_decoder(std::string session) : session_(std::move(session)) {}
-    void expect_start() noexcept { start_sent_ = true; }
-    void expect_cancel() noexcept { cancel_sent_ = true; }
-    result<void> feed(std::span<const std::byte> bytes, const worker_event_callback& callback);
-    result<void> finish(int exit_code) const;
+    explicit WorkerStreamDecoder(std::string session) : m_session(std::move(session)) { }
+
+    void expect_start() noexcept { m_start_sent = true; }
+
+    void expect_cancel() noexcept { m_cancel_sent = true; }
+
+    Result<void> feed(std::span<const std::byte> bytes, const WorkerEventCallback& callback);
+    Result<void> finish(int exit_code) const;
 
   private:
-    result<worker_event> decode();
-    std::vector<std::byte> pending_;
-    std::size_t target_{4};
-    std::uint64_t sequence_{};
-    bool handshake_{}, terminal_{}, successful_{}, invalid_{};
-    std::string session_;
-    bool start_sent_{}, started_{}, cancel_sent_{};
+    Result<WorkerEvent> decode();
+    std::vector<std::byte> m_pending;
+    std::size_t m_target { 4uz };
+    std::uint64_t m_sequence {};
+    bool m_handshake {}, m_terminal {}, m_successful {}, m_invalid {};
+    std::string m_session;
+    bool m_start_sent {}, m_started {}, m_cancel_sent {};
 };
-result<std::vector<std::byte>> encode_worker_start(const std::string& session,
+
+Result<std::vector<std::byte>> encode_worker_start(const std::string& session,
                                                    const std::vector<std::string>& arguments);
-result<std::vector<std::byte>> encode_worker_cancel(const std::string& session);
+Result<std::vector<std::byte>> encode_worker_cancel(const std::string& session);
 // Local one-shot batch invocation. START follows verified capabilities; bounded
 // stdin commands and stdout events bind the session. Cancellation first requests
 // a checkpoint-preserving stop, then enforces process-tree termination.
-result<int> execute_worker_protocol(const std::string& python, const std::filesystem::path& script,
+Result<int> execute_worker_protocol(const std::string& python,
+                                    const std::filesystem::path& script,
                                     const std::vector<std::string>& arguments,
-                                    const std::stop_token& stop, const process_output_callback& log,
-                                    const worker_event_callback& observed = {});
-} // namespace world_explorer
+                                    const std::stop_token& stop,
+                                    const ProcessOutputCallback& log,
+                                    const WorkerEventCallback& observed = {});
+
+}  // namespace world_explorer
 #endif

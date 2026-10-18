@@ -1,14 +1,18 @@
 #ifndef WORLD_EXPLORER_TEST_INSPECTION_FIXTURE_HPP
 #define WORLD_EXPLORER_TEST_INSPECTION_FIXTURE_HPP
 #include "world_explorer/application/video_preflight.hpp"
+
 #include <chrono>
 #include <fstream>
+
 #include <nlohmann/json.hpp>
 
 namespace world_explorer::test {
+
 struct inspection_fixture {
     std::filesystem::path root;
-    video_inspection_request request;
+    VideoInspectionRequest request;
+
     explicit inspection_fixture(std::filesystem::path directory = {},
                                 std::filesystem::path video = {},
                                 const std::string& mode = "valid") {
@@ -23,10 +27,10 @@ struct inspection_fixture {
             video = root / "source $ ; capture.mp4";
             std::ofstream(video) << "synthetic diagnostic, not a video";
         }
-        request = {std::move(video),
-                   {root / "metadata $ ; job", {root / "worker with spaces.py", WE_TEST_PYTHON}, 1},
-                   {root / "future-map", root / "future-fit", root / "future-scene"}};
-        std::ofstream script(request.configuration.worker.script);
+        request = { std::move(video),
+                   { root / "metadata $ ; job", { root / "worker with spaces.py", WE_TEST_PYTHON }, 1 },
+                   { root / "future-map", root / "future-fit", root / "future-scene" } };
+        std::ofstream script(request.m_configuration.m_worker.m_script);
         script << "import sys, json, hashlib, argparse, time, threading\nfrom pathlib import Path\n"
                << "sys.path.insert(0," << nlohmann::json(WE_TEST_PROTOCOL_MODULE).dump() << ")\n"
                << "import we_protocol as p\nmode=" << nlohmann::json(mode).dump()
@@ -84,10 +88,12 @@ struct inspection_fixture {
                   "if mode=='wrong_stage': p.completed('poses',stage/'result.json')\n"
                   "else: p.completed('inspect',stage/'result.json')\n";
     }
+
     ~inspection_fixture() {
         std::error_code ignored;
         std::filesystem::remove_all(root, ignored);
     }
 };
-} // namespace world_explorer::test
+
+}  // namespace world_explorer::test
 #endif

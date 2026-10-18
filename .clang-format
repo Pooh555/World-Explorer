@@ -4,4 +4,31 @@ ColumnLimit: 100
 BreakBeforeBraces: Attach
 PointerAlignment: Left
 ReferenceAlignment: Left
+SpaceBeforeCpp11BracedList: true
+SpaceInEmptyBraces: Always
+SpacesInContainerLiterals: true
 SortIncludes: CaseSensitive
+DerivePointerAlignment: false
+UseTab: Never
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBinaryOperators: None
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortBlocksOnASingleLine: Empty
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+SeparateDefinitionBlocks: Always
+EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
+WrapNamespaceBodyWithEmptyLines: Always
+SpacesBeforeTrailingComments: 2
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"'
+    Priority: 1
+  - Regex: '^<[^/]+>'
+    Priority: 2
+  - Regex: '.*'
+    Priority: 3

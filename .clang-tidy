@@ -2,19 +2,27 @@ Checks: '-*,clang-analyzer-*,bugprone-*,performance-*,portability-*,modernize-us
 HeaderFilterRegex: 'include/world_explorer/.*'
 CheckOptions:
   readability-identifier-naming.NamespaceCase: lower_case
-  readability-identifier-naming.ClassCase: lower_case
-  readability-identifier-naming.StructCase: lower_case
-  readability-identifier-naming.EnumCase: lower_case
-  readability-identifier-naming.TypeAliasCase: lower_case
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.TypeAliasIgnoredRegexp: '^(value_type|size_type|difference_type|pointer|const_pointer|reference|const_reference|iterator|const_iterator)$'
   readability-identifier-naming.FunctionCase: lower_case
   readability-identifier-naming.MethodCase: lower_case
   readability-identifier-naming.VariableCase: lower_case
   readability-identifier-naming.ParameterCase: lower_case
   readability-identifier-naming.MemberCase: lower_case
+  readability-identifier-naming.MemberPrefix: 'm_'
   readability-identifier-naming.PrivateMemberCase: lower_case
-  readability-identifier-naming.PrivateMemberSuffix: '_'
+  readability-identifier-naming.PrivateMemberPrefix: 'm_'
   readability-identifier-naming.GlobalConstantCase: UPPER_CASE
+  readability-identifier-naming.GlobalConstantPrefix: 'K_'
   readability-identifier-naming.ConstexprVariableCase: UPPER_CASE
-  readability-identifier-naming.TemplateParameterCase: lower_case
+  readability-identifier-naming.ConstexprVariablePrefix: 'K_'
+  readability-identifier-naming.LocalConstantCase: UPPER_CASE
+  readability-identifier-naming.LocalConstantPrefix: 'K_'
+  readability-identifier-naming.StaticConstantCase: UPPER_CASE
+  readability-identifier-naming.StaticConstantPrefix: 'K_'
+  readability-identifier-naming.TemplateParameterCase: CamelCase
   readability-identifier-naming.EnumConstantCase: UPPER_CASE
   readability-identifier-naming.MacroDefinitionCase: UPPER_CASE

@@ -3,9 +3,11 @@
 #include "pose_fixture.hpp"
 
 namespace world_explorer::test {
+
 // These workers copy tiny synthetic assets to exercise the native coordinator.
 // They never solve poses or qualify capture completion/appearance.
-inline void stage_worker(const std::filesystem::path& script_path, const pose_fixture& fixture,
+inline void stage_worker(const std::filesystem::path& script_path,
+                         const pose_fixture& fixture,
                          const std::string& mode = "valid") {
     std::ofstream script(script_path);
     script
@@ -61,5 +63,6 @@ inline void stage_worker(const std::filesystem::path& script_path, const pose_fi
            "'source_sha256':source,'journal_sha256':journal_hash,'output':str(poses)}))\n"
            "p.completed('poses',poses/'result.json')\n";
 }
-} // namespace world_explorer::test
+
+}  // namespace world_explorer::test
 #endif

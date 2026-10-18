@@ -2,69 +2,82 @@
 #define WORLD_EXPLORER_APPLICATION_VIDEO_PREFLIGHT_HPP
 
 #include "world_explorer/application/commands.hpp"
+
 #include <cstdint>
 
 namespace world_explorer {
+
 // Explicit read-only adoption of an immutable metadata inspection. The digest
 // selects completion.json, not a mutable job pointer or a directory search.
-struct retained_video_inspection {
-    std::filesystem::path stage;
-    std::string completion_sha256;
+struct RetainedVideoInspection {
+    std::filesystem::path m_stage;
+    std::string m_completion_sha256;
     // Current available space required at each output, not a disk reservation
     // or a guarantee of whole-job peak storage. Must be explicitly selected.
-    std::uint64_t minimum_free_bytes{};
+    std::uint64_t m_minimum_free_bytes {};
 };
-struct video_preflight_request {
-    std::filesystem::path video;
-    retained_video_inspection inspection;
-    std::vector<std::filesystem::path> outputs;
+
+struct VideoPreflightRequest {
+    std::filesystem::path m_video;
+    RetainedVideoInspection m_inspection;
+    std::vector<std::filesystem::path> m_outputs;
 };
-struct output_storage_report {
-    std::filesystem::path output;
-    std::filesystem::path existing_directory;
-    std::uintmax_t available_bytes{};
+
+struct OutputStorageReport {
+    std::filesystem::path m_output;
+    std::filesystem::path m_existing_directory;
+    std::uintmax_t m_available_bytes {};
 };
+
 // Read-only snapshot for at most four destinations, using their nearest existing
 // directory. Unknown/insufficient space fails; no reservation or aggregate peak estimate.
-result<std::vector<output_storage_report>>
+Result<std::vector<OutputStorageReport>>
 inspect_output_storage(const std::vector<std::filesystem::path>& outputs,
-                       std::uint64_t minimum_free_bytes, const std::stop_token& stop = {});
-struct video_preflight_report {
-    std::string source_sha256;
-    std::string inspection_completion_sha256;
-    std::uint64_t source_bytes{};
-    std::uint32_t width{}, height{};
-    double duration_seconds{};
-    std::int32_t rotation_degrees{};
-    std::int64_t time_base_numerator{}, time_base_denominator{};
-    std::string codec_name;
-    std::vector<output_storage_report> storage;
+                       std::uint64_t minimum_free_bytes,
+                       const std::stop_token& stop = {});
+
+struct VideoPreflightReport {
+    std::string m_source_sha256;
+    std::string m_inspection_completion_sha256;
+    std::uint64_t m_source_bytes {};
+    std::uint32_t m_width {}, m_height {};
+    double m_duration_seconds {};
+    std::int32_t m_rotation_degrees {};
+    std::int64_t m_time_base_numerator {}, m_time_base_denominator {};
+    std::string m_codec_name;
+    std::vector<OutputStorageReport> m_storage;
 };
-struct automatic_video_inspection {
-    std::filesystem::path job_directory;
-    worker_configuration worker;
-    std::uint64_t minimum_free_bytes{};
+
+struct AutomaticVideoInspection {
+    std::filesystem::path m_job_directory;
+    WorkerConfiguration m_worker;
+    std::uint64_t m_minimum_free_bytes {};
 };
-struct video_inspection_request {
-    std::filesystem::path video;
-    automatic_video_inspection configuration;
-    std::vector<std::filesystem::path> outputs;
+
+struct VideoInspectionRequest {
+    std::filesystem::path m_video;
+    AutomaticVideoInspection m_configuration;
+    std::vector<std::filesystem::path> m_outputs;
 };
-struct inspected_video {
-    retained_video_inspection inspection;
-    video_preflight_report report;
+
+struct InspectedVideo {
+    RetainedVideoInspection m_inspection;
+    VideoPreflightReport m_report;
 };
+
 // Creates a fresh owned metadata job or restarts the same source/worker identity.
 // Capabilities gate START, verified completion selects a contained immutable
 // inspection, and preflight checks it before return. No pose solve or RGB decode.
-result<inspected_video> inspect_video(const video_inspection_request& request,
-                                      const std::stop_token& stop, const log_callback& log = {},
-                                      const worker_event_callback& observed = {});
+Result<InspectedVideo> inspect_video(const VideoInspectionRequest& request,
+                                     const std::stop_token& stop,
+                                     const LogCallback& log = {},
+                                     const WorkerEventCallback& observed = {});
 // Bounded verification, no writes, pixel decoding or backend dependency. Checks
 // source/metadata identity and current storage; does not certify codec decoding,
 // frame selection quality, color conversion, geometry or reconstruction quality.
-result<video_preflight_report> preflight_video(const video_preflight_request& request,
-                                               const std::stop_token& stop,
-                                               const log_callback& log = {});
-} // namespace world_explorer
+Result<VideoPreflightReport> preflight_video(const VideoPreflightRequest& request,
+                                             const std::stop_token& stop,
+                                             const LogCallback& log = {});
+
+}  // namespace world_explorer
 #endif

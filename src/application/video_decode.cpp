@@ -1,205 +1,207 @@
 #include "world_explorer/application/video_decode.hpp"
+
 #include "job_validation.hpp"
 #include "owned_job.hpp"
 #include "video_preflight_detail.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/worker_artifacts.hpp"
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <numeric>
 
 namespace world_explorer {
-result<decoded_video> adopt_video_decode(const retained_video_decode& selected,
-                                         const std::string& source_sha256,
-                                         const std::stop_token& stop) {
+
+Result<DecodedVideo> adopt_video_decode(const RetainedVideoDecode& selected,
+                                        const std::string& source_sha256,
+                                        const std::stop_token& stop) {
     try {
-        if (!job_detail::valid_digest(selected.completion_sha256) ||
+        if (!job_detail::valid_digest(selected.m_completion_sha256) ||
             !job_detail::valid_digest(source_sha256))
-            return fail(error_code::INVALID_ARGUMENT, "Invalid selected decode/source digest");
-        const auto stage = std::filesystem::canonical(selected.stage);
-        const auto name = stage.filename().string();
-        if (std::filesystem::is_symlink(selected.stage) ||
-            stage.parent_path().filename() != "stages" || !name.starts_with("decode-") ||
-            !job_detail::valid_digest(name.substr(7)))
-            return fail(error_code::INVALID_DATA, "Select a committed decode stage explicitly");
-        const auto verified = verify_committed_stage(stage, name.substr(7), stop);
-        if (!verified)
-            return std::unexpected(verified.error());
-        if (verified->completion_sha256 != selected.completion_sha256 ||
-            !verified->assets.contains("result.json"))
-            return fail(error_code::INVALID_DATA, "Decode completion differs from selection");
-        const auto catalog = inspect_decoded_frame_source(
-            {.stage_directory = stage, .source_sha256 = source_sha256}, stop);
-        if (!catalog)
-            return std::unexpected(catalog.error());
-        if (catalog->completion_sha256 != selected.completion_sha256)
-            return fail(error_code::INVALID_DATA, "Decode changed during catalog admission");
-        return decoded_video{{stage, selected.completion_sha256}, *catalog};
+            return fail(ErrorCode::INVALID_ARGUMENT, "Invalid selected decode/source digest");
+        const auto K_STAGE = std::filesystem::canonical(selected.m_stage);
+        const auto K_NAME = K_STAGE.filename().string();
+        if (std::filesystem::is_symlink(selected.m_stage) ||
+            K_STAGE.parent_path().filename() != "stages" || !K_NAME.starts_with("decode-") ||
+            !job_detail::valid_digest(K_NAME.substr(7)))
+            return fail(ErrorCode::INVALID_DATA, "Select a committed decode stage explicitly");
+        const auto K_VERIFIED = verify_committed_stage(K_STAGE, K_NAME.substr(7), stop);
+        if (!K_VERIFIED) return std::unexpected(K_VERIFIED.error());
+        if (K_VERIFIED->m_completion_sha256 != selected.m_completion_sha256 ||
+            !K_VERIFIED->m_assets.contains("result.json"))
+            return fail(ErrorCode::INVALID_DATA, "Decode completion differs from selection");
+        const auto K_CATALOG = inspect_decoded_frame_source(
+            {.m_stage_directory = K_STAGE, .m_source_sha256 = source_sha256}, stop);
+        if (!K_CATALOG) return std::unexpected(K_CATALOG.error());
+        if (K_CATALOG->m_completion_sha256 != selected.m_completion_sha256)
+            return fail(ErrorCode::INVALID_DATA, "Decode changed during catalog admission");
+        return DecodedVideo {{K_STAGE, selected.m_completion_sha256}, *K_CATALOG};
     } catch (const std::exception& exception) {
-        return fail(error_code::INVALID_DATA,
+        return fail(ErrorCode::INVALID_DATA,
                     "Decode admission failed: " + std::string(exception.what()));
     }
 }
-result<decoded_video> decode_video(const video_decode_request& request, const std::stop_token& stop,
-                                   const log_callback& log, const worker_event_callback& observed) {
+
+Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
+                                  const std::stop_token& stop,
+                                  const LogCallback& log,
+                                  const WorkerEventCallback& observed) {
     try {
-        const auto& config = request.configuration;
-        if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Video decode cancelled");
-        if (config.job_directory.empty() || config.worker.script.empty() ||
-            config.worker.python.empty() || config.worker.python.size() > 4096 ||
-            config.worker.python.find('\0') != std::string::npos ||
-            !config.worker.framed_protocol || !std::isfinite(config.sample_fps) ||
-            config.sample_fps < .1 || config.sample_fps > 4 || config.max_frames < 3 ||
-            config.max_frames > 120 || !config.cpu_threads || config.cpu_threads > 4 ||
-            !config.max_output_bytes || config.max_output_bytes > 32ULL * 1024 * 1024 * 1024)
-            return fail(error_code::INVALID_ARGUMENT,
-                        "Invalid explicit video decode configuration");
-        const auto preflight =
-            preflight_video({request.video, request.inspection, request.outputs}, stop);
-        if (!preflight)
-            return std::unexpected(preflight.error());
-        if (std::filesystem::is_symlink(config.job_directory))
-            return fail(error_code::INVALID_DATA, "Decode job may not be a symlink");
-        const auto directory = std::filesystem::weakly_canonical(config.job_directory);
-        const auto video = std::filesystem::canonical(request.video);
-        const auto script = std::filesystem::canonical(config.worker.script);
-        const auto inspection_job =
-            std::filesystem::canonical(request.inspection.stage).parent_path().parent_path();
-        auto protected_paths = request.outputs;
-        protected_paths.insert(protected_paths.end(), {video, script, inspection_job});
-        if (std::filesystem::path(config.worker.python).has_parent_path())
-            protected_paths.emplace_back(std::filesystem::weakly_canonical(config.worker.python));
+        const auto& config = request.m_configuration;
+        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Video decode cancelled");
+        if (config.m_job_directory.empty() || config.m_worker.m_script.empty() ||
+            config.m_worker.m_python.empty() || config.m_worker.m_python.size() > 4096 ||
+            config.m_worker.m_python.find('\0') != std::string::npos ||
+            !config.m_worker.m_framed_protocol || !std::isfinite(config.m_sample_fps) ||
+            config.m_sample_fps < .1 || config.m_sample_fps > 4 || config.m_max_frames < 3 ||
+            config.m_max_frames > 120 || !config.m_cpu_threads || config.m_cpu_threads > 4 ||
+            !config.m_max_output_bytes || config.m_max_output_bytes > 32ULL * 1024 * 1024 * 1024)
+            return fail(ErrorCode::INVALID_ARGUMENT, "Invalid explicit video decode configuration");
+        const auto K_PREFLIGHT =
+            preflight_video({request.m_video, request.m_inspection, request.m_outputs}, stop);
+        if (!K_PREFLIGHT) return std::unexpected(K_PREFLIGHT.error());
+        if (std::filesystem::is_symlink(config.m_job_directory))
+            return fail(ErrorCode::INVALID_DATA, "Decode job may not be a symlink");
+        const auto K_DIRECTORY = std::filesystem::weakly_canonical(config.m_job_directory);
+        const auto K_VIDEO = std::filesystem::canonical(request.m_video);
+        const auto K_SCRIPT = std::filesystem::canonical(config.m_worker.m_script);
+        const auto K_INSPECTION_JOB =
+            std::filesystem::canonical(request.m_inspection.m_stage).parent_path().parent_path();
+        auto protected_paths = request.m_outputs;
+        protected_paths.insert(protected_paths.end(), {K_VIDEO, K_SCRIPT, K_INSPECTION_JOB});
+        if (std::filesystem::path(config.m_worker.m_python).has_parent_path())
+            protected_paths.emplace_back(
+                std::filesystem::weakly_canonical(config.m_worker.m_python));
         for (const auto& path : protected_paths)
-            if (video_detail::overlaps(directory, std::filesystem::weakly_canonical(path)))
-                return fail(error_code::INVALID_ARGUMENT,
+            if (video_detail::overlaps(K_DIRECTORY, std::filesystem::weakly_canonical(path)))
+                return fail(ErrorCode::INVALID_ARGUMENT,
                             "Decode job overlaps another input/output");
-        auto storage_paths = request.outputs;
-        storage_paths.push_back(directory);
-        const auto storage =
-            video_detail::check_storage(storage_paths, request.inspection.minimum_free_bytes, stop);
-        if (!storage)
-            return std::unexpected(storage.error());
-        const auto script_hash = sha256_file(script, std::size_t{16} * 1024 * 1024, stop);
-        if (!script_hash)
-            return std::unexpected(script_hash.error());
-        const nlohmann::json parameters{{"sample_fps", config.sample_fps},
-                                        {"max_frames", config.max_frames},
-                                        {"cpu_threads", config.cpu_threads},
-                                        {"max_output_bytes", config.max_output_bytes}};
-        const nlohmann::json owner{{"schema_version", 1},
-                                   {"role", "video_decode"},
-                                   {"protocol_major", 2},
-                                   {"source_sha256", preflight->source_sha256},
-                                   {"inspection_sha256", request.inspection.completion_sha256},
-                                   {"worker_sha256", *script_hash},
-                                   {"worker_script", script.string()},
-                                   {"python", config.worker.python},
-                                   {"parameters", parameters}};
-        auto lock = job_detail::open_owned_job(
-            directory, {".we-decode-owner.json", ".we-decode.lock"}, owner,
-            {"decode-request.json", "request.json", "capabilities.json", "result.json",
-             "inspect.json", "decode.json", "stages", "job.lock"},
-            stop);
-        if (!lock)
-            return std::unexpected(lock.error());
-        if (std::filesystem::exists(std::filesystem::symlink_status(directory / "job.lock")))
-            return fail(error_code::WOULD_BLOCK,
+        auto storage_paths = request.m_outputs;
+        storage_paths.push_back(K_DIRECTORY);
+        const auto K_STORAGE = video_detail::check_storage(
+            storage_paths, request.m_inspection.m_minimum_free_bytes, stop);
+        if (!K_STORAGE) return std::unexpected(K_STORAGE.error());
+        const auto K_SCRIPT_HASH = sha256_file(K_SCRIPT, 16uz * 1024 * 1024, stop);
+        if (!K_SCRIPT_HASH) return std::unexpected(K_SCRIPT_HASH.error());
+        const nlohmann::json K_PARAMETERS {{"sample_fps", config.m_sample_fps},
+                                           {"max_frames", config.m_max_frames},
+                                           {"cpu_threads", config.m_cpu_threads},
+                                           {"max_output_bytes", config.m_max_output_bytes}};
+        const nlohmann::json K_OWNER {
+            {"schema_version", 1},
+            {"role", "video_decode"},
+            {"protocol_major", 2},
+            {"source_sha256", K_PREFLIGHT->m_source_sha256},
+            {"inspection_sha256", request.m_inspection.m_completion_sha256},
+            {"worker_sha256", *K_SCRIPT_HASH},
+            {"worker_script", K_SCRIPT.string()},
+            {"python", config.m_worker.m_python},
+            {"parameters", K_PARAMETERS}};
+        auto lock = job_detail::open_owned_job(K_DIRECTORY,
+                                               {".we-decode-owner.json", ".we-decode.lock"},
+                                               K_OWNER,
+                                               {"decode-request.json",
+                                                "request.json",
+                                                "capabilities.json",
+                                                "result.json",
+                                                "inspect.json",
+                                                "decode.json",
+                                                "stages",
+                                                "job.lock"},
+                                               stop);
+        if (!lock) return std::unexpected(lock.error());
+        if (std::filesystem::exists(std::filesystem::symlink_status(K_DIRECTORY / "job.lock")))
+            return fail(ErrorCode::WOULD_BLOCK,
                         "Decode worker lock exists; verify its process is gone before recovery");
-        const nlohmann::json worker_request{{"schema_version", 1},
-                                            {"source", video.string()},
-                                            {"job_dir", directory.string()},
-                                            {"stop_after", "decode"},
-                                            {"sample_fps", config.sample_fps},
-                                            {"limits",
-                                             {{"max_frames", config.max_frames},
-                                              {"cpu_threads", config.cpu_threads},
-                                              {"max_output_bytes", config.max_output_bytes}}}};
-        const auto published =
-            job_detail::publish_owned_json(directory / "decode-request.json", worker_request, stop);
-        if (!published)
-            return std::unexpected(published.error());
+        const nlohmann::json K_WORKER_REQUEST {{"schema_version", 1},
+                                               {"source", K_VIDEO.string()},
+                                               {"job_dir", K_DIRECTORY.string()},
+                                               {"stop_after", "decode"},
+                                               {"sample_fps", config.m_sample_fps},
+                                               {"limits",
+                                                {{"max_frames", config.m_max_frames},
+                                                 {"cpu_threads", config.m_cpu_threads},
+                                                 {"max_output_bytes", config.m_max_output_bytes}}}};
+        const auto K_PUBLISHED = job_detail::publish_owned_json(
+            K_DIRECTORY / "decode-request.json", K_WORKER_REQUEST, stop);
+        if (!K_PUBLISHED) return std::unexpected(K_PUBLISHED.error());
         if (log)
             log("Decoding selected video frames locally (timestamp sampling; diagnostics "
                 "unqualified).\n");
         std::stop_source cancellation;
         std::stop_callback forward(stop, [&] { cancellation.request_stop(); });
-        std::optional<error> failure;
-        std::optional<worker_completed> completion;
-        const auto executed = execute_worker_protocol(
-            config.worker.python, script,
-            {"run", "--request", (directory / "decode-request.json").string()},
-            cancellation.get_token(), log, [&](const worker_event& event) {
-                if (const auto* capability = std::get_if<worker_handshake>(&event))
-                    if (!capability->batch ||
-                        std::ranges::find(capability->sensors, std::string{"video"}) ==
-                            capability->sensors.end() ||
-                        capability->max_frames < config.max_frames ||
-                        capability->max_source_bytes < preflight->source_bytes ||
-                        capability->max_output_bytes < config.max_output_bytes) {
-                        failure = error{error_code::UNSUPPORTED_OPERATION,
-                                        "Worker lacks video decode capacity"};
+        std::optional<Error> failure;
+        std::optional<WorkerCompleted> completion;
+        const auto K_EXECUTED = execute_worker_protocol(
+            config.m_worker.m_python,
+            K_SCRIPT,
+            {"run", "--request", (K_DIRECTORY / "decode-request.json").string()},
+            cancellation.get_token(),
+            log,
+            [&](const WorkerEvent& event) {
+                if (const auto* capability = std::get_if<WorkerHandshake>(&event))
+                    if (!capability->m_batch ||
+                        std::ranges::find(capability->m_sensors, std::string { "video" }) ==
+                            capability->m_sensors.end() ||
+                        capability->m_max_frames < config.m_max_frames ||
+                        capability->m_max_source_bytes < K_PREFLIGHT->m_source_bytes ||
+                        capability->m_max_output_bytes < config.m_max_output_bytes) {
+                        failure = Error {ErrorCode::UNSUPPORTED_OPERATION,
+                                         "Worker lacks video decode capacity"};
                         cancellation.request_stop();
                     }
-                if (const auto* value = std::get_if<worker_completed>(&event))
-                    completion = *value;
-                if (observed)
-                    observed(event);
+                if (const auto* value = std::get_if<WorkerCompleted>(&event)) completion = *value;
+                if (observed) observed(event);
             });
         if (stop.stop_requested())
-            return fail(error_code::CANCELLED, "Decode cancelled; committed stages retained");
-        if (failure)
-            return std::unexpected(*failure);
-        if (!executed)
-            return std::unexpected(executed.error());
-        if (*executed != 0)
-            return fail(error_code::BACKEND_FAILURE,
+            return fail(ErrorCode::CANCELLED, "Decode cancelled; committed stages retained");
+        if (failure) return std::unexpected(*failure);
+        if (!K_EXECUTED) return std::unexpected(K_EXECUTED.error());
+        if (*K_EXECUTED != 0)
+            return fail(ErrorCode::BACKEND_FAILURE,
                         "Decode worker failed; previous scene retained");
-        if (!completion || completion->stage != "decode" || !completion->artifact)
-            return fail(error_code::INVALID_DATA, "Worker did not return a decode artifact");
-        const auto& artifact = *completion->artifact;
-        const auto stage = std::filesystem::canonical(artifact.path).parent_path();
-        if (artifact.path != stage / "result.json" || stage.parent_path() != directory / "stages")
-            return fail(error_code::INVALID_DATA, "Decode artifact escapes its owned job");
-        const auto digest =
-            sha256_file(stage / "completion.json", std::size_t{16} * 1024 * 1024, stop);
-        if (!digest)
-            return std::unexpected(digest.error());
-        const auto checked = adopt_video_decode({stage, *digest}, preflight->source_sha256, stop);
-        if (!checked)
-            return std::unexpected(checked.error());
-        const auto divisor =
-            std::gcd(preflight->time_base_numerator, preflight->time_base_denominator);
-        const bool rotated = preflight->rotation_degrees % 180 != 0;
-        if (checked->catalog.observations.size() > config.max_frames)
-            return fail(error_code::RESOURCE_EXHAUSTED, "Decode exceeds selected frame budget");
-        for (const auto& frame : checked->catalog.observations)
-            if (frame.width != (rotated ? preflight->height : preflight->width) ||
-                frame.height != (rotated ? preflight->width : preflight->height) ||
-                frame.original_timestamp.time_base_numerator !=
-                    preflight->time_base_numerator / divisor ||
-                frame.original_timestamp.time_base_denominator !=
-                    preflight->time_base_denominator / divisor)
-                return fail(error_code::INVALID_DATA,
+        if (!completion || completion->m_stage != "decode" || !completion->m_artifact)
+            return fail(ErrorCode::INVALID_DATA, "Worker did not return a decode artifact");
+        const auto& artifact = *completion->m_artifact;
+        const auto K_STAGE = std::filesystem::canonical(artifact.m_path).parent_path();
+        if (artifact.m_path != K_STAGE / "result.json" ||
+            K_STAGE.parent_path() != K_DIRECTORY / "stages")
+            return fail(ErrorCode::INVALID_DATA, "Decode artifact escapes its owned job");
+        const auto K_DIGEST = sha256_file(K_STAGE / "completion.json", 16uz * 1024 * 1024, stop);
+        if (!K_DIGEST) return std::unexpected(K_DIGEST.error());
+        const auto K_CHECKED =
+            adopt_video_decode({K_STAGE, *K_DIGEST}, K_PREFLIGHT->m_source_sha256, stop);
+        if (!K_CHECKED) return std::unexpected(K_CHECKED.error());
+        const auto K_DIVISOR =
+            std::gcd(K_PREFLIGHT->m_time_base_numerator, K_PREFLIGHT->m_time_base_denominator);
+        const bool K_ROTATED = K_PREFLIGHT->m_rotation_degrees % 180 != 0;
+        if (K_CHECKED->m_catalog.m_observations.size() > config.m_max_frames)
+            return fail(ErrorCode::RESOURCE_EXHAUSTED, "Decode exceeds selected frame budget");
+        for (const auto& frame : K_CHECKED->m_catalog.m_observations)
+            if (frame.m_width != (K_ROTATED ? K_PREFLIGHT->m_height : K_PREFLIGHT->m_width) ||
+                frame.m_height != (K_ROTATED ? K_PREFLIGHT->m_width : K_PREFLIGHT->m_height) ||
+                frame.m_original_timestamp.m_time_base_numerator !=
+                    K_PREFLIGHT->m_time_base_numerator / K_DIVISOR ||
+                frame.m_original_timestamp.m_time_base_denominator !=
+                    K_PREFLIGHT->m_time_base_denominator / K_DIVISOR)
+                return fail(ErrorCode::INVALID_DATA,
                             "Decoded dimensions/time base differ from inspected video");
-        const auto final_source = sha256_file(video, 16ULL * 1024 * 1024 * 1024, stop);
-        const auto final_script = sha256_file(script, std::size_t{16} * 1024 * 1024, stop);
-        const auto final_result = sha256_file(artifact.path, WORKER_MESSAGE_LIMIT, stop);
-        if (!final_source)
-            return std::unexpected(final_source.error());
-        if (!final_script)
-            return std::unexpected(final_script.error());
-        if (!final_result)
-            return std::unexpected(final_result.error());
-        if (*final_source != preflight->source_sha256 || *final_script != *script_hash ||
-            *final_result != artifact.sha256)
-            return fail(error_code::INVALID_DATA,
+        const auto K_FINAL_SOURCE = sha256_file(K_VIDEO, 16ULL * 1024 * 1024 * 1024, stop);
+        const auto K_FINAL_SCRIPT = sha256_file(K_SCRIPT, 16uz * 1024 * 1024, stop);
+        const auto K_FINAL_RESULT = sha256_file(artifact.m_path, K_WORKER_MESSAGE_LIMIT, stop);
+        if (!K_FINAL_SOURCE) return std::unexpected(K_FINAL_SOURCE.error());
+        if (!K_FINAL_SCRIPT) return std::unexpected(K_FINAL_SCRIPT.error());
+        if (!K_FINAL_RESULT) return std::unexpected(K_FINAL_RESULT.error());
+        if (*K_FINAL_SOURCE != K_PREFLIGHT->m_source_sha256 || *K_FINAL_SCRIPT != *K_SCRIPT_HASH ||
+            *K_FINAL_RESULT != artifact.m_sha256)
+            return fail(ErrorCode::INVALID_DATA,
                         "Decode source/worker/artifact changed during execution");
-        return *checked;
+        return *K_CHECKED;
     } catch (const std::exception& exception) {
-        return fail(error_code::INVALID_DATA,
+        return fail(ErrorCode::INVALID_DATA,
                     "Video decode failed: " + std::string(exception.what()));
     }
 }
-} // namespace world_explorer
+
+}  // namespace world_explorer
