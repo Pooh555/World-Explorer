@@ -9,6 +9,7 @@
 #include <exception>
 #include <new>
 #include <set>
+#include <string_view>
 
 #include <nlohmann/json.hpp>
 
@@ -44,7 +45,12 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
         if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Visibility export cancelled");
         const auto K_CONFIG_BYTES = pinned(request, request_sha256, 1024uz * 1024uz, stop);
         if (!K_CONFIG_BYTES) return std::unexpected(K_CONFIG_BYTES.error());
-        const auto K_CONFIG = nlohmann::json::parse(*K_CONFIG_BYTES);
+        const auto K_CONFIG_TEXT =
+            K_CONFIG_BYTES->empty()
+                ? std::string_view {}
+                : std::string_view { reinterpret_cast<const char*>(K_CONFIG_BYTES->data()),
+                                    K_CONFIG_BYTES->size() };
+        const auto K_CONFIG = nlohmann::json::parse(K_CONFIG_TEXT);
         const std::set<std::string> K_FIELDS { "schema_version",
                                               "pose_job",
                                               "source_sha256",

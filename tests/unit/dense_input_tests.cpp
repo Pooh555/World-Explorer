@@ -572,6 +572,29 @@ TEST_CASE("visibility export cancellation does not publish a terminal receipt",
     CHECK(!std::filesystem::exists(data.m_destination));
 }
 
+TEST_CASE("visibility request parsing rejects empty truncated and embedded-NUL input",
+          "[dense][visibility]") {
+    VisibilityFixture data;
+    auto text = data.m_json.dump();
+    const auto K_MODE = GENERATE(0, 1, 2);
+    if (K_MODE == 0) text.clear();
+    if (K_MODE == 1) text.pop_back();
+    if (K_MODE == 2) {
+        text.push_back('\0');
+        text += "{}";
+    }
+    {
+        std::ofstream output(data.m_config, std::ios::binary);
+        output.write(text.data(), static_cast<std::streamsize>(text.size()));
+    }
+    const auto K_HASH = sha256(std::as_bytes(std::span(text)));
+    const auto K_RESULT = export_depth_visibility_cache(data.m_config, K_HASH, data.m_destination);
+    REQUIRE(!K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK(!std::filesystem::exists(data.m_destination));
+    CHECK(*sha256_file(data.m_config, 1024uz * 1024uz) == K_HASH);
+}
+
 TEST_CASE("resized dense admission rejects duplicate JSON keys and unsupported resize recipes",
           "[dense][resize]") {
     ResizedFixture data;
