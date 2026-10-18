@@ -144,6 +144,16 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   conditional depth agreement does not certify complete geometry. No solve,
   source re-ranking or scene update occurs.
 
+- [Observed fusion](validation/2026-10-18-observed-fusion.md): isolated CPU
+  confidence-weighted sparse TSDF consumes both native caches without MVS/refits.
+  Real raw meshes have **47,559 / 82,248 triangles** but remain visibly fragmented;
+  fixed-nine accepted coverage is **2.35–6.54% / 1.53–3.36%**. Different extents and
+  view counts prohibit a mesh-count quality comparison. Eight analytic/adverse
+  cases, 52 retained dense/reader regressions and 1,024 independent scalar voxel
+  checks pass; stopped-child cancellation kills/reaps without a terminal receipt.
+  Separate hash-locked Open3D CPU environment leaves existing environments intact.
+  No native mesh admission, scene update, measured geometry or walking result.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -153,32 +163,32 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Begin **bounded observed-depth fusion** under plan §5.1, using the native
-visibility receipts in `artifacts/validation/m3-depth-visibility-20261018/`:
-`temporal-cache/manifest.json`, `parallax-cache/manifest.json`, `analysis.json`
-and `native-check-commands.json`. Start with a project-owned fusion request and
-output/coverage contract around these exact pose-admitted inputs, then the
-isolated Open3D-backed sparse-TSDF pilot. Check local component availability,
-versions/terms and freeze a separate worker recipe/resource plan before any
-necessary provisioning; keep existing pose/training/dense environments unchanged.
+Implement **native fused-geometry admission** next under plan §5.1. Start by
+reading the [fusion contract](protocols/fusion.md), then inspect
+`artifacts/validation/m3-observed-fusion-20261018/final/commands.json`, both
+`*-fusion/manifest.json` receipts and `output-audit.json`. Define a project-owned
+immutable voxel/mesh interchange and bounded native reader/application inspect
+command that independently binds receipt/recipe/pose hashes, epoch/revision,
+arbitrary units, complete weight/support/uncertainty/unknown coverage, finite
+vertices/normals and valid indices. Reject malformed/rehashed data and wrong pose
+context before any scene or collision publication. Use existing retained outputs;
+no unchanged fusion/MVS rerun is needed. Native scene/renderer integration,
+supported-component cleanup and error-bounded simplification follow admission.
 
-Verify asymmetric known-surface/unknown-boundary fixtures before a bounded real
-fusion. For arbitrary-scale data use the plan's extent-relative voxel policy
-(initial extent/512), record camera/world units and pose revisions, and retain
-weights/support, uncertainty availability and unsupported/free-space distinctions.
-No inferred floor, hole filling, metric collision/walking or geometry-quality
-promotion. Copy/admit existing caches; do not rerun unchanged MVS or retune on
-opened evaluation grids. First results may be partial observed geometry, never
-completed room/Q5/N2 evidence. Keep every fixed reference and backend filter;
-unfiltered private photometric maps remain ineligible as admitted geometry.
-See the [visibility contract](protocols/depth.md#pose-admitted-visibility-export).
+Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
+support, sigma availability and the local observed front-band versus unknown
+distinction; allocated voxels do not establish free space. No inferred floor,
+hole filling, metric collision/walking or geometry-quality promotion. Keep every
+fixed reference and backend filter; private photometric maps remain ineligible.
+Do not retune on opened evaluation grids or alter existing environments.
 
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Production
-job/protocol integration needs bounded cancellation/kill/reap; resume, real fusion,
-compressed storage, measured scale, collision/walking and mesh export remain open.
+job/protocol integration needs bounded cancellation/kill/reap; resume, native
+fusion admission, compressed storage, measured scale, collision/walking and
+complete mesh export remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 
 Reference hardware/corpus performance, physical/native platforms, geometry,

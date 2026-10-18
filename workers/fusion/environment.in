@@ -1,0 +1,4 @@
+# Separate Linux x86_64 CPython 3.12 CPU-only observed fusion pilot; no weights.
+open3d-cpu==0.19.0
+numpy==2.2.6
+Pillow==11.3.0

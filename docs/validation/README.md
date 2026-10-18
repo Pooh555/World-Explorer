@@ -9,6 +9,7 @@ status and next work; a historical report's remaining work may be superseded.
 
 | Slice | Report |
 |---|---|
+| M3 observed sparse TSDF pilot | [Bounded confidence-weighted real fusion, unknown coverage and cancellation](2026-10-18-observed-fusion.md) |
 | M3 pose-admitted depth visibility | [Native export, immutable planes and fixed-pair analysis](2026-10-18-depth-visibility.md) |
 | M3 spatial / texture reliability | [Frozen dense grids, complete denominators and same-pair cache comparison](2026-10-18-dense-reliability.md) |
 | M3 cached visibility / photometric scoring | [Pinned CPU diagnostic and retained separate-grid regression](2026-10-18-dense-visibility.md) |

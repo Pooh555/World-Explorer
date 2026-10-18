@@ -174,4 +174,5 @@ explicit unit camera-to-world scale; arbitrary pose units remain arbitrary.
 The existing [spatial diagnostic](../../workers/dense/README.md#spatial-and-texture-reliability-diagnostic)
 can compare fixed pairs while retaining unknown samples in every denominator.
 [Native/cache evidence](../validation/2026-10-18-depth-visibility.md) checks both
-retained runs without a solve; real fusion and Q5/N2 remain open.
+retained runs without a solve. The separate [observed fusion pilot](fusion.md)
+now consumes these caches; native fused-geometry admission and Q5/N2 remain open.
