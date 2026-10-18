@@ -18,7 +18,7 @@ struct FileLock::Implementation {
 #ifdef _WIN32
     HANDLE handle { INVALID_HANDLE_VALUE };
 
-    ~implementation() {
+    ~Implementation() {
         if (handle != INVALID_HANDLE_VALUE) CloseHandle(handle);
     }
 #else

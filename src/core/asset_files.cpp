@@ -70,7 +70,7 @@ Result<StagedFile> stage_bytes(const std::filesystem::path& destination,
         const auto K_TEMPORARY = staging.m_path / "payload.bin";
         std::FILE* raw {};
 #ifdef _WIN32
-        if (_wfopen_s(&raw, temporary.c_str(), L"wb") != 0) raw = nullptr;
+        if (_wfopen_s(&raw, K_TEMPORARY.c_str(), L"wb") != 0) raw = nullptr;
 #else
         raw = std::fopen(K_TEMPORARY.c_str(), "wb");
 #endif
@@ -88,7 +88,7 @@ Result<StagedFile> stage_bytes(const std::filesystem::path& destination,
         if (std::fflush(file.get()) != 0)
             return fail(ErrorCode::IO_ERROR, "Asset asset flush failed");
 #ifdef _WIN32
-        const bool flushed = _commit(_fileno(file.get())) == 0;
+        const bool K_FLUSHED = _commit(_fileno(file.get())) == 0;
 #else
         const bool K_FLUSHED = fsync(fileno(file.get())) == 0;
 #endif
@@ -197,7 +197,7 @@ Result<void> replace_manifest(const std::filesystem::path& destination,
             return fail(ErrorCode::CANCELLED, "Manifest publication cancelled");
         const auto K_TEMPORARY = staged->m_path / "payload.bin";
 #ifdef _WIN32
-        if (!MoveFileExW(temporary.c_str(),
+        if (!MoveFileExW(K_TEMPORARY.c_str(),
                          destination.c_str(),
                          MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
             return fail(ErrorCode::IO_ERROR, "Manifest atomic replacement failed");

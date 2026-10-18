@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-17 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-18 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: IN_PROGRESS.** No full Q/P/N/E
 gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
@@ -31,6 +31,10 @@ retains all historical checks, identities, failures, timings and profile limits.
   packed lifetime evidence locally: exit 2 after 4,019.936 s plus short acquisition
   regressions. **User requested no two-hour rerun.** Completed FP32 stress remains
   separate; packed two-hour completion is unclaimed.
+- [Native-build refactor repair](validation/2026-10-18-native-style-repair.md)
+  restores the PPM budget fixture and Windows-only renamed references, with a
+  string-literal regression in the style checker. Native Windows/macOS reruns
+  remain due; milestone gates and the M3 next step are unchanged.
 
 ## Saved reconstructions
 

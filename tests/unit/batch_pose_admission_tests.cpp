@@ -17,7 +17,7 @@ using test::path_utf8;
 using test::pose_fixture;
 constexpr std::size_t K_METADATA_BYTES { 2uz * 1024uz * 1024uz };
 constexpr PoseEstimatorConfig K_START {{K_METADATA_BYTES + 6}, 3};
-constexpr std::size_t K_PPM_BYTES { std::string_view("P6\n2 1uz\n255\n").size() + 6uz };
+constexpr std::size_t K_PPM_BYTES { std::string_view("P6\n2 1\n255\n").size() + 6uz };
 
 void write_bytes(const std::filesystem::path& path, std::string_view bytes) {
     std::ofstream output(path, std::ios::binary);

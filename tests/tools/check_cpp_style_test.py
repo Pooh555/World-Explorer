@@ -1,5 +1,6 @@
 """Regression tests for the repository C++ style gate."""
 import importlib.util
+import json
 from pathlib import Path
 import unittest
 from unittest import mock
@@ -17,7 +18,12 @@ class CheckCppStyleTests(unittest.TestCase):
             ROOT / "include/world_explorer/capture/frame_source.hpp",
             ROOT / "src/core/hash.cpp",
         ]
-        self.assertEqual(MODULE.select_tidy_files(files, database), [ROOT / "src/core/hash.cpp"])
+        entries = [{"file": str(ROOT / "src/core/hash.cpp")}]
+        with mock.patch.object(MODULE.Path, "exists", return_value=True):
+            with mock.patch.object(MODULE.Path, "read_text", return_value=json.dumps(entries)):
+                self.assertEqual(
+                    MODULE.select_tidy_files(files, database), [ROOT / "src/core/hash.cpp"]
+                )
 
     def test_tidy_targets_exclude_build_tree_and_vendor_code(self):
         files = [
@@ -33,10 +39,12 @@ class CheckCppStyleTests(unittest.TestCase):
             },
         ]
         self.assertEqual(MODULE.select_tidy_files(files, None), files)
-        self.assertEqual(
-            MODULE.select_tidy_files(files, ROOT / "build/dev/compile_commands.json"),
-            [ROOT / "src/application/scenes.cpp"],
-        )
+        with mock.patch.object(MODULE.Path, "exists", return_value=True):
+            with mock.patch.object(MODULE.Path, "read_text", return_value=json.dumps(database)):
+                self.assertEqual(
+                    MODULE.select_tidy_files(files, ROOT / "build/dev/compile_commands.json"),
+                    [ROOT / "src/application/scenes.cpp"],
+                )
 
     def test_brace_space_normalization_preserves_clang_format_comparison(self):
         self.assertEqual(
@@ -64,6 +72,26 @@ class CheckCppStyleTests(unittest.TestCase):
             with mock.patch("builtins.print") as print_output:
                 self.assertEqual(MODULE.check_template_initialization([ROOT / "sample.cpp"]), 1)
         self.assertTrue(print_output.called)
+
+    def test_template_initialization_ignores_numbers_and_braces_in_strings(self):
+        source = (
+            'constexpr std::size_t K_PPM_BYTES { '
+            'std::string_view("P6\\n2 1\\n255\\n").size() + 6uz };\n'
+            'const auto K_TEXT = "std::size_t count { 12 }; for (int i = 0;";\n'
+            "constexpr std::size_t K_CHARACTER { sizeof('1') };\n"
+        )
+        with mock.patch.object(MODULE.Path, "read_text", return_value=source):
+            self.assertEqual(MODULE.check_template_initialization([ROOT / "sample.cpp"]), 0)
+
+    def test_template_initialization_still_checks_literals_outside_strings(self):
+        source = (
+            'constexpr std::size_t K_PPM_BYTES { '
+            'std::string_view("P6\\n2 1\\n255\\n").size() + 6 };\n'
+        )
+        with mock.patch.object(MODULE.Path, "read_text", return_value=source):
+            with mock.patch("builtins.print") as print_output:
+                self.assertEqual(MODULE.check_template_initialization([ROOT / "sample.cpp"]), 1)
+        self.assertIn("use uz suffixes", str(print_output.call_args_list))
 
     def test_repo_quality_checks_run_docs_and_boundaries(self):
         with mock.patch.object(MODULE, "run_command") as run_command:

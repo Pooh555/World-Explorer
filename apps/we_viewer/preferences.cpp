@@ -72,7 +72,7 @@ Result<void> save_preferences(const std::filesystem::path& path, const preferenc
         }
 #ifdef _WIN32
         // Windows rename does not replace an existing destination.
-        if (!MoveFileExW(temporary.c_str(),
+        if (!MoveFileExW(K_TEMPORARY.c_str(),
                          path.c_str(),
                          MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
             throw std::runtime_error("Cannot replace preferences");

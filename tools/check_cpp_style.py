@@ -114,12 +114,13 @@ def check_template_initialization(files: list[Path]) -> int:
     for path in files:
         source = path.read_text(encoding="utf-8")
         for line_number, line in enumerate(source.splitlines(), start=1):
+            # Literal contents (including fixture headers) are data, not C++ tokens.
             code_line = string_literal.sub('""', line)
-            if typed_loop.search(line):
+            if typed_loop.search(code_line):
                 violations.append(f"{path}:{line_number}: use direct-list initialization in typed loops")
-            if size_t_temporary.search(line):
+            if size_t_temporary.search(code_line):
                 violations.append(f"{path}:{line_number}: use uz literals instead of std::size_t temporaries")
-            for match in spelled_declaration.finditer(line):
+            for match in spelled_declaration.finditer(code_line):
                 initializer = match.group(1)
                 if initializer.strip() and not (
                     initializer.startswith(" ") and initializer.endswith(" ")
@@ -135,7 +136,7 @@ def check_template_initialization(files: list[Path]) -> int:
                     violations.append(
                         f"{path}:{line_number}: put spaces inside non-empty initializer braces"
                     )
-            for match in size_t_declaration.finditer(line):
+            for match in size_t_declaration.finditer(code_line):
                 initializer = match.group(1)
                 if initializer.strip() and not (
                     initializer.startswith(" ") and initializer.endswith(" ")

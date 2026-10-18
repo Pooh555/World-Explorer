@@ -79,7 +79,7 @@ MapPersistence::~MapPersistence() {
 Result<void> MapPersistence::lock() {
     const auto K_PATH = config_.m_directory / "writer.lock";
 #ifdef _WIN32
-    const auto handle = CreateFileW(path.c_str(),
+    const auto handle = CreateFileW(K_PATH.c_str(),
                                     GENERIC_READ | GENERIC_WRITE,
                                     0,
                                     nullptr,

@@ -125,7 +125,7 @@ Json parse_json(std::span<const std::byte> bytes) {
 void write_atomic(const std::filesystem::path& path, std::span<const std::byte> bytes) {
     static std::atomic<std::uint64_t> sequence {};
 #ifdef _WIN32
-    const auto process = GetCurrentProcessId();
+    const auto K_PROCESS = GetCurrentProcessId();
 #else
     const auto K_PROCESS = getpid();
 #endif
@@ -141,7 +141,7 @@ void write_atomic(const std::filesystem::path& path, std::span<const std::byte> 
     const bool K_WRITTEN =
         std::fwrite(bytes.data(), 1, bytes.size(), file) == bytes.size() && std::fflush(file) == 0;
 #ifdef _WIN32
-    const bool flushed = written && _commit(_fileno(file)) == 0;
+    const bool K_FLUSHED = K_WRITTEN && _commit(_fileno(file)) == 0;
 #else
     const bool K_FLUSHED = K_WRITTEN && fsync(fileno(file)) == 0;
 #endif

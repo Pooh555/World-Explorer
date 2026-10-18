@@ -391,6 +391,8 @@ if(BUILD_TESTING)
   set_tests_properties(worker_integration PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;worker")
   add_test(NAME coverage_reporting COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tests/tools -p "coverage_test.py" -v)
   set_tests_properties(coverage_reporting PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;tooling")
+  add_test(NAME cpp_style_tooling COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tests/tools -p "check_cpp_style_test.py" -v)
+  set_tests_properties(cpp_style_tooling PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;tooling")
 
   if(WE_COVERAGE)
     set(WE_COVERAGE_OBJECTS)

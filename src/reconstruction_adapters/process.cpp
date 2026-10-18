@@ -137,8 +137,8 @@ struct input_channel {
                (ConnectNamedPipe(server.value, &overlap) || GetLastError() == ERROR_PIPE_CONNECTED);
     }
 
-    Result<void> pump(const process_control& control, bool cancelling) {
-        if (!control.next_input || closed) return {};
+    Result<void> pump(const ProcessControl& control, bool cancelling) {
+        if (!control.m_next_input || closed) return {};
         if (writing) {
             DWORD transferred {};
             if (!GetOverlappedResult(server.value, &overlap, &transferred, FALSE)) {
@@ -156,9 +156,9 @@ struct input_channel {
             if (offset == pending.size()) pending.clear();
         }
         if (pending.empty()) {
-            auto next = control.next_input(cancelling);
+            auto next = control.m_next_input(cancelling);
             if (!next) return std::unexpected(next.error());
-            if (next->size() > PROCESS_INPUT_LIMIT)
+            if (next->size() > K_PROCESS_INPUT_LIMIT)
                 return fail(ErrorCode::RESOURCE_EXHAUSTED, "Process input exceeds frame budget");
             pending = std::move(*next);
             offset = 0;
@@ -186,13 +186,13 @@ struct input_channel {
 
 Result<int> execute_process(const std::vector<std::string>& arguments,
                             const std::stop_token& stop,
-                            const process_output_callback& output,
-                            const process_output_callback& diagnostic,
-                            const process_control& control) {
+                            const ProcessOutputCallback& output,
+                            const ProcessOutputCallback& diagnostic,
+                            const ProcessControl& control) {
     if (arguments.empty() || stop.stop_requested())
         return fail(ErrorCode::CANCELLED, "Process cancelled before launch");
-    if (control.cancellation_grace < std::chrono::milliseconds(0) ||
-        control.cancellation_grace > std::chrono::seconds(5))
+    if (control.m_cancellation_grace < std::chrono::milliseconds(0) ||
+        control.m_cancellation_grace > std::chrono::seconds(5))
         return fail(ErrorCode::INVALID_ARGUMENT, "Invalid process cancellation deadline");
     std::wstring command;
     for (const auto& argument : arguments) {
@@ -210,7 +210,7 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
     pipe_pair stdout_pipe, stderr_pipe;
     input_channel input;
     if (!job.value || !stdout_pipe.create() || !stderr_pipe.create() ||
-        !input.create(static_cast<bool>(control.next_input)))
+        !input.create(static_cast<bool>(control.m_next_input)))
         return fail(ErrorCode::IO_ERROR, "Unable to create child pipes/job");
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits {};
     limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
@@ -290,7 +290,7 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
             cancelled_at = std::chrono::steady_clock::now();
         }
         const auto grace =
-            control.next_input ? control.cancellation_grace : std::chrono::milliseconds(0);
+            control.m_next_input ? control.m_cancellation_grace : std::chrono::milliseconds(0);
         if (cancelling && std::chrono::steady_clock::now() - cancelled_at >= grace)
             TerminateJobObject(job.value, 130);
         const auto sent = input.pump(control, cancelling);
