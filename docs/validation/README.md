@@ -9,6 +9,7 @@ status and next work; a historical report's remaining work may be superseded.
 
 | Slice | Report |
 |---|---|
+| Windows fusion JSON build repair | [Typed string comparisons remove the reported MSVC ambiguity](2026-10-19-windows-fusion-json.md) |
 | M3 native fused-geometry admission | [Bounded immutable voxel/mesh reader, exact retained conversion and pose-bound inspection](2026-10-19-fusion-admission.md) |
 | macOS visibility JSON build repair | [libc++ character input and raw-NUL regression](2026-10-19-macos-byte-json.md) |
 | M3 observed sparse TSDF pilot | [Bounded confidence-weighted real fusion, unknown coverage and cancellation](2026-10-18-observed-fusion.md) |

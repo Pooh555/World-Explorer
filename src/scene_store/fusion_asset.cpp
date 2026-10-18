@@ -91,14 +91,19 @@ struct Decoder {
     double real64() { return std::bit_cast<double>(integer(8uz)); }
 };
 
+bool text_is(const Json& value, std::string_view expected) {
+    return value.is_string() && value.get_ref<const Json::string_t&>() == expected;
+}
+
 void check_policy(const Json& manifest, const Json& recipe, const Json& receipt) {
     require(count(manifest, "schema_version", 1) == 1 &&
                 manifest.at("kind") == "PARTIAL_OBSERVED_TSDF_V1" &&
-                manifest.at("scope") == K_SCOPE && manifest.at("units") == K_UNITS &&
+                text_is(manifest.at("scope"), K_SCOPE) && text_is(manifest.at("units"), K_UNITS) &&
                 manifest.at("world_axes") == "RIGHT_HANDED_Y_UP" &&
                 manifest.at("depth_convention") == "AXIAL_CAMERA_Z" &&
                 manifest.at("walking_enabled").is_boolean() &&
-                manifest.at("walking_enabled") == false && manifest.at("free_space") == K_FREE &&
+                manifest.at("walking_enabled") == false &&
+                text_is(manifest.at("free_space"), K_FREE) &&
                 manifest.at("unknown") ==
                     "ABSENT_LATTICE_ENTRIES_AND_ZERO_WEIGHT_ARE_UNKNOWN; NO_FULL_RAY_CARVING" &&
                 manifest.at("uncertainty") ==
@@ -109,8 +114,8 @@ void check_policy(const Json& manifest, const Json& recipe, const Json& receipt)
             "Unsupported fusion semantics");
     require(count(recipe, "schema_version", 1) == 1 &&
                 recipe.at("kind") == "OBSERVED_TSDF_CPU_PILOT_V1" &&
-                recipe.at("units") == K_UNITS && recipe.at("scope") == K_SCOPE &&
-                recipe.at("free_space") == K_FREE &&
+                text_is(recipe.at("units"), K_UNITS) && text_is(recipe.at("scope"), K_SCOPE) &&
+                text_is(recipe.at("free_space"), K_FREE) &&
                 recipe.at("weight") == "REFERENCE_CONFIDENCE_ONLY_NOT_PROBABILITY" &&
                 count(recipe, "voxel_divisor", 512) == 512 &&
                 count(recipe, "truncation_voxels", 4) == 4 &&
@@ -122,7 +127,7 @@ void check_policy(const Json& manifest, const Json& recipe, const Json& receipt)
             "Unsupported fusion recipe");
     require(count(receipt, "schema_version", 1) == 1 &&
                 receipt.at("kind") == "POSE_ADMITTED_DEPTH_VISIBILITY_V1" &&
-                receipt.at("units") == K_UNITS &&
+                text_is(receipt.at("units"), K_UNITS) &&
                 receipt.at("depth_convention") == "AXIAL_CAMERA_Z" &&
                 receipt.at("pixel_centers") == "integer" &&
                 receipt.at("camera_axes") == "+x_right,+y_down,+z_forward" &&
