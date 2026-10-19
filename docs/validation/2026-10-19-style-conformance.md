@@ -20,7 +20,12 @@ template remains excluded from formatting.
 - `ctest --preset dev`: 371/374 passed. Tests 15–17 failed in batch worker
   launch/protocol handling; all three failures reproduced in an isolated rerun.
   The failures are in the existing batch-admission tests, whose changes here
-  are formatting and brace placement only.
+  are formatting and brace placement only. Follow-up diagnosis corrected the
+  initial implication that they were unrelated: the Python class rename in
+  this slice left two embedded `we_protocol.event_writer` references stale.
+  See the [batch-worker repair](2026-10-19-batch-worker-repair.md) for the
+  correction and subsequent verification; the 371/374 result above remains
+  the original observation.
 - `python3 tools/check_cpp_style.py --build-dir build/no-style-compile-db`:
   passed formatting, include boundaries, documentation, and whitespace checks;
   clang-tidy was explicitly skipped because that directory has no compile

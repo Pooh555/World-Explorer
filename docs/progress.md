@@ -16,6 +16,10 @@ M1–M6 order/thresholds remain; native/reference release evidence is due by M6.
 
 ## Usable behavior and evidence
 
+- [Batch-worker regression repair](validation/2026-10-19-batch-worker-repair.md)
+  updates the embedded diagnostic worker to the renamed Python `EventWriter`
+  class; all three regressions and the full 374-test development CPU suite pass.
+
 SDL3/ImGui viewer/CLI share isolated FFmpeg/COLMAP/gsplat processing, checked
 bundles, transactional scene/map snapshots, bounded async updates, Vulkan
 anisotropic projection/radix/tile rendering and fly navigation.

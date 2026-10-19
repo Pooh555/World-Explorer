@@ -723,13 +723,13 @@ void diagnostic_worker(const BatchPoseConfig& config, std::string_view mode) {
         "import we_protocol\nmode=" +
         nlohmann::json(mode).dump() +
         "\n"
-        "original=we_protocol.event_writer.table\n"
+        "original=we_protocol.EventWriter.table\n"
         "def table(self,builder,name,values):\n"
         " if name=='handshake':\n"
         "  if mode=='no-batch': values=values|{'Batch':False}\n"
         "  if mode=='streaming': values=values|{'StreamingTracking':True}\n"
         " return original(self,builder,name,values)\n"
-        "we_protocol.event_writer.table=table\n"
+        "we_protocol.EventWriter.table=table\n"
         "we_protocol.configure(sys.argv,backend='synthetic_batch_fixture',backend_version='1',"
         "sensors=['video'],devices=['cpu_poses'],checkpoint_semantics='diagnostic',"
         "checkpoint_rights='synthetic',limits={'max_frames':2 if mode=='capacity' else 120,"

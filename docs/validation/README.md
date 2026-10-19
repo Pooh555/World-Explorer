@@ -1,5 +1,8 @@
 # Validation index
 
+- [Batch diagnostic worker repair](2026-10-19-batch-worker-repair.md): corrects
+  stale embedded Python class references behind three CPU test regressions.
+
 - [Coding-style template conformance](2026-10-19-style-conformance.md):
   formatter/linter alignment, C++ braced-list spacing, and Python source naming
   and exports; records build, test, formatter and static-analysis limits.
