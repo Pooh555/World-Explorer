@@ -828,9 +828,9 @@ int viewer_main(int argc, char** argv) {
                 ImGui::TextWrapped("Select a request and choose Review request to see its "
                                    "actions and limits. Reviewing keeps scene viewing available.");
             }
-            if (ImGui::CollapsingHeader("Build geometry from saved depth")) {
+            if (ImGui::CollapsingHeader("Build observed geometry")) {
                 ImGui::TextWrapped(
-                    "Process a checked local depth cache into partial observed surfaces. "
+                    "Run the selected local depth recipe or reuse a checked depth cache. "
                     "Unknown gaps stay open; scale is arbitrary and walking is unavailable. "
                     "An unchanged request can resume the same output folder.");
                 ImGui::BeginDisabled(state.has_pending_work() || pending_ticket.has_value());

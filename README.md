@@ -23,8 +23,9 @@ not uploaded or sent to a remote reconstruction service.
   revision-aware updates, and replayable operations.
 - **Observed geometry inspection:** partial depth-fused meshes, source metadata,
   cleanup certificates, and bounded captured-color baking. The Linux
-  [saved-depth job](docs/protocols/fusion.md#unified-retained-cache-solver-and-viewer-job)
-  now runs/reuses fusion and opens its native partial mesh from GUI or CLI.
+  [geometry job](docs/protocols/fusion.md#fresh-depth-through-the-shared-geometry-job)
+  runs fresh depth or reuses a checked cache, then opens its native partial mesh
+  from GUI or CLI.
 - **Offline-first operation:** reconstruction data stays local, with no implicit
   model installation or remote fallback.
 

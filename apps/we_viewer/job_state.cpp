@@ -276,7 +276,8 @@ void application_state::geometry(std::filesystem::path request,
         std::lock_guard lock(mutex);
         reconstructing = true;
         progress.reset();
-        status = "Processing saved depth. Partial geometry; walking unavailable. ETA unknown.";
+        status =
+            "Processing configured geometry. Partial surfaces; walking unavailable. ETA unknown.";
         reconstruction_error.clear();
         log.clear();
     }

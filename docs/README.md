@@ -12,7 +12,7 @@ Read by task; do not load the entire directory for routine work.
 | Write/update documentation | [Documentation protocol](protocols/documentation.md) |
 | Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [depth](protocols/depth.md), [dense inputs](protocols/dense_inputs.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/camera/handoff](protocols/viewer.md) |
 | Organize outputs / add a local video | [Artifact layout and request helper](protocols/artifacts.md) |
-| Qualify the isolated local dense backend | [Dense development experiments](../workers/dense/README.md), [separate resized inputs](protocols/dense_inputs.md#separate-resized-profile); partial output, production job/fusion/geometry remain open |
+| Qualify the isolated local dense backend | [Dense development experiments](../workers/dense/README.md), [separate resized inputs](protocols/dense_inputs.md#separate-resized-profile); partial producer qualification; owned fresh-depth integration is listed below |
 | Export checked depth for visibility/fusion preparation | [Pose-admitted visibility receipt](protocols/depth.md#pose-admitted-visibility-export); immutable depth/RGB cache, no fused geometry |
 | Inspect partial observed geometry | [Native mesh runtime and request](protocols/scene.md#observed-mesh-runtime); normal-color Vulkan view, unknown gaps, no measured scale/collision |
 | Save/reopen native mesh snapshots | [Schema-2 bundle persistence](protocols/scene.md#native-mesh-bundle-persistence); exact raw/proxy geometry and provenance, compatible splat-only bytes |
@@ -23,6 +23,7 @@ Read by task; do not load the entire directory for routine work.
 | Simplify admitted observed meshes | [Certified local cleanup](protocols/mesh_cleanup.md); immutable proxy certificates, full-surface error bounds and native raw/proxy viewing |
 | Run/admit bounded observed-depth fusion | [CPU TSDF and native interchange contract](protocols/fusion.md), [component selection](research/observed_fusion.md); pose-bound partial arbitrary-scale geometry; separate native runtime view, no collision |
 | Resume retained-cache geometry processing | [Owned Linux geometry job](protocols/fusion.md#owned-retained-cache-geometry-job-linux-development-slice); exact cache/pose ownership, partial TSDF stage and cancellation; shared solver/GUI ownership is implemented below |
+| Produce owned fresh CUDA depth | [Clean profile and depth owner](protocols/dense_inputs.md#owned-cuda-depth-production), [shared fresh geometry job](protocols/fusion.md#fresh-depth-through-the-shared-geometry-job); nine-view local integration, full room/geometry gates open |
 | Run retained-cache geometry from GUI/CLI | [Unified retained-cache job](protocols/fusion.md#unified-retained-cache-solver-and-viewer-job); owned solver/reuse, native adoption and scene handoff; fresh depth remains open |
 | Adopt completed geometry jobs natively | [Native terminal adoption](protocols/fusion.md#native-terminal-adoption-and-scene-publication); checked conversion, pose admission, retained attempts and ordinary scene bundles |
 | Audit local worker/metric identities | [Installed identity receipts](protocols/worker_identity.md), [isolated CPU metric profile](../workers/metrics/README.md) |

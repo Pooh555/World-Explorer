@@ -1,5 +1,7 @@
 # Validation index
 
+- [Owned fresh CUDA depth and clean profile](2026-10-20-owned-dense.md): offline six-wheel reconciliation, active GPU cancellation/resume, native admission/fusion and shared GUI/CLI handoff; partial nine-view geometry only.
+
 - [Unified retained-cache geometry pipeline](2026-10-19-geometry-pipeline.md): shared GUI/CLI solver/reuse, native adoption, populated cancellation/resume and actual native scene preservation/handoff; M3 remains open.
 
 - [Batch diagnostic worker repair](2026-10-19-batch-worker-repair.md): corrects

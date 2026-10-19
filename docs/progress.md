@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-19 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-20 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: IN_PROGRESS.** No full Q/P/N/E
 gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
@@ -258,27 +258,28 @@ gaps. Dense redistribution rights remain open.
   descendants; populated solver/conversion attempts survive resume. Native prior
   pixels remain identical after failure/cancel. No fresh depth or geometry gate.
 
+- [Owned fresh CUDA depth](validation/2026-10-20-owned-dense.md): separate clean
+  six-wheel profile verifies all 1,188 listed files; original environments remain
+  unchanged. Shared GUI/CLI now owns fresh depth → native cache admission → fusion
+  → scene handoff. Active CUDA Cancel returns 130 in 3.241 s and retains 23 files;
+  resume completes in 241.571 s, including 210.576 s MVS; exact replay launches no
+  CUDA solve. The full 47,559-triangle partial mesh renders with zero Vulkan errors.
+  Validity remains 3.34–9.89%; no geometry/scale/walking gate is promoted.
+
 ## Next executable step and protection rules
 
-Reconcile the known external worker-header drift in a **new isolated dense
-profile** before any CUDA/worker rebuild. First run the read-only installed-byte
-audit below; retain its expected RECORD-drift rejection rather than qualifying
-the modified installation (do not overwrite historical evidence):
-
-```sh
-.venv-dense/bin/python tools/audit_worker_environment.py \
-  --requirements workers/dense/environment.txt \
-  --output artifacts/validation/m3-dense-reconciliation-next.json
-```
-
-Compare it with the exact retained wheel/RECORD identities in
-`workers/identity/dense-development-20261017.json`; provision the separate clean
-profile from the already retained hash-locked archives. Then integrate fresh
-CUDA depth behind `run_geometry_job`'s owned boundary, preserving existing
-cache admission and scene handoff. Recheck cancellation/resume at that new child
-boundary. Current retained-cache requests/commands live in
-`artifacts/validation/m3-geometry-pipeline-20261019/`; select new output names.
-Keep metric alignment/collision/walking and M3's exit open.
+Extend owned production beyond the experimental ≤18-view slice with bounded
+multi-batch depth/cache admission and complete per-frame coverage accounting.
+Start with CPU contracts at `tools/dense_job.py`, `src/application/depth_visibility.cpp`
+and `workers/dense/admitted_visibility.py` for dependency/coverage unions, partial
+batch recovery and unchanged byte/pixel budgets. Then process the full pinned
+63-frame sample_1 sequence in new output directories using the same calibrated
+2048×1102 grid and existing backend filters; retain all unknown/support/sigma
+information. Do not treat the nine-view result as a full-room result or retune on
+opened evaluation grids. Current commands/requests are in
+`artifacts/validation/m3-dense-owned-20261020/`; begin from `fresh-request-current.json`
+and its explicit clean profile. Keep M3, measured alignment/collision/walking and
+quality gates open.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list
@@ -294,9 +295,10 @@ policy. Separately,
 all 24,457 protected files match their previously observed state; 3,982 external
 package headers still differ from their original byte receipts.
 The libc++ check uses fresh extraction from retained archives, leaving the modified
-installation untouched. Reconcile worker-header drift against exact retained
-packages in an isolated profile before any future CUDA/worker rebuild; old receipts
-are not current. No unchanged fusion/MVS/refit or projection retuning is needed.
+installation untouched. The dense owner now selects the independently verified
+clean profile above; old installation receipts remain non-current. Other worker rebuilds still require
+separate isolated reconciliation against retained packages. No unchanged
+fusion/MVS/refit or projection retuning is needed.
 
 Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
 support, sigma availability and the local observed front-band versus unknown
@@ -308,9 +310,9 @@ Do not retune on opened evaluation grids or alter existing environments.
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
-threshold reduction. Never trim full scenes to obtain a pass. Unified native solver/GUI
-job integration, fresh depth, broader mesh processing, compressed storage, measured scale, collision/walking and
-general interchange remain open.
+threshold reduction. Never trim full scenes to obtain a pass. Full-sequence
+depth/geometry coverage, broader owned mesh processing, compressed storage,
+measured scale, collision/walking and general interchange remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 
 Reference hardware/corpus performance, physical/native platforms, geometry,

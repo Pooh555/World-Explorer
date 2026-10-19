@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "scope": "isolated Linux development byte-integrity reconciliation; not release or rights qualification",
+  "python_version": "3.12.15",
+  "profile": "artifacts/environments/dense-clean-20261020",
+  "prior_archive_receipt": "workers/identity/dense-development-20261017.json",
+  "prior_archive_receipt_sha256": "b7ceb5914da673f4f076d89adb0e885a5fd7b5d3df4b191479085a20ab6dc614",
+  "archives": [
+    {
+      "name": "cuda-toolkit",
+      "version": "12.9.2.0",
+      "bytes": 2431,
+      "sha256": "b54b8f2fd4200090b44843d48fc5411198e8b3e47a3db56e2518ab588c0ef1e0"
+    },
+    {
+      "name": "numpy",
+      "version": "2.2.6",
+      "bytes": 16527618,
+      "sha256": "fd83c01228a688733f1ded5201c678f0c53ecc1006ffbc404db9f7a899ac6249"
+    },
+    {
+      "name": "nvidia-cuda-runtime-cu12",
+      "version": "12.9.79",
+      "bytes": 3493179,
+      "sha256": "25bba2dfb01d48a9b59ca474a1ac43c6ebf7011f1b0b8cc44f54eb6ac48a96c3"
+    },
+    {
+      "name": "nvidia-curand-cu12",
+      "version": "10.3.10.19",
+      "bytes": 68295626,
+      "sha256": "49b274db4780d421bd2ccd362e1415c13887c53c214f0d4b761752b8f9f6aa1e"
+    },
+    {
+      "name": "pillow",
+      "version": "11.3.0",
+      "bytes": 6645236,
+      "sha256": "676b2815362456b5b3216b4fd5bd89d362100dc6f4945154ff172e206a22c024"
+    },
+    {
+      "name": "pycolmap-cuda12",
+      "version": "4.2.1",
+      "bytes": 72891756,
+      "sha256": "5d9b4ecd575481a03827586b4829fff1857dc6fd3aa63b2d60be590d84ac77dc"
+    }
+  ],
+  "installer_lock_sha256": "94c18a3946fd95b1a22bdd07fe7f09729e44b870e2850d3d74ddb4204970c730",
+  "requirements_sha256": "bdba13c6236e5aa606fa6323c5f294e7a74b5b779f8103b22f2ebe4a7a8a68e0",
+  "installed_receipt": "artifacts/validation/m3-dense-owned-20261020/clean-installed.json",
+  "installed_receipt_sha256": "0907a3e1fcd35e665c295bf12f07ac969f7b6870731dfe6162586f455bf0bacd",
+  "listed_files": 1188,
+  "listed_bytes": 432780800,
+  "all_packages_verified_record": true,
+  "redistribution_qualified": false,
+  "rights_clearance": "NOT_PERFORMED"
+}

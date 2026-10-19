@@ -155,3 +155,67 @@ The [resize-only evidence](../validation/2026-10-18-dense-resize.md) retains its
 unqualified/unexecuted recipe; it is not retroactively upgraded by the later
 experiment. Preparation/admission alone do not qualify depth, fusion, measured
 scale, walking or Q5/N2.
+
+## Owned CUDA depth production
+
+`tools/dense_job.py` owns the existing resized-neighbor producer as a Linux-only,
+resumable child job. The initial native integration is qualified on the nine-view
+profile; the experimental recipe reader retains its existing ≤18-view bound.
+This remains partial observed depth, without measured scale, Q5/N2 or walking.
+The [fresh geometry application path](fusion.md#fresh-depth-through-the-shared-geometry-job)
+adds native cache admission, fusion and scene handoff.
+
+The externally pinned flat depth request has exactly these fields:
+
+```json
+{
+  "schema_version": 1,
+  "kind": "OWNED_RESIZED_DEPTH_JOB_V1",
+  "manifest": "resized/manifest.json",
+  "manifest_sha256": "<resized input manifest SHA-256>",
+  "native_manifest": "native-inputs.json",
+  "native_manifest_sha256": "<native input manifest SHA-256>",
+  "recipe": "depth-recipe.json",
+  "recipe_sha256": "<complete neighbor recipe SHA-256>",
+  "stage": "committed-pose-stage",
+  "poses": "current.weposes",
+  "pose_sha256": "<current canonical pose SHA-256>",
+  "environment": "clean-installed.json",
+  "environment_sha256": "<selected installed-byte receipt SHA-256>"
+}
+```
+
+Paths resolve against the request directory and must be canonical, without
+symlink aliases/traversal. Admission checks recipe/worker/preparation identities,
+all resized RGB files, selected native model files, pose bytes and exact installed
+package identity. The selected interpreter reruns the existing environment auditor
+without importing backend packages; its report must equal the pinned receipt,
+with matching requirements, no unlisted/legacy distributions and every package
+`VERIFIED_RECORD`. Auditor exit 0 alone does not establish RECORD integrity.
+The [clean selected profile](../../workers/identity/dense-development-20261020.json)
+uses the original six hash-locked wheels; other installations remain separate.
+
+```sh
+artifacts/environments/dense-clean-20261020/bin/python tools/dense_job.py \
+  DEPTH_REQUEST.json REQUEST_SHA256 NEW_DEPTH_JOB
+```
+
+A nonblocking writer lock and immutable owner bind request, interpreter path/bytes,
+coordinator and worker identity. Each backend run reserves
+`stages/depth-OWNER_SHA-attempt-N` (at most 128). Existing partial workspaces are
+retained; a restart selects another attempt. Completed reuse checks the selected
+`result.json`, prepared receipt, ordered frame IDs/paths and every complete depth
+asset checksum, then rechecks source and environment admission. Corrupt committed
+output rejects without repair. The last-published root `manifest.json` pins the
+owner, selected stage and result hash; it does not certify geometry quality.
+Native admission independently checks depth encoding, poses, calibration, current
+tracking/invalidation state and recipe dependencies before scene use.
+
+The worker has a 900-second execution budget. Standalone mode owns a child process
+group; `--parent-supervised` keeps the child in the native owner's group. Cancel
+sends TERM and kills/reaps after three seconds when necessary. Native supervision
+allows five seconds before its own KILL boundary. A cancelled/failed attempt has
+no new terminal receipt; complete but uncommitted output may be checked on resume.
+Directory flushes and cooperative locks do not guarantee power-loss recovery.
+Unknown pixels, support/confidence meanings and unavailable sigma remain explicit;
+private photometric maps never enter the admitted depth/cache path.

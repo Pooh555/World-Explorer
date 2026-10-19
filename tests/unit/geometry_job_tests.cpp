@@ -108,6 +108,22 @@ TEST_CASE("geometry process supervision rejects unbounded termination deadlines 
 }
 
 #if defined(__linux__)
+TEST_CASE("fresh geometry rejects incomplete or ambiguous requests before ownership") {
+    const GeometryDirectory K_DIRECTORY;
+    const auto K_TEXT =
+        GENERATE(std::string("{\"schema_version\":1,\"kind\":\"FRESH_GEOMETRY_PIPELINE_V1\"}"),
+                 std::string("{\"schema_version\":1.0,\"kind\":\"FRESH_GEOMETRY_PIPELINE_V1\"}"),
+                 std::string("{\"schema_version\":1,\"kind\":\"FRESH_GEOMETRY_PIPELINE_V1\","
+                             "\"kind\":\"FRESH_GEOMETRY_PIPELINE_V1\"}"));
+    const auto K_REQUEST = K_DIRECTORY.m_path / "request.json";
+    const auto K_HASH = save_request(K_REQUEST, K_TEXT);
+    const auto K_RESULT = run_geometry_job(K_REQUEST, K_HASH, K_DIRECTORY.m_path / "fresh");
+    REQUIRE_FALSE(K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::INVALID_DATA);
+    CHECK_FALSE(std::filesystem::exists(K_DIRECTORY.m_path / "fresh"));
+    CHECK(sha256_file(K_REQUEST, 1024uz * 1024uz).value() == K_HASH);
+}
+
 TEST_CASE("geometry pipeline rejects ambiguous pinned requests without creating output") {
     const GeometryDirectory K_DIRECTORY;
     const auto K_TEXT = GENERATE(std::string("[]"),

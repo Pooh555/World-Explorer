@@ -199,7 +199,8 @@ scene update path. Failed adoption never replaces a previously selected scene.
 The [native adoption evidence](../validation/2026-10-19-native-geometry-job.md)
 covers real populated-attempt cancellation/resume and full native viewing.
 The unified retained-cache path below now connects solver ownership to this
-adoption boundary. Fresh depth, metric alignment, collision and Q5/N2 remain open.
+adoption boundary. Fresh depth is integrated below; metric alignment, collision
+and Q5/N2 remain open.
 
 
 ### Unified retained-cache solver and viewer job
@@ -245,7 +246,7 @@ or current-pose bytes reject before native publication. No source stage, prior
 scene or occupied caller output is repaired or overwritten. Native bundle
 publication retains its existing commit semantics.
 
-The viewer exposes **Import video → Build geometry from saved depth**, with
+The viewer exposes **Import video → Build observed geometry**, with
 request, SHA-256 and output fields. Its owned background thread uses this same
 application command, bounded logs and Cancel button. Processing pauses scene
 rendering while retaining GPU assets. Successful publication loads the checked
@@ -261,8 +262,9 @@ build/dev/we_viewer --geometry-request REQUEST.json --geometry-request-sha SHA25
 An optional `--scene PRIOR.wexplore` opens the prior scene before starting this
 job. Other startup processing requests are mutually exclusive. GUI/CLI share the
 same pins, recovery and output ownership; this path produces raw partial observed
-surfaces only. Fresh depth, cleanup/baking job stages, measured alignment,
-collision/walking and quality gates remain separate.
+surfaces only. The fresh-depth entry below extends it. Full-sequence coverage,
+cleanup/baking job stages, measured alignment, collision/walking and quality gates
+remain separate.
 [Verification](../validation/2026-10-19-geometry-pipeline.md) includes populated
 solver/converter recovery and actual native scene preservation/handoff.
 
@@ -380,3 +382,73 @@ dependency validation. [Real and analytic evidence](../validation/2026-10-19-fus
 qualifies this diagnostic only, without Q5/N2 or automatic component removal.
 The separate [cleanup contract](mesh_cleanup.md) owns its fixed support policy,
 whole-surface error certificate and derived native requests.
+
+## Fresh depth through the shared geometry job
+
+`run_geometry_job`, `we_process run-geometry` and the viewer's **Import video →
+Build observed geometry** now also accept `FRESH_GEOMETRY_PIPELINE_V1`. This Linux
+entry connects the [owned CUDA depth job](dense_inputs.md#owned-cuda-depth-production)
+to the existing retained-cache path. It is locally verified on the nine-view
+resized profile, with raw partial normal-color geometry only.
+
+The pinned flat request has exactly these fields (paths resolve against it):
+
+```json
+{
+  "schema_version": 1,
+  "kind": "FRESH_GEOMETRY_PIPELINE_V1",
+  "dense_request": "dense-request.json",
+  "dense_request_sha256": "<owned depth request SHA-256>",
+  "dense_python": "path/to/clean/dense/bin/python",
+  "dense_coordinator": "path/to/tools/dense_job.py",
+  "dense_coordinator_sha256": "<coordinator SHA-256>",
+  "visibility_template": "visibility-template.json",
+  "visibility_template_sha256": "<template SHA-256>",
+  "retained_template": "retained-template.json",
+  "retained_template_sha256": "<template SHA-256>",
+  "fusion_recipe": "fusion-recipe.json",
+  "fusion_recipe_sha256": "<fixed CPU fusion recipe SHA-256>"
+}
+```
+
+The visibility template is the existing native depth-cache export request with
+an empty `outputs` array. The retained template is the existing retained geometry
+request with `fusion_request` and `fusion_request_sha256` omitted. Both select the
+same canonical current-pose path and SHA; dense manifest/recipe/pose selections
+must also match native admission. Source/template paths are resolved before
+internal request publication. Native resized input admission runs before ownership
+or CUDA launch. Inputs, scripts and indirect source directories cannot overlap
+outputs; Python executable aliases are explicitly resolved and pinned.
+
+A top-level immutable owner/writer lock protects the entire job. The dense owner
+runs/reuses under `stages/depth`. The application pins its terminal/owner/result
+graph, checks the bounded attempt/asset paths and builds `visibility.json` from
+actual selected results. Native pose-bound export creates `stages/cache-N` and
+publishes its manifest last; `cache.json` commits its selection and visibility
+request hash. Interrupted cache exports remain immutable, and restart reserves
+a new attempt (at most 128). A committed cache is hash-bound and subsequently
+checked in full by the admitted cache reader; corruption rejects without repair.
+
+The application then publishes exact `fusion.json` and `retained.json` and calls
+the unchanged retained-cache pipeline under `stages/geometry`. Conversion and
+native bundle publication keep their existing admission and commit boundaries.
+Every replay rechecks depth source/environment identity, depth outputs, current
+native inputs, cache and committed geometry; no CUDA backend is relaunched for
+an exact completed depth stage. A failed depth/cache/geometry stage leaves prior
+visible scenes and valid private results intact. No fallback environment, source
+selection, download or recipe retuning is implicit.
+
+The existing CLI/viewer syntax applies, with this fresh request and a new job:
+
+```sh
+build/dev/we_process run-geometry FRESH_REQUEST.json SHA256 NEW_JOB
+build/dev/we_viewer --geometry-request FRESH_REQUEST.json --geometry-request-sha SHA256 \
+  --geometry-output NEW_JOB --frames 90
+```
+
+The visible product still has arbitrary scale, unknown gaps and walking disabled.
+The current nine-view slice does not complete a room or the M3 milestone. Full
+sequence scheduling/coverage, measured alignment/collision, cleanup/baking job
+stages and full quality/platform/rights gates remain separate.
+[Native/real evidence](../validation/2026-10-20-owned-dense.md) records cancellation,
+retained attempts, the complete fresh-depth chain and strict replay.

@@ -1,8 +1,12 @@
 # Isolated COLMAP CUDA development pilot
 
-This is a **partial three-view qualification tool**, outside the application job
-pipeline. It does not publish a scene, fuse geometry, establish measured scale,
-qualify Q5/N2, or enable walking. Saved poses, fits and scenes remain inputs only.
+The original entry points below are **partial qualification tools**. The
+[owned depth job](../../docs/protocols/dense_inputs.md#owned-cuda-depth-production)
+now connects resized-neighbor depth to native geometry jobs through an explicitly
+selected clean profile; the original standalone prototypes remain separate. The
+standalone producers do not publish a scene, fuse geometry, establish measured
+scale, qualify Q5/N2, or enable walking. Saved poses, fits and scenes remain inputs
+only.
 The [native-input contract](../../docs/protocols/dense_inputs.md) owns preparation;
 [depth interchange](../../docs/protocols/depth.md) owns project output semantics.
 
@@ -27,6 +31,22 @@ wheel against official PyPI metadata and the lock. No weights are required.
 Core COLMAP BSD terms do not clear bundled/transitive libraries or CUDA runtime
 redistribution. Archive/notice identification is not complete rights/SBOM
 qualification; this profile is not an approved distributable package.
+
+## Clean owned development profile
+
+The [2026-10-20 receipt](../identity/dense-development-20261020.json) selects
+`artifacts/environments/dense-clean-20261020`, installed offline from the original
+six retained hash-locked wheels with copy isolation. All 1,188 listed files and
+six package RECORDs verify. The original `.venv-dense` still has changed headers;
+its audit can exit 0 while reporting `UNVERIFIED_RECORD`. The new owner requires
+exact clean receipt equality and verified package integrity before backend import.
+No original worker environment was repaired or overwritten. Archive integrity
+and successful local CUDA execution do not qualify redistribution/transitive rights.
+
+Use the [depth request and recovery contract](../../docs/protocols/dense_inputs.md#owned-cuda-depth-production)
+and [shared fresh geometry entry](../../docs/protocols/fusion.md#fresh-depth-through-the-shared-geometry-job).
+The initial real job uses the unchanged nine-view numerical policy; this is
+ownership/cancellation integration, not a quality improvement or full-room gate.
 
 ## Pinned pilot
 

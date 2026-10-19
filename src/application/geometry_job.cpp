@@ -2,6 +2,8 @@
 
 #include "job_validation.hpp"
 #include "owned_job.hpp"
+#include "world_explorer/application/dense_inputs.hpp"
+#include "world_explorer/application/depth_visibility.hpp"
 #include "world_explorer/application/fusion_scene.hpp"
 #include "world_explorer/core/asset_files.hpp"
 #include "world_explorer/core/hash.hpp"
@@ -103,6 +105,369 @@ file_hash(const std::filesystem::path& path, std::size_t maximum, const std::sto
     return sha256_file(path, maximum, stop);
 }
 
+Result<std::filesystem::path> run_fresh_geometry(const std::filesystem::path& request,
+                                                 const std::string& request_sha256,
+                                                 const nlohmann::json& configuration,
+                                                 const std::filesystem::path& destination,
+                                                 const std::stop_token& stop,
+                                                 const LogCallback& log) {
+    const std::set<std::string> K_FIELDS { "schema_version",
+                                          "kind",
+                                          "dense_request",
+                                          "dense_request_sha256",
+                                          "dense_python",
+                                          "dense_coordinator",
+                                          "dense_coordinator_sha256",
+                                          "visibility_template",
+                                          "visibility_template_sha256",
+                                          "retained_template",
+                                          "retained_template_sha256",
+                                          "fusion_recipe",
+                                          "fusion_recipe_sha256" };
+    if (!configuration.at("schema_version").is_number_unsigned() ||
+        configuration.at("schema_version") != 1 || configuration.size() != K_FIELDS.size() ||
+        !std::ranges::all_of(configuration.items(), [&](const auto& item) {
+            return K_FIELDS.contains(item.key());
+        })) {
+        return fail(ErrorCode::INVALID_DATA, "Unsupported fresh geometry request");
+    }
+    const auto K_ROOT = std::filesystem::absolute(destination).lexically_normal();
+    if (std::filesystem::weakly_canonical(K_ROOT) != K_ROOT || overlaps(K_ROOT, request)) {
+        return fail(ErrorCode::INVALID_DATA, "Fresh geometry output is linked or overlaps input");
+    }
+    const auto K_PIN = [&](const char* key) {
+        return configuration.at(key).get<std::string>();
+    };
+    std::map<std::string, std::filesystem::path> paths;
+    for (const auto& key : { "dense_request",
+                            "dense_python",
+                            "dense_coordinator",
+                            "visibility_template",
+                            "retained_template",
+                            "fusion_recipe" }) {
+        const auto K_PATH = local_path(
+            request.parent_path(), configuration.at(key), std::string_view(key) == "dense_python");
+        if (!K_PATH) {
+            return std::unexpected(K_PATH.error());
+        }
+        if (overlaps(K_ROOT, std::filesystem::canonical(*K_PATH))) {
+            return fail(ErrorCode::INVALID_DATA, "Fresh output overlaps a dependency");
+        }
+        paths.emplace(key, *K_PATH);
+    }
+    const auto K_DENSE =
+        read_document(paths.at("dense_request"), K_PIN("dense_request_sha256"), stop);
+    auto visibility =
+        read_document(paths.at("visibility_template"), K_PIN("visibility_template_sha256"), stop);
+    auto retained =
+        read_document(paths.at("retained_template"), K_PIN("retained_template_sha256"), stop);
+    const auto K_RECIPE =
+        read_document(paths.at("fusion_recipe"), K_PIN("fusion_recipe_sha256"), stop);
+    if (!K_DENSE) {
+        return std::unexpected(K_DENSE.error());
+    }
+    if (!visibility) {
+        return std::unexpected(visibility.error());
+    }
+    if (!retained) {
+        return std::unexpected(retained.error());
+    }
+    if (!K_RECIPE) {
+        return std::unexpected(K_RECIPE.error());
+    }
+    if (visibility->size() != 13uz || !visibility->at("outputs").is_array() ||
+        !visibility->at("outputs").empty() || retained->size() != 9uz ||
+        retained->at("kind") != "RETAINED_GEOMETRY_PIPELINE_V1") {
+        return fail(ErrorCode::INVALID_DATA, "Invalid fresh geometry templates");
+    }
+    // Resolve template paths before moving their exact selected values into owned files.
+    for (const auto& key :
+         { "pose_job", "poses", "native_recipe", "recipe", "manifest", "decode_stage" }) {
+        if (std::string_view(key) == "decode_stage" && visibility->at(key) == "") {
+            continue;
+        }
+        const auto K_PATH =
+            local_path(paths.at("visibility_template").parent_path(), visibility->at(key));
+        if (!K_PATH) {
+            return std::unexpected(K_PATH.error());
+        }
+        const auto K_INPUT = std::string_view(key) == "manifest" ? K_PATH->parent_path() : *K_PATH;
+        if (overlaps(K_ROOT, K_INPUT)) {
+            return fail(ErrorCode::INVALID_DATA, "Fresh output overlaps source data");
+        }
+        (*visibility)[key] = K_PATH->string();
+    }
+    for (const auto& key : { "poses", "python", "coordinator", "converter" }) {
+        const auto K_PATH = local_path(paths.at("retained_template").parent_path(),
+                                       retained->at(key),
+                                       std::string_view(key) == "python");
+        if (!K_PATH) {
+            return std::unexpected(K_PATH.error());
+        }
+        if (overlaps(K_ROOT, std::filesystem::canonical(*K_PATH))) {
+            return fail(ErrorCode::INVALID_DATA, "Fresh output overlaps execution input");
+        }
+        (*retained)[key] = K_PATH->string();
+    }
+    for (const auto& key : { "manifest", "recipe", "poses" }) {
+        const auto K_PATH = local_path(paths.at("dense_request").parent_path(), K_DENSE->at(key));
+        if (!K_PATH) {
+            return std::unexpected(K_PATH.error());
+        }
+        const auto K_PIN_KEY =
+            std::string(key) == "poses" ? "pose_sha256" : std::string(key) + "_sha256";
+        if (K_PATH->string() != visibility->at(key).get<std::string>() ||
+            K_DENSE->at(K_PIN_KEY) != visibility->at(K_PIN_KEY)) {
+            return fail(ErrorCode::INVALID_DATA, "Dense and native admission inputs differ");
+        }
+    }
+    if (retained->at("poses") != visibility->at("poses") ||
+        retained->at("pose_sha256") != visibility->at("pose_sha256")) {
+        return fail(ErrorCode::INVALID_DATA, "Fresh geometry pose selections differ");
+    }
+    const auto K_VIS_PATH = [&](const char* key) {
+        return std::filesystem::path { visibility->at(key).get<std::string>() };
+    };
+    const DenseInputRequest K_NATIVE { { K_VIS_PATH("pose_job"),
+                                       visibility->at("source_sha256").get<std::string>(),
+                                       K_VIS_PATH("decode_stage") },
+                                      K_VIS_PATH("poses"),
+                                      visibility->at("pose_sha256").get<std::string>(),
+                                      K_VIS_PATH("native_recipe"),
+                                      visibility->at("native_recipe_sha256").get<std::string>() };
+    const auto K_INPUTS = load_resized_dense_inputs(
+        { K_NATIVE, K_VIS_PATH("recipe"), visibility->at("recipe_sha256").get<std::string>() },
+        K_VIS_PATH("manifest"),
+        visibility->at("manifest_sha256").get<std::string>(),
+        stop);
+    if (!K_INPUTS) {
+        return std::unexpected(K_INPUTS.error());
+    }
+    const auto K_COORDINATOR = file_hash(paths.at("dense_coordinator"), K_DOCUMENT_BYTES, stop);
+    const auto K_PYTHON = sha256_file(paths.at("dense_python"), K_ASSET_BYTES, stop);
+    if (!K_COORDINATOR) {
+        return std::unexpected(K_COORDINATOR.error());
+    }
+    if (!K_PYTHON) {
+        return std::unexpected(K_PYTHON.error());
+    }
+    if (*K_COORDINATOR != K_PIN("dense_coordinator_sha256")) {
+        return fail(ErrorCode::INVALID_DATA, "Dense coordinator checksum differs");
+    }
+    const nlohmann::json K_OWNER {
+        { "schema_version", 1 },
+        { "kind", "FRESH_GEOMETRY_PIPELINE_V1" },
+        { "request", request.string() },
+        { "request_sha256", request_sha256 },
+        { "python_sha256", *K_PYTHON },
+        { "python_resolved", std::filesystem::canonical(paths.at("dense_python")).string() } };
+    auto lock = job_detail::open_owned_job(
+        K_ROOT,
+        { "owner.json", "writer.lock" },
+        K_OWNER,
+        { "stages", "visibility.json", "cache.json", "fusion.json", "retained.json" },
+        stop);
+    if (!lock) {
+        return std::unexpected(lock.error());
+    }
+    const auto K_STAGES = K_ROOT / "stages";
+    std::filesystem::create_directories(K_STAGES);
+    std::set<std::string> allowed { "depth", "geometry" };
+    for (std::size_t index { 0uz }; index < 128uz; ++index) {
+        allowed.insert("cache-" + std::to_string(index));
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(K_STAGES)) {
+        if (entry.is_symlink() || !entry.is_directory() ||
+            !allowed.contains(entry.path().filename().string())) {
+            return fail(ErrorCode::INVALID_DATA, "Invalid fresh geometry stage inventory");
+        }
+    }
+    if (log) {
+        log("Running or reusing pinned CUDA depth. Partial geometry; walking unavailable.\n");
+    }
+    ProcessControl control;
+    control.m_termination_grace = std::chrono::seconds(5);
+    const auto K_DEPTH_ROOT = K_STAGES / "depth";
+    const auto K_PROCESS = execute_process({ paths.at("dense_python").string(),
+                                            paths.at("dense_coordinator").string(),
+                                            paths.at("dense_request").string(),
+                                            K_PIN("dense_request_sha256"),
+                                            K_DEPTH_ROOT.string(),
+                                            "--parent-supervised" },
+                                           stop,
+                                           log,
+                                           log,
+                                           control);
+    if (!K_PROCESS) {
+        return std::unexpected(K_PROCESS.error());
+    }
+    if (*K_PROCESS != 0) {
+        return fail(ErrorCode::BACKEND_FAILURE, "Depth job failed; attempts retained");
+    }
+    // Recheck top-level bytes and executable identities before accepting child results.
+    const auto K_RECHECK = read_document(request, request_sha256, stop);
+    const auto K_FINAL_COORDINATOR =
+        file_hash(paths.at("dense_coordinator"), K_DOCUMENT_BYTES, stop);
+    const auto K_FINAL_PYTHON = sha256_file(paths.at("dense_python"), K_ASSET_BYTES, stop);
+    if (!K_RECHECK) {
+        return std::unexpected(K_RECHECK.error());
+    }
+    if (!K_FINAL_COORDINATOR) {
+        return std::unexpected(K_FINAL_COORDINATOR.error());
+    }
+    if (!K_FINAL_PYTHON) {
+        return std::unexpected(K_FINAL_PYTHON.error());
+    }
+    if (*K_FINAL_COORDINATOR != *K_COORDINATOR || *K_FINAL_PYTHON != *K_PYTHON ||
+        std::filesystem::canonical(paths.at("dense_python")).string() !=
+            K_OWNER.at("python_resolved").get<std::string>()) {
+        return fail(ErrorCode::INVALID_DATA, "Depth execution identity changed");
+    }
+    const auto K_TERMINAL_SHA = file_hash(K_DEPTH_ROOT / "manifest.json", K_DOCUMENT_BYTES, stop);
+    if (!K_TERMINAL_SHA) {
+        return std::unexpected(K_TERMINAL_SHA.error());
+    }
+    const auto K_TERMINAL = read_document(K_DEPTH_ROOT / "manifest.json", *K_TERMINAL_SHA, stop);
+    if (!K_TERMINAL) {
+        return std::unexpected(K_TERMINAL.error());
+    }
+    if (K_TERMINAL->size() != 6uz || K_TERMINAL->at("kind") != "OWNED_RESIZED_DEPTH_TERMINAL_V1" ||
+        K_TERMINAL->at("schema_version") != 1 ||
+        K_TERMINAL->at("scope") != "PARTIAL_DEPTH_NO_Q5_N2_OR_WALK") {
+        return fail(ErrorCode::INVALID_DATA, "Invalid owned depth terminal");
+    }
+    const auto K_STAGE_NAME = K_TERMINAL->at("stage").get<std::string>();
+    const auto K_OWNER_SHA = K_TERMINAL->at("owner_sha256").get<std::string>();
+    const auto K_DEPTH_OWNER = read_document(K_DEPTH_ROOT / "owner.json", K_OWNER_SHA, stop);
+    if (!K_DEPTH_OWNER) {
+        return std::unexpected(K_DEPTH_OWNER.error());
+    }
+    if (K_DEPTH_OWNER->at("request_sha256") != K_PIN("dense_request_sha256")) {
+        return fail(ErrorCode::INVALID_DATA, "Depth terminal owner differs");
+    }
+    bool selected {};
+    for (std::size_t index { 0uz }; index < 128uz; ++index) {
+        selected = selected ||
+                   K_STAGE_NAME == "depth-" + K_OWNER_SHA + "-attempt-" + std::to_string(index);
+    }
+    if (!selected) {
+        return fail(ErrorCode::INVALID_DATA, "Invalid selected depth attempt");
+    }
+    const auto K_DEPTH_STAGE = K_DEPTH_ROOT / "stages" / K_STAGE_NAME;
+    if (std::filesystem::canonical(K_DEPTH_STAGE) != K_DEPTH_STAGE) {
+        return fail(ErrorCode::INVALID_DATA, "Linked selected depth attempt");
+    }
+    const auto K_RESULT = read_document(
+        K_DEPTH_STAGE / "result.json", K_TERMINAL->at("result_sha256").get<std::string>(), stop);
+    if (!K_RESULT) {
+        return std::unexpected(K_RESULT.error());
+    }
+    if (K_RESULT->at("manifest_sha256") != visibility->at("manifest_sha256") ||
+        K_RESULT->at("recipe_sha256") != visibility->at("recipe_sha256") ||
+        !K_RESULT->at("frames").is_array() || K_RESULT->at("frames").empty() ||
+        K_RESULT->at("frames").size() > 18uz) {
+        return fail(ErrorCode::INVALID_DATA, "Depth result dependencies differ");
+    }
+    for (const auto& frame : K_RESULT->at("frames")) {
+        const auto K_NAME = frame.at("asset").get<std::string>();
+        if (!K_NAME.starts_with("assets/") ||
+            std::filesystem::path(K_NAME).parent_path() != "assets" ||
+            !K_NAME.ends_with(".wedepth")) {
+            return fail(ErrorCode::INVALID_DATA, "Unsafe depth result asset path");
+        }
+        (*visibility)["outputs"].push_back({ { "frame", frame.at("frame") },
+                                            { "path", (K_DEPTH_STAGE / K_NAME).string() },
+                                            { "sha256", frame.at("sha256") } });
+    }
+    const auto K_VISIBILITY_PATH = K_ROOT / "visibility.json";
+    const auto K_VISIBILITY_SHA = text_hash(visibility->dump(2) + '\n');
+    auto published = job_detail::publish_owned_json(K_VISIBILITY_PATH, *visibility, stop);
+    if (!published) {
+        return std::unexpected(published.error());
+    }
+    const auto K_CACHE_RECORD = K_ROOT / "cache.json";
+    std::filesystem::path cache;
+    std::string receipt_sha;
+    if (std::filesystem::exists(K_CACHE_RECORD)) {
+        const auto K_HASH = file_hash(K_CACHE_RECORD, K_DOCUMENT_BYTES, stop);
+        if (!K_HASH) {
+            return std::unexpected(K_HASH.error());
+        }
+        const auto K_SAVED = read_document(K_CACHE_RECORD, *K_HASH, stop);
+        if (!K_SAVED) {
+            return std::unexpected(K_SAVED.error());
+        }
+        if (K_SAVED->size() != 3uz || K_SAVED->at("visibility_sha256") != K_VISIBILITY_SHA ||
+            !K_SAVED->at("attempt").is_number_unsigned() || K_SAVED->at("attempt") >= 128U) {
+            return fail(ErrorCode::INVALID_DATA, "Invalid cache publication receipt");
+        }
+        cache = K_STAGES / ("cache-" + std::to_string(K_SAVED->at("attempt").get<std::uint32_t>()));
+        receipt_sha = K_SAVED->at("receipt_sha256").get<std::string>();
+    } else {
+        for (std::size_t index { 0uz }; index < 128uz; ++index) {
+            const auto K_CACHE = K_STAGES / ("cache-" + std::to_string(index));
+            if (std::filesystem::exists(K_CACHE)) {
+                continue;
+            }
+            if (log) {
+                log("Admitting fresh depth and publishing a native visibility cache.\n");
+            }
+            const auto K_EXPORTED =
+                export_depth_visibility_cache(K_VISIBILITY_PATH, K_VISIBILITY_SHA, K_CACHE, stop);
+            if (!K_EXPORTED) {
+                return std::unexpected(K_EXPORTED.error());
+            }
+            published = job_detail::publish_owned_json(K_CACHE_RECORD,
+                                                       { { "attempt", index },
+                                                        { "receipt_sha256", *K_EXPORTED },
+                                                        { "visibility_sha256", K_VISIBILITY_SHA } },
+                                                       stop);
+            if (!published) {
+                return std::unexpected(published.error());
+            }
+            cache = K_CACHE;
+            receipt_sha = *K_EXPORTED;
+            break;
+        }
+        if (cache.empty()) {
+            return fail(ErrorCode::RESOURCE_EXHAUSTED, "Fresh geometry exhausted cache attempts");
+        }
+    }
+    if (std::filesystem::canonical(cache) != cache) {
+        return fail(ErrorCode::INVALID_DATA, "Linked fresh depth cache");
+    }
+    const auto K_RECEIPT = read_document(cache / "manifest.json", receipt_sha, stop);
+    if (!K_RECEIPT) {
+        return std::unexpected(K_RECEIPT.error());
+    }
+    if (K_RECEIPT->at("request_sha256") != K_VISIBILITY_SHA ||
+        K_RECEIPT->at("pose_asset_sha256") != retained->at("pose_sha256")) {
+        return fail(ErrorCode::INVALID_DATA, "Fresh depth cache dependencies differ");
+    }
+    const nlohmann::json K_FUSION { { "schema_version", 1 },
+                                   { "cache", cache.string() },
+                                   { "receipt_sha256", receipt_sha },
+                                   { "recipe", paths.at("fusion_recipe").string() },
+                                   { "recipe_sha256", K_PIN("fusion_recipe_sha256") } };
+    const auto K_FUSION_PATH = K_ROOT / "fusion.json";
+    published = job_detail::publish_owned_json(K_FUSION_PATH, K_FUSION, stop);
+    if (!published) {
+        return std::unexpected(published.error());
+    }
+    (*retained)["fusion_request"] = K_FUSION_PATH.string();
+    (*retained)["fusion_request_sha256"] = text_hash(K_FUSION.dump(2) + '\n');
+    const auto K_RETAINED_PATH = K_ROOT / "retained.json";
+    published = job_detail::publish_owned_json(K_RETAINED_PATH, *retained, stop);
+    if (!published) {
+        return std::unexpected(published.error());
+    }
+    if (log) {
+        log("Fresh depth admitted; continuing the owned retained-cache geometry path.\n");
+    }
+    return run_geometry_job(
+        K_RETAINED_PATH, text_hash(retained->dump(2) + '\n'), K_STAGES / "geometry", stop, log);
+}
+
 }  // namespace
 
 Result<std::filesystem::path> run_geometry_job(const std::filesystem::path& request,
@@ -118,6 +483,10 @@ Result<std::filesystem::path> run_geometry_job(const std::filesystem::path& requ
         const auto K_CONFIG = read_document(K_REQUEST, expected_sha256, stop);
         if (!K_CONFIG) {
             return std::unexpected(K_CONFIG.error());
+        }
+        if (K_CONFIG->contains("kind") && K_CONFIG->at("kind") == "FRESH_GEOMETRY_PIPELINE_V1") {
+            return run_fresh_geometry(
+                K_REQUEST, expected_sha256, *K_CONFIG, destination, stop, log);
         }
         const std::set<std::string> K_FIELDS { "schema_version",
                                               "kind",
