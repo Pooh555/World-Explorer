@@ -33,6 +33,20 @@
   statements. The repo style gate checks these conventions because clang-format
   does not preserve spaces inside C++ braced lists.
   Keep required standard-library spellings unchanged.
+- For Python, follow `docs/coding_style_templates/style_template.py` and the
+  formatter settings in `pyproject.toml`. Install the pinned formatter from
+  `tools/python-style-requirements.txt`; run this check before finishing
+  Python work:
+
+  ```sh
+  git ls-files -z -- '*.py' | xargs -0 -n1 python3 -m black --check --quiet --workers 1
+  ```
+
+  The style template demonstrates Python 3.15 syntax and is excluded from
+  formatting; production Python must remain compatible with its documented
+  Python 3.10–3.12 worker profiles. Apply the template's compatible naming,
+  typing, import, error, I/O, logging, documentation and testing conventions
+  when writing or changing Python code.
 - Run the repo gate `python3 tools/check_cpp_style.py` before finishing C++ work; it enforces formatting, optional clang-tidy, and whitespace checks together.
 - Static analysis uses clang-tidy 23.1.1; do not weaken warnings to pass.
 - GPU execution requires native device access; sandbox driver-load failure is not GPU absence.

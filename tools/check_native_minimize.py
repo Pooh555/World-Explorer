@@ -30,47 +30,87 @@ def run(smoke, manager, output):
     output.mkdir()  # Refuse existing evidence, including a symlink.
     server = window_manager = None
     read_fd, write_fd = os.pipe()
-    receipt = {"smoke_sha256": sha256(smoke), "manager_sha256": sha256(manager),
-               "scope": "native X11 synthetic overlap minimize/queued-update/restore"}
+    receipt = {
+        "smoke_sha256": sha256(smoke),
+        "manager_sha256": sha256(manager),
+        "scope": "native X11 synthetic overlap minimize/queued-update/restore",
+    }
     try:
         with (output / "xwayland.log").open("wb") as server_log:
             server = subprocess.Popen(
-                [server_path, "-displayfd", str(write_fd), "-geometry", "1024x768",
-                 "-noreset", "-nolisten", "tcp"], pass_fds=(write_fd,),
-                stdout=server_log, stderr=subprocess.STDOUT)
+                [
+                    server_path,
+                    "-displayfd",
+                    str(write_fd),
+                    "-geometry",
+                    "1024x768",
+                    "-noreset",
+                    "-nolisten",
+                    "tcp",
+                ],
+                pass_fds=(write_fd,),
+                stdout=server_log,
+                stderr=subprocess.STDOUT,
+            )
             os.close(write_fd)
             write_fd = None
             if not select.select([read_fd], [], [], 20)[0]:
                 raise RuntimeError("isolated Xwayland did not become ready")
             number = os.read(read_fd, 64).decode("ascii").strip()
             if not number.isdecimal():
-                raise RuntimeError("isolated Xwayland returned an invalid display number")
+                raise RuntimeError(
+                    "isolated Xwayland returned an invalid display number"
+                )
             display = ":" + number
             env = dict(os.environ, DISPLAY=display, SDL_VIDEODRIVER="x11")
             with (output / "wm.log").open("wb") as manager_log:
                 window_manager = subprocess.Popen(
-                    [str(manager), display], env=env,
-                    stdout=manager_log, stderr=subprocess.STDOUT)
+                    [str(manager), display],
+                    env=env,
+                    stdout=manager_log,
+                    stderr=subprocess.STDOUT,
+                )
                 deadline = time.monotonic() + 5
                 while not (output / "wm.log").read_bytes().startswith(b"ready\n"):
-                    if window_manager.poll() is not None or time.monotonic() >= deadline:
-                        raise RuntimeError("isolated window manager did not become ready")
+                    if (
+                        window_manager.poll() is not None
+                        or time.monotonic() >= deadline
+                    ):
+                        raise RuntimeError(
+                            "isolated window manager did not become ready"
+                        )
                     time.sleep(0.05)
-                command = [str(smoke), str(output / "smoke.ppm"),
-                           "--timings", "--require-minimize"]
+                command = [
+                    str(smoke),
+                    str(output / "smoke.ppm"),
+                    "--timings",
+                    "--require-minimize",
+                ]
                 receipt["command"] = command
                 with (output / "smoke.log").open("wb") as log:
-                    result = subprocess.run(command, env=env, stdout=log,
-                                            stderr=subprocess.STDOUT, timeout=180)
+                    result = subprocess.run(
+                        command,
+                        env=env,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                        timeout=180,
+                    )
                 receipt["smoke_exit"] = result.returncode
                 if result.returncode != 0:
-                    raise RuntimeError(f"strict GPU smoke exited {result.returncode}; see smoke.log")
-                if b"minimize/restore passed" not in (output / "smoke.log").read_bytes():
+                    raise RuntimeError(
+                        f"strict GPU smoke exited {result.returncode}; see smoke.log"
+                    )
+                if (
+                    b"minimize/restore passed"
+                    not in (output / "smoke.log").read_bytes()
+                ):
                     raise RuntimeError("smoke did not report accepted minimize/restore")
                 baseline = sha256(output / "minimize-baseline.ppm")
                 restored = sha256(output / "minimize-restored.ppm")
                 if baseline != restored:
-                    raise RuntimeError("restored pixels differ from the minimize baseline")
+                    raise RuntimeError(
+                        "restored pixels differ from the minimize baseline"
+                    )
                 receipt["readback_sha256"] = baseline
                 receipt["passed"] = True
     finally:
@@ -93,7 +133,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("smoke", type=Path)
     parser.add_argument("manager", type=Path)
-    parser.add_argument("output", type=Path, help="new directory under artifacts/validation")
+    parser.add_argument(
+        "output", type=Path, help="new directory under artifacts/validation"
+    )
     args = parser.parse_args()
     try:
         result = run(args.smoke, args.manager, args.output)

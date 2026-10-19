@@ -29,7 +29,9 @@ MAX_DISTRIBUTIONS = 256
 
 
 def canonical_bytes(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode()
 
 
 def normalize_name(name):
@@ -55,7 +57,9 @@ def file_digests(path, maximum, algorithms):
     identity = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
     if count != before.st_size or identity(before) != identity(after):
         raise ValueError("File changed during environment audit")
-    return {algorithm: digest.hexdigest() for algorithm, digest in digests.items()}, count
+    return {
+        algorithm: digest.hexdigest() for algorithm, digest in digests.items()
+    }, count
 
 
 def file_digest(path, maximum=MAX_FILE_BYTES):
@@ -120,16 +124,34 @@ def audit_distribution(directory, prefix, budget):
     if not re.fullmatch(r"[A-Za-z0-9_.+!-]{1,128}", version):
         raise ValueError("Invalid installed distribution version")
     record_path = directory / "RECORD"
-    result = {"name": name, "version": version,
-              "metadata_sha256": hashlib.sha256(metadata_bytes).hexdigest(),
-              "license_metadata_sha256": hashlib.sha256(
-                  canonical_bytes({key: [str(value) for value in fields.get_all(key, [])] for key in
-                                   ["License", "License-Expression", "License-File", "Classifier"]})
-              ).hexdigest(),
-              "wheel_archive_sha256": None, "notices": []}
+    result = {
+        "name": name,
+        "version": version,
+        "metadata_sha256": hashlib.sha256(metadata_bytes).hexdigest(),
+        "license_metadata_sha256": hashlib.sha256(
+            canonical_bytes(
+                {
+                    key: [str(value) for value in fields.get_all(key, [])]
+                    for key in [
+                        "License",
+                        "License-Expression",
+                        "License-File",
+                        "Classifier",
+                    ]
+                }
+            )
+        ).hexdigest(),
+        "wheel_archive_sha256": None,
+        "notices": [],
+    }
     if not record_path.is_file():
-        result.update(integrity="UNVERIFIED_NO_RECORD", files=[], record_sha256=None,
-                      installed_files_sha256=None, issues=["Installed RECORD absent"])
+        result.update(
+            integrity="UNVERIFIED_NO_RECORD",
+            files=[],
+            record_sha256=None,
+            installed_files_sha256=None,
+            issues=["Installed RECORD absent"],
+        )
         return result
     record_path = contained(record_path, prefix)
     record_bytes = bounded_read(record_path)
@@ -152,20 +174,32 @@ def audit_distribution(directory, prefix, budget):
         digests, size = file_digests(path, maximum, {"sha256", algorithm})
         budget["bytes"] += size
         budget["files"] += 1
-        row = {"path": relative, "bytes": size, "sha256": digests["sha256"],
-               "record_check": "NO_HASH"}
-        if entry[2] and (not re.fullmatch(r"[0-9]{1,20}", entry[2]) or int(entry[2]) != size):
+        row = {
+            "path": relative,
+            "bytes": size,
+            "sha256": digests["sha256"],
+            "record_check": "NO_HASH",
+        }
+        if entry[2] and (
+            not re.fullmatch(r"[0-9]{1,20}", entry[2]) or int(entry[2]) != size
+        ):
             issues.append(relative + ": RECORD size differs")
         if expected is not None:
             actual = digests[algorithm]
-            encoded = base64.urlsafe_b64encode(bytes.fromhex(actual)).decode().rstrip("=")
+            encoded = (
+                base64.urlsafe_b64encode(bytes.fromhex(actual)).decode().rstrip("=")
+            )
             row["record_check"] = "MATCH" if encoded == expected else "MISMATCH"
             if row["record_check"] == "MISMATCH":
                 issues.append(relative + ": RECORD digest differs")
         elif path != record_path and path.suffix != ".pyc":
             issues.append(relative + ": RECORD has no digest")
-        if any(token in path.name.lower() for token in ("license", "notice", "copying")):
-            result["notices"].append({key: row[key] for key in ("path", "bytes", "sha256")})
+        if any(
+            token in path.name.lower() for token in ("license", "notice", "copying")
+        ):
+            result["notices"].append(
+                {key: row[key] for key in ("path", "bytes", "sha256")}
+            )
         files.append(row)
     if record_path.relative_to(prefix).as_posix() not in paths:
         issues.append("RECORD does not list itself")
@@ -176,9 +210,12 @@ def audit_distribution(directory, prefix, budget):
     if bounded_read(metadata_path) != metadata_bytes:
         raise ValueError("METADATA changed during audit")
     files.sort(key=lambda item: item["path"])
-    result.update(files=files, issues=issues,
-                  integrity="VERIFIED_RECORD" if not issues else "UNVERIFIED_RECORD",
-                  installed_files_sha256=hashlib.sha256(canonical_bytes(files)).hexdigest())
+    result.update(
+        files=files,
+        issues=issues,
+        integrity="VERIFIED_RECORD" if not issues else "UNVERIFIED_RECORD",
+        installed_files_sha256=hashlib.sha256(canonical_bytes(files)).hexdigest(),
+    )
     return result
 
 
@@ -197,7 +234,9 @@ def audit_environment(prefix, sites, requirements):
             uninspected.add(path.relative_to(prefix).as_posix())
             if len(uninspected) > MAX_DISTRIBUTIONS:
                 raise ValueError("Legacy metadata count exceeds audit limit")
-    packages = [audit_distribution(path, prefix, budget) for path in sorted(directories)]
+    packages = [
+        audit_distribution(path, prefix, budget) for path in sorted(directories)
+    ]
     installed = {package["name"]: package for package in packages}
     if len(installed) != len(packages):
         raise ValueError("Ambiguous duplicate installed distribution")
@@ -208,20 +247,34 @@ def audit_environment(prefix, sites, requirements):
             deviations.append({"name": name, "expected": expected, "installed": actual})
     if hashlib.sha256(bounded_read(requirements)).hexdigest() != requirements_sha256:
         raise ValueError("Requirements changed during audit")
-    return {"schema_version": 1, "scope": "installed RECORD-listed bytes; not archive or rights lock",
-            "python_version": sys.version.split()[0], "platform": sys.platform,
-            "requirements_sha256": requirements_sha256,
-            "requirements_match": not deviations, "deviations": deviations,
-            "unlisted_distributions": sorted(set(installed) - set(pins)),
-            "uninspected_legacy_metadata": sorted(uninspected),
-            "packages": packages, "listed_files": budget["files"], "listed_bytes": budget["bytes"],
-            "metrics": {name: installed.get(name, {}).get("version") for name in ("torchmetrics", "lpips")},
-            "metric_qualified": False, "backbone_sha256": None,
-            "rights_clearance": "NOT_PERFORMED", "wheel_archive_lock": "NOT_AVAILABLE"}
+    return {
+        "schema_version": 1,
+        "scope": "installed RECORD-listed bytes; not archive or rights lock",
+        "python_version": sys.version.split()[0],
+        "platform": sys.platform,
+        "requirements_sha256": requirements_sha256,
+        "requirements_match": not deviations,
+        "deviations": deviations,
+        "unlisted_distributions": sorted(set(installed) - set(pins)),
+        "uninspected_legacy_metadata": sorted(uninspected),
+        "packages": packages,
+        "listed_files": budget["files"],
+        "listed_bytes": budget["bytes"],
+        "metrics": {
+            name: installed.get(name, {}).get("version")
+            for name in ("torchmetrics", "lpips")
+        },
+        "metric_qualified": False,
+        "backbone_sha256": None,
+        "rights_clearance": "NOT_PERFORMED",
+        "wheel_archive_lock": "NOT_AVAILABLE",
+    }
 
 
 def publish_receipt(path, report):
-    data = json.dumps(report, sort_keys=True, indent=2, allow_nan=False).encode() + b"\n"
+    data = (
+        json.dumps(report, sort_keys=True, indent=2, allow_nan=False).encode() + b"\n"
+    )
     if len(data) > MAX_METADATA_BYTES:
         raise ValueError("Environment receipt exceeds output budget")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -252,8 +305,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--requirements", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--alexnet-weights", type=Path,
-                        help="Explicit local bytes to hash; no model loading or rights inference")
+    parser.add_argument(
+        "--alexnet-weights",
+        type=Path,
+        help="Explicit local bytes to hash; no model loading or rights inference",
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
@@ -261,16 +317,25 @@ def main():
         if not output.is_relative_to(root / "artifacts") or args.output.exists():
             raise ValueError("Select a new receipt path inside ignored artifacts/")
         if sys.prefix == sys.base_prefix:
-            raise ValueError("Run the audit with the explicitly selected worker virtual environment")
+            raise ValueError(
+                "Run the audit with the explicitly selected worker virtual environment"
+            )
         sites = {Path(sysconfig.get_path(key)) for key in ("purelib", "platlib")}
         report = audit_environment(Path(sys.prefix), sites, args.requirements)
         record_backbone(report, args.alexnet_weights)
         report["auditor_sha256"] = file_digest(Path(__file__), MAX_METADATA_BYTES)[0]
         publish_receipt(output, report)
-        print(json.dumps({"receipt": str(output.relative_to(root)),
-                          "packages": len(report["packages"]), "listed_files": report["listed_files"],
-                          "requirements_match": report["requirements_match"],
-                          "metric_qualified": False}))
+        print(
+            json.dumps(
+                {
+                    "receipt": str(output.relative_to(root)),
+                    "packages": len(report["packages"]),
+                    "listed_files": report["listed_files"],
+                    "requirements_match": report["requirements_match"],
+                    "metric_qualified": False,
+                }
+            )
+        )
         return 0
     except (OSError, ValueError, csv.Error) as error:
         print(f"Worker environment audit failed: {error}", file=sys.stderr)

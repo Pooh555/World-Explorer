@@ -1,4 +1,5 @@
 """Synthetic recovery admission tests; no reconstruction quality claims."""
+
 import hashlib
 from contextlib import closing
 import importlib.util
@@ -28,25 +29,41 @@ class PoseRecoveryTests(unittest.TestCase):
         self.database = self.root / "database #saved.db"
         with closing(sqlite3.connect(self.database)) as database, database:
             database.execute("CREATE TABLE images(name TEXT,image_id INTEGER)")
-            database.executemany("INSERT INTO images VALUES(?,?)",
-                                 [("000001.png", 7), ("000002.png", 2)])
-            database.execute("CREATE TABLE two_view_geometries(pair_id INTEGER,rows INTEGER)")
-            database.execute("INSERT INTO two_view_geometries VALUES(?,?)",
-                             (2 * 2147483647 + 7, 100))
-        self.backend = SimpleNamespace(__version__="4.2.1",
-            IncrementalMapperOptions=lambda: SimpleNamespace(init_min_num_inliers=100))
+            database.executemany(
+                "INSERT INTO images VALUES(?,?)", [("000001.png", 7), ("000002.png", 2)]
+            )
+            database.execute(
+                "CREATE TABLE two_view_geometries(pair_id INTEGER,rows INTEGER)"
+            )
+            database.execute(
+                "INSERT INTO two_view_geometries VALUES(?,?)", (2 * 2147483647 + 7, 100)
+            )
+        self.backend = SimpleNamespace(
+            __version__="4.2.1",
+            IncrementalMapperOptions=lambda: SimpleNamespace(init_min_num_inliers=100),
+        )
         self.calls = []
         self.backend.incremental_mapping = self.map
 
     def map(self, *args, **kwargs):
         self.calls.append((args, kwargs))
+
         def write(destination):
             (destination / "images.bin").write_bytes(b"synthetic model marker")
+
         return {0: SimpleNamespace(write=write), 1: SimpleNamespace(write=write)}
 
     def run_helper(self, *initialization):
-        argv = [str(path), "--database", str(self.database), "--images", str(self.images),
-                "--output", str(self.root / "sparse"), *initialization]
+        argv = [
+            str(path),
+            "--database",
+            str(self.database),
+            "--images",
+            str(self.images),
+            "--output",
+            str(self.root / "sparse"),
+            *initialization,
+        ]
         connections = []
         connect = sqlite3.connect
 
@@ -55,8 +72,11 @@ class PoseRecoveryTests(unittest.TestCase):
             connections.append(connection)
             return connection
 
-        with (patch.object(sys, "argv", argv), patch.dict(sys.modules, pycolmap=self.backend),
-              patch.object(remap.sqlite3, "connect", tracked_connect)):
+        with (
+            patch.object(sys, "argv", argv),
+            patch.dict(sys.modules, pycolmap=self.backend),
+            patch.object(remap.sqlite3, "connect", tracked_connect),
+        ):
             try:
                 remap.main()
             finally:
@@ -75,9 +95,18 @@ class PoseRecoveryTests(unittest.TestCase):
         self.run_helper("--seed-images", "000001.png", "000002.png")
         self.assertEqual(hashlib.sha256(self.database.read_bytes()).digest(), before)
         self.assertEqual({p.name for p in (self.root / "sparse").iterdir()}, {"0", "1"})
-        self.assertEqual(self.calls[0][1], {"options": {
-            "num_threads": 2, "random_seed": 42, "init_image_id1": 7, "init_image_id2": 2},
-            "input_path": ""})
+        self.assertEqual(
+            self.calls[0][1],
+            {
+                "options": {
+                    "num_threads": 2,
+                    "random_seed": 42,
+                    "init_image_id1": 7,
+                    "init_image_id2": 2,
+                },
+                "input_path": "",
+            },
+        )
 
     def test_insufficient_verified_matches_never_launch_mapper(self):
         with closing(sqlite3.connect(self.database)) as database, database:
@@ -87,8 +116,10 @@ class PoseRecoveryTests(unittest.TestCase):
         self.assertFalse(self.calls)
 
     def test_unknown_or_repeated_seed_is_rejected(self):
-        for names, error in [(('000001.png', '000003.png'), KeyError),
-                             (('000001.png', '000001.png'), ValueError)]:
+        for names, error in [
+            (("000001.png", "000003.png"), KeyError),
+            (("000001.png", "000001.png"), ValueError),
+        ]:
             with self.subTest(names=names), self.assertRaises(error):
                 self.run_helper("--seed-images", *names)
         self.assertFalse(self.calls)
@@ -102,8 +133,10 @@ class PoseRecoveryTests(unittest.TestCase):
     def test_retained_model_continuation_does_not_force_a_seed(self):
         model = self.root / "initial-model"
         self.run_helper("--initial-model", str(model))
-        self.assertEqual(self.calls[0][1], {"options": {"num_threads": 2, "random_seed": 42},
-                                         "input_path": model})
+        self.assertEqual(
+            self.calls[0][1],
+            {"options": {"num_threads": 2, "random_seed": 42}, "input_path": model},
+        )
 
     def test_empty_mapping_is_failure(self):
         self.backend.incremental_mapping = lambda *args, **kwargs: {}

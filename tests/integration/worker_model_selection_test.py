@@ -1,4 +1,5 @@
 """Frame-coverage regressions; these fixtures are synthetic, not scene evidence."""
+
 import importlib.util
 from pathlib import Path
 import unittest
@@ -12,11 +13,17 @@ spec.loader.exec_module(selection)
 class ModelSelectionTests(unittest.TestCase):
     def test_complete_later_model_supersedes_redundant_attempt(self):
         frames = set(range(63))
-        self.assertEqual(selection.select_candidate([{23, 59, 60, 61}, frames], frames), 1)
-        self.assertEqual(selection.select_candidate([frames, {23, 59, 60, 61}], frames), 0)
+        self.assertEqual(
+            selection.select_candidate([{23, 59, 60, 61}, frames], frames), 1
+        )
+        self.assertEqual(
+            selection.select_candidate([frames, {23, 59, 60, 61}], frames), 0
+        )
 
     def test_does_not_accept_largest_model_with_separate_coverage(self):
-        self.assertIsNone(selection.select_candidate([{1, 2, 3, 4}, {5, 6}], set(range(1, 7))))
+        self.assertIsNone(
+            selection.select_candidate([{1, 2, 3, 4}, {5, 6}], set(range(1, 7)))
+        )
 
     def test_overlap_without_containment_requires_recovery(self):
         self.assertIsNone(selection.select_candidate([{1, 2, 3}, {3, 4}], {1, 2, 3, 4}))

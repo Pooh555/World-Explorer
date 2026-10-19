@@ -40,7 +40,12 @@ def label(path, root):
 
 
 def selected_path(text, root, directory=False):
-    if not isinstance(text, str) or not text or len(text) > 4096 or any(c in text for c in "\n\r\0"):
+    if (
+        not isinstance(text, str)
+        or not text
+        or len(text) > 4096
+        or any(c in text for c in "\n\r\0")
+    ):
         raise ValueError("Invalid selected runtime path")
     path = Path(text)
     path = (path if path.is_absolute() else root / path).resolve(strict=True)
@@ -54,23 +59,35 @@ def selected_path(text, root, directory=False):
 
 
 def parse_elf(text):
-    if "Class:" not in text or not re.search(r"Class:\s+ELF64", text) or not re.search(r"Machine:\s+Advanced Micro Devices X86-64", text):
+    if (
+        "Class:" not in text
+        or not re.search(r"Class:\s+ELF64", text)
+        or not re.search(r"Machine:\s+Advanced Micro Devices X86-64", text)
+    ):
         raise ValueError("Selected audit supports ELF64 x86-64 only")
     if not re.search(r"Data:\s+2's complement, little endian", text):
         raise ValueError("Unsupported ELF byte order")
     values = {}
-    for tag, value in re.findall(r"\((NEEDED|RPATH|RUNPATH|SONAME)\).*?\[([^\]\n]*)\]", text):
+    for tag, value in re.findall(
+        r"\((NEEDED|RPATH|RUNPATH|SONAME)\).*?\[([^\]\n]*)\]", text
+    ):
         if not value or len(value) > 4096 or "\0" in value:
             raise ValueError("Invalid ELF dependency value")
         values.setdefault(tag.lower(), []).append(value)
-    if len(values.get("needed", [])) > MAX_NODES or any(len(values.get(tag, [])) > 1 for tag in ("rpath", "runpath", "soname")):
+    if len(values.get("needed", [])) > MAX_NODES or any(
+        len(values.get(tag, [])) > 1 for tag in ("rpath", "runpath", "soname")
+    ):
         raise ValueError("Over-budget or ambiguous ELF metadata")
     interpreter = re.findall(r"\[Requesting program interpreter: ([^\]\n]+)\]", text)
     if len(interpreter) > 1:
         raise ValueError("Ambiguous ELF interpreter")
-    return {"needed": values.get("needed", []), "rpath": values.get("rpath", []),
-            "runpath": values.get("runpath", []), "soname": values.get("soname", []),
-            "interpreter": interpreter[0] if interpreter else None}
+    return {
+        "needed": values.get("needed", []),
+        "rpath": values.get("rpath", []),
+        "runpath": values.get("runpath", []),
+        "soname": values.get("soname", []),
+        "interpreter": interpreter[0] if interpreter else None,
+    }
 
 
 def parse_loader(text):
@@ -129,8 +146,9 @@ class commands:
             raise ValueError("Runtime command count exceeds budget")
         data = bytearray()
         deadline = time.monotonic() + 15
-        with subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                              env=ENVIRONMENT) as process:
+        with subprocess.Popen(
+            argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=ENVIRONMENT
+        ) as process:
             try:
                 with selectors.DefaultSelector() as selector:
                     selector.register(process.stdout, selectors.EVENT_READ)
@@ -139,20 +157,28 @@ class commands:
                         if remaining <= 0:
                             raise subprocess.TimeoutExpired(argv, 15)
                         for key, _ in selector.select(remaining):
-                            chunk = key.fileobj.read1(min(65536, MAX_OUTPUT - len(data) + 1))
+                            chunk = key.fileobj.read1(
+                                min(65536, MAX_OUTPUT - len(data) + 1)
+                            )
                             if not chunk:
                                 selector.unregister(key.fileobj)
                                 continue
                             data.extend(chunk)
                             if len(data) > MAX_OUTPUT:
-                                raise ValueError("Runtime command output exceeds budget")
+                                raise ValueError(
+                                    "Runtime command output exceeds budget"
+                                )
                 exit_code = process.wait(timeout=max(0, deadline - time.monotonic()))
             finally:
                 if process.poll() is None:
                     process.kill()
                     process.wait()
-        receipt = {"argv": argv, "exit": exit_code, "output_sha256": hashlib.sha256(data).hexdigest(),
-                   "output": data.decode("utf-8", errors="strict")}
+        receipt = {
+            "argv": argv,
+            "exit": exit_code,
+            "output_sha256": hashlib.sha256(data).hexdigest(),
+            "output": data.decode("utf-8", errors="strict"),
+        }
         self.receipts.append(receipt)
         if exit_code not in expected:
             raise ValueError("Selected runtime inspection command failed")
@@ -178,9 +204,14 @@ def worker_owners(root, selections):
                 selected = (prefix / item["path"]).resolve(strict=True)
                 if not selected.is_relative_to(prefix):
                     raise ValueError("Worker ELF receipt escapes selected environment")
-                row = {"kind": "installed-distribution", "name": package["name"], "version": package["version"],
-                       "sha256": item["sha256"], "metadata_sha256": package["metadata_sha256"],
-                       "record_sha256": package["record_sha256"]}
+                row = {
+                    "kind": "installed-distribution",
+                    "name": package["name"],
+                    "version": package["version"],
+                    "sha256": item["sha256"],
+                    "metadata_sha256": package["metadata_sha256"],
+                    "record_sha256": package["record_sha256"],
+                }
                 if selected in owners and owners[selected] != row:
                     raise ValueError("Ambiguous installed ELF ownership")
                 owners[selected] = row
@@ -188,12 +219,18 @@ def worker_owners(root, selections):
 
 
 def capture(root, selection, runner=None):
-    if selection.get("schema_version") != 1 or not 1 <= len(selection["roots"]) <= MAX_ROOTS:
+    if (
+        selection.get("schema_version") != 1
+        or not 1 <= len(selection["roots"]) <= MAX_ROOTS
+    ):
         raise ValueError("Invalid runtime selection schema/root count")
     if len({entry["id"] for entry in selection["roots"]}) != len(selection["roots"]):
         raise ValueError("Duplicate runtime root ID")
     runner = runner or commands()
-    tools = {name: selected_path(selection[name], root) for name in ("loader", "readelf", "package_tool")}
+    tools = {
+        name: selected_path(selection[name], root)
+        for name in ("loader", "readelf", "package_tool")
+    }
     tool_hashes = {name: file_digest(path)[0] for name, path in tools.items()}
     owners, bindings = worker_owners(root, selection.get("worker_receipts", []))
     nodes = {}
@@ -207,7 +244,13 @@ def capture(root, selection, runner=None):
 
     def observe(path):
         info = path.stat()
-        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+        return (
+            info.st_dev,
+            info.st_ino,
+            info.st_size,
+            info.st_mtime_ns,
+            info.st_ctime_ns,
+        )
 
     def package_info(name):
         nonlocal notice_count, notice_bytes
@@ -215,13 +258,20 @@ def capture(root, selection, runner=None):
             return
         text = runner.run([str(tools["package_tool"]), "-Qi", "--", name])["output"]
         fields = dict(re.findall(r"^(Name|Version|URL|Licenses)\s+: (.*)$", text, re.M))
-        if fields.get("Name") != name or any(key not in fields for key in ("Version", "URL", "Licenses")):
+        if fields.get("Name") != name or any(
+            key not in fields for key in ("Version", "URL", "Licenses")
+        ):
             raise ValueError("Invalid selected system package metadata")
-        paths = runner.run([str(tools["package_tool"]), "-Qlq", "--", name])["output"].splitlines()
+        paths = runner.run([str(tools["package_tool"]), "-Qlq", "--", name])[
+            "output"
+        ].splitlines()
         notices = []
         for text in paths:
             path = Path(text)
-            if not path.is_relative_to(Path("/usr/share/licenses")) or not path.is_file():
+            if (
+                not path.is_relative_to(Path("/usr/share/licenses"))
+                or not path.is_file()
+            ):
                 continue
             before = observe(path)
             data = read_file(path, MAX_NOTICE_BYTES - notice_bytes)
@@ -229,14 +279,27 @@ def capture(root, selection, runner=None):
             notice_bytes += len(data)
             if notice_count > MAX_NOTICES:
                 raise ValueError("Runtime notices exceed count budget")
-            notices.append({"path": label(path, root), "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)})
+            notices.append(
+                {
+                    "path": label(path, root),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                    "bytes": len(data),
+                }
+            )
             if observe(path) != before:
                 raise ValueError("Runtime notice changed during identity capture")
             observations[path.resolve(strict=True)] = before
-        packages[name] = {"version": fields["Version"], "source_url": fields["URL"],
-                          "declared_license": fields["Licenses"], "notices": notices,
-                          "gaps": ["SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE", "TRANSITIVE_RIGHTS_UNREVIEWED"] +
-                          ([] if notices else ["SEPARATE_INSTALLED_NOTICE_ABSENT"])}
+        packages[name] = {
+            "version": fields["Version"],
+            "source_url": fields["URL"],
+            "declared_license": fields["Licenses"],
+            "notices": notices,
+            "gaps": [
+                "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+                "TRANSITIVE_RIGHTS_UNREVIEWED",
+            ]
+            + ([] if notices else ["SEPARATE_INSTALLED_NOTICE_ABSENT"]),
+        }
 
     def inspect(path):
         nonlocal total
@@ -252,21 +315,44 @@ def capture(root, selection, runner=None):
         before = observe(path)
         sha256, size = file_digest(path, min(4 * 1024**3, MAX_TOTAL_BYTES - total))
         total += size
-        metadata = parse_elf(runner.run([str(tools["readelf"]), "--wide", "--file-header", "--program-headers", "--dynamic", str(path)])["output"])
+        metadata = parse_elf(
+            runner.run(
+                [
+                    str(tools["readelf"]),
+                    "--wide",
+                    "--file-header",
+                    "--program-headers",
+                    "--dynamic",
+                    str(path),
+                ]
+            )["output"]
+        )
         owner = owners.get(path)
         if owner is not None:
             if owner["sha256"] != sha256:
                 raise ValueError("Current installed ELF differs from bound RECORD")
         elif path.is_relative_to(root):
-            owner = {"kind": "project-build" if path.is_relative_to(root / "build") else "local-runtime-unattributed"}
+            owner = {
+                "kind": (
+                    "project-build"
+                    if path.is_relative_to(root / "build")
+                    else "local-runtime-unattributed"
+                )
+            }
         else:
-            observed = runner.run([str(tools["package_tool"]), "-Qoq", "--", str(path)], expected=(0, 1))
+            observed = runner.run(
+                [str(tools["package_tool"]), "-Qoq", "--", str(path)], expected=(0, 1)
+            )
             if observed["exit"] == 0:
                 name = observed["output"].strip()
                 if not re.fullmatch(r"[A-Za-z0-9@_.+-]{1,128}", name):
                     raise ValueError("Ambiguous selected system ownership")
                 package_info(name)
-                owner = {"kind": "system-package", "name": name, "version": packages[name]["version"]}
+                owner = {
+                    "kind": "system-package",
+                    "name": name,
+                    "version": packages[name]["version"],
+                }
             else:
                 owner = {"kind": "system-runtime-unattributed"}
         nodes[key] = {"sha256": sha256, "bytes": size, "elf": metadata, "owner": owner}
@@ -280,22 +366,34 @@ def capture(root, selection, runner=None):
         root_key = inspect(path)
         if nodes[root_key]["sha256"] != entry["sha256"]:
             raise ValueError("Runtime root differs from explicit selection")
-        libraries = [selected_path(text, root, directory=True) for text in entry.get("library_path", [])]
+        libraries = [
+            selected_path(text, root, directory=True)
+            for text in entry.get("library_path", [])
+        ]
         argv = [str(tools["loader"]), "--list"]
         if libraries:
             argv += ["--library-path", ":".join(str(path) for path in libraries)]
         argv.append(str(path))
         observation = runner.run(argv, expected=(0, 127))
-        row = {"id": entry["id"], "path": root_key, "scope": entry["scope"],
-               "library_path": [label(path, root) for path in libraries], "loader_exit": observation["exit"],
-               "resolved": {}, "edges": [], "unresolved": []}
+        row = {
+            "id": entry["id"],
+            "path": root_key,
+            "scope": entry["scope"],
+            "library_path": [label(path, root) for path in libraries],
+            "loader_exit": observation["exit"],
+            "resolved": {},
+            "edges": [],
+            "unresolved": [],
+        }
         if observation["exit"] == 0:
             parsed = parse_loader(observation["output"])
             row["virtual"] = parsed["virtual"]
             for name, resolved in parsed["resolved"].items():
                 row["resolved"][name] = inspect(Path(resolved))
             row["unresolved"] += parsed["missing"]
-            row["aliases"], row["edges"], missing = resolve_edges(root_key, row["resolved"], nodes)
+            row["aliases"], row["edges"], missing = resolve_edges(
+                root_key, row["resolved"], nodes
+            )
             row["unresolved"] += missing
         else:
             row["unresolved"].append("LOADER_CONTEXT_FAILED")
@@ -306,19 +404,53 @@ def capture(root, selection, runner=None):
                 selected = selected_path(text, root)
                 before = observe(selected)
                 data = read_file(selected)
-                metadata[kind] = {"path": label(selected, root), "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+                metadata[kind] = {
+                    "path": label(selected, root),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                    "bytes": len(data),
+                }
                 if observe(selected) != before:
-                    raise ValueError("Interpreter metadata changed during identity capture")
+                    raise ValueError(
+                        "Interpreter metadata changed during identity capture"
+                    )
                 observations[selected] = before
                 if kind == "pyvenv_cfg":
-                    fields = dict(re.findall(r"^(home|implementation|version_info)\s*=\s*(.*)$", data.decode(), re.M))
-                    if (fields.get("implementation") != "CPython" or not re.fullmatch(r"\d+\.\d+\.\d+", fields.get("version_info", ""))
-                            or selected_path(fields["home"], root, directory=True) != path.parent):
-                        raise ValueError("Interpreter metadata does not identify selected binary directory")
+                    fields = dict(
+                        re.findall(
+                            r"^(home|implementation|version_info)\s*=\s*(.*)$",
+                            data.decode(),
+                            re.M,
+                        )
+                    )
+                    if (
+                        fields.get("implementation") != "CPython"
+                        or not re.fullmatch(
+                            r"\d+\.\d+\.\d+", fields.get("version_info", "")
+                        )
+                        or selected_path(fields["home"], root, directory=True)
+                        != path.parent
+                    ):
+                        raise ValueError(
+                            "Interpreter metadata does not identify selected binary directory"
+                        )
                     metadata["declared_version"] = fields["version_info"]
-            interpreter_metadata.append({"root": entry["id"], "files": metadata,
-                                         "scope": "local interpreter metadata/notice bytes; source archive and bundled terms unqualified"})
-        print(json.dumps({"root": entry["id"], "loader_exit": observation["exit"], "nodes": len(nodes)}), flush=True)
+            interpreter_metadata.append(
+                {
+                    "root": entry["id"],
+                    "files": metadata,
+                    "scope": "local interpreter metadata/notice bytes; source archive and bundled terms unqualified",
+                }
+            )
+        print(
+            json.dumps(
+                {
+                    "root": entry["id"],
+                    "loader_exit": observation["exit"],
+                    "nodes": len(nodes),
+                }
+            ),
+            flush=True,
+        )
     # Recheck identities of selected roots/tools/receipts before immutable publish.
     for entry in selection["roots"]:
         if file_digest(selected_path(entry["path"], root))[0] != entry["sha256"]:
@@ -333,14 +465,30 @@ def capture(root, selection, runner=None):
     for path, before in observations.items():
         if observe(path) != before:
             raise ValueError("Runtime node/notice changed before publication")
-    return {"schema_version": 1, "status": "IMPLEMENTED_UNVERIFIED", "rights_qualified": False,
-            "scope": "selected ELF startup/default and explicit extension inspection contexts; not lazy/plugin/runtime execution or source/rights closure",
-            "environment": ENVIRONMENT, "tools": {name: {"path": label(path, root), "sha256": tool_hashes[name]} for name, path in tools.items()},
-            "installed_receipts": bindings, "nodes": nodes, "roots": roots, "system_packages": packages,
-            "interpreter_metadata": interpreter_metadata,
-            "listed_bytes": total, "commands": runner.receipts,
-            "remaining": ["DLOPEN_PLUGINS_AND_GPU_DRIVER_SELECTION_UNOBSERVED", "PYTHON_IMPORT_CONTEXT_UNOBSERVED",
-                          "INTERPRETER_SOURCE_ARCHIVE_AND_NOTICES_UNQUALIFIED", "SOURCE_BUILD_GRAPH_AND_REDISTRIBUTION_RIGHTS_UNREVIEWED"]}
+    return {
+        "schema_version": 1,
+        "status": "IMPLEMENTED_UNVERIFIED",
+        "rights_qualified": False,
+        "scope": "selected ELF startup/default and explicit extension inspection contexts; not lazy/plugin/runtime execution or source/rights closure",
+        "environment": ENVIRONMENT,
+        "tools": {
+            name: {"path": label(path, root), "sha256": tool_hashes[name]}
+            for name, path in tools.items()
+        },
+        "installed_receipts": bindings,
+        "nodes": nodes,
+        "roots": roots,
+        "system_packages": packages,
+        "interpreter_metadata": interpreter_metadata,
+        "listed_bytes": total,
+        "commands": runner.receipts,
+        "remaining": [
+            "DLOPEN_PLUGINS_AND_GPU_DRIVER_SELECTION_UNOBSERVED",
+            "PYTHON_IMPORT_CONTEXT_UNOBSERVED",
+            "INTERPRETER_SOURCE_ARCHIVE_AND_NOTICES_UNQUALIFIED",
+            "SOURCE_BUILD_GRAPH_AND_REDISTRIBUTION_RIGHTS_UNREVIEWED",
+        ],
+    }
 
 
 def main():
@@ -368,10 +516,25 @@ def main():
         report["auditor_sha256"] = auditor_sha256
         publish_receipt(output, report)
         unresolved = sum(len(row["unresolved"]) for row in report["roots"])
-        print(json.dumps({"roots": len(report["roots"]), "nodes": len(report["nodes"]), "unresolved": unresolved,
-                          "rights_qualified": False, "receipt": str(output.relative_to(root))}))
+        print(
+            json.dumps(
+                {
+                    "roots": len(report["roots"]),
+                    "nodes": len(report["nodes"]),
+                    "unresolved": unresolved,
+                    "rights_qualified": False,
+                    "receipt": str(output.relative_to(root)),
+                }
+            )
+        )
         return 3 if args.require_resolved and unresolved else 0
-    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        subprocess.SubprocessError,
+    ) as error:
         print("Runtime dependency audit failed: " + str(error), file=sys.stderr)
         return 2
 

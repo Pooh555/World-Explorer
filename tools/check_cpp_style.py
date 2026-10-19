@@ -6,6 +6,7 @@ reference: format first-party C++ with clang-format, run clang-tidy against the
 active build compile database when available, and reject trailing whitespace or
 other git diff issues.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -80,7 +81,11 @@ def select_tidy_files(files: list[Path], compile_db: Path | None = None) -> list
         resolved = path.resolve()
         return any(resolved.is_relative_to(root) for root in project_roots)
 
-    return [path for path in files if path.resolve() in known_files and is_project_file(path)]
+    return [
+        path
+        for path in files
+        if path.resolve() in known_files and is_project_file(path)
+    ]
 
 
 def run_command(command: list[str]) -> int:
@@ -117,9 +122,13 @@ def check_template_initialization(files: list[Path]) -> int:
             # Literal contents (including fixture headers) are data, not C++ tokens.
             code_line = string_literal.sub('""', line)
             if typed_loop.search(code_line):
-                violations.append(f"{path}:{line_number}: use direct-list initialization in typed loops")
+                violations.append(
+                    f"{path}:{line_number}: use direct-list initialization in typed loops"
+                )
             if size_t_temporary.search(code_line):
-                violations.append(f"{path}:{line_number}: use uz literals instead of std::size_t temporaries")
+                violations.append(
+                    f"{path}:{line_number}: use uz literals instead of std::size_t temporaries"
+                )
             for match in spelled_declaration.finditer(code_line):
                 initializer = match.group(1)
                 if initializer.strip() and not (
@@ -141,10 +150,14 @@ def check_template_initialization(files: list[Path]) -> int:
                 if initializer.strip() and not (
                     initializer.startswith(" ") and initializer.endswith(" ")
                 ):
-                    violations.append(f"{path}:{line_number}: put spaces inside std::size_t initializer braces")
+                    violations.append(
+                        f"{path}:{line_number}: put spaces inside std::size_t initializer braces"
+                    )
                 for literal in integer.finditer(initializer):
                     if literal.group(2).lower() != "uz":
-                        violations.append(f"{path}:{line_number}: use uz suffixes for std::size_t literals")
+                        violations.append(
+                            f"{path}:{line_number}: use uz suffixes for std::size_t literals"
+                        )
     if violations:
         print("Template initialization checks failed:", file=sys.stderr)
         print("\n".join(violations), file=sys.stderr)
@@ -220,7 +233,10 @@ def main() -> int:
 
     format_rc = check_format(format_executable, files)
     if format_rc != 0:
-        print("clang-format check failed; run 'clang-format -i ...' on the listed files.", file=sys.stderr)
+        print(
+            "clang-format check failed; run 'clang-format -i ...' on the listed files.",
+            file=sys.stderr,
+        )
         return format_rc
 
     initialization_rc = check_template_initialization(files)
@@ -232,20 +248,28 @@ def main() -> int:
     if compile_db.exists():
         tidy_exe = shutil.which("clang-tidy")
         if not tidy_exe:
-            print("clang-tidy is required when compile_commands.json exists but was not found in PATH.", file=sys.stderr)
+            print(
+                "clang-tidy is required when compile_commands.json exists but was not found in PATH.",
+                file=sys.stderr,
+            )
             return 1
         tidy_files = select_tidy_files(files, compile_db)
         if not tidy_files:
-            print("No translation units are available in the compile database for clang-tidy.", file=sys.stderr)
+            print(
+                "No translation units are available in the compile database for clang-tidy.",
+                file=sys.stderr,
+            )
             return 0
         tidy_relative = [str(path.relative_to(ROOT)) for path in tidy_files]
-        tidy_rc = run_command([
-            tidy_exe,
-            "-p",
-            str(build_dir),
-            "--warnings-as-errors=*",
-            *tidy_relative,
-        ])
+        tidy_rc = run_command(
+            [
+                tidy_exe,
+                "-p",
+                str(build_dir),
+                "--warnings-as-errors=*",
+                *tidy_relative,
+            ]
+        )
         if tidy_rc != 0:
             print("clang-tidy check failed.", file=sys.stderr)
             return tidy_rc
@@ -258,7 +282,10 @@ def main() -> int:
 
     diff_rc = run_command(["git", "-C", str(ROOT), "diff", "--check"])
     if diff_rc != 0:
-        print("git diff --check failed; fix whitespace and trailing newline issues.", file=sys.stderr)
+        print(
+            "git diff --check failed; fix whitespace and trailing newline issues.",
+            file=sys.stderr,
+        )
         return diff_rc
 
     print(f"C++ style checks passed for {len(relative_files)} file(s).")

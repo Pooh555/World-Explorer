@@ -51,8 +51,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("requests", nargs="+", type=Path)
     parser.add_argument("--recover-stale-locks", action="store_true")
-    parser.add_argument("--service", action="store_true",
-                        help="Use a transient Linux user service (2 CPU cores, 7 GiB memory cap)")
+    parser.add_argument(
+        "--service",
+        action="store_true",
+        help="Use a transient Linux user service (2 CPU cores, 7 GiB memory cap)",
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     artifacts = root / "artifacts"
@@ -65,22 +68,37 @@ def main():
 
     if args.service:
         unit = "world-explorer-video-jobs"
-        command = ["systemd-run", "--user", "--collect", "--service-type=exec",
-                   f"--unit={unit}", f"--working-directory={root}",
-                   "--property=CPUQuota=200%", "--property=MemoryHigh=6G",
-                   "--property=MemoryMax=7G", "--property=MemorySwapMax=1G",
-                   "--property=OOMPolicy=stop", "--property=KillSignal=SIGINT",
-                   "--property=TimeoutStopSec=90s",
-                   f"--property=StandardOutput=append:{artifacts / 'queue.log'}",
-                   f"--property=StandardError=append:{artifacts / 'queue.log'}",
-                   sys.executable, str(Path(__file__).resolve())]
+        command = [
+            "systemd-run",
+            "--user",
+            "--collect",
+            "--service-type=exec",
+            f"--unit={unit}",
+            f"--working-directory={root}",
+            "--property=CPUQuota=200%",
+            "--property=MemoryHigh=6G",
+            "--property=MemoryMax=7G",
+            "--property=MemorySwapMax=1G",
+            "--property=OOMPolicy=stop",
+            "--property=KillSignal=SIGINT",
+            "--property=TimeoutStopSec=90s",
+            f"--property=StandardOutput=append:{artifacts / 'queue.log'}",
+            f"--property=StandardError=append:{artifacts / 'queue.log'}",
+            sys.executable,
+            str(Path(__file__).resolve()),
+        ]
         if args.recover_stale_locks:
             command.append("--recover-stale-locks")
         command.extend(str(p) for p in requests)
         subprocess.run(command, check=True)
-        write_json(artifacts / "queue-service.json", {
-            "unit": unit, "argv": command, "started_epoch": time.time(),
-        })
+        write_json(
+            artifacts / "queue-service.json",
+            {
+                "unit": unit,
+                "argv": command,
+                "started_epoch": time.time(),
+            },
+        )
         return
 
     # A kernel-owned lock releases on a crash without requiring PID-file removal.
@@ -105,9 +123,15 @@ def main():
         signal.signal(signal.SIGHUP, signal.SIG_IGN)
         signal.signal(signal.SIGINT, stop)
         signal.signal(signal.SIGTERM, stop)
-        queue = {"pid": os.getpid(), "status": "RUNNING", "sequential": True,
-                 "jobs": [{"request": str(p.relative_to(root)), "status": "PENDING"}
-                          for p in requests]}
+        queue = {
+            "pid": os.getpid(),
+            "status": "RUNNING",
+            "sequential": True,
+            "jobs": [
+                {"request": str(p.relative_to(root)), "status": "PENDING"}
+                for p in requests
+            ],
+        }
         write_json(artifacts / "queue.json", queue)
         for request, job in zip(requests, queue["jobs"]):
             if stopped:
@@ -124,15 +148,26 @@ def main():
                 destination = history / f"attempt-{attempt:03d}"
                 destination.mkdir()
                 previous.rename(destination / "result.json")
-            argv = [str(root / "build/dev/we_process"), "reconstruct", "--request", str(request)]
+            argv = [
+                str(root / "build/dev/we_process"),
+                "reconstruct",
+                "--request",
+                str(request),
+            ]
             start = time.monotonic()
             result = {}
             job["status"] = "RUNNING"
             write_json(artifacts / "queue.json", queue)
-            write_json(logs / "sequential-command.json", {
-                "argv": argv, "cwd": str(root), "queue_pid": os.getpid(),
-                "started_epoch": time.time(), "sequential": True,
-            })
+            write_json(
+                logs / "sequential-command.json",
+                {
+                    "argv": argv,
+                    "cwd": str(root),
+                    "queue_pid": os.getpid(),
+                    "started_epoch": time.time(),
+                    "sequential": True,
+                },
+            )
             with (logs / "reconstruction.log").open("a") as log:
                 log.write("\n=== Sequential restart: reusing saved stages ===\n")
                 log.flush()
@@ -141,7 +176,9 @@ def main():
                         for directory in owned_job_directories(request, artifacts):
                             path = directory / "job.lock"
                             if path.is_symlink():
-                                raise ValueError("worker lock may not be a symbolic link")
+                                raise ValueError(
+                                    "worker lock may not be a symbolic link"
+                                )
                             if path.exists():
                                 pid = int(path.read_text().strip())
                                 if pid <= 0:
@@ -150,18 +187,29 @@ def main():
                                     os.kill(pid, 0)
                                 except ProcessLookupError:
                                     path.unlink()
-                                    log.write(f"Removed stale {directory.name} lock: PID {pid} is gone.\n")
+                                    log.write(
+                                        f"Removed stale {directory.name} lock: PID {pid} is gone.\n"
+                                    )
                                     log.flush()
                                 except PermissionError as error:
                                     blocked = True
-                                    raise RuntimeError(f"cannot verify worker PID {pid}") from error
+                                    raise RuntimeError(
+                                        f"cannot verify worker PID {pid}"
+                                    ) from error
                                 else:
                                     blocked = True
-                                    raise RuntimeError(f"worker PID {pid} is still alive")
+                                    raise RuntimeError(
+                                        f"worker PID {pid} is still alive"
+                                    )
                     if stopped:
                         raise RuntimeError("queue cancelled before launch")
-                    child = subprocess.Popen(argv, cwd=root, stdin=subprocess.DEVNULL,
-                                             stdout=log, stderr=subprocess.STDOUT)
+                    child = subprocess.Popen(
+                        argv,
+                        cwd=root,
+                        stdin=subprocess.DEVNULL,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                    )
                     if stopped:
                         child.send_signal(signal.SIGINT)
                     job["process_pid"] = child.pid
@@ -170,13 +218,25 @@ def main():
                     child = None
                     if result["exit_code"] == 0:
                         with (logs / "validate.log").open("w") as validation:
-                            checked = subprocess.run([
-                                str(root / "build/dev/we_process"), "validate",
-                                str(request.parent / "scene.wexplore"),
-                            ], cwd=root, stdin=subprocess.DEVNULL,
-                                stdout=validation, stderr=subprocess.STDOUT)
+                            checked = subprocess.run(
+                                [
+                                    str(root / "build/dev/we_process"),
+                                    "validate",
+                                    str(request.parent / "scene.wexplore"),
+                                ],
+                                cwd=root,
+                                stdin=subprocess.DEVNULL,
+                                stdout=validation,
+                                stderr=subprocess.STDOUT,
+                            )
                         result["validation_exit_code"] = checked.returncode
-                except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
+                except (
+                    OSError,
+                    ValueError,
+                    RuntimeError,
+                    KeyError,
+                    TypeError,
+                ) as error:
                     result.update(exit_code=2, error=str(error))
                 finally:
                     if child is not None:
@@ -184,17 +244,28 @@ def main():
                             child.send_signal(signal.SIGINT)
                         child.wait()
                         child = None
-            result.update(elapsed_seconds=time.monotonic() - start, sequential=True,
-                          scene_published=(request.parent / "scene.wexplore/manifest.json").exists())
+            result.update(
+                elapsed_seconds=time.monotonic() - start,
+                sequential=True,
+                scene_published=(
+                    request.parent / "scene.wexplore/manifest.json"
+                ).exists(),
+            )
             write_json(logs / "result.json", result)
-            status = "COMPLETED" if result["exit_code"] == 0 and result.get("validation_exit_code") == 0 else "FAILED"
+            status = (
+                "COMPLETED"
+                if result["exit_code"] == 0 and result.get("validation_exit_code") == 0
+                else "FAILED"
+            )
             if stopped or result["exit_code"] == 130:
                 status = "CANCELLED"
             job.update(status=status, **result)
             write_json(artifacts / "queue.json", queue)
             if blocked:
                 break
-        queue["status"] = "BLOCKED" if blocked else "CANCELLED" if stopped else "FINISHED"
+        queue["status"] = (
+            "BLOCKED" if blocked else "CANCELLED" if stopped else "FINISHED"
+        )
         write_json(artifacts / "queue.json", queue)
 
 

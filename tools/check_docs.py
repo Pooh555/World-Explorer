@@ -4,6 +4,7 @@
 Checks docs/, README.md and AGENTS.md. Fenced examples and external links are
 excluded. Fragments are not validated: heading anchors depend on the renderer.
 """
+
 from pathlib import Path
 import re
 import sys
@@ -38,7 +39,8 @@ def targets(text):
 
 def main():
     paths = sorted((ROOT / "docs").rglob("*.md")) + [
-        ROOT / "README.md", ROOT / "AGENTS.md"
+        ROOT / "README.md",
+        ROOT / "AGENTS.md",
     ]
     errors = []
     count = 0
@@ -52,7 +54,9 @@ def main():
             base = ROOT if url.path.startswith("/") else path.parent
             destination = (base / unquote(url.path.lstrip("/"))).resolve()
             if not destination.is_relative_to(ROOT) or not destination.exists():
-                errors.append(f"{path.relative_to(ROOT)}:{number}: invalid local link {target}")
+                errors.append(
+                    f"{path.relative_to(ROOT)}:{number}: invalid local link {target}"
+                )
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1

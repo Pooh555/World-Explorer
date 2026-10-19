@@ -12,7 +12,9 @@ def gaussian_ssim(left, right):
     positions = torch.arange(-5, 6, device=left.device, dtype=left.dtype)
     kernel = torch.exp(-positions.square() / (2 * 1.5**2))
     kernel = kernel / kernel.sum()
-    moments = torch.cat((left, right, left.square(), right.square(), left * right), dim=1)
+    moments = torch.cat(
+        (left, right, left.square(), right.square(), left * right), dim=1
+    )
     horizontal = kernel.reshape(1, 1, 1, 11).expand(15, 1, 1, 11)
     vertical = kernel.reshape(1, 1, 11, 1).expand(15, 1, 11, 1)
     # TF32's truncated mantissa corrupts the subtraction E[x²]-E[x]² in
@@ -26,5 +28,6 @@ def gaussian_ssim(left, right):
     covariance = cross - mean_left * mean_right
     numerator = (2 * mean_left * mean_right + 0.01**2) * (2 * covariance + 0.03**2)
     denominator = (mean_left.square() + mean_right.square() + 0.01**2) * (
-        variance_left + variance_right + 0.03**2)
+        variance_left + variance_right + 0.03**2
+    )
     return (numerator / denominator).mean()

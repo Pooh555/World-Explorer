@@ -1,4 +1,5 @@
 """Bounded verification of WEC2 commands; generated Python accessors are not verifiers."""
+
 import os
 import struct
 import threading
@@ -25,9 +26,18 @@ class command_verifier:
         vtable = offset - distance
         size = self.scalar(vtable, "H")
         object_size = self.scalar(vtable + 2, "H")
-        if not distance or not 4 <= size <= 4 + 2 * fields or size % 2 or object_size < 4:
+        if (
+            not distance
+            or not 4 <= size <= 4 + 2 * fields
+            or size % 2
+            or object_size < 4
+        ):
             raise ValueError("Invalid command vtable")
-        if vtable < 0 or vtable + size > len(self.data) or offset + object_size > len(self.data):
+        if (
+            vtable < 0
+            or vtable + size > len(self.data)
+            or offset + object_size > len(self.data)
+        ):
             raise ValueError("Command table outside bounds")
         return offset, vtable, size, object_size
 
@@ -60,7 +70,7 @@ class command_verifier:
         end = offset + 4 + length
         if not 0 < length <= maximum or end >= len(self.data) or self.data[end] != 0:
             raise ValueError("Invalid command string bounds/terminator")
-        raw = self.data[offset + 4:end]
+        raw = self.data[offset + 4 : end]
         if b"\0" in raw:
             raise ValueError("NUL in command string")
         return raw.decode("utf-8", errors="strict")
@@ -89,7 +99,12 @@ class command_verifier:
             if sum(len(arg.encode("utf-8")) for arg in arguments) > 32768:
                 raise ValueError("START argument bytes outside budget")
             return "START", arguments
-        if kind == 2 and sequence == 1 and operation == 2 and self.field(body, 0, "Q") == 1:
+        if (
+            kind == 2
+            and sequence == 1
+            and operation == 2
+            and self.field(body, 0, "Q") == 1
+        ):
             return "CANCEL", None
         raise ValueError("Invalid command sequence/operation/target/type")
 
@@ -103,6 +118,7 @@ def read_frame(descriptor):
                 raise ValueError("Command input closed before terminal event")
             result.extend(block)
         return bytes(result)
+
     prefix = exact(4)
     size = struct.unpack("<I", prefix)[0]
     if not 12 <= size <= COMMAND_LIMIT - 4:
@@ -112,7 +128,11 @@ def read_frame(descriptor):
 
 class command_session:
     def __init__(self, session, writer, cancel_callback):
-        self.session, self.writer, self.cancel_callback = session, writer, cancel_callback
+        self.session, self.writer, self.cancel_callback = (
+            session,
+            writer,
+            cancel_callback,
+        )
         self.cancelled = threading.Event()
         self.selected = None
         self.cancel_seen = False
@@ -126,7 +146,9 @@ class command_session:
         arguments[1:] = selected
         self.writer.acknowledge("START")
         # Raw os.read avoids a buffered-stdin lock at interpreter shutdown.
-        threading.Thread(target=self.listen, name="we-worker-control", daemon=True).start()
+        threading.Thread(
+            target=self.listen, name="we-worker-control", daemon=True
+        ).start()
 
     def request_stop(self):
         self.cancelled.set()
@@ -142,7 +164,9 @@ class command_session:
                 kind, selected = command_verifier(data).decode(self.session)
                 if kind == "START":
                     if tuple(selected) != self.selected:
-                        raise ValueError("START operation reused with different content")
+                        raise ValueError(
+                            "START operation reused with different content"
+                        )
                 first_cancel = kind == "CANCEL" and not self.cancel_seen
                 if kind == "CANCEL":
                     self.cancel_seen = True
@@ -153,7 +177,11 @@ class command_session:
         except (ValueError, OSError, UnicodeError, struct.error) as error:
             if not self.writer.terminal:
                 try:
-                    self.writer.failure("PROTOCOL_INVALID", "control", str(error),
-                                        "Committed outputs are retained; restart with a valid command session.")
+                    self.writer.failure(
+                        "PROTOCOL_INVALID",
+                        "control",
+                        str(error),
+                        "Committed outputs are retained; restart with a valid command session.",
+                    )
                 finally:
                     self.request_stop()  # A disconnected output must still stop backend work.

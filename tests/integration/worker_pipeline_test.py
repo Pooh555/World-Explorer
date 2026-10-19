@@ -1,4 +1,5 @@
 """CPU integration tests execute real FFmpeg; no substitute pose/training outputs."""
+
 import importlib.util
 import contextlib
 import errno
@@ -18,10 +19,14 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("we_worker", ROOT / "workers/worker.py")
 worker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worker)
-pose_spec = importlib.util.spec_from_file_location("pose_export", ROOT / "workers/colmap/export_poses.py")
+pose_spec = importlib.util.spec_from_file_location(
+    "pose_export", ROOT / "workers/colmap/export_poses.py"
+)
 pose = importlib.util.module_from_spec(pose_spec)
 pose_spec.loader.exec_module(pose)
-journal_spec = importlib.util.spec_from_file_location("pose_journal", ROOT / "workers/colmap/journal.py")
+journal_spec = importlib.util.spec_from_file_location(
+    "pose_journal", ROOT / "workers/colmap/journal.py"
+)
 journal = importlib.util.module_from_spec(journal_spec)
 journal_spec.loader.exec_module(journal)
 
@@ -50,8 +55,10 @@ class WorkerBoundaryTests(unittest.TestCase):
                     raise OSError(errno.EIO, "Injected asset flush failure")
             return original_fsync(descriptor)
 
-        with mock.patch.object(Path, "open", tracked_open), \
-                mock.patch.object(worker.os, "fsync", checked_fsync):
+        with (
+            mock.patch.object(Path, "open", tracked_open),
+            mock.patch.object(worker.os, "fsync", checked_fsync),
+        ):
             yield
 
     def test_stage_flushes_writable_assets_without_changing_bytes(self):
@@ -59,8 +66,14 @@ class WorkerBoundaryTests(unittest.TestCase):
             root = Path(temporary).resolve()
             source = root / "source.mp4"
             source.write_bytes(b"synthetic stage boundary fixture; not a video")
-            job = worker.Job({"schema_version": 1, "source": str(source),
-                              "job_dir": str(root / "job"), "stop_after": "inspect"})
+            job = worker.Job(
+                {
+                    "schema_version": 1,
+                    "source": str(source),
+                    "job_dir": str(root / "job"),
+                    "stop_after": "inspect",
+                }
+            )
             payload = b"\x00\xff\r\n\x1a diagnostic asset"
 
             def publish(directory):
@@ -70,10 +83,19 @@ class WorkerBoundaryTests(unittest.TestCase):
             with self.checked_stage_fsync():
                 directory, result = job.stage_run("diagnostic", {}, publish)
             self.assertEqual((directory / "payload.bin").read_bytes(), payload)
-            self.assertTrue(worker.verify_stage(directory, directory.name.split("-", 1)[1],
-                                                job.limits["max_output_bytes"]))
+            self.assertTrue(
+                worker.verify_stage(
+                    directory,
+                    directory.name.split("-", 1)[1],
+                    job.limits["max_output_bytes"],
+                )
+            )
             completion = (directory / "completion.json").read_bytes()
-            with mock.patch.object(worker.os, "fsync", side_effect=AssertionError("Cached stage rewrote files")):
+            with mock.patch.object(
+                worker.os,
+                "fsync",
+                side_effect=AssertionError("Cached stage rewrote files"),
+            ):
                 reused, cached = job.stage_run("diagnostic", {}, publish)
             self.assertEqual(reused, directory)
             self.assertEqual(cached, result)
@@ -84,8 +106,14 @@ class WorkerBoundaryTests(unittest.TestCase):
             root = Path(temporary).resolve()
             source = root / "source.mp4"
             source.write_bytes(b"synthetic stage boundary fixture; not a video")
-            job = worker.Job({"schema_version": 1, "source": str(source),
-                              "job_dir": str(root / "job"), "stop_after": "inspect"})
+            job = worker.Job(
+                {
+                    "schema_version": 1,
+                    "source": str(source),
+                    "job_dir": str(root / "job"),
+                    "stop_after": "inspect",
+                }
+            )
             committed, _ = job.stage_run("diagnostic", {}, lambda _: {"valid": True})
             pointer = (job.directory / "diagnostic.json").read_bytes()
             completion = (committed / "completion.json").read_bytes()
@@ -101,17 +129,25 @@ class WorkerBoundaryTests(unittest.TestCase):
             self.assertEqual(caught.exception.errno, errno.EIO)
             self.assertEqual((job.directory / "diagnostic.json").read_bytes(), pointer)
             self.assertEqual((committed / "completion.json").read_bytes(), completion)
-            self.assertEqual((job.directory / "result.json").read_bytes(), b"previous committed result")
+            self.assertEqual(
+                (job.directory / "result.json").read_bytes(),
+                b"previous committed result",
+            )
             self.assertFalse((job.directory / "retry.json").exists())
             self.assertFalse(list((job.directory / "stages").glob("retry-*")))
             incomplete = list((job.directory / "stages").glob(".retry-*"))
             self.assertEqual(len(incomplete), 1)
-            self.assertEqual((incomplete[0] / "failed.bin").read_bytes(), b"retain partial diagnostics")
+            self.assertEqual(
+                (incomplete[0] / "failed.bin").read_bytes(),
+                b"retain partial diagnostics",
+            )
             self.assertFalse((incomplete[0] / "completion.json").exists())
 
     def test_output_overflow_terminates_child(self):
         with self.assertRaises(worker.WorkerError) as caught:
-            worker.run_command([sys.executable, "-c", "print('x'*100000)"], max_capture=128)
+            worker.run_command(
+                [sys.executable, "-c", "print('x'*100000)"], max_capture=128
+            )
         self.assertEqual(caught.exception.code, "RESOURCE_LIMIT")
 
     def test_cancellation_reaps_running_process(self):
@@ -120,17 +156,23 @@ class WorkerBoundaryTests(unittest.TestCase):
         start = time.monotonic()
         try:
             with self.assertRaises(worker.WorkerError) as caught:
-                worker.run_command([sys.executable, "-c", "import time; time.sleep(30)"], timeout=60)
+                worker.run_command(
+                    [sys.executable, "-c", "import time; time.sleep(30)"], timeout=60
+                )
             self.assertEqual(caught.exception.code, "CANCELLED")
             self.assertLess(time.monotonic() - start, 3)
         finally:
             timer.join()
 
     def test_pose_adapter_half_pixel_and_optical_rotation(self):
-        self.assertEqual(pose.canonical_intrinsics([[700, 0, 300.5], [0, 510, 200.5], [0, 0, 1]]),
-                         [[700, 0, 300], [0, 510, 200], [0, 0, 1]])
+        self.assertEqual(
+            pose.canonical_intrinsics([[700, 0, 300.5], [0, 510, 200.5], [0, 0, 1]]),
+            [[700, 0, 300], [0, 510, 200], [0, 0, 1]],
+        )
         transformed = pose.canonical_pose([2, 3, 4], [0, 0, 0, 1])
-        self.assertEqual(transformed, {"translation": [2, -3, -4], "rotation_wxyz": [0, 1, 0, 0]})
+        self.assertEqual(
+            transformed, {"translation": [2, -3, -4], "rotation_wxyz": [0, 1, 0, 0]}
+        )
         with self.assertRaises(ValueError):
             pose.canonical_pose([float("nan"), 0, 0], [0, 0, 0, 1])
 
@@ -147,23 +189,44 @@ class WorkerBoundaryTests(unittest.TestCase):
                 worker.file_inventory(root / "stage", 10000)
 
 
-@unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg is required")
+@unittest.skipUnless(
+    shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg is required"
+)
 class DecodeIntegrationTests(unittest.TestCase):
     def test_real_decode_resume_corruption_and_failure_preservation(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = root / "source with spaces.mp4"
-            subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i",
-                            "testsrc2=size=96x64:rate=10:duration=2", "-c:v", "mpeg4",
-                            str(source)], check=True)
-            request = {"schema_version": 1, "source": str(source),
-                       "job_dir": str(root / "job"), "stop_after": "decode", "sample_fps": 2}
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-v",
+                    "error",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "testsrc2=size=96x64:rate=10:duration=2",
+                    "-c:v",
+                    "mpeg4",
+                    str(source),
+                ],
+                check=True,
+            )
+            request = {
+                "schema_version": 1,
+                "source": str(source),
+                "job_dir": str(root / "job"),
+                "stop_after": "decode",
+                "sample_fps": 2,
+            }
             job = worker.Job(request)
             result = job.run()
             output = Path(result["output"])
             decoded = json.loads((output / "result.json").read_text())
             self.assertEqual(decoded["source_frame_count"], 20)
-            self.assertEqual([frame["source_index"] for frame in decoded["frames"]], [0, 5, 10, 15])
+            self.assertEqual(
+                [frame["source_index"] for frame in decoded["frames"]], [0, 5, 10, 15]
+            )
             self.assertEqual(len(list((output / "images").glob("*.png"))), 4)
             self.assertEqual(len({frame["frame_id"] for frame in decoded["frames"]}), 4)
             committed = (output / "completion.json").read_bytes()
@@ -197,18 +260,39 @@ class JournalBoundaryTests(unittest.TestCase):
             data = b"P6\n2 1\n255\n" + pixels
             name = f"{index + 1}.ppm"
             (root / "input" / name).write_bytes(data)
-            frames.append({"source_index": index * 10, "pts": index * 10,
-                           "time_base": "1/30", "capture_time_ns": index * 10**9 // 3,
-                           "frame_id": "b" * 16 + f"-{index * 10}", "calibration_id": "b" * 16 + "-lens-0",
-                           "width": 2, "height": 1, "bytes": len(data), "file": name,
-                           "pixel_sha256": hashlib.sha256(pixels).hexdigest(),
-                           "sha256": hashlib.sha256(data).hexdigest()})
-        value = {"schema_version": 1, "profile": "native_rgb_journal_v1", "source_sha256": "b" * 64,
-                 "decode_completion_sha256": "a" * 64, "source_frame_count": 21, "frames": frames}
+            frames.append(
+                {
+                    "source_index": index * 10,
+                    "pts": index * 10,
+                    "time_base": "1/30",
+                    "capture_time_ns": index * 10**9 // 3,
+                    "frame_id": "b" * 16 + f"-{index * 10}",
+                    "calibration_id": "b" * 16 + "-lens-0",
+                    "width": 2,
+                    "height": 1,
+                    "bytes": len(data),
+                    "file": name,
+                    "pixel_sha256": hashlib.sha256(pixels).hexdigest(),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                }
+            )
+        value = {
+            "schema_version": 1,
+            "profile": "native_rgb_journal_v1",
+            "source_sha256": "b" * 64,
+            "decode_completion_sha256": "a" * 64,
+            "source_frame_count": 21,
+            "frames": frames,
+        }
         path = root / "input/journal.json"
         path.write_text(json.dumps(value))
-        return {"schema_version": 1, "journal": str(path), "journal_sha256": worker.sha256(path),
-                "job_dir": str(root), "pose_python": str(root / "missing-solver")}, value
+        return {
+            "schema_version": 1,
+            "journal": str(path),
+            "journal_sha256": worker.sha256(path),
+            "job_dir": str(root),
+            "pose_python": str(root / "missing-solver"),
+        }, value
 
     def test_admitted_rgb_conversion_and_solver_failure_preserve_decode(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -219,21 +303,52 @@ class JournalBoundaryTests(unittest.TestCase):
             self.assertEqual(caught.exception.stage, "poses")
             pointer = worker.read_json(root / "decode.json")
             decoded = Path(pointer["output"])
-            self.assertTrue(worker.verify_stage(decoded, pointer["key"], worker.LIMITS["max_output_bytes"]))
+            self.assertTrue(
+                worker.verify_stage(
+                    decoded, pointer["key"], worker.LIMITS["max_output_bytes"]
+                )
+            )
             metadata = worker.read_json(decoded / "result.json")
             self.assertEqual(metadata["selection"], "native_rgb_journal_v1")
             self.assertEqual(metadata["journal_sha256"], request["journal_sha256"])
             for index, frame in enumerate(metadata["frames"]):
-                rgb = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(decoded / frame["file"]),
-                                               "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"])
-                self.assertEqual(hashlib.sha256(rgb).hexdigest(), value["frames"][index]["pixel_sha256"])
+                rgb = subprocess.check_output(
+                    [
+                        "ffmpeg",
+                        "-v",
+                        "error",
+                        "-i",
+                        str(decoded / frame["file"]),
+                        "-frames:v",
+                        "1",
+                        "-f",
+                        "rawvideo",
+                        "-pix_fmt",
+                        "rgb24",
+                        "pipe:1",
+                    ]
+                )
+                self.assertEqual(
+                    hashlib.sha256(rgb).hexdigest(),
+                    value["frames"][index]["pixel_sha256"],
+                )
             self.assertFalse((root / "poses.json").exists())
             self.assertFalse((root / "result.json").exists())
             self.assertFalse((root / "job.lock").exists())
 
     def test_corrupt_journal_metadata_assets_and_extra_files_fail_before_solver(self):
-        for mutation in ("journal", "asset", "timestamp", "identity", "extra", "unknown"):
-            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+        for mutation in (
+            "journal",
+            "asset",
+            "timestamp",
+            "identity",
+            "extra",
+            "unknown",
+        ):
+            with (
+                self.subTest(mutation=mutation),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
                 root = Path(temporary).resolve()
                 request, value = self.fixture(root)
                 if mutation == "journal":
@@ -250,7 +365,9 @@ class JournalBoundaryTests(unittest.TestCase):
                     else:
                         value["frames"][1]["frame_id"] = "wrong source"
                     (root / "input/journal.json").write_text(json.dumps(value))
-                    request["journal_sha256"] = worker.sha256(root / "input/journal.json")
+                    request["journal_sha256"] = worker.sha256(
+                        root / "input/journal.json"
+                    )
                 with self.assertRaises(worker.WorkerError) as caught:
                     journal.run(worker, request)
                 self.assertEqual(caught.exception.stage, "journal")
