@@ -32,7 +32,8 @@ returns a current snapshot with base/new revisions; older requests need full res
 and calibrations; [persistent checkpoints](maps.md) also preserve revisions and
 retry receipts across restart.
 
-An unpacked `.wexplore` bundle uses JSON manifest schema 1, SHA-256-addressed
+An unpacked `.wexplore` bundle uses JSON manifest schema 1 for splat-only snapshots
+and schema 2 when any chunk carries a mesh, with SHA-256-addressed
 little-endian binary indexes/chunks, and an explicit provenance file. The loader
 validates byte/count limits, conventions, checksums, path containment, finite
 numbers, quaternion normalization and covariance scales before scene admission.
@@ -213,6 +214,70 @@ The viewer labels partial observed surfaces, arbitrary units and unknown gaps;
 normal colors are diagnostic, not captured texture, albedo or material recovery.
 Walking remains disabled. [Native evidence](../validation/2026-10-19-observed-mesh-view.md)
 covers both retained real meshes and synthetic projection/depth/update checks.
+
+## Native mesh bundle persistence
+
+Schema 2 uses the same `WEXIDX01` index records, provenance schema and atomic
+publication path as schema 1. Splat-only snapshots still write exactly the old
+schema-1 manifest/chunk/index/provenance bytes and retain their content hashes.
+Mixed snapshots may contain legacy `WEXCHK01` chunks alongside mesh chunks;
+hybrid chunks preserve both splats and mesh geometry. Schema 1 rejects mesh
+chunks, and schema 2 requires at least one. Unknown major versions reject.
+
+Schema-2 `geometry` declares `collision_status: UNAVAILABLE`,
+`representation: indexed_position_normal`, `encoding: WEXCHK02/WEXMSH01` and
+`source_validation: snapshot_dependencies`. Existing appearance conventions
+describe any splats present; mesh-only scenes automatically select the normal
+diagnostic representation when opened. The manifest/provenance parsers reject
+duplicate keys, raw NUL and nesting deeper than eight, within their byte caps.
+
+Each immutable `chunk_<sha256>.bin` is little-endian and uncompressed. A mesh
+chunk has magic `WEXCHK02`, then the unchanged legacy header, frame IDs and
+240-byte splat records. Its trailing mesh block is:
+
+| Field | Encoding |
+|---|---|
+| Mesh version | Eight ASCII bytes `WEXMSH01` |
+| Counts and source presence | Three uint64: vertices, triangles, observed-source flag (0/1) |
+| Observed context, if present | Two uint64: world epoch, source pose revision |
+| Observed text, if present | Nine strings, each uint32 byte length followed by exact bytes: manifest, receipt, recipe and pose SHA-256; parent asset SHA-256; original manifest and receipt JSON; cleanup SHA-256 and cleanup JSON |
+| Vertices | Six float32 per vertex: position xyz, normal xyz |
+| Triangles | Three uint32 indices per triangle |
+
+Raw source cleanup strings are both empty. Synthetic diagnostics omit the source
+block and require synthetic scene provenance. Pin strings are at most 64 bytes;
+each exact source/certificate document is at most 4 MiB. Encoded aggregate bytes,
+remaining aggregate geometry counts, exact record lengths and per-chunk limits
+are checked before geometry allocation. The ordinary scene validator then checks
+finite values, bounds, normals, indices, combined decoded budgets, source document
+hashes and current geometry's epoch/pose dependencies. Trailing bytes reject.
+
+The bundle is an immutable runtime snapshot. It retains authoring provenance and
+exact certificates but does not contain the original TSDF voxel planes or pose
+asset, or replay their fusion/cleanup proof. Re-authoring/re-certifying requires
+the separately pinned parents through `load_fusion_scene_request`. A rehashed
+snapshot is not independent quality evidence. No free-space, metric scale,
+collision, material or Q5/N2 certification follows from bundle admission.
+
+The shared application command validates the pinned request, source and optional
+cleanup proof before publishing to a **new** directory:
+
+```sh
+build/dev/we_process compile-fusion REQUEST.json REQUEST_SHA256 artifacts/mesh.wexplore
+build/dev/we_process validate artifacts/mesh.wexplore
+build/dev/we_viewer --scene artifacts/mesh.wexplore
+```
+
+`validate` prints the scene content hash. Ordinary Open scene uses the same bundle
+reader and initial immutable renderer update as other scenes; leave Observed
+geometry unchecked for bundles. No solver or parent asset is needed to reopen.
+Compilation checks cancellation during admission and before publication; atomic
+bundle writing then finishes or reports failure. Existing destinations reject
+without modification. Low-level `write_bundle` still supports transactional
+replacement: assets flush before manifest replacement, and a pre-publication
+failure leaves the previous manifest and acquired readers usable. Unreferenced
+assets/partial new directories remain for inspection; this is not production job
+resume or crash/reap qualification. See [actual round trips and native views](../validation/2026-10-19-mesh-bundles.md).
 Bundle schema 1 explicitly rejects mesh snapshots before writing anything, rather
 than dropping geometry. Persisted hybrid bundles, baked-color export, measured
 geometry and collision remain separate work; local cleanup uses the contract above.

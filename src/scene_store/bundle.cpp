@@ -119,7 +119,20 @@ Json parse_json(std::span<const std::byte> bytes) {
     const auto K_TEXT =
         bytes.empty() ? std::string_view {}
                       : std::string_view(reinterpret_cast<const char*>(bytes.data()), bytes.size());
-    return Json::parse(K_TEXT);
+    if (K_TEXT.find('\0') != K_TEXT.npos) throw std::runtime_error("raw NUL in bundle JSON");
+    std::vector<std::set<std::string>> keys;
+    return Json::parse(K_TEXT, [&](int depth, Json::parse_event_t event, Json& value) {
+        if (depth > 8) throw std::runtime_error("bundle JSON nesting exceeds budget");
+        const auto K_DEPTH = static_cast<std::size_t>(depth);
+        if (event == Json::parse_event_t::object_start) {
+            keys.resize(K_DEPTH + 1uz);
+            keys[K_DEPTH].clear();
+        }
+        if (event == Json::parse_event_t::key &&
+            !keys.at(K_DEPTH - 1uz).insert(value.get<std::string>()).second)
+            throw std::runtime_error("duplicate bundle JSON key");
+        return true;
+    });
 }
 
 void write_atomic(const std::filesystem::path& path, std::span<const std::byte> bytes) {
@@ -192,7 +205,7 @@ SimilarityTransform get_transform(Decoder& input) {
 
 Encoder encode_chunk(const SceneChunk& chunk) {
     Encoder output;
-    output.text("WEXCHK01");
+    output.text(chunk.m_mesh ? "WEXCHK02" : "WEXCHK01");
     output.integer(chunk.m_id.m_value);
     output.integer(chunk.m_generation);
     output.integer(chunk.m_pose_revision.m_value);
@@ -216,13 +229,91 @@ Encoder encode_chunk(const SceneChunk& chunk) {
         for (float value : splat.m_sh) output.real(value);
         output.integer(splat.m_sh_degree, 4);
     }
+    if (chunk.m_mesh) {
+        const auto& mesh = *chunk.m_mesh;
+        output.text("WEXMSH01");
+        output.integer(mesh.m_vertices.size());
+        output.integer(mesh.m_triangles.size());
+        output.integer(mesh.m_observed.has_value());
+        if (mesh.m_observed) {
+            const auto& source = *mesh.m_observed;
+            output.integer(source.m_context.m_epoch.m_value);
+            output.integer(source.m_context.m_pose_revision.m_value);
+            for (const auto& text : {source.m_context.m_manifest_sha256,
+                                     source.m_context.m_receipt_sha256,
+                                     source.m_context.m_recipe_sha256,
+                                     source.m_context.m_pose_sha256,
+                                     source.m_asset_sha256,
+                                     source.m_manifest_json,
+                                     source.m_receipt_json,
+                                     source.m_cleanup_sha256,
+                                     source.m_cleanup_json}) {
+                output.integer(text.size(), 4);
+                output.text(text);
+            }
+        }
+        for (const auto& vertex : mesh.m_vertices) {
+            for (float value : vertex.m_position) output.real(value);
+            for (float value : vertex.m_normal) output.real(value);
+        }
+        for (const auto& triangle : mesh.m_triangles)
+            for (auto index : triangle) output.integer(index, 4);
+    }
     return output;
 }
 
-std::shared_ptr<const SceneChunk> decode_chunk(std::span<const std::byte> bytes,
-                                               SceneLimits limits) {
+SceneMesh decode_mesh(Decoder& input, SceneLimits limits) {
+    input.magic("WEXMSH01");
+    const auto K_VERTICES = input.integer(), K_TRIANGLES = input.integer();
+    if (K_VERTICES > limits.m_max_mesh_vertices || K_TRIANGLES > limits.m_max_mesh_triangles ||
+        K_VERTICES > limits.m_max_payload_bytes / 24uz ||
+        K_TRIANGLES > (limits.m_max_payload_bytes - K_VERTICES * 24uz) / 12uz)
+        throw std::runtime_error("mesh element count exceeds budget");
+    SceneMesh mesh;
+    const auto K_SOURCE = input.integer();
+    if (K_SOURCE > 1) throw std::runtime_error("invalid mesh source status");
+    if (K_SOURCE) {
+        auto& source = mesh.m_observed.emplace();
+        source.m_context.m_epoch = { input.integer() };
+        source.m_context.m_pose_revision = { input.integer() };
+        const auto K_TEXT = [&](std::size_t maximum) {
+            const auto K_LENGTH = input.integer(4);
+            if (K_LENGTH > maximum) throw std::runtime_error("mesh metadata exceeds budget");
+            return input.text(static_cast<std::size_t>(K_LENGTH));
+        };
+        source.m_context.m_manifest_sha256 = K_TEXT(64uz);
+        source.m_context.m_receipt_sha256 = K_TEXT(64uz);
+        source.m_context.m_recipe_sha256 = K_TEXT(64uz);
+        source.m_context.m_pose_sha256 = K_TEXT(64uz);
+        source.m_asset_sha256 = K_TEXT(64uz);
+        source.m_manifest_json = K_TEXT(4uz * 1024uz * 1024uz);
+        source.m_receipt_json = K_TEXT(4uz * 1024uz * 1024uz);
+        source.m_cleanup_sha256 = K_TEXT(64uz);
+        source.m_cleanup_json = K_TEXT(4uz * 1024uz * 1024uz);
+    }
+    const auto K_REMAINING = input.m_bytes.size() - input.m_position;
+    if (K_VERTICES > K_REMAINING / 24uz ||
+        K_TRIANGLES != (K_REMAINING - K_VERTICES * 24uz) / 12uz ||
+        (K_REMAINING - K_VERTICES * 24uz) % 12uz != 0)
+        throw std::runtime_error("mesh counts do not match exact byte size");
+    mesh.m_vertices.resize(static_cast<std::size_t>(K_VERTICES));
+    mesh.m_triangles.resize(static_cast<std::size_t>(K_TRIANGLES));
+    for (auto& vertex : mesh.m_vertices) {
+        for (auto& value : vertex.m_position) value = input.real32();
+        for (auto& value : vertex.m_normal) value = input.real32();
+    }
+    for (auto& triangle : mesh.m_triangles)
+        for (auto& index : triangle) index = static_cast<std::uint32_t>(input.integer(4));
+    return mesh;
+}
+
+std::shared_ptr<const SceneChunk>
+decode_chunk(std::span<const std::byte> bytes, SceneLimits limits, bool allow_mesh) {
     Decoder input { bytes };
-    input.magic("WEXCHK01");
+    const auto K_MAGIC = input.text(8uz);
+    const bool K_MESH = K_MAGIC == "WEXCHK02" && allow_mesh;
+    if (K_MAGIC != "WEXCHK01" && !K_MESH)
+        throw std::runtime_error("unsupported binary chunk version");
     auto chunk = std::make_shared<SceneChunk>();
     chunk->m_id = { input.integer() };
     chunk->m_generation = input.integer();
@@ -241,8 +332,9 @@ std::shared_ptr<const SceneChunk> decode_chunk(std::span<const std::byte> bytes,
     chunk->m_source_frames.reserve(static_cast<std::size_t>(K_FRAMES));
     for (std::uint64_t i { 0 }; i < K_FRAMES; ++i)
         chunk->m_source_frames.push_back({input.integer()});
-    if (K_SPLATS != (bytes.size() - input.m_position) / K_SPLAT_BYTES ||
-        (bytes.size() - input.m_position) % K_SPLAT_BYTES != 0)
+    if (K_SPLATS > (bytes.size() - input.m_position) / K_SPLAT_BYTES ||
+        (!K_MESH && (K_SPLATS != (bytes.size() - input.m_position) / K_SPLAT_BYTES ||
+                     (bytes.size() - input.m_position) % K_SPLAT_BYTES != 0)))
         throw std::runtime_error("chunk count does not match exact byte size");
     chunk->m_splats.resize(static_cast<std::size_t>(K_SPLATS));
     for (auto& splat : chunk->m_splats) {
@@ -255,6 +347,7 @@ std::shared_ptr<const SceneChunk> decode_chunk(std::span<const std::byte> bytes,
         if (K_DEGREE > 3) throw std::runtime_error("unsupported SH degree");
         splat.m_sh_degree = static_cast<std::uint8_t>(K_DEGREE);
     }
+    if (K_MESH) chunk->m_mesh = decode_mesh(input, limits);
     auto checked = validate_chunk(*chunk, limits);
     if (!checked) throw std::runtime_error(checked.error().m_message);
     return chunk;
@@ -294,14 +387,10 @@ bool bounded_line(std::istream& input, std::string& line, std::size_t limit, std
 Result<void> write_bundle(const std::filesystem::path& directory, const SceneSnapshot& snapshot) {
     try {
         if (!snapshot) return fail(ErrorCode::INVALID_ARGUMENT, "missing bundle snapshot");
-        for (const auto& [K_ID, K_CHUNK] : snapshot->m_chunks) {
-            static_cast<void>(K_ID);
-            if (K_CHUNK && K_CHUNK->m_mesh)
-                return fail(ErrorCode::UNSUPPORTED_OPERATION,
-                            "Bundle schema 1 cannot encode mesh payloads");
-        }
         auto checked = validate_scene(*snapshot);
         if (!checked) return std::unexpected(checked.error());
+        const bool K_MESH = std::ranges::any_of(
+            snapshot->m_chunks, [](const auto& entry) { return entry.second->m_mesh.has_value(); });
         std::filesystem::create_directories(directory);
         Encoder index;
         index.text("WEXIDX01");
@@ -330,7 +419,7 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
         const auto K_PROVENANCE_NAME = "provenance_" + K_PROVENANCE_HASH + ".json";
         write_atomic(asset_path(directory, K_PROVENANCE_NAME), as_bytes(K_PROVENANCE));
         Json manifest = {
-            { "schema_version", 1 },
+            { "schema_version", K_MESH ? 2 : 1 },
             { "scene_id", snapshot->m_id.m_value },
             { "epoch", snapshot->m_epoch.m_value },
             { "revision", snapshot->m_revision.m_value },
@@ -355,6 +444,11 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
             { "index_bytes", index.m_bytes.size() },
             { "provenance", K_PROVENANCE_NAME },
             { "provenance_sha256", K_PROVENANCE_HASH } };
+        if (K_MESH) {
+            manifest["geometry"]["representation"] = "indexed_position_normal";
+            manifest["geometry"]["encoding"] = "WEXCHK02/WEXMSH01";
+            manifest["geometry"]["source_validation"] = "snapshot_dependencies";
+        }
         const auto K_TEXT = manifest.dump(2);
         write_atomic(asset_path(directory, "manifest.json"), as_bytes(K_TEXT));
         return {};
@@ -370,8 +464,16 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
         const auto K_BYTES =
             read_file(asset_path(directory, "manifest.json"), limits.m_max_manifest_bytes);
         const auto K_MANIFEST = parse_json(K_BYTES);
-        if (unsigned_field(K_MANIFEST, "schema_version") != 1)
+        const auto K_SCHEMA = unsigned_field(K_MANIFEST, "schema_version");
+        if (K_SCHEMA != 1 && K_SCHEMA != 2)
             return fail(ErrorCode::UNSUPPORTED_OPERATION, "unsupported scene schema major version");
+        if (K_SCHEMA == 2) {
+            const auto& geometry = K_MANIFEST.at("geometry");
+            expect(geometry, "collision_status", "UNAVAILABLE");
+            expect(geometry, "representation", "indexed_position_normal");
+            expect(geometry, "encoding", "WEXCHK02/WEXMSH01");
+            expect(geometry, "source_validation", "snapshot_dependencies");
+        }
         const auto& coordinates = K_MANIFEST.at("coordinates");
         expect(coordinates, "handedness", "right");
         expect(coordinates, "world_up", "+y");
@@ -418,7 +520,8 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
         const auto K_COUNT = index.integer();
         if (K_COUNT > limits.m_scene.m_max_chunks)
             throw std::runtime_error("index chunk count exceeds budget");
-        std::size_t total_bytes {}, total_splats {};
+        std::size_t total_bytes {}, total_splats {}, total_vertices {}, total_triangles {};
+        bool has_mesh = false;
         for (std::uint64_t i { 0 }; i < K_COUNT; ++i) {
             const ChunkId K_ID { index.integer() };
             const auto K_SIZE = index.integer();
@@ -430,14 +533,25 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
                 read_file(asset_path(directory, K_NAME), static_cast<std::size_t>(K_SIZE));
             if (chunk_bytes.size() != K_SIZE || sha256(chunk_bytes) != K_HASH)
                 throw std::runtime_error("chunk checksum/size mismatch");
-            auto chunk = decode_chunk(chunk_bytes, limits.m_scene);
+            auto chunk_limits = limits.m_scene;
+            chunk_limits.m_max_splats -= total_splats;
+            chunk_limits.m_max_mesh_vertices -= total_vertices;
+            chunk_limits.m_max_mesh_triangles -= total_triangles;
+            auto chunk = decode_chunk(chunk_bytes, chunk_limits, K_SCHEMA == 2);
             if (chunk->m_id != K_ID || !state->m_chunks.emplace(K_ID, chunk).second)
                 throw std::runtime_error("duplicate/mismatched chunk ID");
             total_bytes += chunk_bytes.size();
             if (chunk->m_splats.size() > limits.m_scene.m_max_splats - total_splats)
                 throw std::runtime_error("aggregate splat count exceeds budget");
             total_splats += chunk->m_splats.size();
+            if (chunk->m_mesh) {
+                has_mesh = true;
+                total_vertices += chunk->m_mesh->m_vertices.size();
+                total_triangles += chunk->m_mesh->m_triangles.size();
+            }
         }
+        if (K_SCHEMA == 2 && !has_mesh)
+            throw std::runtime_error("mesh schema requires a mesh chunk");
         if (index.m_position != index.m_bytes.size())
             throw std::runtime_error("trailing index bytes");
         auto checked = validate_scene(*state, limits.m_scene);

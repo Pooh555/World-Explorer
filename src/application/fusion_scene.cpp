@@ -2,6 +2,7 @@
 
 #include "world_explorer/core/asset_files.hpp"
 #include "world_explorer/core/hash.hpp"
+#include "world_explorer/scene_store/bundle.hpp"
 #include "world_explorer/scene_store/fusion_cleanup.hpp"
 
 #include <algorithm>
@@ -142,6 +143,22 @@ Result<SceneSnapshot> load_fusion_scene_request(const std::filesystem::path& req
     } catch (const std::exception& exception) {
         return fail(ErrorCode::INVALID_DATA,
                     std::string("Fusion request failed: ") + exception.what());
+    }
+}
+
+Result<void> compile_fusion_scene(const std::filesystem::path& request,
+                                  const std::string& expected_sha256,
+                                  const std::filesystem::path& destination,
+                                  const std::stop_token& stop) {
+    try {
+        if (std::filesystem::exists(std::filesystem::symlink_status(destination)))
+            return fail(ErrorCode::INVALID_ARGUMENT, "Choose a new mesh bundle directory");
+        const auto K_SCENE = load_fusion_scene_request(request, expected_sha256, stop);
+        if (!K_SCENE) return std::unexpected(K_SCENE.error());
+        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Mesh compilation cancelled");
+        return write_bundle(destination, *K_SCENE);
+    } catch (const std::exception& exception) {
+        return fail(ErrorCode::IO_ERROR, exception.what());
     }
 }
 

@@ -124,7 +124,7 @@ struct BundleFixture {
     std::filesystem::path m_directory = m_root / "synthetic.wexplore";
     SceneSnapshot m_scene = synthetic_scene();
 
-    BundleFixture() {
+    explicit BundleFixture(SceneSnapshot scene = synthetic_scene()) : m_scene(std::move(scene)) {
         REQUIRE(write_bundle(m_directory, m_scene));
         write_bytes(m_root / "caller.txt", "unrelated caller data");
     }
@@ -193,8 +193,9 @@ struct BundleFixture {
     }
 };
 
-template <class Mutation> void reject_and_repair(ErrorCode code, Mutation mutate) {
-    BundleFixture fixture;
+template <class Mutation>
+void reject_and_repair(ErrorCode code, Mutation mutate, SceneSnapshot scene = synthetic_scene()) {
+    BundleFixture fixture(std::move(scene));
     const auto K_RETAINED = load_bundle(fixture.m_directory);
     REQUIRE(K_RETAINED);
     const auto K_HASH = scene_content_hash(**K_RETAINED);
@@ -232,7 +233,7 @@ TEST_CASE("bundle manifests reject unsupported conventions and invalid typed ide
                                          "pose_convention",
                                          "quaternion_order",
                                          "pixel_centers"};
-            if (K_FIELD == 0) value["schema_version"] = 2;
+            if (K_FIELD == 0) value["schema_version"] = 3;
             if (K_FIELD >= 1 && K_FIELD <= 6)
                 value["coordinates"][K_KEYS[static_cast<std::size_t>(K_FIELD - 1)]] = "unsupported";
             constexpr std::array K_APPEARANCE {
@@ -459,4 +460,255 @@ TEST_CASE("bundle rejected native snapshots do not alter caller files or consume
     CHECK(tree(fixture.m_root) == K_BEFORE);
     REQUIRE(write_bundle(fixture.m_directory, fixture.m_scene));
     CHECK(tree(fixture.m_root) == K_BEFORE);
+}
+
+namespace {
+
+SceneSnapshot mesh_bundle_scene(int source_kind, bool hybrid = false, bool invalidated = false) {
+    auto scene = synthetic_scene();
+    if (source_kind) scene->m_provenance["source_kind"] = "partial_observed_geometry";
+    for (auto& [K_ID, value] : scene->m_chunks) {
+        static_cast<void>(K_ID);
+        auto chunk = std::make_shared<SceneChunk>(*value);
+        if (!hybrid) chunk->m_splats.clear();
+        chunk->m_geometry_valid = !invalidated;
+        chunk->m_world_from_chunk.m_translation = { 1, 2, -3 };
+        chunk->m_world_from_chunk.m_scale = 2;
+        SceneMesh mesh;
+        mesh.m_vertices = {
+            {{ -1, -1, 0 }, { 0, 0, 1 }}, {{ 1, -1, 0 }, { 0, 0, 1 }}, {{ 0, 1, 0 }, { 0, 0, 0 }}};
+        mesh.m_triangles = {{ 0, 1, 2 }};
+        if (source_kind) {
+            auto& source = mesh.m_observed.emplace();
+            source.m_context.m_epoch = scene->m_epoch;
+            source.m_context.m_pose_revision = { 5 };
+            source.m_manifest_json = "{\"synthetic_coverage_fixture\":1}";
+            source.m_receipt_json = "{\"synthetic_pose_receipt_fixture\":2}";
+            source.m_context.m_manifest_sha256 = digest(source.m_manifest_json);
+            source.m_context.m_receipt_sha256 = digest(source.m_receipt_json);
+            source.m_context.m_recipe_sha256 = std::string(64uz, 'a');
+            source.m_context.m_pose_sha256 = std::string(64uz, 'b');
+            source.m_asset_sha256 = std::string(64uz, 'c');
+            if (source_kind == 2) {
+                // Bundle admission retains authoring provenance; it does not replay
+                // a source proof from these deliberately synthetic opaque documents.
+                source.m_cleanup_json = "{\"synthetic_cleanup_fixture\":true}";
+                source.m_cleanup_sha256 = digest(source.m_cleanup_json);
+            }
+        }
+        chunk->m_mesh = std::move(mesh);
+        if (invalidated) chunk->m_pose_revision = { 6 };
+        value = std::move(chunk);
+    }
+    return scene;
+}
+
+std::uint64_t get_integer(std::string_view bytes, std::size_t offset, std::size_t length = 8uz) {
+    REQUIRE(offset <= bytes.size());
+    REQUIRE(length <= bytes.size() - offset);
+    std::uint64_t value {};
+    for (std::size_t index { 0uz }; index < length; ++index)
+        value |= std::uint64_t(static_cast<unsigned char>(bytes[offset + index])) << (index * 8uz);
+    return value;
+}
+
+std::size_t mesh_text_offset(std::string_view bytes, std::size_t number) {
+    const auto K_START = bytes.find("WEXMSH01");
+    REQUIRE(K_START != bytes.npos);
+    auto offset = K_START + 48uz;
+    for (std::size_t index { 0uz }; index < number; ++index)
+        offset += 4uz + static_cast<std::size_t>(get_integer(bytes, offset, 4uz));
+    return offset;
+}
+
+}  // namespace
+
+TEST_CASE("mesh bundles preserve exact raw derived synthetic and hybrid snapshots",
+          "[bundle_admission][mesh_bundle]") {
+    const auto K_SOURCE = GENERATE(0, 1, 2);
+    const auto K_HYBRID = GENERATE(false, true);
+    const auto K_INVALIDATED = GENERATE(false, true);
+    BundleFixture fixture(mesh_bundle_scene(K_SOURCE, K_HYBRID, K_INVALIDATED));
+    CHECK(fixture.manifest().at("schema_version") == 2);
+    const auto K_LOADED = load_bundle(fixture.m_directory);
+    REQUIRE(K_LOADED);
+    CHECK(scene_content_hash(**K_LOADED) == scene_content_hash(*fixture.m_scene));
+    const auto& chunk = *(*K_LOADED)->m_chunks.at({ 1 });
+    if (!chunk.m_mesh) throw std::runtime_error("Round trip lost mesh payload");
+    const auto& mesh = *chunk.m_mesh;
+    CHECK(mesh.m_vertices.size() == 3uz);
+    CHECK(mesh.m_triangles.size() == 1uz);
+    CHECK(chunk.m_splats.size() == (K_HYBRID ? 1uz : 0uz));
+    CHECK(chunk.m_geometry_valid == !K_INVALIDATED);
+    CHECK(mesh.m_observed.has_value() == (K_SOURCE != 0));
+    const auto K_BEFORE = tree(fixture.m_root);
+    REQUIRE(write_bundle(fixture.m_directory, *K_LOADED));
+    CHECK(tree(fixture.m_root) == K_BEFORE);
+}
+
+TEST_CASE("mesh bundles keep legacy chunks in mixed snapshots and reject schema downgrades",
+          "[bundle_admission][mesh_bundle]") {
+    auto scene = std::make_shared<SceneState>(*mesh_bundle_scene(0));
+    scene->m_chunks.at({ 2 }) = synthetic_scene()->m_chunks.at({ 2 });
+    BundleFixture fixture(scene);
+    const auto K_ENTRIES = index_entries(fixture.index());
+    CHECK(read_bytes(fixture.m_directory / K_ENTRIES[0].m_name).starts_with("WEXCHK02"));
+    CHECK(read_bytes(fixture.m_directory / K_ENTRIES[1].m_name).starts_with("WEXCHK01"));
+    const auto K_LOADED = load_bundle(fixture.m_directory);
+    REQUIRE(K_LOADED);
+    CHECK(scene_content_hash(**K_LOADED) == scene_content_hash(*scene));
+    auto manifest = fixture.manifest();
+    manifest["schema_version"] = 1;
+    fixture.manifest(manifest);
+    CHECK(load_bundle(fixture.m_directory).has_value() == false);
+    BundleFixture legacy;
+    auto promoted = legacy.manifest();
+    promoted["schema_version"] = 2;
+    promoted["geometry"] = manifest.at("geometry");
+    legacy.manifest(promoted);
+    const auto K_BEFORE = tree(legacy.m_root);
+    CHECK(load_bundle(legacy.m_directory).has_value() == false);
+    CHECK(tree(legacy.m_root) == K_BEFORE);
+}
+
+TEST_CASE("rehashed mesh bundles reject malformed sizes numerics indices and dependency pins",
+          "[bundle_admission][mesh_bundle]") {
+    const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17);
+    CAPTURE(K_MUTATION);
+    reject_and_repair(
+        ErrorCode::INVALID_DATA,
+        [K_MUTATION](const BundleFixture& fixture, BundleLimits&) {
+            const auto K_ENTRY = index_entries(fixture.index())[0];
+            auto bytes = read_bytes(fixture.m_directory / K_ENTRY.m_name);
+            const auto K_MESH = bytes.find("WEXMSH01");
+            REQUIRE(K_MESH != bytes.npos);
+            const auto K_LAST_TEXT = mesh_text_offset(bytes, 8uz);
+            const auto K_GEOMETRY =
+                K_LAST_TEXT + 4uz + static_cast<std::size_t>(get_integer(bytes, K_LAST_TEXT, 4uz));
+            if (K_MUTATION == 0) bytes[K_MESH] = 'X';
+            if (K_MUTATION == 1)
+                put_integer(std::span(bytes).subspan(K_MESH + 8uz, 8uz), UINT64_MAX);
+            if (K_MUTATION == 2)
+                put_integer(std::span(bytes).subspan(K_MESH + 16uz, 8uz), UINT64_MAX);
+            if (K_MUTATION == 3) put_integer(std::span(bytes).subspan(K_MESH + 24uz, 8uz), 2);
+            if (K_MUTATION == 4) bytes.pop_back();
+            if (K_MUTATION == 5) bytes.push_back('\0');
+            if (K_MUTATION == 6) put_integer(std::span(bytes).subspan(K_GEOMETRY, 4uz), 0x7fc00000);
+            if (K_MUTATION == 7)
+                put_integer(std::span(bytes).subspan(K_GEOMETRY + 12uz, 4uz), 0x40000000);
+            if (K_MUTATION == 8) put_integer(std::span(bytes).subspan(bytes.size() - 12uz, 4uz), 3);
+            if (K_MUTATION == 9) put_integer(std::span(bytes).subspan(bytes.size() - 8uz, 4uz), 0);
+            if (K_MUTATION == 10)
+                put_integer(std::span(bytes).subspan(mesh_text_offset(bytes, 5uz), 4uz),
+                            UINT32_MAX);
+            if (K_MUTATION == 11) bytes[mesh_text_offset(bytes, 5uz) + 4uz] = 'X';
+            if (K_MUTATION == 12) bytes[mesh_text_offset(bytes, 6uz) + 4uz] = 'X';
+            if (K_MUTATION == 13) bytes[mesh_text_offset(bytes, 8uz) + 4uz] = 'X';
+            if (K_MUTATION == 14) bytes[mesh_text_offset(bytes, 4uz) + 4uz] = 'z';
+            if (K_MUTATION == 15) put_integer(std::span(bytes).subspan(K_MESH + 40uz, 8uz), 0);
+            if (K_MUTATION == 16)
+                put_integer(std::span(bytes).subspan(mesh_text_offset(bytes, 7uz), 4uz), 0);
+            if (K_MUTATION == 17) bytes.resize(K_MESH + 20uz);
+            fixture.chunk(0uz, bytes);
+        },
+        mesh_bundle_scene(2));
+}
+
+TEST_CASE("mesh bundle metadata conventions and world pose context cannot be promoted",
+          "[bundle_admission][mesh_bundle]") {
+    const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6);
+    reject_and_repair(
+        K_MUTATION >= 4 ? ErrorCode::WRONG_EPOCH : ErrorCode::INVALID_DATA,
+        [K_MUTATION](const BundleFixture& fixture, BundleLimits&) {
+            auto manifest = fixture.manifest();
+            constexpr std::array K_KEYS {
+                "collision_status", "representation", "encoding", "source_validation"};
+            if (K_MUTATION < 4)
+                manifest["geometry"][K_KEYS[static_cast<std::size_t>(K_MUTATION)]] = "unsupported";
+            if (K_MUTATION == 4) manifest["coordinates"]["scale_status"] = "METRIC_MEASURED";
+            if (K_MUTATION == 5) manifest["epoch"] = 4;
+            if (K_MUTATION == 6) {
+                auto bytes =
+                    read_bytes(fixture.m_directory / index_entries(fixture.index())[0].m_name);
+                const auto K_MESH = bytes.find("WEXMSH01");
+                put_integer(std::span(bytes).subspan(K_MESH + 32uz, 8uz), 4);
+                fixture.chunk(0uz, bytes);
+                return;
+            }
+            fixture.manifest(manifest);
+        },
+        mesh_bundle_scene(2));
+}
+
+TEST_CASE("mesh bundle budgets bound aggregate allocation and exact encoded byte sizes",
+          "[bundle_admission][mesh_bundle]") {
+    BundleFixture fixture(mesh_bundle_scene(2, true));
+    const auto K_ENTRIES = index_entries(fixture.index());
+    const auto K_BYTES = read_bytes(fixture.m_directory / K_ENTRIES[0].m_name).size() +
+                         read_bytes(fixture.m_directory / K_ENTRIES[1].m_name).size();
+    BundleLimits limits;
+    limits.m_scene.m_max_mesh_vertices = 6uz;
+    limits.m_scene.m_max_mesh_triangles = 2uz;
+    limits.m_scene.m_max_splats = 2uz;
+    limits.m_scene.m_max_payload_bytes = K_BYTES;
+    REQUIRE(load_bundle(fixture.m_directory, limits));
+    const auto K_LIMIT = GENERATE(0, 1, 2, 3);
+    if (K_LIMIT == 0) --limits.m_scene.m_max_mesh_vertices;
+    if (K_LIMIT == 1) --limits.m_scene.m_max_mesh_triangles;
+    if (K_LIMIT == 2) --limits.m_scene.m_max_payload_bytes;
+    if (K_LIMIT == 3) --limits.m_scene.m_max_splats;
+    const auto K_BEFORE = tree(fixture.m_root);
+    CHECK(load_bundle(fixture.m_directory, limits).has_value() == false);
+    CHECK(tree(fixture.m_root) == K_BEFORE);
+}
+
+TEST_CASE("failed mesh publication preserves the old manifest and retained reader",
+          "[bundle_admission][mesh_bundle]") {
+    BundleFixture fixture;
+    const auto K_OLD = load_bundle(fixture.m_directory);
+    REQUIRE(K_OLD);
+    const auto K_MANIFEST = read_bytes(fixture.m_directory / "manifest.json");
+    const auto K_NEW = mesh_bundle_scene(2);
+    const auto K_STAGED = fixture.m_root / "staged.wexplore";
+    REQUIRE(write_bundle(K_STAGED, K_NEW));
+    const auto K_STAGED_MANIFEST = nlohmann::json::parse(read_bytes(K_STAGED / "manifest.json"));
+    const auto K_INDEX_NAME = K_STAGED_MANIFEST.at("index").get<std::string>();
+    REQUIRE(std::filesystem::create_directory(fixture.m_directory / K_INDEX_NAME));
+    CHECK(write_bundle(fixture.m_directory, K_NEW).has_value() == false);
+    CHECK(read_bytes(fixture.m_directory / "manifest.json") == K_MANIFEST);
+    const auto K_REOPENED = load_bundle(fixture.m_directory);
+    REQUIRE(K_REOPENED);
+    CHECK(scene_content_hash(**K_REOPENED) == scene_content_hash(**K_OLD));
+    REQUIRE(std::filesystem::remove(fixture.m_directory / K_INDEX_NAME));
+    REQUIRE(write_bundle(fixture.m_directory, K_NEW));
+    const auto K_REPLACED = load_bundle(fixture.m_directory);
+    REQUIRE(K_REPLACED);
+    CHECK(scene_content_hash(**K_REPLACED) == scene_content_hash(*K_NEW));
+    CHECK(scene_content_hash(**K_OLD) == scene_content_hash(*fixture.m_scene));
+}
+
+TEST_CASE("bundle JSON rejects duplicate keys deep nesting and raw NUL without mutation",
+          "[bundle_admission][mesh_bundle]") {
+    const auto K_PROVENANCE = GENERATE(false, true);
+    const auto K_MUTATION = GENERATE(0, 1, 2);
+    reject_and_repair(
+        ErrorCode::INVALID_DATA,
+        [K_PROVENANCE, K_MUTATION](const BundleFixture& fixture, BundleLimits&) {
+            auto manifest = fixture.manifest();
+            const auto K_PATH =
+                fixture.m_directory /
+                (K_PROVENANCE ? manifest.at("provenance").get<std::string>() : "manifest.json");
+            auto bytes = read_bytes(K_PATH);
+            if (K_MUTATION == 0) bytes.insert(1uz, "\"schema_version\":2,");
+            if (K_MUTATION == 1) bytes += std::string(1uz, '\0');
+            if (K_MUTATION == 2)
+                bytes.insert(
+                    1uz, "\"deep\":" + std::string(40uz, '[') + "0" + std::string(40uz, ']') + ",");
+            write_bytes(K_PATH, bytes);
+            if (K_PROVENANCE) {
+                manifest["provenance_sha256"] = digest(bytes);
+                fixture.manifest(manifest);
+            }
+        },
+        mesh_bundle_scene(2));
 }

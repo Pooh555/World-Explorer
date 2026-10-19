@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
                    "  we_process inspect-depth INPUT.wedepth SHA256 [--max-dimension N] (format "
                    "inspection only)\n"
                    "  we_process inspect-fusion-scene REQUEST.json SHA256\n"
+                   "  we_process compile-fusion REQUEST.json SHA256 NEW_SCENE.wexplore\n"
                    "  we_process inspect-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
                    "RECIPE_SHA POSES POSE_SHA\n"
                    "  we_process analyze-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
@@ -121,7 +122,8 @@ int main(int argc, char** argv) {
             }
             std::cout << "Scene " << (*K_RESULT)->m_id.m_value << ", revision "
                       << (*K_RESULT)->m_revision.m_value << ", chunks "
-                      << (*K_RESULT)->m_chunks.size() << '\n';
+                      << (*K_RESULT)->m_chunks.size() << '\n'
+                      << "Scene SHA-256: " << scene_content_hash(**K_RESULT) << '\n';
             return 0;
         }
         WorkerConfiguration configuration { WE_WORKER_SCRIPT };
@@ -168,6 +170,22 @@ int main(int argc, char** argv) {
             if ((*K_SNAPSHOT)->m_initial_pose_asset_sha256)
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
+        if (K_COMMAND == "compile-fusion") {
+            if (argc != 5) {
+                std::cerr << "Usage: we_process compile-fusion REQUEST.json SHA256 "
+                             "NEW_SCENE.wexplore\n";
+                return 2;
+            }
+            const auto K_RESULT =
+                compile_fusion_scene(argv[2], argv[3], argv[4], cancellation.get_token());
+            if (!K_RESULT) {
+                std::cerr << K_RESULT.error().m_message << '\n';
+                return K_RESULT.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Published partial observed geometry; arbitrary units; walking disabled: "
+                      << argv[4] << '\n';
             return 0;
         }
         if (K_COMMAND == "inspect-fusion-scene") {

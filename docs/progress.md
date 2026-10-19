@@ -194,6 +194,13 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   Both native proxy views and update diagnostics pass. This bounded simplifier
   does not certify measured geometry, self-intersection freedom or walking.
 
+- [Native mesh bundles](validation/2026-10-19-mesh-bundles.md): schema 2 persists
+  full raw/proxy geometry and exact dependency/certificate text; splat-only
+  schema-1 bytes stay identical. `compile-fusion` publishes checked requests to
+  new bundles, opened through ordinary native scene updates. All four retained
+  meshes round-trip exactly and render with zero Vulkan errors. Snapshot admission
+  preserves authoring provenance; it does not replay the original voxel proof.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -203,19 +210,21 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement **native mesh bundle persistence** next under plan §§4/5.1. Read the
-[runtime contract](protocols/scene.md#observed-mesh-runtime),
-[cleanup contract](protocols/mesh_cleanup.md), `src/scene_store/bundle.cpp` and
-`artifacts/validation/m3-fan-cleanup-20261019/{temporal,parallax}-final/manifest.json`.
-Schema 1 still refuses mesh snapshots. Define a versioned immutable vertex/index
-asset and transactional manifest extension preserving arbitrary units, normals,
-parent pose/coverage pins and exact cleanup certificates. Keep existing splat
-bundles/hashes compatible. Verify bounded/rehashed malformed admission, failure
-preservation and exact raw/derived round trips before reopening both full saved
-proxies through the same native scene update path. Preserve the original fusion
-assets, no-op fan evidence and all component/area/support/unknown denominators.
-Baked-color export, production jobs/resume, metric alignment and collision remain
-open. No unchanged fusion/MVS/refit run is needed.
+Implement **captured-color mesh fallback/export** next under plan §§4/5.1 step 8.
+Start with `src/application/depth_visibility.cpp`, the pinned canonical poses,
+the retained `m3-depth-visibility-20261018/{temporal,parallax}-cache` manifests and
+the four complete `artifacts/validation/m3-mesh-bundle-20261019/` bundles named
+`{temporal,parallax}-{raw,cleaned}.wexplore`.
+Define and test bounded calibrated projection/visibility and atlas coverage before
+baking retained source RGB: unknown texels stay unknown; track seams, source-view
+ownership and all denominators. Export captured radiance as `baked_appearance`
+with unlit interchange semantics, preserving arbitrary units, source/pose pins,
+raw/proxy identity and exact cleanup certificates. Independently check analytic
+camera/color cases, malformed admission and both full real outputs, then inspect
+the actual native result. No inferred albedo/PBR, hole filling or geometry-quality
+promotion. Preserve original fusion, no-op fan evidence and all component/support
+reports. Production jobs/resume, metric alignment and collision remain open;
+no unchanged fusion/MVS/refit run is needed.
 
 Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
 support, sigma availability and the local observed front-band versus unknown

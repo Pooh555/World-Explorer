@@ -101,10 +101,15 @@ Partial observed meshes can be inspected from an admitted fusion request:
 ```sh
 build/dev/we_process inspect-fusion-scene REQUEST.json REQUEST_SHA256
 build/dev/we_viewer --fusion-request REQUEST.json --fusion-request-sha REQUEST_SHA256
+build/dev/we_process compile-fusion REQUEST.json REQUEST_SHA256 artifacts/mesh.wexplore
+build/dev/we_viewer --scene artifacts/mesh.wexplore
 ```
 
 Open scene → Observed geometry accepts the same saved request. This normal-color
 view preserves unknown gaps and arbitrary units; it does not enable walking.
+Compiled mesh bundles use ordinary Open scene and retain source metadata and
+cleanup certificates. They reopen without the solver or parent files; compilation
+requires a new output directory. Splat-only bundles retain schema 1 compatibility.
 See the [request and runtime contract](docs/protocols/scene.md#observed-mesh-runtime)
 and [native validation/retained commands](docs/validation/2026-10-19-observed-mesh-view.md).
 

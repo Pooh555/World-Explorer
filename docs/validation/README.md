@@ -9,6 +9,7 @@ status and next work; a historical report's remaining work may be superseded.
 
 | Slice | Report |
 |---|---|
+| M3 native mesh bundles | [Exact raw/proxy persistence, bounded admission and native reopening](2026-10-19-mesh-bundles.md) |
 | M3 certified local cleanup | [Immutable proxies, whole-surface error certificates and full native comparison](2026-10-19-mesh-cleanup.md) |
 | Clang build repair / M3 component audit | [Explicit mesh hash bytes and full retained component/support denominators](2026-10-19-fusion-components.md) |
 | M3 observed mesh runtime | [Immutable mesh transactions, native partial-geometry view and GPU checks](2026-10-19-observed-mesh-view.md) |

@@ -193,15 +193,13 @@ TEST_CASE("mesh renderer admission accounts for geometry and preserves failed re
     CHECK(sink.visible_snapshot() == K_SCENE);
 }
 
-TEST_CASE("mesh diagnostics require synthetic provenance and never lose mesh on bundle export",
-          "[mesh]") {
+TEST_CASE("mesh diagnostics require synthetic provenance before bundle export", "[mesh]") {
     auto scene = std::make_shared<SceneState>(*snapshot(mesh_chunk()));
     scene->m_provenance.clear();
     CHECK(validate_scene(*scene).has_value() == false);
-    scene->m_provenance = {{ "source_kind", "synthetic_diagnostic" }};
     const auto K_RESULT = write_bundle({}, scene);
     REQUIRE(K_RESULT.has_value() == false);
-    CHECK(K_RESULT.error().m_code == ErrorCode::UNSUPPORTED_OPERATION);
+    CHECK(K_RESULT.error().m_code == ErrorCode::INVALID_DATA);
 }
 
 TEST_CASE("fusion scene requests reject malformed pinned JSON without output or caller mutation",
@@ -261,6 +259,16 @@ TEST_CASE("fusion scene requests reject malformed pinned JSON without output or 
     const auto K_CANCELLED = load_fusion_scene_request(K_PATH, *K_HASH, cancelled.get_token());
     REQUIRE(K_CANCELLED.has_value() == false);
     CHECK(K_CANCELLED.error().m_code == ErrorCode::CANCELLED);
+    const auto K_DESTINATION = K_ROOT / "new.wexplore";
+    CHECK(compile_fusion_scene(K_PATH, *K_HASH, K_DESTINATION).has_value() == false);
+    CHECK(std::filesystem::exists(K_DESTINATION) == false);
+    const auto K_COMPILE_CANCELLED =
+        compile_fusion_scene(K_PATH, *K_HASH, K_DESTINATION, cancelled.get_token());
+    REQUIRE(K_COMPILE_CANCELLED.has_value() == false);
+    CHECK(K_COMPILE_CANCELLED.error().m_code == ErrorCode::CANCELLED);
+    const auto K_EXISTING = compile_fusion_scene(K_PATH, *K_HASH, K_ROOT);
+    REQUIRE(K_EXISTING.has_value() == false);
+    CHECK(K_EXISTING.error().m_code == ErrorCode::INVALID_ARGUMENT);
     CHECK(std::distance(std::filesystem::directory_iterator(K_ROOT),
                         std::filesystem::directory_iterator {}) == 1);
 }

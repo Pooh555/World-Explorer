@@ -13,6 +13,7 @@ struct BundleLimits {
     std::size_t m_max_ply_header_bytes { 65536uz };
 };
 
+// Splat-only scenes retain schema 1 bytes; mesh snapshots use schema 2 chunks.
 // Immutable content-addressed chunks are flushed before manifest.json is replaced.
 // Existing readers continue using the old manifest/assets after failed publication.
 Result<void> write_bundle(const std::filesystem::path& directory, const SceneSnapshot& snapshot);

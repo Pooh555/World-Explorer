@@ -15,5 +15,12 @@ Result<SceneSnapshot> load_fusion_scene_request(const std::filesystem::path& req
                                                 const std::string& expected_sha256,
                                                 const std::stop_token& stop = {});
 
+// Admits the source/proof before publishing a portable native snapshot to a new
+// directory. Cancellation is checked before the atomic bundle publication phase.
+Result<void> compile_fusion_scene(const std::filesystem::path& request,
+                                  const std::string& expected_sha256,
+                                  const std::filesystem::path& destination,
+                                  const std::stop_token& stop = {});
+
 }  // namespace world_explorer
 #endif
