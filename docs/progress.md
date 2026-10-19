@@ -201,6 +201,14 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   meshes round-trip exactly and render with zero Vulkan errors. Snapshot admission
   preserves authoring provenance; it does not replay the original voxel proof.
 
+- [Captured-color projection audit](validation/2026-10-19-color-projection.md):
+  all four full raw/proxy scenes produce pinned color/visibility/owner/seam ledgers.
+  Independent checks match every one of **2,313,378 samples / 34,036,362 view
+  attempts**. Known interior sample fractions are **94.22–96.90% of the partial
+  mesh**, not room coverage; maximum shared-edge color jumps **0.562/0.885** remain.
+  The contact sheet is diagnostic. Usable textures/export and native textured
+  viewing are still pending; no geometry/material/quality gate is promoted.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -211,20 +219,22 @@ gaps. Dense redistribution rights remain open.
 ## Next executable step and protection rules
 
 Implement **captured-color mesh fallback/export** next under plan §§4/5.1 step 8.
-Start with `src/application/depth_visibility.cpp`, the pinned canonical poses,
-the retained `m3-depth-visibility-20261018/{temporal,parallax}-cache` manifests and
-the four complete `artifacts/validation/m3-mesh-bundle-20261019/` bundles named
-`{temporal,parallax}-{raw,cleaned}.wexplore`.
-Define and test bounded calibrated projection/visibility and atlas coverage before
-baking retained source RGB: unknown texels stay unknown; track seams, source-view
-ownership and all denominators. Export captured radiance as `baked_appearance`
-with unlit interchange semantics, preserving arbitrary units, source/pose pins,
-raw/proxy identity and exact cleanup certificates. Independently check analytic
-camera/color cases, malformed admission and both full real outputs, then inspect
-the actual native result. No inferred albedo/PBR, hole filling or geometry-quality
-promotion. Preserve original fusion, no-op fan evidence and all component/support
-reports. Production jobs/resume, metric alignment and collision remain open;
-no unchanged fusion/MVS/refit run is needed.
+Start with the [projection contract](protocols/mesh_color.md),
+`src/scene_store/color_projection.cpp`, `src/application/mesh_color_audit.cpp` and
+`artifacts/validation/m3-color-audit-20261019/{temporal,parallax}-{raw,cleaned}-audit/`.
+Inspect `report.json`/`samples.bin` for candidate ownership, rejection and seam
+baselines; parent full bundles remain in `m3-mesh-bundle-20261019/` and calibrated
+RGB/depth/poses in `m3-depth-visibility-20261018/{temporal,parallax}-cache`.
+Implement seam-aware source assignment/blending and a bounded real texture atlas
+with explicit per-texel validity. The six-point audit does not qualify unsampled
+texels; unknowns stay unknown, with no cross-surface filling or inferred albedo.
+Add immutable material/UV/texture admission/persistence, preserve source/pose and
+cleanup pins, and export `baked_appearance` with unlit interchange semantics.
+Independently verify analytic occlusion/color/seam cases and both full real
+outputs, then inspect actual native textured viewing before claiming fallback
+complete. Keep original fusion, no-op fan evidence and all component/support
+denominators. Production jobs/resume, metric alignment and collision remain open;
+no unchanged fusion/MVS/refit or projection-policy retuning is needed.
 
 Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
 support, sigma availability and the local observed front-band versus unknown

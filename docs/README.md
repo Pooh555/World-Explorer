@@ -16,6 +16,7 @@ Read by task; do not load the entire directory for routine work.
 | Export checked depth for visibility/fusion preparation | [Pose-admitted visibility receipt](protocols/depth.md#pose-admitted-visibility-export); immutable depth/RGB cache, no fused geometry |
 | Inspect partial observed geometry | [Native mesh runtime and request](protocols/scene.md#observed-mesh-runtime); normal-color Vulkan view, unknown gaps, no measured scale/collision |
 | Save/reopen native mesh snapshots | [Schema-2 bundle persistence](protocols/scene.md#native-mesh-bundle-persistence); exact raw/proxy geometry and provenance, compatible splat-only bytes |
+| Audit color support before texturing | [Captured-color projection audit](protocols/mesh_color.md); pinned depth/RGB, full sample/rejection/owner/seam ledgers, diagnostic atlas only |
 | Audit components before mesh cleanup | [Read-only component/support analysis](protocols/fusion.md#read-only-component-and-support-analysis); complete areas and directional TSDF stencils, no automatic removal |
 | Simplify admitted observed meshes | [Certified local cleanup](protocols/mesh_cleanup.md); immutable proxy certificates, full-surface error bounds and native raw/proxy viewing |
 | Run/admit bounded observed-depth fusion | [CPU TSDF and native interchange contract](protocols/fusion.md), [component selection](research/observed_fusion.md); pose-bound partial arbitrary-scale geometry; separate native runtime view, no collision |

@@ -278,6 +278,7 @@ replacement: assets flush before manifest replacement, and a pre-publication
 failure leaves the previous manifest and acquired readers usable. Unreferenced
 assets/partial new directories remain for inspection; this is not production job
 resume or crash/reap qualification. See [actual round trips and native views](../validation/2026-10-19-mesh-bundles.md).
-Bundle schema 1 explicitly rejects mesh snapshots before writing anything, rather
-than dropping geometry. Persisted hybrid bundles, baked-color export, measured
-geometry and collision remain separate work; local cleanup uses the contract above.
+
+The [captured-color projection audit](mesh_color.md) checks retained RGB/depth
+candidates and sampled seams. Usable baked textures/export, measured geometry
+and collision remain separate work; schema 2 already persists hybrid snapshots.

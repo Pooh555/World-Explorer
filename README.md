@@ -113,6 +113,11 @@ requires a new output directory. Splat-only bundles retain schema 1 compatibilit
 See the [request and runtime contract](docs/protocols/scene.md#observed-mesh-runtime)
 and [native validation/retained commands](docs/validation/2026-10-19-observed-mesh-view.md).
 
+Before texturing, `we_process audit-mesh-colors AUDIT.json AUDIT_SHA256 NEW_DIRECTORY`
+checks source-color support and shared-edge color differences against the exact
+retained depth/RGB cache. Its contact sheet is diagnostic; usable texture export
+and native textured viewing remain pending. See the [audit request/contract](docs/protocols/mesh_color.md).
+
 ## Pose workers and retained data
 
 Install `workers/pose-requirements.txt` explicitly in isolated Python 3.12:
