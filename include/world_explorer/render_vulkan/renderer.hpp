@@ -1,5 +1,6 @@
 #ifndef WORLD_EXPLORER_RENDER_VULKAN_RENDERER_HPP
 #define WORLD_EXPLORER_RENDER_VULKAN_RENDERER_HPP
+
 #include "world_explorer/core/result.hpp"
 #include "world_explorer/render_core/camera.hpp"
 #include "world_explorer/render_core/update_sink.hpp"
@@ -11,7 +12,11 @@
 
 namespace world_explorer {
 
-enum class SceneRepresentation : std::uint8_t { CAPTURED_APPEARANCE, OBSERVED_MESH };
+enum class SceneRepresentation : std::uint8_t {
+    CAPTURED_APPEARANCE,
+    OBSERVED_MESH,
+    BAKED_APPEARANCE
+};
 
 enum class GpuSplatStorage : std::uint8_t { FP32, FP32_GEOMETRY_FP16_SH };
 

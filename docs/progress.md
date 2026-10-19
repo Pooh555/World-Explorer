@@ -216,25 +216,35 @@ mapping/owner observations remain due. Check with
 passed local consistency; strict closure remained exit 3 for 253 source/rights
 gaps. Dense redistribution rights remain open.
 
+- [Native captured-color atlases](validation/2026-10-19-mesh-textures.md) add bounded
+  score-weighted linear RGB baking, canonical UV/validity/ownership planes,
+  schema-3 persistence and unlit native viewing. The original full raw/proxy
+  geometry and certificates remain unchanged; unknown fragments are discarded.
+  This is M3 reconstruction fallback work, not A-track PBR/asset qualification.
+
 ## Next executable step and protection rules
 
-Implement **captured-color mesh fallback/export** next under plan §§4/5.1 step 8.
-Start with the [projection contract](protocols/mesh_color.md),
-`src/scene_store/color_projection.cpp`, `src/application/mesh_color_audit.cpp` and
-`artifacts/validation/m3-color-audit-20261019/{temporal,parallax}-{raw,cleaned}-audit/`.
-Inspect `report.json`/`samples.bin` for candidate ownership, rejection and seam
-baselines; parent full bundles remain in `m3-mesh-bundle-20261019/` and calibrated
-RGB/depth/poses in `m3-depth-visibility-20261018/{temporal,parallax}-cache`.
-Implement seam-aware source assignment/blending and a bounded real texture atlas
-with explicit per-texel validity. The six-point audit does not qualify unsampled
-texels; unknowns stay unknown, with no cross-surface filling or inferred albedo.
-Add immutable material/UV/texture admission/persistence, preserve source/pose and
-cleanup pins, and export `baked_appearance` with unlit interchange semantics.
-Independently verify analytic occlusion/color/seam cases and both full real
-outputs, then inspect actual native textured viewing before claiming fallback
-complete. Keep original fusion, no-op fan evidence and all component/support
-denominators. Production jobs/resume, metric alignment and collision remain open;
-no unchanged fusion/MVS/refit or projection-policy retuning is needed.
+Implement **portable captured-color mesh export** next under plan §§4/5.1 step 8.
+Start with [the baked contract](protocols/mesh_color.md#bounded-native-baked-appearance),
+`src/scene_store/mesh_texture.cpp`, schema-3 bundle admission and
+`artifacts/validation/m3-texture-20261019/verified-{temporal,parallax}-{raw,cleaned}.wexplore`.
+Inspect `oracle.json`, exact metadata and final native captures before choosing
+standard texture filtering/validity encoding. Export an explicitly unlit
+`baked_appearance` glTF/GLB subset with unchanged geometry, source/cleanup pins,
+explicit unknowns and declared quantization/filter differences. Independently
+check full export/import geometry, color/alpha/UV orientation, unknown boundaries
+and actual local native/imported viewing; no inferred albedo or filled holes.
+Keep original fusion, no-op fan evidence and all component/support denominators.
+Production jobs/resume, metric alignment and collision remain open.
+
+Existing header edits are preserved outside the texture implementation commit.
+They conflict with the repository's current portability lint rule. Separately,
+3,982 protected external package headers differ from their retained byte receipts;
+all 20,475 other protected files match. The libc++ check uses fresh extraction
+from retained archives, leaving the modified installation untouched. Resolve
+worker-header drift against exact retained packages in an isolated profile before
+any future CUDA/worker rebuild; do not silently treat old receipts as current.
+No unchanged fusion/MVS/refit or projection-policy retuning is needed.
 
 Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
 support, sigma availability and the local observed front-band versus unknown

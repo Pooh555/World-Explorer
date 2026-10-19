@@ -115,8 +115,11 @@ and [native validation/retained commands](docs/validation/2026-10-19-observed-me
 
 Before texturing, `we_process audit-mesh-colors AUDIT.json AUDIT_SHA256 NEW_DIRECTORY`
 checks source-color support and shared-edge color differences against the exact
-retained depth/RGB cache. Its contact sheet is diagnostic; usable texture export
-and native textured viewing remain pending. See the [audit request/contract](docs/protocols/mesh_color.md).
+retained depth/RGB cache. Its contact sheet is diagnostic. For a bounded native
+bake, run `we_process bake-mesh-colors AUDIT.json AUDIT_SHA256 NEW_SCENE.wexplore`,
+then open that bundle to view Baked captured color. Unknown texels stay masked;
+captured lighting is unlit appearance, not PBR albedo. Portable textured export
+remains pending. See the [input and bake contract](docs/protocols/mesh_color.md).
 
 ## Pose workers and retained data
 

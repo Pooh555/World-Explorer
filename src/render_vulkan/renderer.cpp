@@ -483,9 +483,7 @@ struct VulkanRenderer::Implementation {
             const auto& keys_a = pass < 2 ? current.m_keys_a : current.m_references_a;
             const auto& keys_b = pass < 2 ? current.m_keys_b : current.m_references_b;
             const std::array<VkDescriptorBufferInfo, 10> K_BUFFERS {
-                {{m_scene_buffer.buffer,
-                  0,
-                  std::max(m_splat_count * m_capabilities.m_splat_stride_bytes, 16uz)},
+                {{ m_scene_buffer.buffer, 0, std::max(m_scene_buffer.bytes, 16uz) },
                  {current.m_projected.buffer, 0, current.m_projected.bytes},
                  {pass % 2 == 0 ? keys_a.buffer : keys_b.buffer, 0, keys_a.bytes},
                  {pass % 2 == 0 ? keys_b.buffer : keys_a.buffer, 0, keys_b.bytes},
@@ -540,12 +538,15 @@ struct VulkanRenderer::Implementation {
 
     UploadResources prepare_upload(const SceneSnapshot& snapshot, Vec3d origin) {
         std::size_t count = 0;
-        std::size_t mesh_vertices {}, mesh_indices {};
+        std::size_t mesh_vertices {}, mesh_indices {}, texture_bytes {};
         for (const auto& [K_ID, K_CHUNK] : snapshot->m_chunks) {
             static_cast<void>(K_ID);
             count += K_CHUNK->m_splats.size();
             if (K_CHUNK->m_mesh && K_CHUNK->m_geometry_valid) {
-                mesh_vertices += K_CHUNK->m_mesh->m_vertices.size();
+                const auto& mesh = *K_CHUNK->m_mesh;
+                mesh_vertices +=
+                    mesh.m_baked ? mesh.m_triangles.size() * 3uz : mesh.m_vertices.size();
+                if (mesh.m_baked) texture_bytes += mesh.m_baked.value().m_rgba.size() * 16uz;
                 mesh_indices += K_CHUNK->m_mesh->m_triangles.size() * 3uz;
             }
         }
@@ -553,8 +554,11 @@ struct VulkanRenderer::Implementation {
             throw std::runtime_error("scene exceeds configured Gaussian count");
         const auto K_STRIDE = m_capabilities.m_splat_stride_bytes;
         const auto K_VERTEX_OFFSET = std::max(count * K_STRIDE, 16uz);
-        const auto K_INDEX_OFFSET = K_VERTEX_OFFSET + mesh_vertices * sizeof(FusionVertex);
-        const auto K_BYTES = K_INDEX_OFFSET + mesh_indices * sizeof(std::uint32_t);
+        const auto K_INDEX_OFFSET = K_VERTEX_OFFSET + mesh_vertices * sizeof(MeshGpuVertex);
+        const auto K_TEXTURE_OFFSET = K_INDEX_OFFSET + mesh_indices * sizeof(std::uint32_t);
+        const auto K_BYTES = K_TEXTURE_OFFSET + texture_bytes;
+        if (K_BYTES > m_properties.limits.maxStorageBufferRange)
+            throw std::runtime_error("Scene exceeds storage-buffer address range");
         const auto K_LIVE = live_buffer_bytes();
         if (K_LIVE > m_options.m_residency_bytes ||
             K_BYTES > (m_options.m_residency_bytes - K_LIVE) / 2)
@@ -632,14 +636,14 @@ struct VulkanRenderer::Implementation {
                 ++index;
             }
         }
-        std::size_t vertex_index {}, triangle_index {};
+        std::size_t vertex_index {}, triangle_index {}, texture_offset { K_TEXTURE_OFFSET };
         for (const auto& [K_ID, K_CHUNK] : snapshot->m_chunks) {
             static_cast<void>(K_ID);
             if (!K_CHUNK->m_mesh || !K_CHUNK->m_geometry_valid) continue;
             const auto& mesh = *K_CHUNK->m_mesh;
             const auto K_BASE_VERTEX = vertex_index;
             const auto& transform = K_CHUNK->m_world_from_chunk;
-            for (const auto& source : mesh.m_vertices) {
+            const auto K_WRITE_VERTEX = [&](const FusionVertex& source, std::array<float, 2> uv) {
                 const auto K_POSITION =
                     transform_point(
                         transform,
@@ -651,19 +655,38 @@ struct VulkanRenderer::Implementation {
                 const auto K_NORMAL =
                     rotate(transform.m_rotation,
                            { source.m_normal[0], source.m_normal[1], source.m_normal[2] });
-                const FusionVertex K_TARGET {{static_cast<float>(K_POSITION.m_x),
-                                              static_cast<float>(K_POSITION.m_y),
-                                              static_cast<float>(K_POSITION.m_z)},
-                                             {static_cast<float>(K_NORMAL.m_x),
-                                              static_cast<float>(K_NORMAL.m_y),
-                                              static_cast<float>(K_NORMAL.m_z)}};
-                std::memcpy(destination + K_VERTEX_OFFSET + vertex_index++ * sizeof(FusionVertex),
-                            &K_TARGET,
-                            sizeof(K_TARGET));
-            }
+                MeshGpuVertex target {{static_cast<float>(K_POSITION.m_x),
+                                       static_cast<float>(K_POSITION.m_y),
+                                       static_cast<float>(K_POSITION.m_z)},
+                                      {static_cast<float>(K_NORMAL.m_x),
+                                       static_cast<float>(K_NORMAL.m_y),
+                                       static_cast<float>(K_NORMAL.m_z)}};
+                target.m_uv = uv;
+                if (mesh.m_baked)
+                    target.m_texture = {static_cast<std::uint32_t>(texture_offset / 4uz),
+                                        mesh.m_baked->m_width,
+                                        mesh.m_baked->m_height};
+                std::memcpy(destination + K_VERTEX_OFFSET + vertex_index++ * sizeof(MeshGpuVertex),
+                            &target,
+                            sizeof(target));
+            };
+            std::size_t corner {};
+            if (mesh.m_baked) {
+                const auto& appearance = *mesh.m_baked;
+                for (const auto& triangle : mesh.m_triangles)
+                    for (auto source_index : triangle)
+                        K_WRITE_VERTEX(mesh.m_vertices[source_index],
+                                       appearance.m_corner_uv[corner++]);
+                const auto K_SIZE = appearance.m_rgba.size() * 16uz;
+                std::memcpy(destination + texture_offset, appearance.m_rgba.data(), K_SIZE);
+                texture_offset += K_SIZE;
+            } else
+                for (const auto& source : mesh.m_vertices) K_WRITE_VERTEX(source, {});
+            corner = 0uz;
             for (const auto& triangle : mesh.m_triangles)
                 for (auto source_index : triangle) {
-                    const auto K_INDEX = static_cast<std::uint32_t>(K_BASE_VERTEX + source_index);
+                    const auto K_INDEX = static_cast<std::uint32_t>(
+                        K_BASE_VERTEX + (mesh.m_baked ? corner++ : source_index));
                     std::memcpy(destination + K_INDEX_OFFSET + triangle_index++ * sizeof(K_INDEX),
                                 &K_INDEX,
                                 sizeof(K_INDEX));
@@ -734,7 +757,8 @@ struct VulkanRenderer::Implementation {
                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                        VK_ACCESS_2_TRANSFER_WRITE_BIT,
                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                           VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT,
+                           VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+                           VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
                        VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT |
                            VK_ACCESS_2_INDEX_READ_BIT);
         end_timing(current, GpuTimingStage::UPLOAD);
@@ -1116,7 +1140,7 @@ struct VulkanRenderer::Implementation {
     void prepare_mesh_target(Frame& current) {
         if (!m_mesh_pass) {
             m_mesh_pass = std::make_unique<MeshPass>(*m_device_backend);
-            m_mesh_pass->initialize(m_options.m_shader_directory);
+            m_mesh_pass->initialize(m_options.m_shader_directory, m_bindings.layout);
         }
         if (!current.m_mesh_target || current.m_mesh_target->m_extent.width != m_extent.width ||
             current.m_mesh_target->m_extent.height != m_extent.height) {
@@ -1132,9 +1156,10 @@ struct VulkanRenderer::Implementation {
 
     void draw(const CameraView& camera, bool draw_appearance, SceneRepresentation representation) {
         if (representation != SceneRepresentation::CAPTURED_APPEARANCE &&
-            representation != SceneRepresentation::OBSERVED_MESH)
+            representation != SceneRepresentation::OBSERVED_MESH &&
+            representation != SceneRepresentation::BAKED_APPEARANCE)
             throw std::invalid_argument("Unknown scene representation");
-        const bool K_MESH_VIEW = representation == SceneRepresentation::OBSERVED_MESH;
+        const bool K_MESH_VIEW = representation != SceneRepresentation::CAPTURED_APPEARANCE;
         const auto K_BEGIN = std::chrono::steady_clock::now();
         if ((SDL_GetWindowFlags(m_window) & SDL_WINDOW_MINIMIZED) != 0) return;
         int width = 0, height = 0;
@@ -1243,7 +1268,8 @@ struct VulkanRenderer::Implementation {
                                VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                VK_ACCESS_2_TRANSFER_WRITE_BIT,
                                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                                   VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT,
+                                   VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+                                   VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
                                VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT |
                                    VK_ACCESS_2_INDEX_READ_BIT);
                 finish_upload(resources, completion);
@@ -1377,10 +1403,18 @@ struct VulkanRenderer::Implementation {
                                 params,
                                 {m_mesh_vertex_offset,
                                  m_mesh_index_offset,
-                                 static_cast<std::uint32_t>(m_mesh_indices)},
-                                current.m_captured.buffer);
+                                 static_cast<std::uint32_t>(m_mesh_indices),
+                                 representation == SceneRepresentation::BAKED_APPEARANCE},
+                                current.m_captured.buffer,
+                                current.m_descriptors[0]);
         }
-        m_diagnostics.m_resident_mesh_vertices = m_mesh_vertices;
+        m_diagnostics.m_resident_mesh_vertices = 0;
+        if (m_visible_scene)
+            for (const auto& [K_ID, K_CHUNK] : m_visible_scene->m_chunks) {
+                static_cast<void>(K_ID);
+                if (K_CHUNK->m_mesh && K_CHUNK->m_geometry_valid)
+                    m_diagnostics.m_resident_mesh_vertices += K_CHUNK->m_mesh->m_vertices.size();
+            }
         m_diagnostics.m_resident_mesh_triangles = m_mesh_indices / 3uz;
         m_diagnostics.m_framebuffer_bytes = 0;
         for (const auto& frame : m_frames) {

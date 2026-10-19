@@ -1,5 +1,7 @@
 # Validation index
 
+- [Native captured-color mesh atlases](2026-10-19-mesh-textures.md): M3 bounded baking, immutable schema-3 appearance and native viewing; full reconstruction/asset gates remain open.
+
 Historical reports keep their original code/profile scope: later success does not
 upgrade earlier qualification. Each report owns commands/logs, identities,
 measurements, failures and limits; private artifacts stay local/ignored.

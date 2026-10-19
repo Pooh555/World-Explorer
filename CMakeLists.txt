@@ -173,7 +173,7 @@ target_link_libraries(map_store PRIVATE nlohmann_json::nlohmann_json)
 
 add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp
   src/scene_store/depth_asset.cpp src/scene_store/fusion_asset.cpp src/scene_store/fusion_components.cpp
-  src/scene_store/fusion_cleanup.cpp src/scene_store/color_projection.cpp)
+  src/scene_store/fusion_cleanup.cpp src/scene_store/color_projection.cpp src/scene_store/baked_appearance.cpp src/scene_store/mesh_texture.cpp)
 we_target(scene_store)
 target_link_libraries(scene_store PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 
@@ -201,7 +201,7 @@ target_link_libraries(navigation PUBLIC core)
 add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/depth_assets.cpp src/application/fusion_assets.cpp src/application/fusion_scene.cpp
   src/application/fusion_cleanup.cpp
-  src/application/mesh_color_audit.cpp
+  src/application/mesh_color_audit.cpp src/application/color_inputs.cpp src/application/mesh_texture.cpp
   src/application/dense_inputs.cpp src/application/depth_visibility.cpp
   src/application/reconstruction_progress.cpp
   src/application/scene_import.cpp src/application/source_view.cpp

@@ -275,10 +275,45 @@ Compilation checks cancellation during admission and before publication; atomic
 bundle writing then finishes or reports failure. Existing destinations reject
 without modification. Low-level `write_bundle` still supports transactional
 replacement: assets flush before manifest replacement, and a pre-publication
-failure leaves the previous manifest and acquired readers usable. Unreferenced
+failure leaves the previous manifest and acquired readers usable. The viewer
+reports failed renderer uploads and preserves the previous visible snapshot;
+finite-frame validation exits with the failure rather than waiting indefinitely. Unreferenced
 assets/partial new directories remain for inspection; this is not production job
 resume or crash/reap qualification. See [actual round trips and native views](../validation/2026-10-19-mesh-bundles.md).
 
 The [captured-color projection audit](mesh_color.md) checks retained RGB/depth
-candidates and sampled seams. Usable baked textures/export, measured geometry
-and collision remain separate work; schema 2 already persists hybrid snapshots.
+candidates and sampled seams. The separate baker provides bounded native captured-color viewing; portable
+textured export, measured geometry and collision remain separate work.
+
+## Baked appearance bundle schema 3
+
+Schema 3 requires at least one baked mesh and admits legacy splat/raw mesh chunks
+alongside it. Its `geometry` declares `collision_status: UNAVAILABLE`,
+`representation: indexed_position_normal_baked_unlit`,
+`encoding: WEXCHK03/WEXMSH01/WEXMAT01`, `lighting: captured_unlit` and
+`source_validation: snapshot_dependencies`. Schema 1/2 byte encodings and hashes
+remain unchanged; they reject schema-3 material chunks.
+
+A baked chunk uses `WEXCHK03`, the unchanged chunk header/splats and complete
+`WEXMSH01` mesh block above, then:
+
+| Field | Little-endian encoding |
+|---|---|
+| Material version | Eight ASCII bytes `WEXMAT01` |
+| Dimensions and frame count | Three uint32: width, height, frame count |
+| Ordered source frames | One uint64 per frame, at most 18 |
+| Authoring pins/documents | Three uint32-length strings: untextured chunk SHA-256, metadata SHA-256, exact metadata JSON |
+| Corner UVs | Two float32 per triangle corner, three corners per triangle |
+| Atlas RGBA | Four float32 per texel, linear sRGB with binary validity alpha |
+| Owners | One uint64 frame ID per texel |
+| Candidates | One uint32 ordered-frame bitmask per texel |
+
+Pin strings are 64 lowercase hexadecimal bytes; metadata is at most 1 MiB.
+Dimensions/counts, aggregate remaining texel/payload budgets and exact remaining
+`24*T + 28*width*height` bytes are checked before material allocation. The
+[appearance validator](mesh_color.md#bounded-native-baked-appearance) then checks
+all numeric planes, canonical UVs and strict authoring semantics. Material fields
+participate in chunk/scene content hashes under a separate version prefix. The
+untextured source hash retains the exact prior raw/cleaned chunk hash. Rehashed
+malformed material records still reject; snapshot admission does not replay the
+external projection proof or establish material quality.

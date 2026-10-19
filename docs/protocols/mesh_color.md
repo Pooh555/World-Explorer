@@ -1,9 +1,9 @@
 # Captured-color projection audit
 
-M3's read-only audit checks calibrated color candidates before texture production.
-It does not publish a scene/material, usable texture, UV-unwrapped export, PBR
-albedo, continuous surface coverage or walking readiness. The native viewer still
-shows the existing [normal diagnostic](scene.md#observed-mesh-runtime).
+M3 provides a read-only sampled audit and a separate bounded captured-color atlas
+baker. Both share the pinned input admission below. Native baked viewing preserves
+unknowns; neither path certifies continuous surface coverage, PBR albedo, measured
+geometry or walking readiness. Portable textured interchange remains pending.
 
 ```sh
 build/dev/we_process audit-mesh-colors AUDIT.json AUDIT_SHA256 NEW_DIRECTORY
@@ -106,3 +106,61 @@ Late publication failure/cancellation can leave an uncommitted new directory;
 consume nothing without its terminal manifest. Production job resume, kill/crash
 fault injection, texture export and native textured rendering remain separate.
 See [full retained-source checks](../validation/2026-10-19-color-projection.md).
+
+## Bounded native baked appearance
+
+```sh
+build/dev/we_process bake-mesh-colors AUDIT.json AUDIT_SHA256 NEW_SCENE.wexplore
+build/dev/we_process inspect-baked NEW_SCENE.wexplore
+build/dev/we_viewer --scene NEW_SCENE.wexplore
+```
+
+The baker replays the same pinned input admission and streams one calibrated view
+at a time. It accepts at most 100,000 source triangles, 18 ordered source views
+and 48M source pixels, rejecting excess rather than trimming geometry. Every
+triangle receives an independent 8×8 atlas tile; columns are `ceil(sqrt(T))`, rows
+`ceil(T/columns)`. Its 36 surface lattice points have integer `x+y<=7` and
+barycentrics `((7-x-y)/7,x/7,y/7)`. Original positions and interpolated original
+vertex normals supply the projector above. Shared source edges therefore use the
+same point/normal field. Geometry, topology, support and cleanup certificates are
+preserved exactly. The atlas is deliberately coarse; this is a bounded fallback.
+
+For each independently projected lattice point, accepted source colors are
+averaged in linear sRGB with squared candidate scores as positive weights.
+There is no exposure correction, outlier removal, depth-policy retuning or
+inferred color. Dominant score/lower-ID tie ownership and the full candidate
+bitmask remain stored. A valid RGBA texel has alpha exactly one; unknowns and tile
+padding have all-zero RGBA, zero owner and zero candidates. Known texel counts
+refer to the partial source mesh, never room coverage. No dilation or hole filling
+is performed. Source incidence/depth uncertainty limitations still apply.
+
+Each corner stores pixel-coordinate UVs at `(tile_x+.5,tile_y+.5)`, `(+7,0)` and
+`(0,+7)`. The Vulkan fragment shader performs triangular linear interpolation on
+this lattice. Every positive-weight corner must be valid; otherwise the fragment
+is discarded, preserving unknown background/depth. Filtering never reads a
+neighboring tile or blends through an unknown. Tile origin is a flat per-triangle
+varying; every atlas read also checks dimensions, including helper invocations
+outside small triangles. Linear RGB is converted to display sRGB before the
+shared UNORM presentation path. Atlas RGB is captured outgoing
+appearance, displayed unlit, **not relightable albedo**. The native viewer selects
+Baked captured color for mesh-only baked bundles; Observed surfaces retains the
+normal diagnostic. Walking stays disabled.
+
+`BakedMeshAppearance` owns linear float32 RGBA, uint64 owner IDs, uint32 candidate
+masks, corner UVs, ordered frames, an untextured chunk hash and exact hashed authoring
+JSON. Validation enforces the canonical layout, finite ranges, binary validity,
+mask/owner membership, zero padding, strict metadata semantics and current source
+hash. Current observed pose context must match every input view. Cancelled partial
+accumulation cannot be finalized or retried; finalization cancellation publishes
+nothing. Application admission and projection finish before atomic bundle
+publication begins; the writer itself finishes or reports failure.
+
+[Schema 3](scene.md#baked-appearance-bundle-schema-3) persists the immutable result.
+Scene limits cap aggregate texture texels at 8M and account for RGBA, masks,
+owners, UVs and metadata in payload budgets. GPU upload includes atlas RGBA and
+expanded per-corner vertices in the existing staged residency budget and rejects
+storage-buffer range excess. Replacement becomes visible only after upload
+completion; geometry invalidation hides its baked appearance. Source frames,
+parents and input caches remain external authoring dependencies. General unlit
+glTF/GLB export, production jobs/resume and material-quality qualification remain
+open. See [actual checks](../validation/2026-10-19-mesh-textures.md).

@@ -8,6 +8,7 @@
 #include <charconv>
 #include <cstdio>
 #include <fstream>
+#include <functional>
 #include <limits>
 #include <set>
 #include <sstream>
@@ -205,7 +206,9 @@ SimilarityTransform get_transform(Decoder& input) {
 
 Encoder encode_chunk(const SceneChunk& chunk) {
     Encoder output;
-    output.text(chunk.m_mesh ? "WEXCHK02" : "WEXCHK01");
+    output.text(chunk.m_mesh && chunk.m_mesh->m_baked ? "WEXCHK03"
+                : chunk.m_mesh                        ? "WEXCHK02"
+                                                      : "WEXCHK01");
     output.integer(chunk.m_id.m_value);
     output.integer(chunk.m_generation);
     output.integer(chunk.m_pose_revision.m_value);
@@ -258,11 +261,30 @@ Encoder encode_chunk(const SceneChunk& chunk) {
         }
         for (const auto& triangle : mesh.m_triangles)
             for (auto index : triangle) output.integer(index, 4);
+        if (mesh.m_baked) {
+            const auto& baked = *mesh.m_baked;
+            output.text("WEXMAT01");
+            output.integer(baked.m_width, 4);
+            output.integer(baked.m_height, 4);
+            output.integer(baked.m_frames.size(), 4);
+            for (auto frame : baked.m_frames) output.integer(frame.m_value);
+            for (const auto& text :
+                 { baked.m_source_chunk_sha256, baked.m_manifest_sha256, baked.m_manifest_json }) {
+                output.integer(text.size(), 4);
+                output.text(text);
+            }
+            for (const auto& uv : baked.m_corner_uv)
+                for (float value : uv) output.real(value);
+            for (const auto& color : baked.m_rgba)
+                for (float value : color) output.real(value);
+            for (auto owner : baked.m_owners) output.integer(owner.m_value);
+            for (auto mask : baked.m_candidates) output.integer(mask, 4);
+        }
     }
     return output;
 }
 
-SceneMesh decode_mesh(Decoder& input, SceneLimits limits) {
+SceneMesh decode_mesh(Decoder& input, SceneLimits limits, bool has_baked) {
     input.magic("WEXMSH01");
     const auto K_VERTICES = input.integer(), K_TRIANGLES = input.integer();
     if (K_VERTICES > limits.m_max_mesh_vertices || K_TRIANGLES > limits.m_max_mesh_triangles ||
@@ -292,9 +314,9 @@ SceneMesh decode_mesh(Decoder& input, SceneLimits limits) {
         source.m_cleanup_json = K_TEXT(4uz * 1024uz * 1024uz);
     }
     const auto K_REMAINING = input.m_bytes.size() - input.m_position;
-    if (K_VERTICES > K_REMAINING / 24uz ||
-        K_TRIANGLES != (K_REMAINING - K_VERTICES * 24uz) / 12uz ||
-        (K_REMAINING - K_VERTICES * 24uz) % 12uz != 0)
+    if (K_VERTICES > K_REMAINING / 24uz || K_TRIANGLES > (K_REMAINING - K_VERTICES * 24uz) / 12uz ||
+        (!has_baked && (K_TRIANGLES != (K_REMAINING - K_VERTICES * 24uz) / 12uz ||
+                        (K_REMAINING - K_VERTICES * 24uz) % 12uz != 0)))
         throw std::runtime_error("mesh counts do not match exact byte size");
     mesh.m_vertices.resize(static_cast<std::size_t>(K_VERTICES));
     mesh.m_triangles.resize(static_cast<std::size_t>(K_TRIANGLES));
@@ -304,14 +326,49 @@ SceneMesh decode_mesh(Decoder& input, SceneLimits limits) {
     }
     for (auto& triangle : mesh.m_triangles)
         for (auto& index : triangle) index = static_cast<std::uint32_t>(input.integer(4));
+    if (has_baked) {
+        input.magic("WEXMAT01");
+        auto& baked = mesh.m_baked.emplace();
+        baked.m_width = static_cast<std::uint32_t>(input.integer(4));
+        baked.m_height = static_cast<std::uint32_t>(input.integer(4));
+        const auto K_FRAMES = input.integer(4);
+        if (!baked.m_width || !baked.m_height || baked.m_width > 8192 || baked.m_height > 8192 ||
+            baked.m_height > limits.m_max_texture_texels / baked.m_width || K_FRAMES > 18)
+            throw std::runtime_error("Texture dimensions or frames exceed budget");
+        for (std::uint64_t i { 0 }; i < K_FRAMES; ++i) baked.m_frames.push_back({ input.integer() });
+        for (auto field : {std::ref(baked.m_source_chunk_sha256),
+                           std::ref(baked.m_manifest_sha256),
+                           std::ref(baked.m_manifest_json)}) {
+            const auto K_LENGTH = input.integer(4);
+            const auto K_LIMIT = &field.get() == &baked.m_manifest_json ? 1024uz * 1024uz : 64uz;
+            if (K_LENGTH > K_LIMIT) throw std::runtime_error("Texture metadata exceeds budget");
+            field.get() = input.text(static_cast<std::size_t>(K_LENGTH));
+        }
+        const auto K_PIXELS = static_cast<std::size_t>(baked.m_width) * baked.m_height;
+        if (K_TRIANGLES > limits.m_max_payload_bytes / 24uz ||
+            K_PIXELS > (limits.m_max_payload_bytes - K_TRIANGLES * 24uz) / 28uz ||
+            input.m_bytes.size() - input.m_position != K_TRIANGLES * 24uz + K_PIXELS * 28uz)
+            throw std::runtime_error("Texture counts differ from exact payload size/budget");
+        baked.m_corner_uv.resize(static_cast<std::size_t>(K_TRIANGLES) * 3uz);
+        baked.m_rgba.resize(K_PIXELS);
+        baked.m_owners.resize(K_PIXELS);
+        baked.m_candidates.resize(K_PIXELS);
+        for (auto& uv : baked.m_corner_uv)
+            for (auto& value : uv) value = input.real32();
+        for (auto& color : baked.m_rgba)
+            for (auto& value : color) value = input.real32();
+        for (auto& owner : baked.m_owners) owner = { input.integer() };
+        for (auto& mask : baked.m_candidates) mask = static_cast<std::uint32_t>(input.integer(4));
+    }
     return mesh;
 }
 
 std::shared_ptr<const SceneChunk>
-decode_chunk(std::span<const std::byte> bytes, SceneLimits limits, bool allow_mesh) {
+decode_chunk(std::span<const std::byte> bytes, SceneLimits limits, std::uint64_t schema) {
     Decoder input { bytes };
     const auto K_MAGIC = input.text(8uz);
-    const bool K_MESH = K_MAGIC == "WEXCHK02" && allow_mesh;
+    const bool K_BAKED = K_MAGIC == "WEXCHK03" && schema == 3;
+    const bool K_MESH = (K_MAGIC == "WEXCHK02" && schema >= 2) || K_BAKED;
     if (K_MAGIC != "WEXCHK01" && !K_MESH)
         throw std::runtime_error("unsupported binary chunk version");
     auto chunk = std::make_shared<SceneChunk>();
@@ -347,7 +404,7 @@ decode_chunk(std::span<const std::byte> bytes, SceneLimits limits, bool allow_me
         if (K_DEGREE > 3) throw std::runtime_error("unsupported SH degree");
         splat.m_sh_degree = static_cast<std::uint8_t>(K_DEGREE);
     }
-    if (K_MESH) chunk->m_mesh = decode_mesh(input, limits);
+    if (K_MESH) chunk->m_mesh = decode_mesh(input, limits, K_BAKED);
     auto checked = validate_chunk(*chunk, limits);
     if (!checked) throw std::runtime_error(checked.error().m_message);
     return chunk;
@@ -391,6 +448,9 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
         if (!checked) return std::unexpected(checked.error());
         const bool K_MESH = std::ranges::any_of(
             snapshot->m_chunks, [](const auto& entry) { return entry.second->m_mesh.has_value(); });
+        const bool K_BAKED = std::ranges::any_of(snapshot->m_chunks, [](const auto& entry) {
+            return entry.second->m_mesh && entry.second->m_mesh->m_baked;
+        });
         std::filesystem::create_directories(directory);
         Encoder index;
         index.text("WEXIDX01");
@@ -419,7 +479,10 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
         const auto K_PROVENANCE_NAME = "provenance_" + K_PROVENANCE_HASH + ".json";
         write_atomic(asset_path(directory, K_PROVENANCE_NAME), as_bytes(K_PROVENANCE));
         Json manifest = {
-            { "schema_version", K_MESH ? 2 : 1 },
+            {"schema_version",
+             K_BAKED  ? 3
+             : K_MESH ? 2
+                      : 1},
             { "scene_id", snapshot->m_id.m_value },
             { "epoch", snapshot->m_epoch.m_value },
             { "revision", snapshot->m_revision.m_value },
@@ -449,6 +512,11 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
             manifest["geometry"]["encoding"] = "WEXCHK02/WEXMSH01";
             manifest["geometry"]["source_validation"] = "snapshot_dependencies";
         }
+        if (K_BAKED) {
+            manifest["geometry"]["representation"] = "indexed_position_normal_baked_unlit";
+            manifest["geometry"]["encoding"] = "WEXCHK03/WEXMSH01/WEXMAT01";
+            manifest["geometry"]["lighting"] = "captured_unlit";
+        }
         const auto K_TEXT = manifest.dump(2);
         write_atomic(asset_path(directory, "manifest.json"), as_bytes(K_TEXT));
         return {};
@@ -465,13 +533,19 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
             read_file(asset_path(directory, "manifest.json"), limits.m_max_manifest_bytes);
         const auto K_MANIFEST = parse_json(K_BYTES);
         const auto K_SCHEMA = unsigned_field(K_MANIFEST, "schema_version");
-        if (K_SCHEMA != 1 && K_SCHEMA != 2)
+        if (K_SCHEMA != 1 && K_SCHEMA != 2 && K_SCHEMA != 3)
             return fail(ErrorCode::UNSUPPORTED_OPERATION, "unsupported scene schema major version");
-        if (K_SCHEMA == 2) {
+        if (K_SCHEMA >= 2) {
             const auto& geometry = K_MANIFEST.at("geometry");
             expect(geometry, "collision_status", "UNAVAILABLE");
-            expect(geometry, "representation", "indexed_position_normal");
-            expect(geometry, "encoding", "WEXCHK02/WEXMSH01");
+            expect(geometry,
+                   "representation",
+                   K_SCHEMA == 3 ? "indexed_position_normal_baked_unlit"
+                                 : "indexed_position_normal");
+            expect(geometry,
+                   "encoding",
+                   K_SCHEMA == 3 ? "WEXCHK03/WEXMSH01/WEXMAT01" : "WEXCHK02/WEXMSH01");
+            if (K_SCHEMA == 3) expect(geometry, "lighting", "captured_unlit");
             expect(geometry, "source_validation", "snapshot_dependencies");
         }
         const auto& coordinates = K_MANIFEST.at("coordinates");
@@ -520,8 +594,9 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
         const auto K_COUNT = index.integer();
         if (K_COUNT > limits.m_scene.m_max_chunks)
             throw std::runtime_error("index chunk count exceeds budget");
-        std::size_t total_bytes {}, total_splats {}, total_vertices {}, total_triangles {};
-        bool has_mesh = false;
+        std::size_t total_bytes {}, total_splats {}, total_vertices {}, total_triangles {},
+            total_texels {};
+        bool has_mesh = false, has_baked = false;
         for (std::uint64_t i { 0 }; i < K_COUNT; ++i) {
             const ChunkId K_ID { index.integer() };
             const auto K_SIZE = index.integer();
@@ -537,7 +612,8 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
             chunk_limits.m_max_splats -= total_splats;
             chunk_limits.m_max_mesh_vertices -= total_vertices;
             chunk_limits.m_max_mesh_triangles -= total_triangles;
-            auto chunk = decode_chunk(chunk_bytes, chunk_limits, K_SCHEMA == 2);
+            chunk_limits.m_max_texture_texels -= total_texels;
+            auto chunk = decode_chunk(chunk_bytes, chunk_limits, K_SCHEMA);
             if (chunk->m_id != K_ID || !state->m_chunks.emplace(K_ID, chunk).second)
                 throw std::runtime_error("duplicate/mismatched chunk ID");
             total_bytes += chunk_bytes.size();
@@ -546,11 +622,17 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
             total_splats += chunk->m_splats.size();
             if (chunk->m_mesh) {
                 has_mesh = true;
+                if (chunk->m_mesh->m_baked) {
+                    has_baked = true;
+                    total_texels += chunk->m_mesh->m_baked->m_rgba.size();
+                }
                 total_vertices += chunk->m_mesh->m_vertices.size();
                 total_triangles += chunk->m_mesh->m_triangles.size();
             }
         }
-        if (K_SCHEMA == 2 && !has_mesh)
+        if (K_SCHEMA == 3 && !has_baked)
+            throw std::runtime_error("Texture schema requires a baked mesh");
+        if (K_SCHEMA >= 2 && !has_mesh)
             throw std::runtime_error("mesh schema requires a mesh chunk");
         if (index.m_position != index.m_bytes.size())
             throw std::runtime_error("trailing index bytes");

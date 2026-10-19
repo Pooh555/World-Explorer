@@ -1,6 +1,8 @@
 #include "world_explorer/application/fusion_scene.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
+#include "world_explorer/scene_store/bundle.hpp"
+#include "world_explorer/scene_store/mesh_texture.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
 
 #include <algorithm>
@@ -44,6 +46,51 @@ std::shared_ptr<SceneChunk> fixture() {
     return chunk;
 }
 
+std::shared_ptr<SceneChunk> texture_fixture(std::uint64_t generation,
+                                            bool unknown = false,
+                                            bool gradient = false,
+                                            std::size_t triangles = 1uz,
+                                            bool subpixel = false) {
+    auto chunk = fixture();
+    chunk->m_generation = generation;
+    chunk->m_source_frames = {{ 7 }};
+    auto& mesh = mesh_of(*chunk);
+    mesh.m_vertices.resize(3uz);
+    if (subpixel) {
+        mesh.m_vertices[0].m_position = { -.000875F, -.007125F, 2 };
+        mesh.m_vertices[1].m_position = { .007125F, -.007125F, 2 };
+        mesh.m_vertices[2].m_position = { .003125F, .000875F, 2 };
+    }
+    for (auto& vertex : mesh.m_vertices) vertex.m_normal = { 0, 0, 1 };
+    mesh.m_triangles.assign(triangles, { 0, 1, 2 });
+    DepthImageAsset depth;
+    auto& metadata = depth.m_metadata;
+    metadata.m_dependency = {{ 1 }, { 1 }, { 7 }, { 2 }, std::string(64uz, 'a'), std::string(64uz, 'b')};
+    metadata.m_width = metadata.m_height = 16;
+    metadata.m_camera = { 8, 8, 7.5, 7.5 };
+    metadata.m_calibrated_image_sha256 = std::string(64uz, 'c');
+    metadata.m_recipe_sha256 = std::string(64uz, 'd');
+    depth.m_axial_depth.assign(256uz, unknown ? 0.F : 2.F);
+    depth.m_valid.assign(256uz, unknown ? 0 : 1);
+    depth.m_support_count.assign(256uz, unknown ? 0 : 2);
+    depth.m_confidence.assign(256uz, unknown ? 0.F : 1.F);
+    std::vector<std::byte> rgb;
+    for (std::size_t i { 0uz }; i < 256uz; ++i) {
+        rgb.push_back(static_cast<std::byte>(gradient ? i % 16uz * 16uz : 255uz));
+        rgb.push_back(static_cast<std::byte>(gradient ? i / 16uz * 16uz : 64uz));
+        rgb.push_back(static_cast<std::byte>(gradient ? 64uz : 0uz));
+    }
+    auto view = ColorProjectionView::create(std::move(depth), std::move(rgb), {}, .01);
+    require(view.has_value(), "Texture view fixture failed");
+    auto baker = MeshTextureBaker::create(*chunk);
+    require(baker.has_value(), "Texture fixture baker failed");
+    require((*baker)->add_view(*view, { 7 }).has_value(), "Texture fixture projection failed");
+    auto baked = (*baker)->finish();
+    require(baked.has_value(), "Texture fixture finalization failed");
+    mesh.m_baked = std::move(*baked);
+    return chunk;
+}
+
 std::vector<unsigned char> pixels(const std::filesystem::path& path) {
     std::ifstream input(path, std::ios::binary);
     std::string magic;
@@ -69,7 +116,8 @@ void expect_center(const std::vector<unsigned char>& data, std::array<int, 3> ex
 
 int main(int argc, char** argv) {
     try {
-        require(argc == 2 || argc == 4, "Usage: we_gpu_mesh NEW_DIRECTORY [FUSION_REQUEST SHA256]");
+        require(argc == 2 || argc == 3 || argc == 4,
+                "Usage: we_gpu_mesh NEW_DIRECTORY [BUNDLE | FUSION_REQUEST SHA256]");
         const std::filesystem::path K_OUTPUT { argv[1] };
         require(std::filesystem::create_directory(K_OUTPUT), "Mesh evidence directory must be new");
         require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
@@ -94,9 +142,10 @@ int main(int argc, char** argv) {
         CameraView camera;
         camera.m_position = { 0, 0, 4 };
         camera.m_calibration = CalibratedProjection {{ 320, 320, 319.5, 239.5 }, 640, 480};
+        auto representation = SceneRepresentation::OBSERVED_MESH;
         auto draw = [&] {
             SDL_PumpEvents();
-            const auto K_RESULT = renderer->draw(camera, true, SceneRepresentation::OBSERVED_MESH);
+            const auto K_RESULT = renderer->draw(camera, true, representation);
             require(K_RESULT.has_value(), K_RESULT ? "" : K_RESULT.error().m_message);
         };
         std::uint64_t operation { 1 };
@@ -246,13 +295,84 @@ int main(int argc, char** argv) {
         K_VISIBLE(K_ENQUEUE(store.acquire_snapshot()));
         require(K_CAPTURE("erased.ppm") == K_INVALIDATED,
                 "Erase did not preserve unknown background");
+
+        ++revision;
+        camera.m_position = { 0, 0, 4 };
+        representation = SceneRepresentation::BAKED_APPEARANCE;
+        auto first_texture = texture_fixture(revision + 1);
+        require(store
+                    .commit({{ 19 },
+                             { 1 },
+                             { revision },
+                             { revision + 1 },
+                             { revision + 1 },
+                             {{SceneOperationKind::CREATE, { 1 }, first_texture, {}, {}}}})
+                    .has_value(),
+                "Texture create failed");
+        ++revision;
+        K_VISIBLE(K_ENQUEUE(store.acquire_snapshot()));
+        const auto K_TEXTURE = K_CAPTURE("texture-gold.ppm");
+        expect_center(K_TEXTURE, { 255, 64, 0 });
+        for (std::size_t i { 0uz }; i < 12uz; ++i) K_REPLACE(texture_fixture(revision + 1));
+        require(K_CAPTURE("texture-replaced.ppm") == K_TEXTURE, "Texture replacement changed RGB");
+        K_REPLACE(texture_fixture(revision + 1, false, false, 1uz, true));
+        expect_center(K_CAPTURE("texture-subpixel.ppm"), { 255, 64, 0 });
+        K_REPLACE(texture_fixture(revision + 1, false, true));
+        const auto K_GRADIENT = K_CAPTURE("texture-gradient.ppm");
+        const auto K_PIXEL = [&](std::size_t x, std::size_t y, std::size_t channel) {
+            return K_GRADIENT.at((y * 640uz + x) * 3uz + channel);
+        };
+        require(K_PIXEL(280uz, 240uz, 0uz) < K_PIXEL(360uz, 240uz, 0uz) &&
+                    K_PIXEL(320uz, 200uz, 1uz) > K_PIXEL(320uz, 280uz, 1uz) &&
+                    std::abs(static_cast<int>(K_PIXEL(320uz, 240uz, 2uz)) - 64) <= 1,
+                "Texture UV orientation or linear-to-sRGB conversion differs");
+        K_REPLACE(texture_fixture(revision + 1, true));
+        require(K_CAPTURE("texture-unknown.ppm") == K_INVALIDATED,
+                "Unknown texture failed to discard");
+        auto large_texture = texture_fixture(revision + 1, false, false, 40000uz);
+        require(store
+                    .commit({{ 19 },
+                             { 1 },
+                             { revision },
+                             { revision + 1 },
+                             { revision + 1 },
+                             {{SceneOperationKind::REPLACE, { 1 }, large_texture, {}, {}}}})
+                    .has_value(),
+                "Large texture replacement failed");
+        ++revision;
+        const auto K_TEXTURE_TICKET = K_ENQUEUE(store.acquire_snapshot());
+        const auto K_OLD_TEXTURE = renderer->updates().visible_snapshot();
+        draw();
+        require(renderer->updates().visible_snapshot() == K_OLD_TEXTURE,
+                "Partial texture upload became visible early");
+        K_VISIBLE(K_TEXTURE_TICKET);
+        require(K_CAPTURE("texture-staged.ppm") == K_TEXTURE, "Staged texture differs");
+        require(store
+                    .commit({{ 19 },
+                             { 1 },
+                             { revision },
+                             { revision + 1 },
+                             { revision + 1 },
+                             {{SceneOperationKind::INVALIDATE_GEOMETRY, { 1 }, {}, {}, { 2 }}}})
+                    .has_value(),
+                "Texture invalidation failed");
+        ++revision;
+        K_VISIBLE(K_ENQUEUE(store.acquire_snapshot()));
+        require(K_CAPTURE("texture-invalidated.ppm") == K_INVALIDATED,
+                "Stale texture remained visible");
+        representation = SceneRepresentation::OBSERVED_MESH;
         std::size_t real_vertices {}, real_triangles {};
-        if (argc == 4) {
-            const auto K_REAL = load_fusion_scene_request(argv[2], argv[3]);
+        if (argc >= 3) {
+            const auto K_REAL =
+                argc == 3 ? load_bundle(argv[2]) : load_fusion_scene_request(argv[2], argv[3]);
             require(K_REAL.has_value(), K_REAL ? "" : K_REAL.error().m_message);
             FlyCamera fly;
             fly.fit(world_bounds(**K_REAL));
             camera = { fly.m_position, fly.right(), fly.down(), fly.forward() };
+            if (std::ranges::any_of((*K_REAL)->m_chunks, [](const auto& entry) {
+                    return entry.second->m_mesh && entry.second->m_mesh->m_baked;
+                }))
+                representation = SceneRepresentation::BAKED_APPEARANCE;
             K_VISIBLE(K_ENQUEUE(*K_REAL));
             K_CAPTURE("real.ppm");
             const auto& mesh = mesh_of(*(*K_REAL)->m_chunks.begin()->second);
@@ -266,7 +386,8 @@ int main(int argc, char** argv) {
                 "Mesh validation/residency check failed");
         std::cout << nlohmann::json {{ "device", renderer->capabilities().m_device_name },
                                      {"scope",
-                                      "synthetic depth/update/clip/staging/rebase diagnostics; "
+                                      "synthetic texture RGB/UV/unknown/staging/invalidation and "
+                                      "mesh depth/update/clip/rebase; "
                                       "optional partial real geometry"},
                                      { "frames", K_STATS.m_submitted_frames },
                                      { "validation_errors", K_STATS.m_validation_errors },

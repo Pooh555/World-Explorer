@@ -34,6 +34,8 @@ class ColorProjectionView {
                                               const std::stop_token& stop = {});
     ColorProjection project_color(Vec3d world_point, Vec3d world_normal) const;
 
+    const DepthAssetMetadata& metadata() const noexcept { return m_depth.m_metadata; }
+
   private:
     ColorProjectionView() = default;
     DepthImageAsset m_depth;
@@ -43,4 +45,5 @@ class ColorProjectionView {
 };
 
 }  // namespace world_explorer
-#endif
+
+#endif  // WORLD_EXPLORER_SCENE_STORE_COLOR_PROJECTION_HPP

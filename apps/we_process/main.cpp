@@ -7,6 +7,7 @@
 #include "world_explorer/application/fusion_scene.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/mesh_color_audit.hpp"
+#include "world_explorer/application/mesh_texture.hpp"
 #include "world_explorer/application/pose_export.hpp"
 #include "world_explorer/application/pose_preparation.hpp"
 #include "world_explorer/application/pose_replay.hpp"
@@ -67,6 +68,8 @@ int main(int argc, char** argv) {
                    "  we_process inspect-fusion-scene REQUEST.json SHA256\n"
                    "  we_process compile-fusion REQUEST.json SHA256 NEW_SCENE.wexplore\n"
                    "  we_process audit-mesh-colors REQUEST.json SHA256 NEW_DIRECTORY\n"
+                   "  we_process bake-mesh-colors REQUEST.json SHA256 NEW_SCENE.wexplore\n"
+                   "  we_process inspect-baked SCENE.wexplore\n"
                    "  we_process inspect-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
                    "RECIPE_SHA POSES POSE_SHA\n"
                    "  we_process analyze-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
@@ -172,6 +175,38 @@ int main(int argc, char** argv) {
             if ((*K_SNAPSHOT)->m_initial_pose_asset_sha256)
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
+        if (K_COMMAND == "inspect-baked" && argc == 3) {
+            const auto K_SCENE = load_bundle(argv[2]);
+            if (!K_SCENE) {
+                std::cerr << K_SCENE.error().m_message << '\n';
+                return 2;
+            }
+            for (const auto& [K_ID, K_CHUNK] : (*K_SCENE)->m_chunks) {
+                static_cast<void>(K_ID);
+                if (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_baked) {
+                    std::cout << K_CHUNK->m_mesh->m_baked->m_manifest_json << '\n';
+                    return 0;
+                }
+            }
+            std::cerr << "Scene has no baked appearance\n";
+            return 2;
+        }
+        if (K_COMMAND == "bake-mesh-colors") {
+            if (argc != 5) {
+                std::cerr << "Usage: we_process bake-mesh-colors REQUEST.json SHA256 "
+                             "NEW_SCENE.wexplore\n";
+                return 2;
+            }
+            const auto K_RESULT =
+                bake_mesh_texture(argv[2], argv[3], argv[4], cancellation.get_token());
+            if (!K_RESULT) {
+                std::cerr << K_RESULT.error().m_message << '\n';
+                return K_RESULT.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Published baked captured color; arbitrary scale; unknown texels masked; "
+                         "walking unavailable\n";
             return 0;
         }
         if (K_COMMAND == "audit-mesh-colors") {

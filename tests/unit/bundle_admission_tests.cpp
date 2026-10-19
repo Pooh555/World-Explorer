@@ -233,7 +233,7 @@ TEST_CASE("bundle manifests reject unsupported conventions and invalid typed ide
                                          "pose_convention",
                                          "quaternion_order",
                                          "pixel_centers"};
-            if (K_FIELD == 0) value["schema_version"] = 3;
+            if (K_FIELD == 0) value["schema_version"] = 4;
             if (K_FIELD >= 1 && K_FIELD <= 6)
                 value["coordinates"][K_KEYS[static_cast<std::size_t>(K_FIELD - 1)]] = "unsupported";
             constexpr std::array K_APPEARANCE {

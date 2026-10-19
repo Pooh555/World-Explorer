@@ -405,7 +405,7 @@ void vulkan_device::create_descriptor_layout(descriptor_resources& resources) {
         bindings[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[index].descriptorCount = 1;
         bindings[index].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-        if (index == 5) bindings[index].stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (index == 0 || index == 5) bindings[index].stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
     }
     auto layout = detail::structure<VkDescriptorSetLayoutCreateInfo>(
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);

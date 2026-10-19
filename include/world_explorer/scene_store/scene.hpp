@@ -1,5 +1,6 @@
 #ifndef WORLD_EXPLORER_SCENE_STORE_SCENE_HPP
 #define WORLD_EXPLORER_SCENE_STORE_SCENE_HPP
+
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/core/types.hpp"
 #include "world_explorer/scene_store/fusion_asset.hpp"
@@ -31,12 +32,24 @@ struct ObservedMeshSource {
     std::string m_cleanup_sha256 {}, m_cleanup_json {};
 };
 
-// Raw observed surfaces or explicitly labeled synthetic diagnostics. No material,
+struct BakedMeshAppearance {
+    std::uint32_t m_width {}, m_height {};
+    // Linear captured sRGB, alpha exactly 0 (unknown) or 1 (observed candidate).
+    std::vector<std::array<float, 4>> m_rgba;
+    std::vector<FrameId> m_owners, m_frames;
+    std::vector<std::uint32_t> m_candidates;
+    // Per triangle corner, in atlas pixel coordinates; centers are half-integers.
+    std::vector<std::array<float, 2>> m_corner_uv;
+    std::string m_source_chunk_sha256, m_manifest_sha256, m_manifest_json;
+};
+
+// Raw observed surfaces or explicitly labeled synthetic diagnostics. No measured
 // complete-space or collision eligibility is inferred from drawable triangles.
 struct SceneMesh {
     std::vector<FusionVertex> m_vertices;
     std::vector<std::array<std::uint32_t, 3>> m_triangles;
     std::optional<ObservedMeshSource> m_observed;
+    std::optional<BakedMeshAppearance> m_baked {};
 };
 
 struct SceneChunk {
@@ -104,12 +117,15 @@ struct SceneLimits {
     std::size_t m_max_source_frames { 1000000uz };
     std::size_t m_max_mesh_vertices { 4000000uz };
     std::size_t m_max_mesh_triangles { 8000000uz };
+    std::size_t m_max_texture_texels { 8000000uz };
 };
 
 Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits = {});
 Result<std::size_t> validate_chunk(const SceneChunk& chunk, SceneLimits limits = {});
 std::string scene_content_hash(const SceneState& scene);
 std::string scene_chunk_content_hash(const SceneChunk& chunk);
+std::string scene_untextured_chunk_hash(const SceneChunk& chunk);
+Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimits limits = {});
 Result<SceneDeltaBatch> make_snapshot_batch(SceneSnapshot snapshot, OperationId operation);
 
 }  // namespace world_explorer

@@ -221,6 +221,7 @@ int viewer_main(int argc, char** argv) {
 
     std::optional<SavedView> bookmark;
     std::optional<UpdateTicket> pending_ticket;
+    auto previous_representation = representation;
     SceneSnapshot current;
     std::uint64_t next_operation = 1;
     bool running = true, captured = false, show_open = false, show_import = false,
@@ -342,16 +343,21 @@ int viewer_main(int argc, char** argv) {
             std::lock_guard lock(state.mutex);
             if (admitted) {
                 pending_ticket = *admitted;
+                previous_representation = representation;
                 current = loaded;
+                bool has_baked = false;
                 bool has_mesh = false;
                 bool has_splats = false;
                 for (const auto& [K_ID, K_CHUNK] : current->m_chunks) {
                     static_cast<void>(K_ID);
                     has_mesh = has_mesh || K_CHUNK->m_mesh.has_value();
+                    has_baked = has_baked || (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_baked);
                     has_splats = has_splats || !K_CHUNK->m_splats.empty();
                 }
-                representation = has_mesh && !has_splats ? SceneRepresentation::OBSERVED_MESH
-                                                         : SceneRepresentation::CAPTURED_APPEARANCE;
+                representation = has_baked && !has_splats ? SceneRepresentation::BAKED_APPEARANCE
+                                 : has_mesh && !has_splats
+                                     ? SceneRepresentation::OBSERVED_MESH
+                                     : SceneRepresentation::CAPTURED_APPEARANCE;
                 camera.m_up_axis = { 0, 1, 0 };
                 camera.fit(world_bounds(*current));
                 if (inspect_source) {
@@ -447,29 +453,41 @@ int viewer_main(int argc, char** argv) {
             ImGui::TextUnformatted("PROJECT");
             ImGui::Separator();
             ImGui::TextWrapped("%s",
-                               current ? (representation == SceneRepresentation::OBSERVED_MESH
+                               current ? (representation == SceneRepresentation::BAKED_APPEARANCE
+                                              ? "Baked captured color"
+                                          : representation == SceneRepresentation::OBSERVED_MESH
                                               ? "Partial observed geometry"
                                               : "Gaussian appearance")
                                        : "No scene open");
             if (current) {
+                bool has_baked = false;
                 bool has_mesh = false;
                 bool has_splats = false;
                 for (const auto& [K_ID, K_CHUNK] : current->m_chunks) {
                     static_cast<void>(K_ID);
                     has_mesh = has_mesh || K_CHUNK->m_mesh.has_value();
+                    has_baked = has_baked || (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_baked);
                     has_splats = has_splats || !K_CHUNK->m_splats.empty();
                 }
                 if (has_mesh) {
                     if (ImGui::RadioButton("Observed surfaces",
                                            representation == SceneRepresentation::OBSERVED_MESH))
                         representation = SceneRepresentation::OBSERVED_MESH;
+                    if (has_baked &&
+                        ImGui::RadioButton("Baked captured color",
+                                           representation == SceneRepresentation::BAKED_APPEARANCE))
+                        representation = SceneRepresentation::BAKED_APPEARANCE;
                     if (has_splats &&
                         ImGui::RadioButton("Captured appearance",
                                            representation ==
                                                SceneRepresentation::CAPTURED_APPEARANCE))
                         representation = SceneRepresentation::CAPTURED_APPEARANCE;
-                    ImGui::TextWrapped("Normals diagnostic. Partial surfaces; gaps are unknown. No "
-                                       "collision or measured scale.");
+                    if (representation == SceneRepresentation::BAKED_APPEARANCE)
+                        ImGui::TextWrapped("Captured unlit color. Unknown texels are masked. Not "
+                                           "albedo; no measured scale or collision.");
+                    else
+                        ImGui::TextWrapped("Normals diagnostic. Partial surfaces; gaps are "
+                                           "unknown. No collision or measured scale.");
                     if (current->m_provenance.contains("geometry_processing"))
                         ImGui::TextWrapped("Simplified observed proxy. Raw source retained.");
                 }
@@ -826,10 +844,22 @@ int viewer_main(int argc, char** argv) {
         if (!K_DRAWN) throw std::runtime_error(K_DRAWN.error().m_message);
         if (pending_ticket) {
             const auto K_PROGRESS = renderer->updates().query_progress(*pending_ticket);
-            if (K_PROGRESS && K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
+            if (K_PROGRESS && K_PROGRESS->m_state == UpdateState::FAILED) {
+                current = renderer->updates().visible_snapshot();
+                representation = previous_representation;
+                pending_ticket.reset();
+                const auto K_MESSAGE = K_PROGRESS->m_failure ? K_PROGRESS->m_failure->m_message
+                                                             : "Unknown renderer upload failure";
+                std::lock_guard lock(state.mutex);
+                state.status =
+                    "Scene upload failed: " + K_MESSAGE + ". Previous visible scene retained.";
+                if (frame_limit) throw std::runtime_error(state.status);
+            } else if (K_PROGRESS && K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
                 std::lock_guard lock(state.mutex);
                 state.status =
                     is_synthetic_scene(current) ? "Ready: synthetic diagnostic fixture."
+                    : representation == SceneRepresentation::BAKED_APPEARANCE
+                        ? "Baked captured color ready. Unknown texels masked; walking unavailable."
                     : representation == SceneRepresentation::OBSERVED_MESH
                         ? "Partial observed surfaces ready. Scale unmeasured; walking unavailable."
                         : "Appearance ready. Geometry and walking unavailable.";

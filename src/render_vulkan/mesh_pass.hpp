@@ -20,9 +20,18 @@ struct MeshTarget {
     std::size_t allocation_bytes() const;
 };
 
+struct MeshGpuVertex {
+    std::array<float, 3> m_position, m_normal;
+    std::array<float, 2> m_uv {};
+    std::array<std::uint32_t, 3> m_texture {};
+};
+
+static_assert(sizeof(MeshGpuVertex) == 44uz);
+
 struct MeshDraw {
     std::size_t m_vertex_offset {}, m_index_offset {};
     std::uint32_t m_index_count {};
+    bool m_baked {};
 };
 
 // Mesh-only normal diagnostic pass. Captured splats are a separate representation;
@@ -33,14 +42,15 @@ class MeshPass {
     ~MeshPass();
     MeshPass(const MeshPass&) = delete;
     MeshPass& operator=(const MeshPass&) = delete;
-    void initialize(const std::filesystem::path& shaders);
+    void initialize(const std::filesystem::path& shaders, VkDescriptorSetLayout scene_layout);
     std::unique_ptr<MeshTarget> create_target(VkExtent2D extent, std::size_t budget);
     void record(VkCommandBuffer command,
                 const MeshTarget& target,
                 const detail::gpu_buffer& scene,
                 const detail::push_parameters& parameters,
                 MeshDraw draw,
-                VkBuffer captured);
+                VkBuffer captured,
+                VkDescriptorSet scene_descriptor);
 
   private:
     vulkan_device& m_backend;
@@ -51,4 +61,5 @@ class MeshPass {
 };
 
 }  // namespace world_explorer
-#endif
+
+#endif  // WORLD_EXPLORER_RENDER_VULKAN_MESH_PASS_HPP

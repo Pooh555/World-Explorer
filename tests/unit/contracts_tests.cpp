@@ -562,7 +562,7 @@ TEST_CASE("bundle manifest validation preserves scale and enforces declared iden
     CAPTURE(K_FIELD);
     switch (K_FIELD) {
     case 0:
-        manifest["schema_version"] = 3;
+        manifest["schema_version"] = 4;
         break;
     case 1:
         manifest["scene_id"] = -1;

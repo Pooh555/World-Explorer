@@ -27,7 +27,8 @@ MeshPass::~MeshPass() {
     if (m_pass) vkDestroyRenderPass(m_device, m_pass, nullptr);
 }
 
-void MeshPass::initialize(const std::filesystem::path& shaders) {
+void MeshPass::initialize(const std::filesystem::path& shaders,
+                          VkDescriptorSetLayout scene_layout) {
     for (const auto K_FORMAT : { VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_D32_SFLOAT }) {
         VkFormatProperties properties {};
         vkGetPhysicalDeviceFormatProperties(m_backend.physical_device(), K_FORMAT, &properties);
@@ -91,10 +92,13 @@ void MeshPass::initialize(const std::filesystem::path& shaders) {
     pass.pDependencies = K_DEPENDENCIES.data();
     check(vkCreateRenderPass(m_device, &pass, nullptr, &m_pass),
           "create mesh diagnostic render pass");
-    const VkPushConstantRange K_PUSH {
-        VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(detail::push_parameters)};
+    const VkPushConstantRange K_PUSH {VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                      0,
+                                      sizeof(detail::push_parameters)};
     auto layout =
         structure<VkPipelineLayoutCreateInfo>(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
+    layout.setLayoutCount = 1;
+    layout.pSetLayouts = &scene_layout;
     layout.pushConstantRangeCount = 1;
     layout.pPushConstantRanges = &K_PUSH;
     check(vkCreatePipelineLayout(m_device, &layout, nullptr, &m_layout),
@@ -119,15 +123,17 @@ void MeshPass::initialize(const std::filesystem::path& shaders) {
               "main",
               nullptr}}};
         const VkVertexInputBindingDescription K_BINDING {
-            0, sizeof(FusionVertex), VK_VERTEX_INPUT_RATE_VERTEX};
-        const std::array<VkVertexInputAttributeDescription, 2> K_ATTRIBUTES {
-            {{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(FusionVertex, m_position) },
-             { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(FusionVertex, m_normal) }}};
+            0, sizeof(MeshGpuVertex), VK_VERTEX_INPUT_RATE_VERTEX};
+        const std::array<VkVertexInputAttributeDescription, 4> K_ATTRIBUTES {
+            {{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(MeshGpuVertex, m_position) },
+             { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(MeshGpuVertex, m_normal) },
+             { 2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(MeshGpuVertex, m_uv) },
+             { 3, 0, VK_FORMAT_R32G32B32_UINT, offsetof(MeshGpuVertex, m_texture) }}};
         auto vertices = structure<VkPipelineVertexInputStateCreateInfo>(
             VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
         vertices.vertexBindingDescriptionCount = 1;
         vertices.pVertexBindingDescriptions = &K_BINDING;
-        vertices.vertexAttributeDescriptionCount = 2;
+        vertices.vertexAttributeDescriptionCount = 4;
         vertices.pVertexAttributeDescriptions = K_ATTRIBUTES.data();
         auto assembly = structure<VkPipelineInputAssemblyStateCreateInfo>(
             VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO);
@@ -246,7 +252,8 @@ void MeshPass::record(VkCommandBuffer command,
                       const detail::gpu_buffer& scene,
                       const detail::push_parameters& parameters,
                       MeshDraw draw,
-                      VkBuffer captured) {
+                      VkBuffer captured,
+                      VkDescriptorSet scene_descriptor) {
     const std::array<VkClearValue, 2> K_CLEAR {VkClearValue {.color = {{ .045F, .051F, .063F, 1 }}},
                                                VkClearValue {.depthStencil = { 1, 0 }}};
     auto pass = structure<VkRenderPassBeginInfo>(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
@@ -266,8 +273,16 @@ void MeshPass::record(VkCommandBuffer command,
     vkCmdSetViewport(command, 0, 1, &K_VIEWPORT);
     vkCmdSetScissor(command, 0, 1, &K_SCISSOR);
     vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-    vkCmdPushConstants(
-        command, m_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(parameters), &parameters);
+    auto mesh_parameters = parameters;
+    mesh_parameters.count_shift[3] = draw.m_baked ? 1U : 0U;
+    vkCmdBindDescriptorSets(
+        command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_layout, 0, 1, &scene_descriptor, 0, nullptr);
+    vkCmdPushConstants(command,
+                       m_layout,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0,
+                       sizeof(mesh_parameters),
+                       &mesh_parameters);
     const VkDeviceSize K_VERTEX_OFFSET { draw.m_vertex_offset };
     vkCmdBindVertexBuffers(command, 0, 1, &scene.buffer, &K_VERTEX_OFFSET);
     vkCmdBindIndexBuffer(command, scene.buffer, draw.m_index_offset, VK_INDEX_TYPE_UINT32);

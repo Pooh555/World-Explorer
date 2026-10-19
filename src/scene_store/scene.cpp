@@ -38,14 +38,18 @@ struct SceneHashWriter {
     }
 };
 
-void append_chunk(SceneHashWriter& hash, ChunkId id, const SceneChunk& chunk) {
+void append_chunk(SceneHashWriter& hash,
+                  ChunkId id,
+                  const SceneChunk& chunk,
+                  bool include_baked = true) {
     const auto K_ADD = [&](std::uint64_t value) { hash.add(value); };
     // Zero cannot be an admitted chunk ID. Reserve it as an unambiguous mesh
     // stream/version prefix while retaining every legacy splat-only digest.
     if (chunk.m_mesh) {
         K_ADD(0);
-        K_ADD(chunk.m_mesh->m_observed && !chunk.m_mesh->m_observed->m_cleanup_json.empty() ? 2
-                                                                                            : 1);
+        K_ADD(include_baked && chunk.m_mesh->m_baked                                          ? 3
+              : chunk.m_mesh->m_observed && !chunk.m_mesh->m_observed->m_cleanup_json.empty() ? 2
+                                                                                              : 1);
     }
     K_ADD(id.m_value);
     K_ADD(chunk.m_generation);
@@ -112,6 +116,24 @@ void append_chunk(SceneHashWriter& hash, ChunkId id, const SceneChunk& chunk) {
         }
         for (const auto& triangle : mesh.m_triangles)
             for (auto index : triangle) K_ADD(index);
+        if (include_baked && mesh.m_baked) {
+            const auto& baked = *mesh.m_baked;
+            K_ADD(baked.m_width);
+            K_ADD(baked.m_height);
+            for (const auto& text :
+                 { baked.m_source_chunk_sha256, baked.m_manifest_sha256, baked.m_manifest_json }) {
+                K_ADD(text.size());
+                hash.add_bytes(std::as_bytes(std::span(text)));
+            }
+            K_ADD(baked.m_frames.size());
+            for (auto frame : baked.m_frames) K_ADD(frame.m_value);
+            for (const auto& color : baked.m_rgba)
+                for (auto value : color) K_ADD(std::bit_cast<std::uint32_t>(value));
+            for (auto owner : baked.m_owners) K_ADD(owner.m_value);
+            for (auto mask : baked.m_candidates) K_ADD(mask);
+            for (const auto& uv : baked.m_corner_uv)
+                for (auto value : uv) K_ADD(std::bit_cast<std::uint32_t>(value));
+        }
     }
 }
 
@@ -181,7 +203,11 @@ Result<std::size_t> mesh_bytes(const SceneChunk& chunk, const SceneLimits& limit
             triangle[2] >= mesh.m_vertices.size() || triangle[0] == triangle[1] ||
             triangle[0] == triangle[2] || triangle[1] == triangle[2])
             return fail(ErrorCode::INVALID_DATA, "Invalid mesh triangle");
-    return bytes;
+    const auto K_BAKED = validate_baked_appearance(chunk, limits);
+    if (!K_BAKED) return std::unexpected(K_BAKED.error());
+    if (*K_BAKED > limits.m_max_payload_bytes - bytes)
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Combined mesh texture budget exceeded");
+    return bytes + *K_BAKED;
 }
 
 }  // namespace
@@ -189,6 +215,12 @@ Result<std::size_t> mesh_bytes(const SceneChunk& chunk, const SceneLimits& limit
 std::string scene_chunk_content_hash(const SceneChunk& chunk) {
     SceneHashWriter hash;
     append_chunk(hash, chunk.m_id, chunk);
+    return hash.finish();
+}
+
+std::string scene_untextured_chunk_hash(const SceneChunk& chunk) {
+    SceneHashWriter hash;
+    append_chunk(hash, chunk.m_id, chunk, false);
     return hash.finish();
 }
 
@@ -267,7 +299,7 @@ Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits) 
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Provenance field exceeds limit");
     if (scene.m_chunks.size() > limits.m_max_chunks)
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "scene chunk budget exceeded");
-    std::size_t bytes {}, splats {}, vertices {}, triangles {};
+    std::size_t bytes {}, splats {}, vertices {}, triangles {}, texels {};
     for (const auto& [K_ID, K_CHUNK] : scene.m_chunks) {
         if (!K_CHUNK || K_ID != K_CHUNK->m_id)
             return fail(ErrorCode::INVALID_DATA, "chunk key differs from identity");
@@ -281,6 +313,11 @@ Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits) 
             if (mesh.m_vertices.size() > limits.m_max_mesh_vertices - vertices ||
                 mesh.m_triangles.size() > limits.m_max_mesh_triangles - triangles)
                 return fail(ErrorCode::RESOURCE_EXHAUSTED, "Aggregate mesh count exceeded");
+            if (mesh.m_baked) {
+                if (mesh.m_baked->m_rgba.size() > limits.m_max_texture_texels - texels)
+                    return fail(ErrorCode::RESOURCE_EXHAUSTED, "Aggregate texture count exceeded");
+                texels += mesh.m_baked->m_rgba.size();
+            }
             vertices += mesh.m_vertices.size();
             triangles += mesh.m_triangles.size();
             if (mesh.m_observed) {
