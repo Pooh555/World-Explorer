@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_API_MAP_RECORDS_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_API_MAP_RECORDS_HPP
+#pragma once
+
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/core/types.hpp"
 
@@ -50,4 +50,3 @@ struct ObservationRecord {
 };
 
 }  // namespace world_explorer
-#endif

@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_SCENE_STORE_SCENE_HPP
-#define WORLD_EXPLORER_SCENE_STORE_SCENE_HPP
+#pragma once
 
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/core/types.hpp"
@@ -129,5 +128,3 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
 Result<SceneDeltaBatch> make_snapshot_batch(SceneSnapshot snapshot, OperationId operation);
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_SCENE_STORE_SCENE_HPP

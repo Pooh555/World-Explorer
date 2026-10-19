@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_MAP_COMMANDS_HPP
-#define WORLD_EXPLORER_APPLICATION_MAP_COMMANDS_HPP
+#pragma once
+
 #include "world_explorer/map_store/map_store.hpp"
 
 namespace world_explorer {
@@ -14,4 +14,3 @@ Result<MapSnapshot> inspect_persistent_map(const std::filesystem::path& director
                                            const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

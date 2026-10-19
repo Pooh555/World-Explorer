@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_COMMANDS_HPP
-#define WORLD_EXPLORER_APPLICATION_COMMANDS_HPP
+#pragma once
+
 #include "world_explorer/core/result.hpp"
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
 
@@ -33,5 +33,3 @@ Result<int> run_worker(const WorkerConfiguration& configuration,
                        const WorkerEventCallback& observed = {});
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_APPLICATION_COMMANDS_HPP

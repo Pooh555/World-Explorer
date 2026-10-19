@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_CORE_HASH_HPP
-#define WORLD_EXPLORER_CORE_HASH_HPP
+#pragma once
+
 #include "world_explorer/core/result.hpp"
 
 #include <filesystem>
@@ -30,5 +30,3 @@ Result<std::string> sha256_file(const std::filesystem::path& path,
                                 const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_CORE_HASH_HPP

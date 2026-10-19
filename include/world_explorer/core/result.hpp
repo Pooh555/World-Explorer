@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_CORE_RESULT_HPP
-#define WORLD_EXPLORER_CORE_RESULT_HPP
+#pragma once
+
 #include <cstdint>
 #include <expected>
 #include <string>
@@ -34,5 +34,3 @@ inline std::unexpected<Error> fail(ErrorCode code, std::string message) {
 }
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_CORE_RESULT_HPP

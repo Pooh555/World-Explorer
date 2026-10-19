@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_CORE_TYPES_HPP
-#define WORLD_EXPLORER_CORE_TYPES_HPP
+#pragma once
 
 #include <compare>
 #include <cstddef>
@@ -40,5 +39,3 @@ struct SourceTimestamp {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_CORE_TYPES_HPP

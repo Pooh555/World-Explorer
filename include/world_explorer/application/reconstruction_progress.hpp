@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_PROGRESS_HPP
-#define WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_PROGRESS_HPP
+#pragma once
 
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
 
@@ -38,4 +37,3 @@ std::optional<ReconstructionProgress> checked_reconstruction_progress(
     const WorkerEvent& event, ReconstructionStage expected_stage, std::uint32_t fit_steps);
 
 }  // namespace world_explorer
-#endif

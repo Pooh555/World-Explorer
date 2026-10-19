@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_TRAINING_CAMERA_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_TRAINING_CAMERA_HPP
+#pragma once
+
 #include "world_explorer/core/math.hpp"
 
 #include <cstdint>
@@ -24,4 +24,3 @@ Result<TrainingCamera> read_colmap_training_camera(const std::filesystem::path& 
                                                    const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

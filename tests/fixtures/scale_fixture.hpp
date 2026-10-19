@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_TESTS_FIXTURES_SCALE_FIXTURE_HPP
-#define WORLD_EXPLORER_TESTS_FIXTURES_SCALE_FIXTURE_HPP
+#pragma once
 
 #include "world_explorer/render_core/camera.hpp"
 #include "world_explorer/scene_store/scene.hpp"
@@ -77,4 +76,3 @@ inline CameraView scale_fixture_camera(bool reverse = false) {
 }
 
 }  // namespace world_explorer
-#endif

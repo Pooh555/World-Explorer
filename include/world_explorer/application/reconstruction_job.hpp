@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_JOB_HPP
-#define WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_JOB_HPP
+#pragma once
 
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/reconstruction_progress.hpp"
@@ -68,5 +67,3 @@ Result<std::filesystem::path> reconstruct(const ReconstructionJob& job,
                                           const ReconstructionProgressCallback& progress = {});
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_APPLICATION_RECONSTRUCTION_JOB_HPP

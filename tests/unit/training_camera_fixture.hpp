@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_TEST_TRAINING_CAMERA_FIXTURE_HPP
-#define WORLD_EXPLORER_TEST_TRAINING_CAMERA_FIXTURE_HPP
+#pragma once
+
 #include <array>
 #include <bit>
 #include <cstddef>
@@ -38,4 +38,3 @@ inline void write_training_camera(const std::filesystem::path& file,
 }
 
 }  // namespace world_explorer::test
-#endif

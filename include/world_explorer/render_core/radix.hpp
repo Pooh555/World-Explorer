@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RENDER_CORE_RADIX_HPP
-#define WORLD_EXPLORER_RENDER_CORE_RADIX_HPP
+#pragma once
+
 #include <bit>
 #include <cstdint>
 
@@ -13,4 +13,3 @@ constexpr std::uint32_t tile_radix_passes(std::uint32_t maximum_key) {
 }
 
 }  // namespace world_explorer
-#endif  // WORLD_EXPLORER_RENDER_CORE_RADIX_HPP

@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_DENSE_INPUTS_HPP
-#define WORLD_EXPLORER_APPLICATION_DENSE_INPUTS_HPP
+#pragma once
+
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
 #include "world_explorer/scene_store/depth_asset.hpp"
 
@@ -57,4 +57,3 @@ Result<PreparedDenseInputs> load_resized_dense_inputs(const ResizedDenseInputReq
                                                       const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_VIEWER_INPUT_LATENCY_HPP
-#define WORLD_EXPLORER_VIEWER_INPUT_LATENCY_HPP
+#pragma once
 
 #include "world_explorer/navigation/fly_camera.hpp"
 
@@ -60,4 +59,3 @@ class input_latency_recorder {
 };
 
 }  // namespace world_explorer::viewer
-#endif

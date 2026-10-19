@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_MESH_TEXTURE_HPP
-#define WORLD_EXPLORER_APPLICATION_MESH_TEXTURE_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 
@@ -16,5 +15,3 @@ Result<void> bake_mesh_texture(const std::filesystem::path& request,
                                const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_APPLICATION_MESH_TEXTURE_HPP

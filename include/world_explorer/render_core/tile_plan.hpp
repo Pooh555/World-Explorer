@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RENDER_CORE_TILE_PLAN_HPP
-#define WORLD_EXPLORER_RENDER_CORE_TILE_PLAN_HPP
+#pragma once
+
 #include "world_explorer/core/result.hpp"
 
 #include <array>
@@ -48,4 +48,3 @@ class TileRegionPlan {
 };
 
 }  // namespace world_explorer
-#endif  // WORLD_EXPLORER_RENDER_CORE_TILE_PLAN_HPP

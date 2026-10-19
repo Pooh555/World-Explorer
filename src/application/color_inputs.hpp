@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_COLOR_INPUTS_HPP
-#define WORLD_EXPLORER_APPLICATION_COLOR_INPUTS_HPP
+#pragma once
 
 #include "world_explorer/scene_store/color_projection.hpp"
 #include "world_explorer/scene_store/scene.hpp"
@@ -23,5 +22,3 @@ Result<ColorProjectionView>
 view(const Inputs& inputs, std::size_t index, const std::stop_token& stop);
 
 }  // namespace world_explorer::color_inputs
-
-#endif  // WORLD_EXPLORER_APPLICATION_COLOR_INPUTS_HPP

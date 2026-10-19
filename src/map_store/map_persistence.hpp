@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_MAP_STORE_MAP_PERSISTENCE_HPP
-#define WORLD_EXPLORER_MAP_STORE_MAP_PERSISTENCE_HPP
+#pragma once
+
 #include "world_explorer/map_store/map_store.hpp"
 
 #include <span>
@@ -39,4 +39,3 @@ class MapPersistence {
 };
 
 }  // namespace world_explorer
-#endif

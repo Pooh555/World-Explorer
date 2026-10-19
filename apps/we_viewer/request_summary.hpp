@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_VIEWER_REQUEST_SUMMARY_HPP
-#define WORLD_EXPLORER_VIEWER_REQUEST_SUMMARY_HPP
+#pragma once
+
 #include "world_explorer/core/result.hpp"
 
 #include <filesystem>
@@ -28,4 +28,3 @@ Result<request_summary> review_reconstruction_request(const std::filesystem::pat
                                                       const std::stop_token& stop = {});
 
 }  // namespace world_explorer::viewer
-#endif

@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_CORE_MATH_HPP
-#define WORLD_EXPLORER_CORE_MATH_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 
@@ -109,5 +108,3 @@ unproject(const PinholeCamera& camera, std::array<double, 2> pixel, double z_dep
 }
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_CORE_MATH_HPP

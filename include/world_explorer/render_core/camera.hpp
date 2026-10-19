@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RENDER_CORE_CAMERA_HPP
-#define WORLD_EXPLORER_RENDER_CORE_CAMERA_HPP
+#pragma once
+
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/render_core/timing.hpp"
 
@@ -52,5 +52,3 @@ struct RendererDiagnostics {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_RENDER_CORE_CAMERA_HPP

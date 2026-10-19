@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_DECODED_FRAME_SOURCE_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_DECODED_FRAME_SOURCE_HPP
+#pragma once
+
 #include "world_explorer/capture/frame_source.hpp"
 
 #include <chrono>
@@ -51,4 +51,3 @@ Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConf
                                                                const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

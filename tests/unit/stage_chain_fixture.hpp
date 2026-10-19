@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_TEST_STAGE_CHAIN_FIXTURE_HPP
-#define WORLD_EXPLORER_TEST_STAGE_CHAIN_FIXTURE_HPP
+#pragma once
+
 #include "pose_fixture.hpp"
 
 namespace world_explorer::test {
@@ -65,4 +65,3 @@ inline void stage_worker(const std::filesystem::path& script_path,
 }
 
 }  // namespace world_explorer::test
-#endif

@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RENDER_VULKAN_RENDERER_HPP
-#define WORLD_EXPLORER_RENDER_VULKAN_RENDERER_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 #include "world_explorer/render_core/camera.hpp"
@@ -88,5 +87,3 @@ class VulkanRenderer {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_RENDER_VULKAN_RENDERER_HPP

@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_VIDEO_PREFLIGHT_HPP
-#define WORLD_EXPLORER_APPLICATION_VIDEO_PREFLIGHT_HPP
+#pragma once
 
 #include "world_explorer/application/commands.hpp"
 
@@ -80,4 +79,3 @@ Result<VideoPreflightReport> preflight_video(const VideoPreflightRequest& reques
                                              const LogCallback& log = {});
 
 }  // namespace world_explorer
-#endif

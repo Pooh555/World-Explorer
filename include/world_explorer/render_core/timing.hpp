@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RENDER_CORE_TIMING_HPP
-#define WORLD_EXPLORER_RENDER_CORE_TIMING_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 
@@ -50,4 +49,3 @@ inline Result<double> timestamp_duration_ms(std::uint64_t begin,
 }
 
 }  // namespace world_explorer
-#endif  // WORLD_EXPLORER_RENDER_CORE_TIMING_HPP

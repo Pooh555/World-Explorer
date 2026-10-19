@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_SCENE_STORE_DEPTH_ASSET_HPP
-#define WORLD_EXPLORER_SCENE_STORE_DEPTH_ASSET_HPP
+#pragma once
 
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/core/types.hpp"
@@ -90,4 +89,3 @@ Result<DepthImageAsset> read_depth_asset(const std::filesystem::path& path,
                                          const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

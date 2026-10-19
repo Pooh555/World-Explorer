@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_OBSERVATION_IDENTITY_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_OBSERVATION_IDENTITY_HPP
+#pragma once
+
 #include "world_explorer/capture/frame_source.hpp"
 #include "world_explorer/core/hash.hpp"
 
@@ -49,4 +49,3 @@ identity(const std::string& source, std::string_view kind, std::string_view exte
 }
 
 }  // namespace world_explorer::adapter_detail
-#endif

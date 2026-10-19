@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_TESTS_GPU_CLIPPING_FIXTURE_HPP
-#define WORLD_EXPLORER_TESTS_GPU_CLIPPING_FIXTURE_HPP
+#pragma once
 
 #include "world_explorer/render_core/camera.hpp"
 #include "world_explorer/scene_store/scene.hpp"
@@ -56,5 +55,3 @@ inline SceneSnapshot clipping_fixture() {
 }
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_TESTS_GPU_CLIPPING_FIXTURE_HPP

@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_VIEWER_PREFERENCES_HPP
-#define WORLD_EXPLORER_VIEWER_PREFERENCES_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 
@@ -29,4 +28,3 @@ struct ui_scaling {
 Result<ui_scaling> display_scaling(float display_scale, float pixel_density);
 
 }  // namespace world_explorer::viewer
-#endif  // WORLD_EXPLORER_VIEWER_PREFERENCES_HPP

@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RENDER_CORE_UPDATE_SINK_HPP
-#define WORLD_EXPLORER_RENDER_CORE_UPDATE_SINK_HPP
+#pragma once
+
 #include "world_explorer/scene_store/scene.hpp"
 
 #include <cstdint>
@@ -124,5 +124,3 @@ class RendererUpdateSink {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_RENDER_CORE_UPDATE_SINK_HPP

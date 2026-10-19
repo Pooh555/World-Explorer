@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_DEPTH_ASSETS_HPP
-#define WORLD_EXPLORER_APPLICATION_DEPTH_ASSETS_HPP
+#pragma once
+
 #include "world_explorer/scene_store/depth_asset.hpp"
 
 namespace world_explorer {
@@ -24,4 +24,3 @@ Result<std::string> inspect_depth_file(const std::filesystem::path& path,
                                        const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

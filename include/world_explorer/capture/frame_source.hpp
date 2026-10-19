@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_CAPTURE_FRAME_SOURCE_HPP
-#define WORLD_EXPLORER_CAPTURE_FRAME_SOURCE_HPP
+#pragma once
+
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/core/types.hpp"
 
@@ -69,5 +69,3 @@ class FrameSource {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_CAPTURE_FRAME_SOURCE_HPP

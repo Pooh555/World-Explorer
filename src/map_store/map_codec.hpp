@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_MAP_STORE_MAP_CODEC_HPP
-#define WORLD_EXPLORER_MAP_STORE_MAP_CODEC_HPP
+#pragma once
+
 #include "poses_generated.h"
 #include "world_explorer/map_store/pose_asset.hpp"
 
@@ -36,4 +36,3 @@ Result<MapSnapshot>
 decode_records(record_view records, const PoseAssetLimits& limits, const std::stop_token& stop);
 
 }  // namespace world_explorer::map_codec
-#endif

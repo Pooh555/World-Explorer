@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_TESTS_FIXTURES_VIEWER_FIXTURE_HPP
-#define WORLD_EXPLORER_TESTS_FIXTURES_VIEWER_FIXTURE_HPP
+#pragma once
 
 #include "world_explorer/render_core/camera.hpp"
 #include "world_explorer/scene_store/scene.hpp"
@@ -71,4 +70,3 @@ inline CameraView portable_viewer_camera() {
 }
 
 }  // namespace world_explorer
-#endif  // WORLD_EXPLORER_TESTS_FIXTURES_VIEWER_FIXTURE_HPP

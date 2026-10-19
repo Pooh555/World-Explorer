@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_VIDEO_DECODE_HPP
-#define WORLD_EXPLORER_APPLICATION_VIDEO_DECODE_HPP
+#pragma once
+
 #include "world_explorer/application/video_preflight.hpp"
 #include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
 
@@ -42,4 +42,3 @@ Result<DecodedVideo> adopt_video_decode(const RetainedVideoDecode& selected,
                                         const std::stop_token& stop);
 
 }  // namespace world_explorer
-#endif

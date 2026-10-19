@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_POSE_EXPORT_HPP
-#define WORLD_EXPLORER_APPLICATION_POSE_EXPORT_HPP
+#pragma once
+
 #include "world_explorer/application/pose_replay.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
 
@@ -17,4 +17,3 @@ Result<std::string> export_completed_pose_asset(const PoseExportRequest& request
                                                 const LogCallback& log = {});
 
 }  // namespace world_explorer
-#endif

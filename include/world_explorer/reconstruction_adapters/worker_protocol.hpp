@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_WORKER_PROTOCOL_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_WORKER_PROTOCOL_HPP
+#pragma once
+
 #include "world_explorer/core/result.hpp"
 #include "world_explorer/core/types.hpp"
 #include "world_explorer/reconstruction_adapters/process.hpp"
@@ -93,4 +93,3 @@ Result<int> execute_worker_protocol(const std::string& python,
                                     const WorkerEventCallback& observed = {});
 
 }  // namespace world_explorer
-#endif

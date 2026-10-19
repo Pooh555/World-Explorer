@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_JOB_VALIDATION_HPP
-#define WORLD_EXPLORER_APPLICATION_JOB_VALIDATION_HPP
+#pragma once
 
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
@@ -32,5 +31,3 @@ Result<std::string> verify_fit(const ReconstructionJob& job,
                                const CompletedPoseDataset& dataset);
 
 }  // namespace world_explorer::job_detail
-
-#endif  // WORLD_EXPLORER_APPLICATION_JOB_VALIDATION_HPP

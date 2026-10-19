@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_POSE_SOLVE_HPP
-#define WORLD_EXPLORER_APPLICATION_POSE_SOLVE_HPP
+#pragma once
+
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/map_store/map_store.hpp"
 #include "world_explorer/reconstruction_adapters/batch_poses.hpp"
@@ -19,4 +19,3 @@ Result<MapSnapshot> solve_selected_pose_map(PoseSolveRequest request,
                                             const LogCallback& log = {});
 
 }  // namespace world_explorer
-#endif

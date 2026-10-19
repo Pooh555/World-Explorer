@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_FUSION_SCENE_HPP
-#define WORLD_EXPLORER_APPLICATION_FUSION_SCENE_HPP
+#pragma once
 
 #include "world_explorer/application/fusion_assets.hpp"
 #include "world_explorer/scene_store/scene.hpp"
@@ -23,4 +22,3 @@ Result<void> compile_fusion_scene(const std::filesystem::path& request,
                                   const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

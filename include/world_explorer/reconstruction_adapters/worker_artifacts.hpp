@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_WORKER_ARTIFACTS_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_WORKER_ARTIFACTS_HPP
+#pragma once
+
 #include "world_explorer/core/result.hpp"
 
 #include <cstddef>
@@ -36,4 +36,3 @@ Result<VerifiedWorkerStage> verify_committed_stage(const std::filesystem::path& 
                                                    WorkerStageLimits limits = {});
 
 }  // namespace world_explorer
-#endif

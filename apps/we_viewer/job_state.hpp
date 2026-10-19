@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_VIEWER_JOB_STATE_HPP
-#define WORLD_EXPLORER_VIEWER_JOB_STATE_HPP
+#pragma once
 
 #include "request_summary.hpp"
 #include "world_explorer/application/commands.hpp"
@@ -64,4 +63,3 @@ struct application_state {
 };
 
 }  // namespace world_explorer::viewer
-#endif  // WORLD_EXPLORER_VIEWER_JOB_STATE_HPP

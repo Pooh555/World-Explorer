@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RENDER_VULKAN_COMMON_HPP
-#define WORLD_EXPLORER_RENDER_VULKAN_COMMON_HPP
+#pragma once
 
 #include "world_explorer/render_core/camera.hpp"
 #include "world_explorer/render_core/update_sink.hpp"
@@ -113,5 +112,3 @@ inline void compute_barrier(VkCommandBuffer command) {
 
 }  // namespace detail
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_RENDER_VULKAN_COMMON_HPP

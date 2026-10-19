@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RENDER_VULKAN_RENDERER_FAULTS_HPP
-#define WORLD_EXPLORER_RENDER_VULKAN_RENDERER_FAULTS_HPP
+#pragma once
 
 #if defined(WE_VULKAN_TEST_FAULTS)
 namespace world_explorer::detail {
@@ -12,5 +11,3 @@ void defer_next_frame_acquisition(frame_acquire_delay delay);
 
 }  // namespace world_explorer::detail
 #endif
-
-#endif  // WORLD_EXPLORER_RENDER_VULKAN_RENDERER_FAULTS_HPP

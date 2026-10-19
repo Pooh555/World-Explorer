@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_API_POSE_ESTIMATOR_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_API_POSE_ESTIMATOR_HPP
+#pragma once
+
 #include "world_explorer/capture/frame_source.hpp"
 
 #include <cstdint>
@@ -82,5 +82,3 @@ class PoseEstimator {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_RECONSTRUCTION_API_POSE_ESTIMATOR_HPP

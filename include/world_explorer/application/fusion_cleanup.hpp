@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_FUSION_CLEANUP_HPP
-#define WORLD_EXPLORER_APPLICATION_FUSION_CLEANUP_HPP
+#pragma once
 
 #include "world_explorer/application/fusion_assets.hpp"
 
@@ -14,4 +13,3 @@ Result<std::string> export_fusion_cleanup(const FusionAdmissionRequest& request,
                                           const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

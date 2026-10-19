@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RENDER_VULKAN_DEVICE_HPP
-#define WORLD_EXPLORER_RENDER_VULKAN_DEVICE_HPP
+#pragma once
 
 #include "vulkan_buffer.hpp"
 #include "vulkan_common.hpp"
@@ -89,5 +88,3 @@ class vulkan_device {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_RENDER_VULKAN_DEVICE_HPP

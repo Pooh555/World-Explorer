@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_MAP_STORE_MAP_STORE_HPP
-#define WORLD_EXPLORER_MAP_STORE_MAP_STORE_HPP
+#pragma once
 
 #include "world_explorer/reconstruction_api/map_records.hpp"
 #include "world_explorer/reconstruction_api/pose_estimator.hpp"
@@ -115,5 +114,3 @@ class MapStore {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_MAP_STORE_MAP_STORE_HPP

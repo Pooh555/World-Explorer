@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_TEST_INSPECTION_FIXTURE_HPP
-#define WORLD_EXPLORER_TEST_INSPECTION_FIXTURE_HPP
+#pragma once
+
 #include "world_explorer/application/video_preflight.hpp"
 
 #include <chrono>
@@ -96,4 +96,3 @@ struct inspection_fixture {
 };
 
 }  // namespace world_explorer::test
-#endif

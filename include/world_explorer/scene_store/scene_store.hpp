@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_SCENE_STORE_SCENE_STORE_HPP
-#define WORLD_EXPLORER_SCENE_STORE_SCENE_STORE_HPP
+#pragma once
 
 #include "world_explorer/scene_store/scene.hpp"
 
@@ -40,5 +39,3 @@ class SceneStore {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_SCENE_STORE_SCENE_STORE_HPP

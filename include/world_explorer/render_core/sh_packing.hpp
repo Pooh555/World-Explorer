@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RENDER_CORE_SH_PACKING_HPP
-#define WORLD_EXPLORER_RENDER_CORE_SH_PACKING_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 
@@ -47,5 +46,3 @@ inline Result<std::array<std::uint32_t, 24>> pack_sh_binary16(const std::array<f
 }
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_RENDER_CORE_SH_PACKING_HPP

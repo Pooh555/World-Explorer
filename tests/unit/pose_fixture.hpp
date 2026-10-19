@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_TEST_POSE_FIXTURE_HPP
-#define WORLD_EXPLORER_TEST_POSE_FIXTURE_HPP
+#pragma once
+
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
 
@@ -151,4 +151,3 @@ struct pose_fixture {
 };
 
 }  // namespace world_explorer::test
-#endif

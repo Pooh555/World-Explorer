@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_OWNED_JOB_HPP
-#define WORLD_EXPLORER_APPLICATION_OWNED_JOB_HPP
+#pragma once
+
 #include "world_explorer/core/file_lock.hpp"
 
 #include <set>
@@ -26,4 +26,3 @@ Result<void> publish_owned_json(const std::filesystem::path& path,
                                 const std::stop_token& stop);
 
 }  // namespace world_explorer::job_detail
-#endif

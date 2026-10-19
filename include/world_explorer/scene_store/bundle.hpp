@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_SCENE_STORE_BUNDLE_HPP
-#define WORLD_EXPLORER_SCENE_STORE_BUNDLE_HPP
+#pragma once
 
 #include "world_explorer/scene_store/scene.hpp"
 
@@ -23,5 +22,3 @@ Result<SceneSnapshot>
 load_gsplat_ply(const std::filesystem::path& path, SceneId id, BundleLimits limits = {});
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_SCENE_STORE_BUNDLE_HPP

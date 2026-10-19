@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_DEPTH_VISIBILITY_HPP
-#define WORLD_EXPLORER_APPLICATION_DEPTH_VISIBILITY_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 
@@ -20,4 +19,3 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
                                                   const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_IMAGE_DECODER_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_IMAGE_DECODER_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 
@@ -18,4 +17,3 @@ Result<std::vector<std::byte>> decode_calibrated_rgb(const std::filesystem::path
                                                      const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

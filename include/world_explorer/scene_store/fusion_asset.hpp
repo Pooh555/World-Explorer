@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_SCENE_STORE_FUSION_ASSET_HPP
-#define WORLD_EXPLORER_SCENE_STORE_FUSION_ASSET_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 #include "world_explorer/core/types.hpp"
@@ -58,4 +57,3 @@ Result<ObservedFusionAsset> decode_fusion_asset(std::span<const std::byte> bytes
                                                 const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

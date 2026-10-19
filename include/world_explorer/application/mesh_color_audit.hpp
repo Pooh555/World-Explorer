@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_APPLICATION_MESH_COLOR_AUDIT_HPP
-#define WORLD_EXPLORER_APPLICATION_MESH_COLOR_AUDIT_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 
@@ -17,4 +16,3 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
                                       const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

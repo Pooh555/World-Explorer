@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_POSE_JOB_HPP
-#define WORLD_EXPLORER_APPLICATION_POSE_JOB_HPP
+#pragma once
+
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/core/file_lock.hpp"
 
@@ -16,4 +16,3 @@ Result<std::unique_ptr<FileLock>> prepare_pose_job(const ReconstructionJob& job,
                                                    const WorkerEventCallback& observed);
 
 }  // namespace world_explorer::job_detail
-#endif

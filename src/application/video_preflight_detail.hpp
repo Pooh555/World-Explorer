@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_VIDEO_PREFLIGHT_DETAIL_HPP
-#define WORLD_EXPLORER_APPLICATION_VIDEO_PREFLIGHT_DETAIL_HPP
+#pragma once
+
 #include "world_explorer/application/video_preflight.hpp"
 
 namespace world_explorer::video_detail {
@@ -10,4 +10,3 @@ Result<void> check_storage(const std::vector<std::filesystem::path>& outputs,
                            const std::stop_token& stop);
 
 }  // namespace world_explorer::video_detail
-#endif

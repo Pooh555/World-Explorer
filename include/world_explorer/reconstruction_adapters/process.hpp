@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_PROCESS_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_PROCESS_HPP
+#pragma once
+
 #include "world_explorer/core/result.hpp"
 
 #include <chrono>
@@ -30,4 +30,3 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
                             const ProcessControl& control = {});
 
 }  // namespace world_explorer
-#endif

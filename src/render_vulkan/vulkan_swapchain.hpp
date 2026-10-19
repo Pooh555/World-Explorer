@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RENDER_VULKAN_SWAPCHAIN_HPP
-#define WORLD_EXPLORER_RENDER_VULKAN_SWAPCHAIN_HPP
+#pragma once
 
 #include "vulkan_common.hpp"
 
@@ -78,5 +77,3 @@ class vulkan_swapchain {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_RENDER_VULKAN_SWAPCHAIN_HPP

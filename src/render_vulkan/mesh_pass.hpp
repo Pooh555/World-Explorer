@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RENDER_VULKAN_MESH_PASS_HPP
-#define WORLD_EXPLORER_RENDER_VULKAN_MESH_PASS_HPP
+#pragma once
 
 #include "vulkan_device.hpp"
 
@@ -61,5 +60,3 @@ class MeshPass {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_RENDER_VULKAN_MESH_PASS_HPP

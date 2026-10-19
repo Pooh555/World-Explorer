@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_BATCH_POSES_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_BATCH_POSES_HPP
+#pragma once
+
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
 
@@ -45,4 +45,3 @@ Result<std::unique_ptr<BatchPoseEstimator>>
 make_batch_pose_estimator(BatchPoseConfig config, const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

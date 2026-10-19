@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_SCENE_STORE_COLOR_PROJECTION_HPP
-#define WORLD_EXPLORER_SCENE_STORE_COLOR_PROJECTION_HPP
+#pragma once
 
 #include "world_explorer/scene_store/depth_asset.hpp"
 
@@ -45,5 +44,3 @@ class ColorProjectionView {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_SCENE_STORE_COLOR_PROJECTION_HPP

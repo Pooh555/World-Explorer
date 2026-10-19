@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_CORE_ASSET_FILES_HPP
-#define WORLD_EXPLORER_CORE_ASSET_FILES_HPP
+#pragma once
+
 #include "world_explorer/core/result.hpp"
 
 #include <cstddef>
@@ -25,4 +25,3 @@ Result<void> replace_manifest(const std::filesystem::path& destination,
                               bool& replaced);
 
 }  // namespace world_explorer::asset_files
-#endif

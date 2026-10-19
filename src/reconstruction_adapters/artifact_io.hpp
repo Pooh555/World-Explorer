@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_ARTIFACT_IO_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_ARTIFACT_IO_HPP
+#pragma once
+
 #include "world_explorer/core/hash.hpp"
 
 #include <filesystem>
@@ -62,4 +62,3 @@ inline std::uint64_t unsigned_value(const nlohmann::json& value) {
 }
 
 }  // namespace world_explorer::adapter_detail
-#endif

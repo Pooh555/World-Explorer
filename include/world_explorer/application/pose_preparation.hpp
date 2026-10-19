@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_POSE_PREPARATION_HPP
-#define WORLD_EXPLORER_APPLICATION_POSE_PREPARATION_HPP
+#pragma once
+
 #include "world_explorer/application/pose_replay.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
 
@@ -25,4 +25,3 @@ Result<PreparedPoseMap> prepare_completed_pose_map(const PosePreparationRequest&
                                                    const LogCallback& log = {});
 
 }  // namespace world_explorer
-#endif

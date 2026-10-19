@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_POSE_REPLAY_HPP
-#define WORLD_EXPLORER_APPLICATION_POSE_REPLAY_HPP
+#pragma once
+
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/map_store/map_store.hpp"
 
@@ -17,4 +17,3 @@ Result<MapSnapshot> replay_completed_pose_map(const PoseReplayRequest& request,
                                               const LogCallback& log = {});
 
 }  // namespace world_explorer
-#endif

@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_MAP_STORE_POSE_ASSET_HPP
-#define WORLD_EXPLORER_MAP_STORE_POSE_ASSET_HPP
+#pragma once
+
 #include "world_explorer/map_store/map_store.hpp"
 
 #include <cstddef>
@@ -55,4 +55,3 @@ Result<std::string> inspect_pose_asset(const CanonicalPoseAsset& asset,
                                        PoseAssetLimits limits = {});
 
 }  // namespace world_explorer
-#endif

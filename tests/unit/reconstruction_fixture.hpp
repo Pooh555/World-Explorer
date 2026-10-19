@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_TEST_RECONSTRUCTION_FIXTURE_HPP
-#define WORLD_EXPLORER_TEST_RECONSTRUCTION_FIXTURE_HPP
+#pragma once
+
 #include "pose_fixture.hpp"
 #include "stage_chain_fixture.hpp"
 #include "training_camera_fixture.hpp"
@@ -185,4 +185,3 @@ struct reconstruction_fixture {
 };
 
 }  // namespace world_explorer::test
-#endif

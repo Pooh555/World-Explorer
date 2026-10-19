@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_SCENE_STORE_FUSION_CLEANUP_HPP
-#define WORLD_EXPLORER_SCENE_STORE_FUSION_CLEANUP_HPP
+#pragma once
 
 #include "world_explorer/scene_store/fusion_asset.hpp"
 
@@ -38,4 +37,3 @@ Result<FusionCleanup> decode_fusion_cleanup(std::span<const std::byte> bytes,
                                             const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

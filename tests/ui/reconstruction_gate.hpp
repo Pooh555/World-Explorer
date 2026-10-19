@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_TEST_RECONSTRUCTION_GATE_HPP
-#define WORLD_EXPLORER_TEST_RECONSTRUCTION_GATE_HPP
+#pragma once
+
 #include "job_state.hpp"
 
 #include <condition_variable>
@@ -48,4 +48,3 @@ class reconstruction_gate {
 };
 
 }  // namespace world_explorer::test
-#endif

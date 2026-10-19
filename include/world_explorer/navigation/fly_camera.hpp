@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_NAVIGATION_FLY_CAMERA_HPP
-#define WORLD_EXPLORER_NAVIGATION_FLY_CAMERA_HPP
+#pragma once
 
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/core/types.hpp"
@@ -41,5 +40,3 @@ struct CameraBookmark {
 Result<FlyCamera> restore_bookmark(const CameraBookmark& bookmark, SceneId scene, WorldEpoch epoch);
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_NAVIGATION_FLY_CAMERA_HPP

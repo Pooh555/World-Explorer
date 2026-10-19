@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_APPLICATION_SCENES_HPP
-#define WORLD_EXPLORER_APPLICATION_SCENES_HPP
+#pragma once
+
 #include "world_explorer/navigation/fly_camera.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
 
@@ -52,5 +52,3 @@ Result<SourceInspectionView> source_view(const SceneState& scene);
 Bounds3d world_bounds(const SceneState& scene);
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_APPLICATION_SCENES_HPP

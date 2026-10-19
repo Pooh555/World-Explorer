@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_TESTS_GPU_FIT_VIEW_SELECTION_HPP
-#define WORLD_EXPLORER_TESTS_GPU_FIT_VIEW_SELECTION_HPP
+#pragma once
 
 #include "world_explorer/core/result.hpp"
 
@@ -38,5 +37,3 @@ inline Result<std::vector<std::size_t>> parse_fit_view_indices(std::string_view 
 }
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_TESTS_GPU_FIT_VIEW_SELECTION_HPP

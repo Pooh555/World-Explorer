@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_SCENE_STORE_FUSION_COMPONENTS_HPP
-#define WORLD_EXPLORER_SCENE_STORE_FUSION_COMPONENTS_HPP
+#pragma once
 
 #include "world_explorer/scene_store/fusion_asset.hpp"
 
@@ -40,4 +39,3 @@ Result<FusionComponentAnalysis> analyze_fusion_components(const ObservedFusionAs
                                                           const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

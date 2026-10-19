@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_COMPLETED_POSES_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_COMPLETED_POSES_HPP
+#pragma once
+
 #include "world_explorer/reconstruction_api/map_records.hpp"
 #include "world_explorer/reconstruction_api/pose_estimator.hpp"
 
@@ -49,4 +49,3 @@ Result<std::unique_ptr<PoseEstimator>>
 make_completed_pose_replay(const std::shared_ptr<const CompletedPoseDataset>& dataset);
 
 }  // namespace world_explorer
-#endif

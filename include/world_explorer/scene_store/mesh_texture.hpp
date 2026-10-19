@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_SCENE_STORE_MESH_TEXTURE_HPP
-#define WORLD_EXPLORER_SCENE_STORE_MESH_TEXTURE_HPP
+#pragma once
 
 #include "world_explorer/scene_store/color_projection.hpp"
 #include "world_explorer/scene_store/scene.hpp"
@@ -25,5 +24,3 @@ class MeshTextureBaker {
 };
 
 }  // namespace world_explorer
-
-#endif  // WORLD_EXPLORER_SCENE_STORE_MESH_TEXTURE_HPP

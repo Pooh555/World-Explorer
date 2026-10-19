@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_COLMAP_IMAGES_HPP
-#define WORLD_EXPLORER_RECONSTRUCTION_ADAPTERS_COLMAP_IMAGES_HPP
+#pragma once
+
 #include "world_explorer/core/math.hpp"
 
 #include <cstdint>
@@ -24,4 +24,3 @@ Result<std::vector<ColmapImagePose>> read_colmap_image_poses(const std::filesyst
                                                              const std::stop_token& stop = {});
 
 }  // namespace world_explorer
-#endif

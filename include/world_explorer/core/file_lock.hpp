@@ -1,5 +1,5 @@
-#ifndef WORLD_EXPLORER_CORE_FILE_LOCK_HPP
-#define WORLD_EXPLORER_CORE_FILE_LOCK_HPP
+#pragma once
+
 #include "world_explorer/core/result.hpp"
 
 #include <filesystem>
@@ -24,4 +24,3 @@ class FileLock {
 };
 
 }  // namespace world_explorer
-#endif

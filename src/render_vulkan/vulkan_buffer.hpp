@@ -1,5 +1,4 @@
-#ifndef WORLD_EXPLORER_RENDER_VULKAN_BUFFER_HPP
-#define WORLD_EXPLORER_RENDER_VULKAN_BUFFER_HPP
+#pragma once
 
 #include <utility>
 #include <vk_mem_alloc.h>
@@ -70,5 +69,3 @@ struct gpu_image {
 };
 
 }  // namespace world_explorer::detail
-
-#endif  // WORLD_EXPLORER_RENDER_VULKAN_BUFFER_HPP
