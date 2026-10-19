@@ -5,6 +5,7 @@
 #include "world_explorer/application/fusion_assets.hpp"
 #include "world_explorer/application/fusion_cleanup.hpp"
 #include "world_explorer/application/fusion_scene.hpp"
+#include "world_explorer/application/gltf.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/mesh_color_audit.hpp"
 #include "world_explorer/application/mesh_texture.hpp"
@@ -70,6 +71,8 @@ int main(int argc, char** argv) {
                    "  we_process audit-mesh-colors REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process bake-mesh-colors REQUEST.json SHA256 NEW_SCENE.wexplore\n"
                    "  we_process inspect-baked SCENE.wexplore\n"
+                   "  we_process export-glb SCENE.wexplore NEW_DIRECTORY\n"
+                   "  we_process import-glb FILE.glb SHA256 NEW_SCENE.wexplore\n"
                    "  we_process inspect-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
                    "RECIPE_SHA POSES POSE_SHA\n"
                    "  we_process analyze-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
@@ -175,6 +178,24 @@ int main(int argc, char** argv) {
             if ((*K_SNAPSHOT)->m_initial_pose_asset_sha256)
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
+            return 0;
+        }
+        if (K_COMMAND == "export-glb" || K_COMMAND == "import-glb") {
+            const bool K_EXPORT = K_COMMAND == "export-glb";
+            if (argc != (K_EXPORT ? 4 : 5)) {
+                std::cerr << "Usage: export-glb BUNDLE NEW_DIRECTORY | import-glb FILE SHA256 "
+                             "NEW_BUNDLE\n";
+                return 2;
+            }
+            const auto K_RESULT =
+                K_EXPORT ? export_baked_glb_bundle({ argv[2], argv[3] }, cancellation.get_token())
+                         : import_baked_glb(argv[2], argv[3], argv[4], cancellation.get_token());
+            if (!K_RESULT) {
+                std::cerr << K_RESULT.error().m_message << '\n';
+                return K_RESULT.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
+            }
+            std::cout
+                << "Captured unlit GLB conversion complete; scale arbitrary; walking unavailable\n";
             return 0;
         }
         if (K_COMMAND == "inspect-baked" && argc == 3) {

@@ -118,8 +118,12 @@ checks source-color support and shared-edge color differences against the exact
 retained depth/RGB cache. Its contact sheet is diagnostic. For a bounded native
 bake, run `we_process bake-mesh-colors AUDIT.json AUDIT_SHA256 NEW_SCENE.wexplore`,
 then open that bundle to view Baked captured color. Unknown texels stay masked;
-captured lighting is unlit appearance, not PBR albedo. Portable textured export
-remains pending. See the [input and bake contract](docs/protocols/mesh_color.md).
+captured lighting is unlit appearance, not PBR albedo. For portable captured
+appearance, use `we_process export-glb SCENE.wexplore NEW_DIRECTORY`,
+then `we_process import-glb FILE.glb SHA256 NEW_NATIVE.wexplore` for a native preview.
+The restricted unlit profile has quantized color and conservative masking losses;
+retained authoring documents are uninspected. See the [GLB contract](docs/protocols/gltf.md)
+and [input/bake contract](docs/protocols/mesh_color.md).
 
 ## Pose workers and retained data
 

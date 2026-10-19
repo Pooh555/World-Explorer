@@ -40,6 +40,8 @@ struct BakedMeshAppearance {
     // Per triangle corner, in atlas pixel coordinates; centers are half-integers.
     std::vector<std::array<float, 2>> m_corner_uv;
     std::string m_source_chunk_sha256, m_manifest_sha256, m_manifest_json;
+    // Nonempty only for the sRGB8 GLB-derived conservative bilinear profile.
+    std::string m_portable_parent_sha256 {};
 };
 
 // Raw observed surfaces or explicitly labeled synthetic diagnostics. No measured

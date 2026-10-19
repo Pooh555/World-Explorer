@@ -663,9 +663,11 @@ struct VulkanRenderer::Implementation {
                                        static_cast<float>(K_NORMAL.m_z)}};
                 target.m_uv = uv;
                 if (mesh.m_baked)
-                    target.m_texture = {static_cast<std::uint32_t>(texture_offset / 4uz),
-                                        mesh.m_baked->m_width,
-                                        mesh.m_baked->m_height};
+                    target.m_texture = {
+                        static_cast<std::uint32_t>(texture_offset / 4uz),
+                        mesh.m_baked->m_width,
+                        mesh.m_baked->m_height |
+                            (mesh.m_baked->m_portable_parent_sha256.empty() ? 0U : 0x80000000U)};
                 std::memcpy(destination + K_VERTEX_OFFSET + vertex_index++ * sizeof(MeshGpuVertex),
                             &target,
                             sizeof(target));

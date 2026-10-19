@@ -161,6 +161,8 @@ owners, UVs and metadata in payload budgets. GPU upload includes atlas RGBA and
 expanded per-corner vertices in the existing staged residency budget and rejects
 storage-buffer range excess. Replacement becomes visible only after upload
 completion; geometry invalidation hides its baked appearance. Source frames,
-parents and input caches remain external authoring dependencies. General unlit
-glTF/GLB export, production jobs/resume and material-quality qualification remain
-open. See [actual checks](../validation/2026-10-19-mesh-textures.md).
+parents and input caches remain external authoring dependencies.
+[Restricted unlit GLB export/import](gltf.md) is available with declared
+quantization/conservative filtering losses. Production jobs/resume, general
+interchange and material-quality qualification remain open.
+See [actual checks](../validation/2026-10-19-mesh-textures.md).

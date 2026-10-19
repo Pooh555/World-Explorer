@@ -461,12 +461,16 @@ int viewer_main(int argc, char** argv) {
                                        : "No scene open");
             if (current) {
                 bool has_baked = false;
+                bool has_portable = false;
                 bool has_mesh = false;
                 bool has_splats = false;
                 for (const auto& [K_ID, K_CHUNK] : current->m_chunks) {
                     static_cast<void>(K_ID);
                     has_mesh = has_mesh || K_CHUNK->m_mesh.has_value();
                     has_baked = has_baked || (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_baked);
+                    has_portable = has_portable ||
+                                   (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_baked &&
+                                    !K_CHUNK->m_mesh->m_baked->m_portable_parent_sha256.empty());
                     has_splats = has_splats || !K_CHUNK->m_splats.empty();
                 }
                 if (has_mesh) {
@@ -488,6 +492,10 @@ int viewer_main(int argc, char** argv) {
                     else
                         ImGui::TextWrapped("Normals diagnostic. Partial surfaces; gaps are "
                                            "unknown. No collision or measured scale.");
+                    if (has_portable && representation == SceneRepresentation::BAKED_APPEARANCE)
+                        ImGui::TextWrapped(
+                            "Portable texture preview. Quantized color; conservative masking may "
+                            "hide supported surface edges.");
                     if (current->m_provenance.contains("geometry_processing"))
                         ImGui::TextWrapped("Simplified observed proxy. Raw source retained.");
                 }

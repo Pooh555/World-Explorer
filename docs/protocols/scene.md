@@ -317,3 +317,8 @@ participate in chunk/scene content hashes under a separate version prefix. The
 untextured source hash retains the exact prior raw/cleaned chunk hash. Rehashed
 malformed material records still reject; snapshot admission does not replay the
 external projection proof or establish material quality.
+
+[Captured-unlit GLB interchange](gltf.md) adds a validated portable-derived
+appearance metadata family, without changing the schema-3 binary layout. Original
+native material bytes/hashes remain unchanged; portable previews use conservative
+bilinear validity and sRGB8-derived RGB with an explicit parent pin.

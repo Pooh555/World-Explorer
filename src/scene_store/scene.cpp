@@ -47,7 +47,10 @@ void append_chunk(SceneHashWriter& hash,
     // stream/version prefix while retaining every legacy splat-only digest.
     if (chunk.m_mesh) {
         K_ADD(0);
-        K_ADD(include_baked && chunk.m_mesh->m_baked                                          ? 3
+        K_ADD(include_baked && chunk.m_mesh->m_baked &&
+                      !chunk.m_mesh->m_baked->m_portable_parent_sha256.empty()
+                  ? 4
+              : include_baked && chunk.m_mesh->m_baked                                        ? 3
               : chunk.m_mesh->m_observed && !chunk.m_mesh->m_observed->m_cleanup_json.empty() ? 2
                                                                                               : 1);
     }

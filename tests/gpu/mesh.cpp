@@ -2,6 +2,7 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
+#include "world_explorer/scene_store/gltf.hpp"
 #include "world_explorer/scene_store/mesh_texture.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
 
@@ -313,6 +314,39 @@ int main(int argc, char** argv) {
         K_VISIBLE(K_ENQUEUE(store.acquire_snapshot()));
         const auto K_TEXTURE = K_CAPTURE("texture-gold.ppm");
         expect_center(K_TEXTURE, { 255, 64, 0 });
+        const auto K_PORTABLE = [&](bool unknown) {
+            auto source = std::make_shared<SceneState>();
+            source->m_id = { 19 };
+            source->m_epoch = { 1 };
+            source->m_revision = { 1 };
+            source->m_provenance = {{ "source_kind", "synthetic_diagnostic" }};
+            source->m_chunks[{ 1 }] = texture_fixture(revision + 1, unknown);
+            const auto K_BYTES = encode_baked_glb(source);
+            require(K_BYTES.has_value(), K_BYTES ? "" : K_BYTES.error().m_message);
+            const auto K_IMPORTED = decode_baked_glb(*K_BYTES);
+            require(K_IMPORTED.has_value(), K_IMPORTED ? "" : K_IMPORTED.error().m_message);
+            return std::make_shared<SceneChunk>(*(*K_IMPORTED)->m_chunks.at({ 1 }));
+        };
+        K_REPLACE(K_PORTABLE(false));
+        const auto K_PORTABLE_PIXELS = K_CAPTURE("portable-gold.ppm");
+        expect_center(K_PORTABLE_PIXELS, { 255, 64, 0 });
+        const auto K_GOLD = [](const std::vector<unsigned char>& data, std::size_t i) {
+            return data[i] == 255 && data[i + 1uz] == 64 && data[i + 2uz] == 0;
+        };
+        std::size_t portable_count {}, native_count {};
+        for (std::size_t i { 0uz }; i < K_TEXTURE.size(); i += 3uz) {
+            const bool K_VISIBLE_PORTABLE = K_GOLD(K_PORTABLE_PIXELS, i);
+            if (K_VISIBLE_PORTABLE) {
+                ++portable_count;
+                require(K_GOLD(K_TEXTURE, i), "Portable filter filled an unknown native fragment");
+            }
+            if (K_GOLD(K_TEXTURE, i)) ++native_count;
+        }
+        require(portable_count > 0uz && portable_count < native_count,
+                "Conservative bilinear coverage did not retain its declared loss");
+        K_REPLACE(K_PORTABLE(true));
+        require(K_CAPTURE("portable-unknown.ppm") == K_INVALIDATED,
+                "Portable unknown fragments were filled");
         for (std::size_t i { 0uz }; i < 12uz; ++i) K_REPLACE(texture_fixture(revision + 1));
         require(K_CAPTURE("texture-replaced.ppm") == K_TEXTURE, "Texture replacement changed RGB");
         K_REPLACE(texture_fixture(revision + 1, false, false, 1uz, true));

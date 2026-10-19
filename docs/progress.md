@@ -222,29 +222,38 @@ gaps. Dense redistribution rights remain open.
   geometry and certificates remain unchanged; unknown fragments are discarded.
   This is M3 reconstruction fallback work, not A-track PBR/asset qualification.
 
+- [Captured-unlit GLB interchange](validation/2026-10-19-mesh-glb.md) exports all
+  four retained native bakes and strictly imports the self-contained producer
+  profile. Original geometry/certificates, UVs and validity/ownership survive;
+  captured RGB is quantized. Standard bilinear filtering conservatively loses
+  about 15% of previously supported sampled interiors. Both full proxy imports
+  render natively with zero Vulkan errors; fragmented surfaces remain incomplete.
+  General glTF import, GUI export jobs and asset/PBR qualification remain open.
+
 ## Next executable step and protection rules
 
-Implement **portable captured-color mesh export** next under plan §§4/5.1 step 8.
-Start with [the baked contract](protocols/mesh_color.md#bounded-native-baked-appearance),
-`src/scene_store/mesh_texture.cpp`, schema-3 bundle admission and
-`artifacts/validation/m3-texture-20261019/verified-{temporal,parallax}-{raw,cleaned}.wexplore`.
-Inspect `oracle.json`, exact metadata and final native captures before choosing
-standard texture filtering/validity encoding. Export an explicitly unlit
-`baked_appearance` glTF/GLB subset with unchanged geometry, source/cleanup pins,
-explicit unknowns and declared quantization/filter differences. Independently
-check full export/import geometry, color/alpha/UV orientation, unknown boundaries
-and actual local native/imported viewing; no inferred albedo or filled holes.
-Keep original fusion, no-op fan evidence and all component/support denominators.
-Production jobs/resume, metric alignment and collision remain open.
+Implement the first **owned, resumable geometry production job** slice next under
+plan §8 M3. Read [job publication/cancellation](protocols/jobs.md),
+`include/world_explorer/application/reconstruction_job.hpp`,
+`include/world_explorer/application/reconstruction_progress.hpp` and the separate
+CLI fusion/cleanup/bake/[GLB commands](protocols/gltf.md). Start with explicit
+adoption of a pinned retained depth/visibility cache and a new job directory;
+validate all source/pose/recipe dependencies before reuse. Persist immutable
+stage receipts and resume only exact matching stages. Route native work through
+bounded cancellation and worker kill/reap, preserving valid partial results and
+prior scenes. Exercise failure/cancel/resume locally before extending to a fresh
+CUDA solve. Keep original fusion, no-op fan evidence and every component/support
+denominator. Metric alignment and collision remain open.
 
-Existing header edits are preserved outside the texture implementation commit.
-They conflict with the repository's current portability lint rule. Separately,
-3,982 protected external package headers differ from their retained byte receipts;
-all 20,475 other protected files match. The libc++ check uses fresh extraction
-from retained archives, leaving the modified installation untouched. Resolve
-worker-header drift against exact retained packages in an isolated profile before
-any future CUDA/worker rebuild; do not silently treat old receipts as current.
-No unchanged fusion/MVS/refit or projection-policy retuning is needed.
+The committed `8829bfc` header policy is preserved. `#pragma once` conflicts with
+current portability lint: the ordinary gate fails; guarded-copy VFS analysis
+passes without disabling warnings, and does not qualify the actual header policy.
+Separately, all 24,457 protected files match their previously observed state;
+3,982 external package headers still differ from their original byte receipts.
+The libc++ check uses fresh extraction from retained archives, leaving the modified
+installation untouched. Reconcile worker-header drift against exact retained
+packages in an isolated profile before any future CUDA/worker rebuild; old receipts
+are not current. No unchanged fusion/MVS/refit or projection retuning is needed.
 
 Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
 support, sigma availability and the local observed front-band versus unknown
@@ -258,8 +267,8 @@ Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Production
 job/protocol integration needs bounded cancellation/kill/reap; resume, broader
-mesh processing/persistence, compressed storage, measured scale, collision/walking and
-complete mesh export remain open.
+mesh processing, compressed storage, measured scale, collision/walking and
+general interchange remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 
 Reference hardware/corpus performance, physical/native platforms, geometry,

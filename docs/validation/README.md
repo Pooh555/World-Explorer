@@ -1,5 +1,7 @@
 # Validation index
 
+- [Captured-unlit GLB interchange](2026-10-19-mesh-glb.md): bounded M3 export/import, independent full-geometry/texture checks and native imported views; quantization/filter losses declared.
+
 - [Native captured-color mesh atlases](2026-10-19-mesh-textures.md): M3 bounded baking, immutable schema-3 appearance and native viewing; full reconstruction/asset gates remain open.
 
 Historical reports keep their original code/profile scope: later success does not

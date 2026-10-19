@@ -344,6 +344,8 @@ SceneMesh decode_mesh(Decoder& input, SceneLimits limits, bool has_baked) {
             if (K_LENGTH > K_LIMIT) throw std::runtime_error("Texture metadata exceeds budget");
             field.get() = input.text(static_cast<std::size_t>(K_LENGTH));
         }
+        const auto K_METADATA = parse_json(std::as_bytes(std::span(baked.m_manifest_json)));
+        baked.m_portable_parent_sha256 = K_METADATA.value("parent_chunk_sha256", std::string {});
         const auto K_PIXELS = static_cast<std::size_t>(baked.m_width) * baked.m_height;
         if (K_TRIANGLES > limits.m_max_payload_bytes / 24uz ||
             K_PIXELS > (limits.m_max_payload_bytes - K_TRIANGLES * 24uz) / 28uz ||

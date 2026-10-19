@@ -2,6 +2,7 @@
 #include "world_explorer/scene_store/scene.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <set>
 
 #include <nlohmann/json.hpp>
@@ -33,6 +34,16 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
     const std::set<FrameId> K_FRAMES(baked.m_frames.begin(), baked.m_frames.end());
     if (K_FRAMES.size() != baked.m_frames.size() || K_FRAMES.contains(FrameId {}))
         return fail(ErrorCode::INVALID_DATA, "Invalid texture source inventory");
+    static const auto K_SRGB8 = [] {
+        std::array<std::uint32_t, 256> values {};
+        for (std::size_t i { 0uz }; i < values.size(); ++i) {
+            const auto K_SRGB = static_cast<double>(i) / 255;
+            const auto K_LINEAR = static_cast<float>(
+                K_SRGB <= .04045 ? K_SRGB / 12.92 : std::pow((K_SRGB + .055) / 1.055, 2.4));
+            values[i] = std::bit_cast<std::uint32_t>(K_LINEAR);
+        }
+        return values;
+    }();
     const auto K_MASK = (std::uint32_t { 1 } << baked.m_frames.size()) - 1U;
     std::size_t known {};
     for (std::size_t i { 0uz }; i < K_PIXELS; ++i) {
@@ -45,6 +56,19 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
         for (float value : color)
             if (!std::isfinite(value) || value < 0 || value > 1)
                 return fail(ErrorCode::INVALID_DATA, "Invalid baked color");
+        if (!baked.m_portable_parent_sha256.empty())
+            for (std::size_t c { 0uz }; c < 3uz; ++c) {
+                if (color[c] == 0 || color[c] == 1) continue;
+                const auto K_BITS = std::bit_cast<std::uint32_t>(color[c]);
+                const auto K_FOUND = std::ranges::lower_bound(K_SRGB8, K_BITS);
+                // One float ULP admits library rounding differences in sRGB decoding.
+                const bool K_UPPER = K_FOUND != K_SRGB8.end() && *K_FOUND - K_BITS <= 1U;
+                const bool K_LOWER =
+                    K_FOUND != K_SRGB8.begin() && K_BITS - *std::prev(K_FOUND) <= 1U;
+                if (!K_UPPER && !K_LOWER)
+                    return fail(ErrorCode::INVALID_DATA,
+                                "Portable color is not an sRGB8 decoded value");
+            }
         const auto K_OWNER = baked.m_owners[i];
         const auto K_CANDIDATES = baked.m_candidates[i];
         if (color[3] == 0) {
@@ -87,23 +111,32 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
                     throw std::runtime_error("Duplicate texture metadata key");
                 return true;
             });
-        const Json K_EXPECTED {{ "schema_version", 1 },
-                               { "kind", "CAPTURED_UNLIT_ATLAS_V1" },
-                               { "color_domain", "linear_srgb" },
-                               { "lighting", "captured_unlit" },
-                               { "tile_size", 8 },
-                               { "blend", "score_squared_convex_linear_rgb" },
-                               { "normals", "interpolated_source_vertex_normals" },
-                               { "filter", "triangular_linear_valid_only" },
-                               { "source_chunk_sha256", baked.m_source_chunk_sha256 },
-                               { "surface_texels", mesh.m_triangles.size() * 36uz },
-                               { "known_texels", known },
-                               { "unknown_surface_texels", mesh.m_triangles.size() * 36uz - known },
-                               { "atlas_texels", K_PIXELS },
-                               { "padding_texels", K_PIXELS - mesh.m_triangles.size() * 36uz },
-                               { "units", "ARBITRARY_POSE_CAMERA_UNITS" },
-                               { "walking_enabled", false }};
-        if (K_DOCUMENT != K_EXPECTED)
+        Json expected {{ "schema_version", 1 },
+                       { "kind", "CAPTURED_UNLIT_ATLAS_V1" },
+                       { "color_domain", "linear_srgb" },
+                       { "lighting", "captured_unlit" },
+                       { "tile_size", 8 },
+                       { "blend", "score_squared_convex_linear_rgb" },
+                       { "normals", "interpolated_source_vertex_normals" },
+                       { "filter", "triangular_linear_valid_only" },
+                       { "source_chunk_sha256", baked.m_source_chunk_sha256 },
+                       { "surface_texels", mesh.m_triangles.size() * 36uz },
+                       { "known_texels", known },
+                       { "unknown_surface_texels", mesh.m_triangles.size() * 36uz - known },
+                       { "atlas_texels", K_PIXELS },
+                       { "padding_texels", K_PIXELS - mesh.m_triangles.size() * 36uz },
+                       { "units", "ARBITRARY_POSE_CAMERA_UNITS" },
+                       { "walking_enabled", false }};
+        if (!baked.m_portable_parent_sha256.empty()) {
+            if (!K_HASH_VALID(baked.m_portable_parent_sha256))
+                return fail(ErrorCode::INVALID_DATA, "Invalid portable appearance parent pin");
+            expected["schema_version"] = 2;
+            expected["kind"] = "CAPTURED_UNLIT_ATLAS_PNG_V1";
+            expected["blend"] = "score_squared_convex_linear_rgb_then_srgb8";
+            expected["filter"] = "bilinear_valid_only";
+            expected["parent_chunk_sha256"] = baked.m_portable_parent_sha256;
+        }
+        if (K_DOCUMENT != expected)
             return fail(ErrorCode::INVALID_DATA,
                         "Texture metadata disagrees with compiled appearance");
         for (const auto* key : {"schema_version",
@@ -126,7 +159,8 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
     if (K_PIXELS > (limits.m_max_payload_bytes - bytes) / 28uz)
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Texture payload exceeds budget");
     bytes += K_PIXELS * 28uz;
-    const auto K_METADATA = baked.m_manifest_json.size() + 128uz + baked.m_frames.size() * 8uz;
+    const auto K_METADATA = baked.m_manifest_json.size() + baked.m_portable_parent_sha256.size() +
+                            128uz + baked.m_frames.size() * 8uz;
     if (K_METADATA > limits.m_max_payload_bytes - bytes)
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Texture metadata exceeds budget");
     return bytes + K_METADATA;
