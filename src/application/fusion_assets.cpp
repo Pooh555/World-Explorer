@@ -2,6 +2,7 @@
 
 #include "world_explorer/core/asset_files.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
+#include "world_explorer/scene_store/fusion_components.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -119,6 +120,62 @@ Result<std::string> inspect_fusion_asset(const ObservedFusionAsset& asset) {
     } catch (const std::exception& exception) {
         return fail(ErrorCode::INVALID_DATA,
                     std::string("Fusion inspection failed: ") + exception.what());
+    }
+}
+
+Result<std::string> inspect_fusion_components(const ObservedFusionAsset& asset,
+                                              const std::stop_token& stop) {
+    try {
+        const auto K_ANALYSIS = analyze_fusion_components(asset, {}, stop);
+        if (!K_ANALYSIS) return std::unexpected(K_ANALYSIS.error());
+        const auto K_INSPECTION = inspect_fusion_asset(asset);
+        if (!K_INSPECTION) return std::unexpected(K_INSPECTION.error());
+        auto report = nlohmann::json::parse(*K_INSPECTION);
+        report["kind"] = "FUSION_COMPONENT_SUPPORT_DIAGNOSTIC_V1";
+        report["connectivity"] = "SHARED_VERTEX_INDEX; NO_POSITION_WELDING";
+        report["stencil"] = "EIGHT_CORNERS_OF_FLOOR_POSITION_OVER_VOXEL_SIZE; NO_SNAPPING";
+        report["support_scope"] =
+            "REPEATED_VERTEX_CORNER_SAMPLES; NOT_UNIQUE_VOXELS_OR_INDEPENDENT_VIEWS";
+        report["classification"] =
+            "NO_REMOVAL_OR_SIMPLIFICATION_POLICY; UNKNOWN_CORNERS_ARE_NOT_FALSE_SURFACES";
+        report["unused_vertices"] = K_ANALYSIS->m_unused_vertices;
+        report["component_count"] = K_ANALYSIS->m_components.size();
+        const auto K_COMPONENT = [](const FusionMeshComponent& component) {
+            const auto& support = component.m_support;
+            return nlohmann::json {
+                { "first_triangle", component.m_first_triangle },
+                { "vertices", component.m_vertices },
+                { "triangles", component.m_triangles },
+                { "zero_area_triangles", component.m_zero_area_triangles },
+                { "area_arbitrary_units_squared", component.m_area },
+                { "triangles_with_unknown_corners", component.m_triangles_with_unknown_corners },
+                { "area_with_unknown_corners", component.m_area_with_unknown_corners },
+                { "triangles_with_unbacked_vertices", component.m_triangles_with_unbacked_vertices },
+                { "area_with_unbacked_vertices", component.m_area_with_unbacked_vertices },
+                { "vertices_by_observed_corner_count_0_to_8", support.m_corner_coverage },
+                { "corner_weight_sum", support.m_weight_sum },
+                { "corner_weight_min", support.m_weight_min },
+                { "corner_weight_max", support.m_weight_max },
+                { "corner_observation_count_sum", support.m_observations },
+                { "corner_support_sum", support.m_support_sum },
+                { "corner_front_count_sum", support.m_front_count },
+                { "sigma_available_corner_samples", support.m_sigma_corners },
+                { "corner_sigma2_sum", support.m_sigma2_sum },
+                { "corner_sigma_weight_sum", support.m_sigma_weight }};
+        };
+        report["referenced_totals"] = K_COMPONENT(K_ANALYSIS->m_total);
+        report["components"] = nlohmann::json::array();
+        for (const auto& component : K_ANALYSIS->m_components) {
+            if (stop.stop_requested())
+                return fail(ErrorCode::CANCELLED, "Component report cancelled");
+            report["components"].push_back(K_COMPONENT(component));
+        }
+        return report.dump(2);
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Component report allocation failed");
+    } catch (const std::exception& exception) {
+        return fail(ErrorCode::INVALID_DATA,
+                    std::string("Component report failed: ") + exception.what());
     }
 }
 

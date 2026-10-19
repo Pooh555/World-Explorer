@@ -169,5 +169,53 @@ It returns owned partial geometry without mutating caller files or publishing a
 scene/collision revision. `inspect-fusion` reports its asset/dependency identities,
 coverage, unknown/front/sigma denominators and arbitrary units. Walking stays
 false. The [runtime mesh path](scene.md#observed-mesh-runtime) adds native scene
-admission and normal-color inspection. Supported-component cleanup, error-bounded
-simplification, measured scale and complete export remain separate work.
+admission and normal-color inspection. Component analysis below precedes cleanup;
+error-bounded simplification, measured scale and complete export remain separate work.
+
+## Read-only component and support analysis
+
+`analyze_fusion_components` in `scene_store` consumes admitted immutable fusion
+arrays. The application exposes the same pose-bound admission as `inspect-fusion`:
+
+```sh
+build/dev/we_process analyze-fusion INPUT.wefusion ASSET_SHA MANIFEST_SHA RECEIPT_SHA RECIPE_SHA POSES.weposes POSE_SHA
+```
+
+Stdout is `FUSION_COMPONENT_SUPPORT_DIAGNOSTIC_V1` JSON with the original source
+pins, full coverage/unknown metadata and every component. Components connect
+triangles through **shared vertex indices**, including vertex-only contacts;
+coincident positions are never welded. IDs follow first input triangle order.
+Unused vertices are counted separately. Area is the double-precision cross-product
+area of every input triangle, in arbitrary units squared; exact zero-area triangles
+remain in the report and input.
+
+For each referenced vertex, the diagnostic samples the eight integer corners of
+`floor(position / voxel_size) + {0,1}³`, using the exact float positions promoted
+to double, without snapping. Absent lattice entries remain unknown. Histograms
+retain all nine observed-corner counts (0–8); weights, observation/support/front
+counts and optional sigma sums retain their original meanings. These are
+**repeated vertex/corner samples**, not unique voxels, independent views, surface
+confidence, error estimates or full-ray free space. Positive-corner weight min/max
+are zero when there are no known corners. Unknown-corner triangle/area counts
+include any triangle with a vertex stencil below eight known corners; unbacked
+counts require a vertex with zero known corners. The latter is a subset, so the
+two areas must not be added.
+
+The floor-cell stencil is directional and sensitive to float positions near grid
+boundaries. Incomplete stencils do not establish false surfaces; component size or
+unknown corners alone authorize no deletion. This version makes **no cleanup or
+simplification decision**, changes no mesh and computes no cleaned-surface error.
+Original-to-cleaned distances and an explicit error bound are required for the
+subsequent cleanup/simplification product. Walking stays disabled.
+
+Input counts are capped at the native interchange limits. Analysis additionally
+caps reports at 65,536 components and reserves at most 128 MiB for its algorithm
+arrays/component records (`10 × vertices + reserved_components × sizeof(record)`;
+input arrays and JSON serialization are separate bounded allocations). Caller
+limits may tighten counts/work bytes. Invalid indices, nonfinite/out-of-range
+positions (floor-cell coordinates within ±2²⁰), unsorted/invalid voxel evidence,
+exhausted budgets and cancellation
+reject without mutating caller data or emitting a partial CLI report. Scalar
+accumulation overflow rejects. Native admission still owns complete file/schema/
+dependency validation. [Real and analytic evidence](../validation/2026-10-19-fusion-components.md)
+qualifies this diagnostic only, without Q5/N2 or automatic component removal.

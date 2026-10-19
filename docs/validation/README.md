@@ -9,6 +9,7 @@ status and next work; a historical report's remaining work may be superseded.
 
 | Slice | Report |
 |---|---|
+| Clang build repair / M3 component audit | [Explicit mesh hash bytes and full retained component/support denominators](2026-10-19-fusion-components.md) |
 | M3 observed mesh runtime | [Immutable mesh transactions, native partial-geometry view and GPU checks](2026-10-19-observed-mesh-view.md) |
 | Windows fusion JSON build repair | [Typed string comparisons remove the reported MSVC ambiguity](2026-10-19-windows-fusion-json.md) |
 | M3 native fused-geometry admission | [Bounded immutable voxel/mesh reader, exact retained conversion and pose-bound inspection](2026-10-19-fusion-admission.md) |

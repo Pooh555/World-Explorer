@@ -65,6 +65,8 @@ int main(int argc, char** argv) {
                    "  we_process inspect-fusion-scene REQUEST.json SHA256\n"
                    "  we_process inspect-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
                    "RECIPE_SHA POSES POSE_SHA\n"
+                   "  we_process analyze-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
+                   "RECIPE_SHA POSES POSE_SHA (read-only component/support diagnostic)\n"
                    "  we_process export-depth-visibility REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process prepare-dense POSE_JOB SOURCE_SHA POSES.weposes POSE_SHA "
                    "RECIPE.json RECIPE_SHA OUTPUT.json [--decode-stage DIR]\n"
@@ -186,9 +188,10 @@ int main(int argc, char** argv) {
                       << " triangles: " << mesh.m_triangles.size() << '\n';
             return 0;
         }
-        if (K_COMMAND == "inspect-fusion") {
+        if (K_COMMAND == "inspect-fusion" || K_COMMAND == "analyze-fusion") {
             if (argc != 9) {
-                std::cerr << "Usage: we_process inspect-fusion INPUT.wefusion SHA MANIFEST_SHA "
+                std::cerr << "Usage: we_process " << K_COMMAND
+                          << " INPUT.wefusion SHA MANIFEST_SHA "
                              "RECEIPT_SHA RECIPE_SHA POSES POSE_SHA\n";
                 return 2;
             }
@@ -200,7 +203,10 @@ int main(int argc, char** argv) {
                 std::cerr << K_ASSET.error().m_message << '\n';
                 return 2;
             }
-            const auto K_SUMMARY = inspect_fusion_asset(*K_ASSET);
+            const auto K_SUMMARY =
+                K_COMMAND == "analyze-fusion"
+                    ? inspect_fusion_components(*K_ASSET, cancellation.get_token())
+                    : inspect_fusion_asset(*K_ASSET);
             if (!K_SUMMARY) {
                 std::cerr << K_SUMMARY.error().m_message << '\n';
                 return 2;

@@ -15,6 +15,7 @@ Read by task; do not load the entire directory for routine work.
 | Qualify the isolated local dense backend | [Dense development experiments](../workers/dense/README.md), [separate resized inputs](protocols/dense_inputs.md#separate-resized-profile); partial output, production job/fusion/geometry remain open |
 | Export checked depth for visibility/fusion preparation | [Pose-admitted visibility receipt](protocols/depth.md#pose-admitted-visibility-export); immutable depth/RGB cache, no fused geometry |
 | Inspect partial observed geometry | [Native mesh runtime and request](protocols/scene.md#observed-mesh-runtime); normal-color Vulkan view, unknown gaps, no measured scale/collision |
+| Audit components before mesh cleanup | [Read-only component/support analysis](protocols/fusion.md#read-only-component-and-support-analysis); complete areas and directional TSDF stencils, no automatic removal |
 | Run/admit bounded observed-depth fusion | [CPU TSDF and native interchange contract](protocols/fusion.md), [component selection](research/observed_fusion.md); pose-bound partial arbitrary-scale geometry; separate native runtime view, no collision |
 | Audit local worker/metric identities | [Installed identity receipts](protocols/worker_identity.md), [isolated CPU metric profile](../workers/metrics/README.md) |
 | Check selected dependency provenance gaps | [Source/archive/notice inventory](protocols/dependency_sources.md) |

@@ -19,6 +19,9 @@ Result<ObservedFusionAsset> load_pose_bound_fusion(const FusionAdmissionRequest&
                                                    FusionAssetLimits limits = {},
                                                    const std::stop_token& stop = {});
 Result<std::string> inspect_fusion_asset(const ObservedFusionAsset& asset);
+// Full component/support denominators; no cleanup or quality promotion.
+Result<std::string> inspect_fusion_components(const ObservedFusionAsset& asset,
+                                              const std::stop_token& stop = {});
 
 }  // namespace world_explorer
 #endif

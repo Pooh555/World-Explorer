@@ -42,6 +42,9 @@ retains all historical checks, identities, failures, timings and profile limits.
 - [Windows fusion JSON repair](validation/2026-10-19-windows-fusion-json.md) removes
   the reported MSVC C2666 overload ambiguity through typed string comparisons.
   Local C++26/C++23 checks pass; native Windows rerun remains unverified.
+- [Clang signedness repair](validation/2026-10-19-fusion-components.md) makes mesh
+  fingerprint byte conversion explicit, preserving the hash stream. Native
+  linux-clang/macOS workflow confirmation remains due.
 
 ## Saved reconstructions
 
@@ -177,6 +180,13 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   Full coverage/source metadata remains pinned; invalidation hides stale geometry.
   No cleanup, baked texture, measured scale, hybrid occlusion or walking result.
 
+- [Component/support analysis](validation/2026-10-19-fusion-components.md): native
+  read-only analysis retains all **800/1,864 components**, areas and TSDF stencil
+  denominators. Independent original-NPZ graph/area/support checks match every
+  component. Every referenced vertex has at least two observed stencil corners;
+  partial stencils remain unknown, and size alone justifies no fragment deletion.
+  Both full meshes reopen natively with zero Vulkan errors. No cleanup is claimed.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -186,18 +196,18 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement **supported-component analysis and error-bounded mesh cleanup** next
-under plan §5.1. Read the [runtime mesh contract](protocols/scene.md#observed-mesh-runtime)
-and `artifacts/validation/m3-mesh-view-20261019/native-stable-commands.json`; reopen
-both retained requests with the documented `we_viewer --fusion-request` commands.
-Freeze a bounded component/support policy against the admitted TSDF weights,
-observation/support counts and unknown band before producing separate immutable
-outputs. Record complete component/area/support denominators and original-to-cleaned
-surface distances; qualify simplification against an explicit arbitrary-unit
-error bound without filling gaps. Preserve raw meshes for comparison and use the
-same checked scene update path. Native bundle persistence, baked-color export,
-production jobs/resume, metric alignment and collision remain open. No unchanged
-fusion/MVS/refit run is needed.
+Implement **error-bounded mesh cleanup/simplification** next under plan §5.1.
+Read the [component contract](protocols/fusion.md#read-only-component-and-support-analysis)
+and `artifacts/validation/m3-mesh-components-20261019/{temporal,parallax}-analysis.json`.
+Freeze an explicit voxel-relative arbitrary-unit error bound and conservative
+topology/support/boundary policy on analytic/adverse fixtures before producing
+separate immutable real outputs. Preserve all supported components; neither small
+size nor incomplete directional stencils establish false surfaces. Record complete
+component/area/support denominators and bidirectional whole-surface distances,
+including removed/degenerate regions, without filling gaps. Preserve raw meshes
+and compare both full outputs through the same checked native scene update path.
+Native bundle persistence, baked-color export, production jobs/resume, metric
+alignment and collision remain open. No unchanged fusion/MVS/refit run is needed.
 
 Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
 support, sigma availability and the local observed front-band versus unknown
