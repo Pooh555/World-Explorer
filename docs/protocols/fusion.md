@@ -108,6 +108,37 @@ may remain; no overwrite/resume is provided. Direct `--child` invocation is an
 internal implementation detail and cannot publish a terminal receipt. Full
 application ownership, job kill/reap and resume qualification remain separate.
 
+## Owned retained-cache geometry job (Linux development slice)
+
+`tools/geometry_job.py` accepts the existing pinned fusion request, its exact
+SHA-256, a current pose asset and its SHA-256, then a new job directory. Run it
+with the isolated fusion Python interpreter:
+
+```sh
+artifacts/environments/fusion-cpu/bin/python tools/geometry_job.py \
+  REQUEST.json REQUEST_SHA256 CURRENT.weposes POSE_SHA256 NEW_JOB_DIRECTORY
+```
+
+It admits every byte and plane of the selected native depth/RGB cache through
+`load_admitted_cache`, checks its pose identity against the separately pinned
+current pose file, and requires the fixed fusion recipe/code/environment lock.
+An immutable owner binds request/cache/pose, worker/coordinator bytes and Python
+path. A nonblocking Linux file lock excludes a second cooperative writer.
+Foreign occupied directories reject before a lock file is created.
+
+The stage is `stages/fusion-OWNER_SHA-attempt-N/`. The existing supervised fusion
+worker runs in a process group; cancel sends TERM, then KILL after three seconds
+and reaps. Incomplete attempts remain untouched. A restart checks every complete
+stage asset against its terminal manifest and reuses only an exact matching
+stage. Otherwise it launches a new attempt without deleting partial bytes.
+`manifest.json` in the job root is published last and pins the owner and selected
+stage manifest. A failed or cancelled job has no new terminal job receipt.
+Symlinks, changed inputs, a different owner, malformed stages and unknown job
+entries reject. The original cache, fusion outputs and prior scenes are not
+rewritten. This owns retained-cache fusion only: fresh CUDA depth production,
+native `.wefusion` conversion/admission, scene handoff, metric geometry and walk
+remain separate. Local `flock`/directory flush is not a power-loss guarantee.
+
 ## Native partial-geometry admission
 
 `tools/convert_fusion_asset.py` converts existing, externally pinned terminal

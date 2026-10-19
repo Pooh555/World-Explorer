@@ -22,6 +22,7 @@ Read by task; do not load the entire directory for routine work.
 | Audit components before mesh cleanup | [Read-only component/support analysis](protocols/fusion.md#read-only-component-and-support-analysis); complete areas and directional TSDF stencils, no automatic removal |
 | Simplify admitted observed meshes | [Certified local cleanup](protocols/mesh_cleanup.md); immutable proxy certificates, full-surface error bounds and native raw/proxy viewing |
 | Run/admit bounded observed-depth fusion | [CPU TSDF and native interchange contract](protocols/fusion.md), [component selection](research/observed_fusion.md); pose-bound partial arbitrary-scale geometry; separate native runtime view, no collision |
+| Resume retained-cache geometry processing | [Owned Linux geometry job](protocols/fusion.md#owned-retained-cache-geometry-job-linux-development-slice); exact cache/pose ownership, partial TSDF stage and cancellation; native application integration remains open |
 | Audit local worker/metric identities | [Installed identity receipts](protocols/worker_identity.md), [isolated CPU metric profile](../workers/metrics/README.md) |
 | Check selected dependency provenance gaps | [Source/archive/notice inventory](protocols/dependency_sources.md) |
 | Capture/check selected Linux ELF dependencies | [Runtime dependency receipts](protocols/runtime_dependencies.md) |

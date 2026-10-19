@@ -230,20 +230,24 @@ gaps. Dense redistribution rights remain open.
   render natively with zero Vulkan errors; fragmented surfaces remain incomplete.
   General glTF import, GUI export jobs and asset/PBR qualification remain open.
 
+- [Owned retained-cache geometry job](validation/2026-10-19-geometry-job.md): both
+  saved native visibility caches pass exact source/pose admission and produce
+  isolated real partial-TSDF stages. Replay reuses checked stage bytes; a
+  cancelled parallax run returns 130 and resumes without overwriting prior
+  assets; foreign occupied output remains unchanged. Both new stages independently
+  convert and pass native pose-bound inspection. This Linux development slice
+  has no fresh depth solve or owned native scene handoff.
+
 ## Next executable step and protection rules
 
-Implement the first **owned, resumable geometry production job** slice next under
-plan §8 M3. Read [job publication/cancellation](protocols/jobs.md),
-`include/world_explorer/application/reconstruction_job.hpp`,
-`include/world_explorer/application/reconstruction_progress.hpp` and the separate
-CLI fusion/cleanup/bake/[GLB commands](protocols/gltf.md). Start with explicit
-adoption of a pinned retained depth/visibility cache and a new job directory;
-validate all source/pose/recipe dependencies before reuse. Persist immutable
-stage receipts and resume only exact matching stages. Route native work through
-bounded cancellation and worker kill/reap, preserving valid partial results and
-prior scenes. Exercise failure/cancel/resume locally before extending to a fresh
-CUDA solve. Keep original fusion, no-op fan evidence and every component/support
-denominator. Metric alignment and collision remain open.
+Extend the [owned retained-cache geometry job](protocols/fusion.md#owned-retained-cache-geometry-job-linux-development-slice)
+into the native application coordinator under plan §8 M3. Start by adopting its
+exact terminal stage, converting to `.wefusion` and calling native pose-bound
+admission before a scene update. Preserve the original partial voxel/support
+denominators and prior scene on rejection; exercise real populated partial-attempt
+resume, stale pose, cancel and native load/replay. Then integrate fresh CUDA
+depth work behind the same ownership/cancellation boundary. Keep metric
+alignment, collision and walking open.
 
 The committed `8829bfc` header policy is preserved. `#pragma once` conflicts with
 current portability lint: the ordinary gate fails; guarded-copy VFS analysis
@@ -265,9 +269,8 @@ Do not retune on opened evaluation grids or alter existing environments.
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
-threshold reduction. Never trim full scenes to obtain a pass. Production
-job/protocol integration needs bounded cancellation/kill/reap; resume, broader
-mesh processing, compressed storage, measured scale, collision/walking and
+threshold reduction. Never trim full scenes to obtain a pass. Native application
+job integration, fresh depth, broader mesh processing, compressed storage, measured scale, collision/walking and
 general interchange remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 
