@@ -200,7 +200,7 @@ target_link_libraries(navigation PUBLIC core)
 
 add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/depth_assets.cpp src/application/fusion_assets.cpp src/application/fusion_scene.cpp
-  src/application/fusion_cleanup.cpp
+  src/application/fusion_cleanup.cpp src/application/geometry_job.cpp
   src/application/mesh_color_audit.cpp src/application/color_inputs.cpp src/application/mesh_texture.cpp src/application/gltf.cpp
   src/application/dense_inputs.cpp src/application/depth_visibility.cpp
   src/application/reconstruction_progress.cpp

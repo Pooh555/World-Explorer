@@ -238,16 +238,26 @@ gaps. Dense redistribution rights remain open.
   convert and pass native pose-bound inspection. This Linux development slice
   has no fresh depth solve or owned native scene handoff.
 
+- [Native geometry adoption](validation/2026-10-19-native-geometry-job.md): shared
+  application/CLI owns exact terminal conversion, current-pose admission and
+  immutable native bundle publication. Both full real meshes reopen and render
+  for 90 native frames with zero Vulkan errors. Cancellation after real conversion
+  preserves the populated attempt; restart selects a new attempt and strict replay
+  skips conversion. Stale pins, corruption, foreign bundles and writer contention
+  reject. Fresh depth, solver-to-GUI ownership and geometry gates remain open.
+
 ## Next executable step and protection rules
 
-Extend the [owned retained-cache geometry job](protocols/fusion.md#owned-retained-cache-geometry-job-linux-development-slice)
-into the native application coordinator under plan §8 M3. Start by adopting its
-exact terminal stage, converting to `.wefusion` and calling native pose-bound
-admission before a scene update. Preserve the original partial voxel/support
-denominators and prior scene on rejection; exercise real populated partial-attempt
-resume, stale pose, cancel and native load/replay. Then integrate fresh CUDA
-depth work behind the same ownership/cancellation boundary. Keep metric
-alignment, collision and walking open.
+Connect the [native terminal adoption](protocols/fusion.md#native-terminal-adoption-and-scene-publication)
+to the owned retained-cache solver and viewer background-job state under plan §8
+M3. Begin with an explicit request that runs/reuses `tools/geometry_job.py`, then
+calls `adopt_geometry_job` and hands its checked bundle to the existing immutable
+scene-update path. Verify cancellation at both child boundaries, source/pose
+changes, populated solver-attempt recovery and prior visible-scene preservation.
+Retained native-adoption fixtures/commands are in
+`artifacts/validation/m3-native-geometry-20261019/`; choose new output names.
+Then integrate fresh CUDA depth behind the same boundary after isolated
+worker-header reconciliation below. Keep metric alignment/collision/walking open.
 
 The committed `8829bfc` header policy is preserved. `#pragma once` conflicts with
 current portability lint: the ordinary gate fails; guarded-copy VFS analysis
@@ -269,7 +279,7 @@ Do not retune on opened evaluation grids or alter existing environments.
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
-threshold reduction. Never trim full scenes to obtain a pass. Native application
+threshold reduction. Never trim full scenes to obtain a pass. Unified native solver/GUI
 job integration, fresh depth, broader mesh processing, compressed storage, measured scale, collision/walking and
 general interchange remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.

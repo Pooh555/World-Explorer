@@ -1,5 +1,7 @@
 # Validation index
 
+- [Native geometry-job adoption](2026-10-19-native-geometry-job.md): owned conversion/admission/publication, populated-attempt resume, strict replay and two full native views; M3 remains open.
+
 - [Owned retained-cache geometry job](2026-10-19-geometry-job.md): real temporal/parallax partial stages, exact replay, cancellation and foreign-output preservation on Linux.
 
 - [Captured-unlit GLB interchange](2026-10-19-mesh-glb.md): bounded M3 export/import, independent full-geometry/texture checks and native imported views; quantization/filter losses declared.

@@ -139,6 +139,68 @@ rewritten. This owns retained-cache fusion only: fresh CUDA depth production,
 native `.wefusion` conversion/admission, scene handoff, metric geometry and walk
 remain separate. Local `flock`/directory flush is not a power-loss guarantee.
 
+### Native terminal adoption and scene publication
+
+`adopt_geometry_job` in `application` and the shared CLI own conversion,
+pose-bound admission and native bundle publication for one completed retained-cache
+job. They do not launch the fusion/depth solver. Use a new native output
+directory, separate from the Python job and all inputs:
+
+```sh
+build/dev/we_process adopt-geometry REQUEST.json REQUEST_SHA256 NEW_NATIVE_JOB
+build/dev/we_viewer --scene NEW_NATIVE_JOB/stages/attempt-0/scene.wexplore
+```
+
+The externally pinned request is a flat JSON object with exactly these fields:
+
+```json
+{
+  "schema_version": 1,
+  "job": "completed-python-job",
+  "job_manifest_sha256": "<SHA-256 of job/manifest.json>",
+  "fusion_request": "fusion-request.json",
+  "fusion_request_sha256": "<SHA-256 of the original fusion request>",
+  "poses": "current.weposes",
+  "pose_sha256": "<SHA-256 of the current canonical poses>",
+  "python": "path/to/isolated/fusion/bin/python",
+  "converter": "path/to/tools/convert_fusion_asset.py",
+  "converter_sha256": "<SHA-256 of the selected converter>"
+}
+```
+
+Paths resolve against the request directory. JSON is limited to 1 MiB and 32
+levels; raw NUL, duplicate keys, wrong fields/versions and bad pins reject.
+Inputs/output must not overlap, including the indirect cache/recipe dependencies.
+Symlink aliases reject except the explicitly selected Python executable; its
+resolved path and file digest join the immutable native owner. Environment
+package qualification remains separate.
+
+Before native ownership, admission checks the exact terminal/owner/stage graph,
+every source asset size/hash, complete stage inventory and current pose pin and
+epoch/revision. A writer lock excludes cooperative concurrent native publication.
+Each conversion uses argument arrays in a supervised child and a new
+`stages/attempt-N/observed.wefusion`; cancellation terminates/reaps the child.
+The resulting asset passes `load_fusion_scene` against current poses before
+`write_bundle` publishes `scene.wexplore`. All raw voxel/coverage metadata and
+source frames survive unchanged; no cleanup or color bake is selected here.
+
+The root terminal receipt is written last and pins owner, attempt, asset and
+bundle manifest. Replay rechecks source bytes, poses, converted asset, complete
+bundle and its content hash against direct source admission, skipping conversion.
+Corrupt committed output rejects without repair. Incomplete attempts remain
+untouched; restart reserves the next attempt (at most 128) rather than overwriting
+them. Once bundle publication begins, the coordinator finishes the receipt as a
+commit boundary; cancellation before that point leaves no new terminal receipt.
+A crash between bundle and receipt publication may leave an unselected bundle.
+Directory flush/locks do not establish power-loss guarantees.
+
+Ordinary Open scene/`--scene` consumes the resulting bundle through the existing
+scene update path. Failed adoption never replaces a previously selected scene.
+The [native adoption evidence](../validation/2026-10-19-native-geometry-job.md)
+covers real populated-attempt cancellation/resume and full native viewing.
+GUI geometry-job controls, unified solver-to-viewer ownership, fresh depth,
+metric alignment, collision and Q5/N2 remain open.
+
 ## Native partial-geometry admission
 
 `tools/convert_fusion_asset.py` converts existing, externally pinned terminal
