@@ -156,6 +156,14 @@ geometry remains in its immutable historical snapshot but is omitted from mesh
 uploads until admitted current geometry replaces it. Initial full load, replay,
 replacement and deletion use the existing renderer update sink and retirement path.
 
+For a [certified cleanup proxy](mesh_cleanup.md), `ObservedMeshSource` additionally
+retains exact cleanup JSON and its SHA-256. These strings are owned with the chunk;
+certificate text is charged to the metadata budget and checked against its pin.
+Derived mesh hash streams use prefix version 2; raw mesh/splat hashes remain
+unchanged. Application admission replays the certificate against the pinned parent
+and current poses; scene validation checks the resulting structural/dependency
+contract. Pose invalidation hides both raw and derived geometry.
+
 `load_fusion_scene_request` checks an externally pinned, at-most-1-MiB UTF-8 JSON
 request with exactly these fields:
 
@@ -174,6 +182,9 @@ request with exactly these fields:
 
 Paths resolve relative to the request. Duplicate/unknown/nested fields, raw or
 path-embedded NUL, bad version/hash and invalid fusion/pose dependencies reject.
+An optional `cleanup` path and `cleanup_sha256` form the only supported ten-field
+variant. Both must be present. It validates the derived certificate before
+retaining the simplified geometry and its parent metadata in the same scene path.
 The shared application command retains every raw vertex/triangle and selected
 frame dependency, bounds the full mesh, and creates an immutable runtime snapshot;
 empty real geometry rejects. The CLI and native viewer use it directly:
@@ -203,5 +214,5 @@ normal colors are diagnostic, not captured texture, albedo or material recovery.
 Walking remains disabled. [Native evidence](../validation/2026-10-19-observed-mesh-view.md)
 covers both retained real meshes and synthetic projection/depth/update checks.
 Bundle schema 1 explicitly rejects mesh snapshots before writing anything, rather
-than dropping geometry. Persisted hybrid bundles, mesh cleanup/simplification,
-baked-color export, measured geometry and collision remain separate work.
+than dropping geometry. Persisted hybrid bundles, baked-color export, measured
+geometry and collision remain separate work; local cleanup uses the contract above.

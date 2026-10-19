@@ -46,6 +46,38 @@ SceneSnapshot snapshot(const std::shared_ptr<SceneChunk>& chunk) {
 
 }  // namespace
 
+TEST_CASE("mesh cleanup dependencies are budgeted hashed and preserved in snapshots",
+          "[mesh][cleanup]") {
+    auto chunk = mesh_chunk();
+    ObservedMeshSource source;
+    source.m_context.m_pose_revision = { 1 };
+    source.m_manifest_json = source.m_receipt_json = "{}";
+    source.m_context.m_manifest_sha256 = source.m_context.m_receipt_sha256 =
+        sha256(std::as_bytes(std::span(source.m_manifest_json)));
+    source.m_asset_sha256 = source.m_context.m_pose_sha256 = source.m_context.m_recipe_sha256 =
+        std::string(64uz, 'a');
+    mesh_of(*chunk).m_observed = source;
+    const auto K_RAW = validate_scene(*snapshot(chunk));
+    REQUIRE(K_RAW);
+    const auto K_RAW_HASH = scene_chunk_content_hash(*chunk);
+    source.m_cleanup_json = "{\"synthetic_certificate_test\":true}";
+    source.m_cleanup_sha256 = sha256(std::as_bytes(std::span(source.m_cleanup_json)));
+    mesh_of(*chunk).m_observed = source;
+    const auto K_CLEANED = validate_scene(*snapshot(chunk));
+    REQUIRE(K_CLEANED);
+    CHECK(*K_CLEANED == *K_RAW + source.m_cleanup_json.size());
+    CHECK(scene_chunk_content_hash(*chunk) != K_RAW_HASH);
+    SceneLimits limits;
+    limits.m_max_payload_bytes = *K_CLEANED - 1uz;
+    CHECK(validate_scene(*snapshot(chunk), limits).has_value() == false);
+    RendererUpdateSink sink({ *K_CLEANED - 1uz, 1uz, 1uz });
+    auto batch = *make_snapshot_batch(snapshot(chunk), { 1 });
+    CHECK(sink.prepare(batch).has_value() == false);
+    source.m_cleanup_sha256[0] = 'f';
+    mesh_of(*chunk).m_observed = source;
+    CHECK(validate_scene(*snapshot(chunk)).has_value() == false);
+}
+
 TEST_CASE("mesh scenes bound all payloads and reject malformed raw geometry", "[mesh]") {
     auto chunk = mesh_chunk();
     const auto K_BASE = snapshot(chunk);

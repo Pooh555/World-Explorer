@@ -27,6 +27,8 @@ struct Gaussian {
 struct ObservedMeshSource {
     FusionContext m_context;
     std::string m_asset_sha256, m_manifest_json, m_receipt_json;
+    // Empty for raw geometry; otherwise pins the verified derived certificate.
+    std::string m_cleanup_sha256 {}, m_cleanup_json {};
 };
 
 // Raw observed surfaces or explicitly labeled synthetic diagnostics. No material,

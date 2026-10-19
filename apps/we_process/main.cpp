@@ -3,6 +3,7 @@
 #include "world_explorer/application/depth_assets.hpp"
 #include "world_explorer/application/depth_visibility.hpp"
 #include "world_explorer/application/fusion_assets.hpp"
+#include "world_explorer/application/fusion_cleanup.hpp"
 #include "world_explorer/application/fusion_scene.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/pose_export.hpp"
@@ -67,6 +68,8 @@ int main(int argc, char** argv) {
                    "RECIPE_SHA POSES POSE_SHA\n"
                    "  we_process analyze-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
                    "RECIPE_SHA POSES POSE_SHA (read-only component/support diagnostic)\n"
+                   "  we_process cleanup-fusion INPUT.wefusion SHA MANIFEST_SHA RECEIPT_SHA "
+                   "RECIPE_SHA POSES POSE_SHA NEW_DIRECTORY\n"
                    "  we_process export-depth-visibility REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process prepare-dense POSE_JOB SOURCE_SHA POSES.weposes POSE_SHA "
                    "RECIPE.json RECIPE_SHA OUTPUT.json [--decode-stage DIR]\n"
@@ -186,6 +189,24 @@ int main(int argc, char** argv) {
                       << "Scene SHA-256: " << scene_content_hash(**K_SCENE) << '\n'
                       << "Vertices: " << mesh.m_vertices.size()
                       << " triangles: " << mesh.m_triangles.size() << '\n';
+            return 0;
+        }
+        if (K_COMMAND == "cleanup-fusion") {
+            if (argc != 10) {
+                std::cerr << "Usage: we_process cleanup-fusion INPUT.wefusion SHA MANIFEST_SHA "
+                             "RECEIPT_SHA RECIPE_SHA POSES POSE_SHA NEW_DIRECTORY\n";
+                return 2;
+            }
+            const auto K_RESULT = export_fusion_cleanup(
+                { argv[2], argv[7], argv[3], argv[8], argv[4], argv[5], argv[6] },
+                argv[9],
+                cancellation.get_token());
+            if (!K_RESULT) {
+                std::cerr << K_RESULT.error().m_message << '\n';
+                return K_RESULT.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Published partial observed cleanup; manifest SHA-256 " << *K_RESULT
+                      << '\n';
             return 0;
         }
         if (K_COMMAND == "inspect-fusion" || K_COMMAND == "analyze-fusion") {

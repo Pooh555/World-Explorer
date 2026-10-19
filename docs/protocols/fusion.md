@@ -170,7 +170,8 @@ scene/collision revision. `inspect-fusion` reports its asset/dependency identiti
 coverage, unknown/front/sigma denominators and arbitrary units. Walking stays
 false. The [runtime mesh path](scene.md#observed-mesh-runtime) adds native scene
 admission and normal-color inspection. Component analysis below precedes cleanup;
-error-bounded simplification, measured scale and complete export remain separate work.
+[certified local cleanup](mesh_cleanup.md) now derives separate immutable proxies.
+Measured scale and complete export remain separate work.
 
 ## Read-only component and support analysis
 
@@ -219,3 +220,5 @@ reject without mutating caller data or emitting a partial CLI report. Scalar
 accumulation overflow rejects. Native admission still owns complete file/schema/
 dependency validation. [Real and analytic evidence](../validation/2026-10-19-fusion-components.md)
 qualifies this diagnostic only, without Q5/N2 or automatic component removal.
+The separate [cleanup contract](mesh_cleanup.md) owns its fixed support policy,
+whole-surface error certificate and derived native requests.

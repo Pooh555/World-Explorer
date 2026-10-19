@@ -2,6 +2,7 @@
 
 #include "world_explorer/core/asset_files.hpp"
 #include "world_explorer/core/hash.hpp"
+#include "world_explorer/scene_store/fusion_cleanup.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -12,12 +13,25 @@
 #include <nlohmann/json.hpp>
 
 namespace world_explorer {
+namespace {
 
-Result<SceneSnapshot> load_fusion_scene(const FusionAdmissionRequest& request,
-                                        const std::stop_token& stop) {
+Result<SceneSnapshot> load_scene(const FusionAdmissionRequest& request,
+                                 const std::filesystem::path& cleanup,
+                                 const std::string& cleanup_sha256,
+                                 const std::stop_token& stop) {
     try {
         auto asset = load_pose_bound_fusion(request, {}, stop);
         if (!asset) return std::unexpected(asset.error());
+        std::string cleanup_json;
+        if (!cleanup.empty()) {
+            const auto K_BYTES = asset_files::read_bytes(cleanup, 4uz * 1024uz * 1024uz, stop);
+            if (!K_BYTES) return std::unexpected(K_BYTES.error());
+            auto cleaned = decode_fusion_cleanup(*K_BYTES, cleanup_sha256, *asset, stop);
+            if (!cleaned) return std::unexpected(cleaned.error());
+            asset->m_vertices = std::move(cleaned->m_vertices);
+            asset->m_triangles = std::move(cleaned->m_triangles);
+            cleanup_json = std::move(cleaned->m_document);
+        }
         if (asset->m_vertices.empty() || asset->m_triangles.empty())
             return fail(ErrorCode::INVALID_DATA, "Fusion has no drawable observed surfaces");
         auto scene = std::make_shared<SceneState>();
@@ -27,6 +41,9 @@ Result<SceneSnapshot> load_fusion_scene(const FusionAdmissionRequest& request,
         scene->m_provenance = {{ "source_kind", "partial_observed_geometry" },
                                { "fusion_asset_sha256", asset->m_asset_sha256 },
                                { "geometry_scope", "partial observed surfaces; unknown elsewhere" }};
+        if (!cleanup.empty())
+            scene->m_provenance["geometry_processing"] =
+                "error-bounded observed proxy; raw source retained";
         auto chunk = std::make_shared<SceneChunk>();
         chunk->m_id = { 1 };
         chunk->m_pose_revision = { asset->m_context.m_pose_revision.m_value };
@@ -54,7 +71,9 @@ Result<SceneSnapshot> load_fusion_scene(const FusionAdmissionRequest& request,
                                    ObservedMeshSource {std::move(asset->m_context),
                                                        std::move(asset->m_asset_sha256),
                                                        std::move(asset->m_manifest_json),
-                                                       std::move(asset->m_receipt_json)}};
+                                                       std::move(asset->m_receipt_json),
+                                                       cleanup_sha256,
+                                                       std::move(cleanup_json)}};
         scene->m_chunks.emplace(chunk->m_id, chunk);
         const auto K_VALID = validate_scene(*scene);
         if (!K_VALID) return std::unexpected(K_VALID.error());
@@ -65,6 +84,13 @@ Result<SceneSnapshot> load_fusion_scene(const FusionAdmissionRequest& request,
         return fail(ErrorCode::INVALID_DATA,
                     std::string("Fusion scene failed: ") + exception.what());
     }
+}
+
+}  // namespace
+
+Result<SceneSnapshot> load_fusion_scene(const FusionAdmissionRequest& request,
+                                        const std::stop_token& stop) {
+    return load_scene(request, {}, {}, stop);
 }
 
 Result<SceneSnapshot> load_fusion_scene_request(const std::filesystem::path& request,
@@ -87,7 +113,7 @@ Result<SceneSnapshot> load_fusion_scene_request(const std::filesystem::path& req
                     throw std::runtime_error("Duplicate fusion scene request key");
                 return true;
             });
-        if (!K_CONFIG.is_object() || K_CONFIG.size() != 8uz ||
+        if (!K_CONFIG.is_object() || (K_CONFIG.size() != 8uz && K_CONFIG.size() != 10uz) ||
             !K_CONFIG.at("schema_version").is_number_unsigned() ||
             K_CONFIG.at("schema_version") != 1)
             return fail(ErrorCode::INVALID_DATA, "Invalid fusion scene request schema");
@@ -98,14 +124,19 @@ Result<SceneSnapshot> load_fusion_scene_request(const std::filesystem::path& req
                 throw std::runtime_error("Invalid fusion scene input path");
             return K_BASE / K_VALUE;
         };
-        return load_fusion_scene({K_PATH("asset"),
-                                  K_PATH("poses"),
-                                  K_CONFIG.at("asset_sha256").get<std::string>(),
-                                  K_CONFIG.at("pose_sha256").get<std::string>(),
-                                  K_CONFIG.at("manifest_sha256").get<std::string>(),
-                                  K_CONFIG.at("receipt_sha256").get<std::string>(),
-                                  K_CONFIG.at("recipe_sha256").get<std::string>()},
-                                 stop);
+        const FusionAdmissionRequest K_ADMISSION {K_PATH("asset"),
+                                                  K_PATH("poses"),
+                                                  K_CONFIG.at("asset_sha256").get<std::string>(),
+                                                  K_CONFIG.at("pose_sha256").get<std::string>(),
+                                                  K_CONFIG.at("manifest_sha256").get<std::string>(),
+                                                  K_CONFIG.at("receipt_sha256").get<std::string>(),
+                                                  K_CONFIG.at("recipe_sha256").get<std::string>()};
+        if (K_CONFIG.size() == 10uz)
+            return load_scene(K_ADMISSION,
+                              K_PATH("cleanup"),
+                              K_CONFIG.at("cleanup_sha256").get<std::string>(),
+                              stop);
+        return load_fusion_scene(K_ADMISSION, stop);
     } catch (const std::bad_alloc&) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Fusion request allocation failed");
     } catch (const std::exception& exception) {

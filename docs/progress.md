@@ -187,6 +187,13 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   partial stencils remain unknown, and size alone justifies no fragment deletion.
   Both full meshes reopen natively with zero Vulkan errors. No cleanup is claimed.
 
+- [Certified local cleanup](validation/2026-10-19-mesh-cleanup.md): independent
+  whole-surface certificates validate **618/668** short-edge patches, producing
+  **46,323/80,912 triangles** within one quarter voxel of the raw surfaces.
+  All **800/1,864 components** and boundary edges remain; raw assets are retained.
+  Both native proxy views and update diagnostics pass. This bounded simplifier
+  does not certify measured geometry, self-intersection freedom or walking.
+
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
 Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
 mapping/owner observations remain due. Check with
@@ -196,18 +203,19 @@ gaps. Dense redistribution rights remain open.
 
 ## Next executable step and protection rules
 
-Implement **error-bounded mesh cleanup/simplification** next under plan §5.1.
-Read the [component contract](protocols/fusion.md#read-only-component-and-support-analysis)
-and `artifacts/validation/m3-mesh-components-20261019/{temporal,parallax}-analysis.json`.
-Freeze an explicit voxel-relative arbitrary-unit error bound and conservative
-topology/support/boundary policy on analytic/adverse fixtures before producing
-separate immutable real outputs. Preserve all supported components; neither small
-size nor incomplete directional stencils establish false surfaces. Record complete
-component/area/support denominators and bidirectional whole-surface distances,
-including removed/degenerate regions, without filling gaps. Preserve raw meshes
-and compare both full outputs through the same checked native scene update path.
-Native bundle persistence, baked-color export, production jobs/resume, metric
-alignment and collision remain open. No unchanged fusion/MVS/refit run is needed.
+Implement **native mesh bundle persistence** next under plan §§4/5.1. Read the
+[runtime contract](protocols/scene.md#observed-mesh-runtime),
+[cleanup contract](protocols/mesh_cleanup.md), `src/scene_store/bundle.cpp` and
+`artifacts/validation/m3-fan-cleanup-20261019/{temporal,parallax}-final/manifest.json`.
+Schema 1 still refuses mesh snapshots. Define a versioned immutable vertex/index
+asset and transactional manifest extension preserving arbitrary units, normals,
+parent pose/coverage pins and exact cleanup certificates. Keep existing splat
+bundles/hashes compatible. Verify bounded/rehashed malformed admission, failure
+preservation and exact raw/derived round trips before reopening both full saved
+proxies through the same native scene update path. Preserve the original fusion
+assets, no-op fan evidence and all component/area/support/unknown denominators.
+Baked-color export, production jobs/resume, metric alignment and collision remain
+open. No unchanged fusion/MVS/refit run is needed.
 
 Keep extent/512, camera/world units and pose revisions explicit. Preserve weights,
 support, sigma availability and the local observed front-band versus unknown
@@ -220,8 +228,8 @@ Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Production
-job/protocol integration needs bounded cancellation/kill/reap; resume, native
-mesh cleanup/persistence, compressed storage, measured scale, collision/walking and
+job/protocol integration needs bounded cancellation/kill/reap; resume, broader
+mesh processing/persistence, compressed storage, measured scale, collision/walking and
 complete mesh export remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 

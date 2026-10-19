@@ -44,7 +44,8 @@ void append_chunk(SceneHashWriter& hash, ChunkId id, const SceneChunk& chunk) {
     // stream/version prefix while retaining every legacy splat-only digest.
     if (chunk.m_mesh) {
         K_ADD(0);
-        K_ADD(1);
+        K_ADD(chunk.m_mesh->m_observed && !chunk.m_mesh->m_observed->m_cleanup_json.empty() ? 2
+                                                                                            : 1);
     }
     K_ADD(id.m_value);
     K_ADD(chunk.m_generation);
@@ -96,6 +97,12 @@ void append_chunk(SceneHashWriter& hash, ChunkId id, const SceneChunk& chunk) {
                 K_ADD(text.size());
                 hash.add_bytes(std::as_bytes(std::span(text)));
             }
+            if (!source.m_cleanup_json.empty()) {
+                for (const auto& text : { source.m_cleanup_sha256, source.m_cleanup_json }) {
+                    K_ADD(text.size());
+                    hash.add_bytes(std::as_bytes(std::span(text)));
+                }
+            }
         }
         K_ADD(mesh.m_vertices.size());
         K_ADD(mesh.m_triangles.size());
@@ -146,6 +153,15 @@ Result<std::size_t> mesh_bytes(const SceneChunk& chunk, const SceneLimits& limit
         if (sha256(std::as_bytes(std::span(source.m_manifest_json))) != context.m_manifest_sha256 ||
             sha256(std::as_bytes(std::span(source.m_receipt_json))) != context.m_receipt_sha256)
             return fail(ErrorCode::INVALID_DATA, "Mesh coverage metadata checksum differs");
+        if (!source.m_cleanup_json.empty() || !source.m_cleanup_sha256.empty()) {
+            if (source.m_cleanup_json.size() > 4uz * 1024uz * 1024uz ||
+                source.m_cleanup_json.size() > limits.m_max_payload_bytes - bytes)
+                return fail(ErrorCode::RESOURCE_EXHAUSTED, "Mesh cleanup metadata budget exceeded");
+            if (source.m_cleanup_json.empty() || !digest_valid(source.m_cleanup_sha256) ||
+                sha256(std::as_bytes(std::span(source.m_cleanup_json))) != source.m_cleanup_sha256)
+                return fail(ErrorCode::INVALID_DATA, "Mesh cleanup metadata checksum differs");
+            bytes += source.m_cleanup_json.size();
+        }
     }
     for (const auto& vertex : mesh.m_vertices) {
         const Vec3d K_POSITION { vertex.m_position[0], vertex.m_position[1], vertex.m_position[2] };

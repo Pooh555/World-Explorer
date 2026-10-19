@@ -470,6 +470,8 @@ int viewer_main(int argc, char** argv) {
                         representation = SceneRepresentation::CAPTURED_APPEARANCE;
                     ImGui::TextWrapped("Normals diagnostic. Partial surfaces; gaps are unknown. No "
                                        "collision or measured scale.");
+                    if (current->m_provenance.contains("geometry_processing"))
+                        ImGui::TextWrapped("Simplified observed proxy. Raw source retained.");
                 }
             }
             if (is_synthetic_scene(current))
