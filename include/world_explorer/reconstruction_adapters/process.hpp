@@ -19,6 +19,9 @@ struct ProcessControl {
     // Empty means no command ready. Callbacks must not block.
     std::function<Result<std::vector<std::byte>>(bool cancelling)> m_next_input;
     std::chrono::milliseconds m_cancellation_grace {};
+    // POSIX TERM-to-KILL interval, bounded to five seconds. Nested supervisors
+    // may need time to kill/reap their separately grouped backend before exit.
+    std::chrono::milliseconds m_termination_grace { 2000 };
 };
 
 // Separate byte-preserving streams. Callbacks are serialized and must not block.

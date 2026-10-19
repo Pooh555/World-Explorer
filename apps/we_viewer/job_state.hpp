@@ -52,6 +52,9 @@ struct application_state {
     void reconstruction(std::filesystem::path request,
                         reconstruction_observer observed = {},
                         std::string expected_request_sha256 = {});
+    void geometry(std::filesystem::path request,
+                  std::string expected_request_sha256,
+                  std::filesystem::path destination);
     // Called by the UI owner; stop callbacks run without the state mutex held.
     void request_cancel();
     void update_reconstruction_progress(const ReconstructionProgress& value);

@@ -202,7 +202,9 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
     if (arguments.empty() || stop.stop_requested())
         return fail(ErrorCode::CANCELLED, "Process cancelled before launch");
     if (control.m_cancellation_grace < std::chrono::milliseconds(0) ||
-        control.m_cancellation_grace > std::chrono::seconds(5))
+        control.m_cancellation_grace > std::chrono::seconds(5) ||
+        control.m_termination_grace < std::chrono::milliseconds(0) ||
+        control.m_termination_grace > std::chrono::seconds(5))
         return fail(ErrorCode::INVALID_ARGUMENT, "Invalid process cancellation deadline");
     std::wstring command;
     for (const auto& argument : arguments) {
@@ -390,7 +392,9 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
         return fail(ErrorCode::CANCELLED, "Process cancelled before launch");
     }
     if (control.m_cancellation_grace < std::chrono::milliseconds(0) ||
-        control.m_cancellation_grace > std::chrono::seconds(5)) {
+        control.m_cancellation_grace > std::chrono::seconds(5) ||
+        control.m_termination_grace < std::chrono::milliseconds(0) ||
+        control.m_termination_grace > std::chrono::seconds(5)) {
         return fail(ErrorCode::INVALID_ARGUMENT, "Invalid process cancellation deadline");
     }
     for (const auto& argument : arguments) {
@@ -539,8 +543,8 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
             kill(-child, SIGTERM);
             signalled = true;
         }
-        if (terminating &&
-            std::chrono::steady_clock::now() - cancelled_at >= K_GRACE + std::chrono::seconds(2)) {
+        if (terminating && std::chrono::steady_clock::now() - cancelled_at >=
+                               K_GRACE + control.m_termination_grace) {
             kill(-child, SIGKILL);
         }
         if (input.m_parent >= 0) {

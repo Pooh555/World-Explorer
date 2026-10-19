@@ -134,6 +134,25 @@ TEST_CASE("viewer owned reconstruction thread handles bad requests and resets pr
     CHECK(state.status.find("Validating reconstruction request: Failed") != std::string::npos);
 }
 
+TEST_CASE("viewer geometry failures preserve scene handoff and clear processing state") {
+    viewer::application_state state;
+    state.progress = ReconstructionProgress { ReconstructionStage::FITTING, 42, 1101, 7000 };
+    state.geometry("missing-geometry-request.json", std::string(64uz, 'a'), "unused-output");
+    state.job.join();
+    CHECK_FALSE(state.busy);
+    CHECK_FALSE(state.processing);
+    CHECK_FALSE(state.reconstructing);
+    CHECK_FALSE(state.progress);
+    CHECK_FALSE(state.loaded);
+    CHECK(state.status.contains("Previous scene and committed output retained"));
+    const auto K_SCENE = make_diagnostic_scene();
+    state.loaded = K_SCENE;
+    const auto K_STATUS = state.status;
+    state.geometry("missing-geometry-request.json", std::string(64uz, 'a'), "unused-output");
+    CHECK(state.loaded == K_SCENE);
+    CHECK(state.status == K_STATUS);
+}
+
 TEST_CASE("viewer owned job cancels at checked stages and reopens retained publication",
           "[owned-job]") {
     test::reconstruction_fixture fixture;

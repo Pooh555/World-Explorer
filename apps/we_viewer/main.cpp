@@ -51,6 +51,9 @@ int viewer_main(int argc, char** argv) {
         settings_path, input_trace_path, input_latency_path, shader_path = WE_SHADER_DIRECTORY;
     std::filesystem::path fusion_request;
     std::string fusion_request_sha256;
+    std::filesystem::path geometry_request;
+    std::filesystem::path geometry_output;
+    std::string geometry_request_sha256;
     SceneRepresentation representation { SceneRepresentation::CAPTURED_APPEARANCE };
     WorkerConfiguration worker { WE_WORKER_SCRIPT };
     std::size_t max_splats = 250000;
@@ -70,6 +73,8 @@ int viewer_main(int argc, char** argv) {
                    "          [--screenshot FILE.ppm] [--settings FILE] [--shader-dir DIR]\n"
                    "          [--worker-python EXE] [--worker-script FILE] [--no-validation]\n"
                    "          [--fusion-request FILE.json --fusion-request-sha SHA256]\n"
+                   "          [--geometry-request FILE.json --geometry-request-sha SHA256\n"
+                   "           --geometry-output NEW_JOB]\n"
                    "          [--max-splats N] [--residency-mib N]\n";
             std::cout
                 << "          [--source-view] (explicit capture-orientation spectator reset)\n";
@@ -93,6 +98,12 @@ int viewer_main(int argc, char** argv) {
             const std::string K_VALUE = argv[++argument];
             if (K_OPTION == "--fusion-request") {
                 fusion_request = K_VALUE;
+            } else if (K_OPTION == "--geometry-request") {
+                geometry_request = K_VALUE;
+            } else if (K_OPTION == "--geometry-request-sha") {
+                geometry_request_sha256 = K_VALUE;
+            } else if (K_OPTION == "--geometry-output") {
+                geometry_output = K_VALUE;
             } else if (K_OPTION == "--fusion-request-sha") {
                 fusion_request_sha256 = K_VALUE;
             } else if (K_OPTION == "--scene") {
@@ -139,13 +150,22 @@ int viewer_main(int argc, char** argv) {
     if (fusion_request.empty() != fusion_request_sha256.empty()) {
         throw std::runtime_error("Fusion request requires its SHA-256 pin");
     }
+    if (geometry_request.empty() != geometry_request_sha256.empty() ||
+        geometry_request.empty() != geometry_output.empty()) {
+        throw std::runtime_error("Geometry processing requires request, SHA-256 and output");
+    }
+    if (!geometry_request.empty() &&
+        (!fusion_request.empty() || !reconstruction_request.empty() || !review_request.empty())) {
+        throw std::runtime_error("Choose one startup processing request");
+    }
     if (!input_latency_path.empty() && (!input_trace_path.empty() || !screenshot.empty())) {
         throw std::runtime_error("Input latency requires traces and screenshots disabled");
     }
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         throw std::runtime_error(SDL_GetError());
     }
-    const bool K_REQUIRE_RECONSTRUCTION_SUCCESS = !reconstruction_request.empty();
+    const bool K_REQUIRE_RECONSTRUCTION_SUCCESS =
+        !reconstruction_request.empty() || !geometry_request.empty();
     const bool K_REQUIRE_REVIEW_SUCCESS = !review_request.empty();
     if (K_REQUIRE_REVIEW_SUCCESS && K_REQUIRE_RECONSTRUCTION_SUCCESS) {
         throw std::runtime_error("Choose either startup review or startup reconstruction");
@@ -303,6 +323,8 @@ int viewer_main(int argc, char** argv) {
             K_MINIMUM.x, K_MINIMUM.y, K_MAXIMUM.x, K_MAXIMUM.y, ImGui::IsItemVisible() };
     };
     std::array<char, 1024> path {}, source {}, output {}, request_path {}, pose_request_path {};
+    std::array<char, 1024> geometry_path {}, geometry_destination {};
+    std::array<char, 65> geometry_pin {};
     std::snprintf(output.data(), output.size(), "%s", "artifacts/import-job");
     unsigned frames = 0;
     bool screenshot_requested = false;
@@ -371,6 +393,10 @@ int viewer_main(int argc, char** argv) {
         previous = K_NOW;
         if (!reconstruction_request.empty() && !state.has_pending_work() && !pending_ticket) {
             state.reconstruction(std::exchange(reconstruction_request, {}));
+        }
+        if (!geometry_request.empty() && !state.has_pending_work() && !pending_ticket) {
+            state.geometry(
+                std::exchange(geometry_request, {}), geometry_request_sha256, geometry_output);
         }
         if (!review_request.empty() && !state.has_pending_work() && !pending_ticket) {
             const auto K_SELECTED = review_request.string();
@@ -802,6 +828,27 @@ int viewer_main(int argc, char** argv) {
                 ImGui::TextWrapped("Select a request and choose Review request to see its "
                                    "actions and limits. Reviewing keeps scene viewing available.");
             }
+            if (ImGui::CollapsingHeader("Build geometry from saved depth")) {
+                ImGui::TextWrapped(
+                    "Process a checked local depth cache into partial observed surfaces. "
+                    "Unknown gaps stay open; scale is arbitrary and walking is unavailable. "
+                    "An unchanged request can resume the same output folder.");
+                ImGui::BeginDisabled(state.has_pending_work() || pending_ticket.has_value());
+                ImGui::InputText("Geometry request", geometry_path.data(), geometry_path.size());
+                ImGui::InputText("Request SHA-256", geometry_pin.data(), geometry_pin.size());
+                ImGui::InputText(
+                    "Geometry output", geometry_destination.data(), geometry_destination.size());
+                ImGui::BeginDisabled(!geometry_path[0] || !geometry_pin[0] ||
+                                     !geometry_destination[0]);
+                if (ImGui::Button("Build partial geometry")) {
+                    state.geometry(
+                        geometry_path.data(), geometry_pin.data(), geometry_destination.data());
+                    show_import = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndDisabled();
+                ImGui::EndDisabled();
+            }
             if (ImGui::CollapsingHeader("Advanced local worker commands")) {
                 ImGui::SetNextItemWidth(-1);
                 ImGui::InputText("Video", source.data(), source.size());
@@ -891,7 +938,7 @@ int viewer_main(int argc, char** argv) {
 #endif
         if (!screenshot.empty() && !screenshot_requested && K_SCREENSHOT_AFTER_INJECTED_LOSS &&
             frames >= 8 && !state.has_pending_work() && reconstruction_request.empty() &&
-            review_request.empty() &&
+            review_request.empty() && geometry_request.empty() &&
             (!(K_REQUIRE_RECONSTRUCTION_SUCCESS || !scene_path.empty() ||
                !fusion_request.empty()) ||
              (current && !pending_ticket))) {
@@ -1050,7 +1097,7 @@ int viewer_main(int argc, char** argv) {
             }
         }
         if (frame_limit && frames >= frame_limit && !state.has_pending_work() && !pending_ticket &&
-            reconstruction_request.empty() && review_request.empty()) {
+            reconstruction_request.empty() && review_request.empty() && geometry_request.empty()) {
             if (K_REQUIRE_RECONSTRUCTION_SUCCESS) {
                 std::lock_guard lock(state.mutex);
                 if (!state.reconstruction_error.empty()) {

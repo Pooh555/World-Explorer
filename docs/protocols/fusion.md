@@ -198,8 +198,73 @@ Ordinary Open scene/`--scene` consumes the resulting bundle through the existing
 scene update path. Failed adoption never replaces a previously selected scene.
 The [native adoption evidence](../validation/2026-10-19-native-geometry-job.md)
 covers real populated-attempt cancellation/resume and full native viewing.
-GUI geometry-job controls, unified solver-to-viewer ownership, fresh depth,
-metric alignment, collision and Q5/N2 remain open.
+The unified retained-cache path below now connects solver ownership to this
+adoption boundary. Fresh depth, metric alignment, collision and Q5/N2 remain open.
+
+
+### Unified retained-cache solver and viewer job
+
+`run_geometry_job` and `we_process run-geometry REQUEST.json SHA256 NEW_JOB`
+now own the retained-cache solver and native adoption as one Linux development
+job. Select the local isolated fusion interpreter explicitly. The pinned request
+uses exactly the native-adoption fields `schema_version`, `fusion_request`,
+`fusion_request_sha256`, `poses`, `pose_sha256`, `python`, `converter` and
+`converter_sha256`, plus:
+
+```json
+{
+  "kind": "RETAINED_GEOMETRY_PIPELINE_V1",
+  "coordinator": "path/to/tools/geometry_job.py",
+  "coordinator_sha256": "<SHA-256 of that coordinator>"
+}
+```
+
+These fields extend one flat object; `job` and `job_manifest_sha256` are absent.
+Paths resolve against the request. The existing bounded, duplicate/NUL-rejecting
+reader validates exact request/script/pose pins and indirect cache/recipe output
+separation before ownership. A top-level immutable `owner.json` and `writer.lock`
+bind the request plus Python bytes/resolved path. Unknown, linked, foreign and
+concurrently owned output rejects. Worker packages remain separately qualified.
+
+Under `stages/solver`, the explicit coordinator runs or checks retained fusion.
+The native owner passes `--parent-supervised`: the coordinator and fusion
+supervisor stay in its process group; the fusion supervisor owns its backend
+child group. Cancellation sends TERM immediately. The backend supervisor has two
+seconds to kill/reap its child, the coordinator three seconds to reap its
+supervisor, and the native owner five seconds before KILL. The general POSIX
+process control now accepts a bounded TERM-to-KILL interval (default two seconds,
+maximum five); existing commands keep their defaults. Windows job-object
+termination is unchanged; this solver entry rejects non-Linux hosts.
+
+After a successful child boundary, the application rechecks request and execution
+identities, pins the solver terminal manifest, publishes exact `adoption.json`,
+then invokes `adopt_geometry_job` under `stages/native`. Both owners retain their
+incomplete attempts; restart reuses only checked solver output and reserves a new
+native conversion attempt. A committed bundle replays strictly. Changed source
+or current-pose bytes reject before native publication. No source stage, prior
+scene or occupied caller output is repaired or overwritten. Native bundle
+publication retains its existing commit semantics.
+
+The viewer exposes **Import video → Build geometry from saved depth**, with
+request, SHA-256 and output fields. Its owned background thread uses this same
+application command, bounded logs and Cancel button. Processing pauses scene
+rendering while retaining GPU assets. Successful publication loads the checked
+bundle into the ordinary immutable snapshot/update path; a pending snapshot
+prevents another job. Failure/cancellation before publication preserves the
+previous scene. Startup diagnostics accept:
+
+```sh
+build/dev/we_viewer --geometry-request REQUEST.json --geometry-request-sha SHA256 \
+  --geometry-output NEW_JOB --frames 90
+```
+
+An optional `--scene PRIOR.wexplore` opens the prior scene before starting this
+job. Other startup processing requests are mutually exclusive. GUI/CLI share the
+same pins, recovery and output ownership; this path produces raw partial observed
+surfaces only. Fresh depth, cleanup/baking job stages, measured alignment,
+collision/walking and quality gates remain separate.
+[Verification](../validation/2026-10-19-geometry-pipeline.md) includes populated
+solver/converter recovery and actual native scene preservation/handoff.
 
 ## Native partial-geometry admission
 

@@ -248,27 +248,46 @@ gaps. Dense redistribution rights remain open.
   for 90 native frames with zero Vulkan errors. Cancellation after real conversion
   preserves the populated attempt; restart selects a new attempt and strict replay
   skips conversion. Stale pins, corruption, foreign bundles and writer contention
-  reject. Fresh depth, solver-to-GUI ownership and geometry gates remain open.
+  reject. Fresh depth and geometry gates remain open; unified solver-to-GUI
+  ownership is now covered below.
+
+- [Unified retained-cache geometry job](validation/2026-10-19-geometry-pipeline.md):
+  shared application/CLI and viewer background controls own solver/reuse,
+  conversion, pose admission and immutable scene handoff. Both full real meshes
+  render with zero Vulkan errors. Real stopped-child cancellation reaps all
+  descendants; populated solver/conversion attempts survive resume. Native prior
+  pixels remain identical after failure/cancel. No fresh depth or geometry gate.
 
 ## Next executable step and protection rules
 
-Connect the [native terminal adoption](protocols/fusion.md#native-terminal-adoption-and-scene-publication)
-to the owned retained-cache solver and viewer background-job state under plan §8
-M3. Begin with an explicit request that runs/reuses `tools/geometry_job.py`, then
-calls `adopt_geometry_job` and hands its checked bundle to the existing immutable
-scene-update path. Verify cancellation at both child boundaries, source/pose
-changes, populated solver-attempt recovery and prior visible-scene preservation.
-Retained native-adoption fixtures/commands are in
-`artifacts/validation/m3-native-geometry-20261019/`; choose new output names.
-Then integrate fresh CUDA depth behind the same boundary after isolated
-worker-header reconciliation below. Keep metric alignment/collision/walking open.
+Reconcile the known external worker-header drift in a **new isolated dense
+profile** before any CUDA/worker rebuild. First run the read-only installed-byte
+audit below; retain its expected RECORD-drift rejection rather than qualifying
+the modified installation (do not overwrite historical evidence):
+
+```sh
+.venv-dense/bin/python tools/audit_worker_environment.py \
+  --requirements workers/dense/environment.txt \
+  --output artifacts/validation/m3-dense-reconciliation-next.json
+```
+
+Compare it with the exact retained wheel/RECORD identities in
+`workers/identity/dense-development-20261017.json`; provision the separate clean
+profile from the already retained hash-locked archives. Then integrate fresh
+CUDA depth behind `run_geometry_job`'s owned boundary, preserving existing
+cache admission and scene handoff. Recheck cancellation/resume at that new child
+boundary. Current retained-cache requests/commands live in
+`artifacts/validation/m3-geometry-pipeline-20261019/`; select new output names.
+Keep metric alignment/collision/walking and M3's exit open.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list
 spacing. `.clang-format` groups project, standard-library and platform includes;
 `.clang-tidy` retains the one conflicting portability-check exclusion. Python
 source now follows the template's export ordering and class naming conventions.
-Full Python formatting still needs the pinned Black dependency for verification.
+Pinned Black 26.5.1 now checks the changed geometry coordinator successfully;
+the full required command fails on 24 unchanged baseline files, retained in the
+[geometry-pipeline evidence](validation/2026-10-19-geometry-pipeline.md).
 See [style conformance validation](validation/2026-10-19-style-conformance.md).
 The normal style command no longer needs guarded-copy VFS analysis for header
 policy. Separately,

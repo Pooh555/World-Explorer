@@ -70,6 +70,7 @@ int main(int argc, char** argv) {
                    "  we_process inspect-fusion-scene REQUEST.json SHA256\n"
                    "  we_process compile-fusion REQUEST.json SHA256 NEW_SCENE.wexplore\n"
                    "  we_process adopt-geometry REQUEST.json SHA256 NEW_NATIVE_JOB\n"
+                   "  we_process run-geometry REQUEST.json SHA256 NEW_PIPELINE_JOB\n"
                    "  we_process audit-mesh-colors REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process bake-mesh-colors REQUEST.json SHA256 NEW_SCENE.wexplore\n"
                    "  we_process inspect-baked SCENE.wexplore\n"
@@ -260,13 +261,13 @@ int main(int argc, char** argv) {
                       << "; texture export and walking unavailable\n";
             return 0;
         }
-        if (K_COMMAND == "adopt-geometry") {
+        if (K_COMMAND == "adopt-geometry" || K_COMMAND == "run-geometry") {
             if (argc != 5) {
-                std::cerr
-                    << "Usage: we_process adopt-geometry REQUEST.json SHA256 NEW_NATIVE_JOB\n";
+                std::cerr << "Usage: we_process " << K_COMMAND << " REQUEST.json SHA256 NEW_JOB\n";
                 return 2;
             }
-            const auto K_RESULT = adopt_geometry_job(
+            const auto K_RUN = K_COMMAND == "run-geometry" ? run_geometry_job : adopt_geometry_job;
+            const auto K_RESULT = K_RUN(
                 argv[2], argv[3], argv[4], cancellation.get_token(), [](const std::string& output) {
                     std::cerr << output << std::flush;
                 });

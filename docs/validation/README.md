@@ -1,5 +1,7 @@
 # Validation index
 
+- [Unified retained-cache geometry pipeline](2026-10-19-geometry-pipeline.md): shared GUI/CLI solver/reuse, native adoption, populated cancellation/resume and actual native scene preservation/handoff; M3 remains open.
+
 - [Batch diagnostic worker repair](2026-10-19-batch-worker-repair.md): corrects
   stale embedded Python class references behind three CPU test regressions.
 

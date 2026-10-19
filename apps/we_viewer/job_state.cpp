@@ -1,6 +1,7 @@
 #include "job_state.hpp"
 
 #include "world_explorer/application/fusion_scene.hpp"
+#include "world_explorer/application/geometry_job.hpp"
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/core/hash.hpp"
 
@@ -256,6 +257,42 @@ void application_state::reconstruction(std::filesystem::path request,
                                      ? load_bundle(*K_PUBLISHED, load_limits)
                                      : Result<SceneSnapshot> { std::unexpected(K_PUBLISHED.error()) };
             complete_reconstruction(std::move(K_SCENE),
+                                    K_PUBLISHED ? std::optional { *K_PUBLISHED } : std::nullopt);
+        } catch (const std::exception& exception) {
+            complete_reconstruction(fail(ErrorCode::INVALID_DATA, exception.what()), {});
+        }
+    });
+}
+
+void application_state::geometry(std::filesystem::path request,
+                                 std::string expected_request_sha256,
+                                 std::filesystem::path destination) {
+    if (!begin_job()) {
+        return;
+    }
+    started = std::chrono::steady_clock::now();
+    processing = true;
+    {
+        std::lock_guard lock(mutex);
+        reconstructing = true;
+        progress.reset();
+        status = "Processing saved depth. Partial geometry; walking unavailable. ETA unknown.";
+        reconstruction_error.clear();
+        log.clear();
+    }
+    job = std::jthread([this,
+                        request = std::move(request),
+                        pin = std::move(expected_request_sha256),
+                        destination = std::move(destination)](const std::stop_token& stop) {
+        try {
+            const auto K_PUBLISHED =
+                run_geometry_job(request, pin, destination, stop, [this](std::string text) {
+                    append(std::move(text));
+                });
+            const auto K_SCENE = K_PUBLISHED
+                                     ? load_bundle(*K_PUBLISHED, load_limits)
+                                     : Result<SceneSnapshot> { std::unexpected(K_PUBLISHED.error()) };
+            complete_reconstruction(K_SCENE,
                                     K_PUBLISHED ? std::optional { *K_PUBLISHED } : std::nullopt);
         } catch (const std::exception& exception) {
             complete_reconstruction(fail(ErrorCode::INVALID_DATA, exception.what()), {});

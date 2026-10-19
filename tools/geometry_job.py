@@ -114,17 +114,25 @@ def checked_stage(stage, owner):
     return digest(data)
 
 
-def run_worker(request, request_sha, stage):
+def run_worker(request, request_sha, stage, parent_supervised=False):
     command = [sys.executable, str(WORKER), str(request), request_sha, str(stage)]
-    child = subprocess.Popen(command, start_new_session=True)
+    # A native owner supervises the entire process group. Do not let the solver
+    # escape its TERM/KILL boundary; standalone use still owns a private group.
+    child = subprocess.Popen(command, start_new_session=not parent_supervised)
     while child.poll() is None and not cancelled():
         time.sleep(0.05)
     if cancelled() and child.poll() is None:
-        os.killpg(child.pid, signal.SIGTERM)
+        if parent_supervised:
+            child.terminate()
+        else:
+            os.killpg(child.pid, signal.SIGTERM)
         try:
             child.wait(timeout=3)
         except subprocess.TimeoutExpired:
-            os.killpg(child.pid, signal.SIGKILL)
+            if parent_supervised:
+                child.kill()
+            else:
+                os.killpg(child.pid, signal.SIGKILL)
             child.wait()
     else:
         child.wait()
@@ -241,7 +249,7 @@ def execute(args):
             stage = stages / f"{prefix}-attempt-{index}"
             if cancelled():
                 raise InterruptedError("Geometry job cancelled before worker start")
-            run_worker(request, args.request_sha256, stage)
+            run_worker(request, args.request_sha256, stage, args.parent_supervised)
             stage_sha = checked_stage(stage, owner)
         terminal = {
             "schema_version": 1,
@@ -287,6 +295,7 @@ def main():
     parser.add_argument("pose")
     parser.add_argument("pose_sha256")
     parser.add_argument("job")
+    parser.add_argument("--parent-supervised", action="store_true")
     args = parser.parse_args()
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)

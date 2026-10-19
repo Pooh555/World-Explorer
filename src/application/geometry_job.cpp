@@ -105,6 +105,189 @@ file_hash(const std::filesystem::path& path, std::size_t maximum, const std::sto
 
 }  // namespace
 
+Result<std::filesystem::path> run_geometry_job(const std::filesystem::path& request,
+                                               const std::string& expected_sha256,
+                                               const std::filesystem::path& destination,
+                                               const std::stop_token& stop,
+                                               const LogCallback& log) {
+    try {
+#if !defined(__linux__)
+        return fail(ErrorCode::BACKEND_FAILURE, "Retained geometry solving requires Linux");
+#endif
+        const auto K_REQUEST = std::filesystem::absolute(request).lexically_normal();
+        const auto K_CONFIG = read_document(K_REQUEST, expected_sha256, stop);
+        if (!K_CONFIG) {
+            return std::unexpected(K_CONFIG.error());
+        }
+        const std::set<std::string> K_FIELDS { "schema_version",
+                                              "kind",
+                                              "fusion_request",
+                                              "fusion_request_sha256",
+                                              "poses",
+                                              "pose_sha256",
+                                              "python",
+                                              "coordinator",
+                                              "coordinator_sha256",
+                                              "converter",
+                                              "converter_sha256" };
+        if (!K_CONFIG->at("schema_version").is_number_unsigned() ||
+            K_CONFIG->at("schema_version") != 1 ||
+            K_CONFIG->at("kind") != "RETAINED_GEOMETRY_PIPELINE_V1" ||
+            K_CONFIG->size() != K_FIELDS.size() ||
+            !std::ranges::all_of(K_CONFIG->items(), [&](const auto& item) {
+                return K_FIELDS.contains(item.key());
+            })) {
+            return fail(ErrorCode::INVALID_DATA, "Unsupported retained geometry pipeline request");
+        }
+        const auto K_ROOT = std::filesystem::absolute(destination).lexically_normal();
+        if (std::filesystem::weakly_canonical(K_ROOT) != K_ROOT || overlaps(K_ROOT, K_REQUEST)) {
+            return fail(ErrorCode::INVALID_DATA,
+                        "Geometry output is linked or overlaps its request");
+        }
+        std::map<std::string, std::filesystem::path> paths;
+        for (const auto& key : { "fusion_request", "poses", "python", "coordinator", "converter" }) {
+            const auto K_PATH = local_path(
+                K_REQUEST.parent_path(), K_CONFIG->at(key), std::string_view(key) == "python");
+            if (!K_PATH) {
+                return std::unexpected(K_PATH.error());
+            }
+            if (overlaps(K_ROOT, *K_PATH) ||
+                overlaps(K_ROOT, std::filesystem::canonical(*K_PATH))) {
+                return fail(ErrorCode::INVALID_DATA, "Geometry output overlaps an input");
+            }
+            paths.emplace(key, *K_PATH);
+        }
+        const auto K_PIN = [&](const char* key) {
+            return K_CONFIG->at(key).get<std::string>();
+        };
+        const auto K_FUSION =
+            read_document(paths.at("fusion_request"), K_PIN("fusion_request_sha256"), stop);
+        if (!K_FUSION) {
+            return std::unexpected(K_FUSION.error());
+        }
+        for (const auto& key : { "cache", "recipe" }) {
+            const auto K_PATH =
+                local_path(paths.at("fusion_request").parent_path(), K_FUSION->at(key));
+            if (!K_PATH) {
+                return std::unexpected(K_PATH.error());
+            }
+            if (overlaps(K_ROOT, *K_PATH)) {
+                return fail(ErrorCode::INVALID_DATA, "Geometry output overlaps a dependency");
+            }
+        }
+        const auto K_POSES = read_pose_asset(paths.at("poses"), K_PIN("pose_sha256"), {}, stop);
+        if (!K_POSES) {
+            return std::unexpected(K_POSES.error());
+        }
+        for (const auto& key : { "coordinator", "converter" }) {
+            const auto K_HASH = file_hash(paths.at(key), K_DOCUMENT_BYTES, stop);
+            if (!K_HASH) {
+                return std::unexpected(K_HASH.error());
+            }
+            if (*K_HASH != K_PIN((std::string(key) + "_sha256").c_str())) {
+                return fail(ErrorCode::INVALID_DATA, "Geometry script checksum differs");
+            }
+        }
+        const auto K_PYTHON_SHA = sha256_file(paths.at("python"), K_ASSET_BYTES, stop);
+        if (!K_PYTHON_SHA) {
+            return std::unexpected(K_PYTHON_SHA.error());
+        }
+        const nlohmann::json K_OWNER {
+            { "schema_version", 1 },
+            { "kind", "RETAINED_GEOMETRY_PIPELINE_V1" },
+            { "request", K_REQUEST.string() },
+            { "request_sha256", expected_sha256 },
+            { "python_sha256", *K_PYTHON_SHA },
+            { "python_resolved", std::filesystem::canonical(paths.at("python")).string() } };
+        auto lock = job_detail::open_owned_job(
+            K_ROOT, { "owner.json", "writer.lock" }, K_OWNER, { "stages", "adoption.json" }, stop);
+        if (!lock) {
+            return std::unexpected(lock.error());
+        }
+        const auto K_STAGES = K_ROOT / "stages";
+        std::filesystem::create_directories(K_STAGES);
+        if (std::filesystem::canonical(K_STAGES) != K_STAGES) {
+            return fail(ErrorCode::INVALID_DATA, "Linked geometry pipeline stages");
+        }
+        for (const auto& entry : std::filesystem::directory_iterator(K_STAGES)) {
+            if (entry.is_symlink() || !entry.is_directory() ||
+                (entry.path().filename() != "solver" && entry.path().filename() != "native")) {
+                return fail(ErrorCode::INVALID_DATA, "Unknown geometry pipeline stage");
+            }
+        }
+        if (log) {
+            log("Running or reusing retained-depth geometry. Partial surfaces; walking "
+                "unavailable.\n");
+        }
+        const auto K_SOLVER = K_STAGES / "solver";
+        ProcessControl control;
+        control.m_termination_grace = std::chrono::seconds(5);
+        const auto K_PROCESS = execute_process({ paths.at("python").string(),
+                                                paths.at("coordinator").string(),
+                                                paths.at("fusion_request").string(),
+                                                K_PIN("fusion_request_sha256"),
+                                                paths.at("poses").string(),
+                                                K_PIN("pose_sha256"),
+                                                K_SOLVER.string(),
+                                                "--parent-supervised" },
+                                               stop,
+                                               log,
+                                               log,
+                                               control);
+        if (!K_PROCESS) {
+            return std::unexpected(K_PROCESS.error());
+        }
+        if (*K_PROCESS != 0) {
+            return fail(ErrorCode::BACKEND_FAILURE, "Geometry solver failed; attempts retained");
+        }
+        // Recheck launch inputs after the child boundary, including on completed reuse.
+        const auto K_RECHECK = read_document(K_REQUEST, expected_sha256, stop);
+        if (!K_RECHECK) {
+            return std::unexpected(K_RECHECK.error());
+        }
+        const auto K_COORDINATOR = file_hash(paths.at("coordinator"), K_DOCUMENT_BYTES, stop);
+        const auto K_PYTHON = sha256_file(paths.at("python"), K_ASSET_BYTES, stop);
+        if (!K_COORDINATOR || !K_PYTHON) {
+            return !K_COORDINATOR ? std::unexpected(K_COORDINATOR.error())
+                                  : std::unexpected(K_PYTHON.error());
+        }
+        if (*K_COORDINATOR != K_PIN("coordinator_sha256") || *K_PYTHON != *K_PYTHON_SHA ||
+            std::filesystem::canonical(paths.at("python")).string() !=
+                K_OWNER.at("python_resolved").get<std::string>()) {
+            return fail(ErrorCode::INVALID_DATA, "Geometry execution inputs changed");
+        }
+        const auto K_TERMINAL_SHA = file_hash(K_SOLVER / "manifest.json", K_DOCUMENT_BYTES, stop);
+        if (!K_TERMINAL_SHA) {
+            return std::unexpected(K_TERMINAL_SHA.error());
+        }
+        const nlohmann::json K_ADOPTION { { "schema_version", 1 },
+                                         { "job", K_SOLVER.string() },
+                                         { "job_manifest_sha256", *K_TERMINAL_SHA },
+                                         { "fusion_request", paths.at("fusion_request").string() },
+                                         { "fusion_request_sha256", K_PIN("fusion_request_sha256") },
+                                         { "poses", paths.at("poses").string() },
+                                         { "pose_sha256", K_PIN("pose_sha256") },
+                                         { "python", paths.at("python").string() },
+                                         { "converter", paths.at("converter").string() },
+                                         { "converter_sha256", K_PIN("converter_sha256") } };
+        const auto K_ADOPTION_PATH = K_ROOT / "adoption.json";
+        const auto K_SAVED = job_detail::publish_owned_json(K_ADOPTION_PATH, K_ADOPTION, stop);
+        if (!K_SAVED) {
+            return std::unexpected(K_SAVED.error());
+        }
+        if (log) {
+            log("Retained-depth solver complete; adopting against current poses.\n");
+        }
+        return adopt_geometry_job(
+            K_ADOPTION_PATH, text_hash(K_ADOPTION.dump(2) + '\n'), K_STAGES / "native", stop, log);
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Geometry pipeline allocation failed");
+    } catch (const std::exception& exception) {
+        return fail(ErrorCode::INVALID_DATA,
+                    std::string("Geometry pipeline failed: ") + exception.what());
+    }
+}
+
 Result<std::filesystem::path> adopt_geometry_job(const std::filesystem::path& request,
                                                  const std::string& expected_sha256,
                                                  const std::filesystem::path& destination,
