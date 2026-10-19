@@ -2,11 +2,11 @@
 
 #include "world_explorer/core/hash.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
-
-#include <nlohmann/json.hpp>
 
 namespace world_explorer::adapter_detail {
 
@@ -47,7 +47,8 @@ inline std::filesystem::path contained_file(const std::filesystem::path& root,
     if (relative.is_absolute() || relative.has_root_name())
         throw std::invalid_argument("Artifact path must be relative");
     for (const auto& part : relative)
-        if (part == "." || part == "..") throw std::invalid_argument("Unsafe artifact path");
+        if (part == "." || part == "..")
+            throw std::invalid_argument("Unsafe artifact path");
     const auto path = std::filesystem::canonical(root / relative);
     if (path.lexically_relative(root) != relative ||
         !std::filesystem::is_regular_file(std::filesystem::symlink_status(root / relative)))

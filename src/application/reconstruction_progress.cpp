@@ -1,9 +1,9 @@
 #include "world_explorer/application/reconstruction_progress.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <cmath>
 #include <stdexcept>
-
-#include <nlohmann/json.hpp>
 
 namespace world_explorer {
 
@@ -34,22 +34,26 @@ std::string_view reconstruction_stage_name(ReconstructionStage stage) {
 std::optional<ReconstructionProgress> checked_reconstruction_progress(
     const WorkerEvent& event, ReconstructionStage expected_stage, std::uint32_t fit_steps) {
     const auto* value = std::get_if<WorkerProgress>(&event);
-    if (!value || !std::isfinite(value->m_elapsed_seconds) || value->m_elapsed_seconds < 0)
+    if (!value || !std::isfinite(value->m_elapsed_seconds) || value->m_elapsed_seconds < 0) {
         return {};
+    }
     const auto K_EXPECTED = expected_stage == ReconstructionStage::INSPECTING ? "inspect"
                             : expected_stage == ReconstructionStage::DECODING ? "decode"
                             : expected_stage == ReconstructionStage::POSES    ? "poses"
                             : expected_stage == ReconstructionStage::FITTING  ? "appearance"
                                                                               : "";
-    if (K_EXPECTED[0] == '\0' || value->m_stage != K_EXPECTED) return {};
-    ReconstructionProgress progress {expected_stage, value->m_elapsed_seconds, {}, 0};
+    if (K_EXPECTED[0] == '\0' || value->m_stage != K_EXPECTED) {
+        return {};
+    }
+    ReconstructionProgress progress { expected_stage, value->m_elapsed_seconds, {}, 0 };
     if (expected_stage == ReconstructionStage::FITTING && fit_steps > 0 &&
         value->m_message.size() <= 65536) {
         try {
             const auto K_MESSAGE = nlohmann::json::parse(
                 value->m_message, [](int depth, nlohmann::json::parse_event_t, nlohmann::json&) {
-                    if (depth > 8)
+                    if (depth > 8) {
                         throw std::runtime_error("Progress metadata exceeds nesting limit");
+                    }
                     return true;
                 });
             if (K_MESSAGE.is_object() && K_MESSAGE.contains("step") &&

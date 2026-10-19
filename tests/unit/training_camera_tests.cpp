@@ -2,11 +2,11 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/training_camera.hpp"
 
-#include <chrono>
-#include <limits>
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+
+#include <chrono>
+#include <limits>
 
 using namespace world_explorer;
 
@@ -83,14 +83,14 @@ TEST_CASE("training camera import rejects rehashed malformed models limits and i
     }
     SECTION("nonfinite focal") {
         bytes = test::training_camera_bytes(
-            1, 128, 128, {std::numeric_limits<double>::infinity(), 200, 64, 64});
+            1, 128, 128, { std::numeric_limits<double>::infinity(), 200, 64, 64 });
     }
     SECTION("nonfinite principal point") {
         bytes = test::training_camera_bytes(
-            1, 128, 128, {200, 200, std::numeric_limits<double>::quiet_NaN(), 64});
+            1, 128, 128, { 200, 200, std::numeric_limits<double>::quiet_NaN(), 64 });
     }
     SECTION("negative focal") {
-        bytes = test::training_camera_bytes(1, 128, 128, {-1, 200, 64, 64});
+        bytes = test::training_camera_bytes(1, 128, 128, { -1, 200, 64, 64 });
     }
     test::write_training_camera(fixture.m_file, bytes);
     CHECK_FALSE(read_colmap_training_camera(fixture.m_file, sha256(bytes)));

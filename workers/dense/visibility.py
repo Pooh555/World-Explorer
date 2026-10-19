@@ -2,6 +2,17 @@
 
 import copy
 
+__all__ = [
+    "MAX_TOTAL_PIXELS",
+    "POLICY",
+    "bilinear",
+    "pair_evidence",
+    "pixel_evidence",
+    "sample_grid",
+    "score_sources",
+    "validate_views",
+]
+
 POLICY = {
     "algorithm": "CACHED_VISIBILITY_NCC_GREEDY_V1",
     "grid": [32, 24],

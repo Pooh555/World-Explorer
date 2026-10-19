@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
         }
         const std::string K_COMMAND = argv[1];
         if (K_COMMAND == "compile-fit" && argc == 4) {
-            const auto K_RESULT = compile_fit_scene({.m_input = argv[2], .m_destination = argv[3]});
+            const auto K_RESULT = compile_fit_scene({ .m_input = argv[2], .m_destination = argv[3] });
             if (!K_RESULT) {
                 std::cerr << K_RESULT.error().m_message << '\n';
                 return 2;
@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
         }
         if (K_COMMAND == "compile" && argc == 4) {
             const auto K_RESULT =
-                compile_splat_scene({.m_input = argv[2], .m_destination = argv[3]});
+                compile_splat_scene({ .m_input = argv[2], .m_destination = argv[3] });
             if (!K_RESULT) {
                 std::cerr << K_RESULT.error().m_message << '\n';
                 return 2;
@@ -137,24 +137,35 @@ int main(int argc, char** argv) {
             return 0;
         }
         WorkerConfiguration configuration { WE_WORKER_SCRIPT };
-        if (K_COMMAND == "fit")
+        if (K_COMMAND == "fit") {
             configuration.m_script = configuration.m_script.parent_path() / "gsplat" / "fit.py";
+        }
         std::vector<std::string> arguments;
         for (int index { 1 }; index < argc; ++index) {
-            if (index == 1 && K_COMMAND == "fit") continue;
+            if (index == 1 && K_COMMAND == "fit") {
+                continue;
+            }
             const std::string K_ARGUMENT = argv[index];
             if ((K_ARGUMENT == "--worker-script" || K_ARGUMENT == "--worker-python") &&
                 index + 1 < argc) {
-                if (K_ARGUMENT == "--worker-script") configuration.m_script = argv[++index];
-                else configuration.m_python = argv[++index];
-            } else arguments.push_back(K_ARGUMENT);
+                if (K_ARGUMENT == "--worker-script") {
+                    configuration.m_script = argv[++index];
+                } else {
+                    configuration.m_python = argv[++index];
+                }
+            } else {
+                arguments.push_back(K_ARGUMENT);
+            }
         }
         SignalGuard signals;
         std::stop_source cancellation;
         std::jthread monitor([&](const std::stop_token& stop) {
-            while (!stop.stop_requested() && !interrupted)
+            while (!stop.stop_requested() && !interrupted) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            if (interrupted) cancellation.request_stop();
+            }
+            if (interrupted) {
+                cancellation.request_stop();
+            }
         });
         if (K_COMMAND == "init-map" || K_COMMAND == "import-map" || K_COMMAND == "inspect-map") {
             if (argc != (K_COMMAND == "import-map" ? 5 : 3)) {
@@ -177,9 +188,10 @@ int main(int argc, char** argv) {
                       << (*K_SNAPSHOT)->m_observations.size() << " observations, "
                       << (*K_SNAPSHOT)->m_poses.size() << " poses, "
                       << (*K_SNAPSHOT)->m_calibrations.size() << " calibrations; scale arbitrary\n";
-            if ((*K_SNAPSHOT)->m_initial_pose_asset_sha256)
+            if ((*K_SNAPSHOT)->m_initial_pose_asset_sha256) {
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
+            }
             return 0;
         }
         if (K_COMMAND == "export-glb" || K_COMMAND == "import-glb") {
@@ -294,8 +306,9 @@ int main(int argc, char** argv) {
                 return 2;
             }
             const auto& chunk = (*K_SCENE)->m_chunks.begin()->second;
-            if (!chunk->m_mesh)
+            if (!chunk->m_mesh) {
                 throw std::runtime_error("Admitted mesh scene is missing its payload");
+            }
             const auto& mesh = *chunk->m_mesh;
             std::cout << "Partial observed geometry; arbitrary units; walking disabled\n"
                       << "Scene SHA-256: " << scene_content_hash(**K_SCENE) << '\n'
@@ -373,13 +386,13 @@ int main(int argc, char** argv) {
                 return 2;
             }
             const ResizedDenseInputRequest K_REQUEST {
-                {{argv[2uz], argv[3uz], argc == 14 ? argv[13uz] : std::filesystem::path {}},
+                { { argv[2uz], argv[3uz], argc == 14 ? argv[13uz] : std::filesystem::path {} },
                  argv[4uz],
                  argv[5uz],
                  argv[6uz],
-                 argv[7uz]},
+                 argv[7uz] },
                 argv[8uz],
-                argv[9uz]};
+                argv[9uz] };
             const auto K_PREPARED = load_resized_dense_inputs(
                 K_REQUEST, argv[10uz], argv[11uz], cancellation.get_token());
             if (!K_PREPARED) {
@@ -397,11 +410,11 @@ int main(int argc, char** argv) {
                 return 2;
             }
             const DenseInputRequest K_REQUEST {
-                {argv[2], argv[3], argc == 11 ? argv[10] : std::filesystem::path {}},
+                { argv[2], argv[3], argc == 11 ? argv[10] : std::filesystem::path {} },
                 argv[4],
                 argv[5],
                 argv[6],
-                argv[7]};
+                argv[7] };
             const auto K_PUBLISHED =
                 write_dense_inputs(K_REQUEST, argv[8], cancellation.get_token());
             if (!K_PUBLISHED) {
@@ -419,9 +432,11 @@ int main(int argc, char** argv) {
                 return 2;
             }
             const auto K_PREPARED = prepare_completed_pose_map(
-                {{argv[2], argv[3], argc == 7 ? argv[6] : std::filesystem::path {}}, argv[4]},
+                { { argv[2], argv[3], argc == 7 ? argv[6] : std::filesystem::path {} }, argv[4] },
                 cancellation.get_token(),
-                [](const std::string& text) { std::cout << text << std::flush; });
+                [](const std::string& text) {
+                    std::cout << text << std::flush;
+                });
             if (!K_PREPARED) {
                 std::cerr << K_PREPARED.error().m_message << '\n';
                 return K_PREPARED.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
@@ -441,7 +456,7 @@ int main(int argc, char** argv) {
                 return 2;
             }
             const auto K_HASH = export_completed_pose_asset(
-                {{argv[2], argv[3], argc == 7 ? argv[6] : std::filesystem::path {}}, argv[4]},
+                { { argv[2], argv[3], argc == 7 ? argv[6] : std::filesystem::path {} }, argv[4] },
                 cancellation.get_token());
             if (!K_HASH) {
                 std::cerr << K_HASH.error().m_message << '\n';
@@ -503,20 +518,20 @@ int main(int argc, char** argv) {
                              "--pose-python EXECUTABLE [--recipe sequential|exhaustive_guided]\n";
                 return 2;
             }
-            PoseSolveRequest request {arguments[2],
-                                      {.m_decode_stage = arguments[1],
+            PoseSolveRequest request { arguments[2],
+                                      { .m_decode_stage = arguments[1],
                                        .m_job_directory = arguments[3],
                                        .m_worker_script = configuration.m_script,
-                                       .m_worker_python = configuration.m_python}};
+                                       .m_worker_python = configuration.m_python } };
             bool pose_python {};
             for (std::size_t index { 4uz }; index < arguments.size(); index += 2uz) {
                 if (arguments[index] == "--pose-python" && !pose_python) {
                     request.m_batch.m_pose_python = arguments[index + 1];
                     pose_python = true;
                 } else if (arguments[index] == "--recipe" &&
-                           arguments[index + 1] == "exhaustive_guided")
+                           arguments[index + 1] == "exhaustive_guided") {
                     request.m_batch.m_recipe = PoseRecipe::EXHAUSTIVE_GUIDED;
-                else if (arguments[index] != "--recipe" || arguments[index + 1] != "sequential") {
+                } else if (arguments[index] != "--recipe" || arguments[index + 1] != "sequential") {
                     std::cerr << "Invalid batch pose option\n";
                     return 2;
                 }
@@ -544,11 +559,13 @@ int main(int argc, char** argv) {
                 return 2;
             }
             const auto K_MAPS = replay_completed_pose_map(
-                {.m_pose_job = argv[2],
+                { .m_pose_job = argv[2],
                  .m_video = argv[3],
-                 .m_decode_stage = argc == 6 ? argv[5] : std::filesystem::path {}},
+                 .m_decode_stage = argc == 6 ? argv[5] : std::filesystem::path {} },
                 cancellation.get_token(),
-                [](const std::string& text) { std::cout << text << std::flush; });
+                [](const std::string& text) {
+                    std::cout << text << std::flush;
+                });
             if (!K_MAPS) {
                 std::cerr << K_MAPS.error().m_message << '\n';
                 return K_MAPS.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
@@ -572,7 +589,7 @@ int main(int argc, char** argv) {
                 return K_DIGEST.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
             }
             const auto K_SOURCE = open_decoded_frame_source(
-                {.m_stage_directory = argv[2], .m_source_sha256 = *K_DIGEST},
+                { .m_stage_directory = argv[2], .m_source_sha256 = *K_DIGEST },
                 cancellation.get_token());
             if (!K_SOURCE) {
                 std::cerr << K_SOURCE.error().m_message << '\n';
@@ -596,7 +613,9 @@ int main(int argc, char** argv) {
                               << frame->m_pixels.m_width << 'x' << frame->m_pixels.m_height
                               << " RGB8 sha256 " << sha256(*frame->m_pixels.m_bytes) << '\n';
                 }
-                if (std::holds_alternative<SourceEnd>(*K_EVENT)) break;
+                if (std::holds_alternative<SourceEnd>(*K_EVENT)) {
+                    break;
+                }
             }
             std::cout
                 << "Replayed " << count << " committed frames in "

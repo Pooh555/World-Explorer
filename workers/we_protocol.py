@@ -8,12 +8,25 @@ from pathlib import Path
 import sys
 import threading
 
+__all__ = [
+    "CONTROL",
+    "EventWriter",
+    "MESSAGE_LIMIT",
+    "WRITER",
+    "cancel_requested",
+    "completed",
+    "configure",
+    "diagnostic_context",
+    "failure",
+    "progress",
+]
+
 MESSAGE_LIMIT = 1024 * 1024
 WRITER = None
 CONTROL = None
 
 
-class event_writer:
+class EventWriter:
     def __init__(self, bindings, stream, session):
         sys.path.insert(0, str(Path(bindings).resolve(strict=True)))
         self.runtime = importlib.import_module("flatbuffers")
@@ -203,11 +216,11 @@ def configure(arguments, *, cancel_callback=None, **handshake):
 
         msvcrt.setmode(0, os.O_BINARY)
         msvcrt.setmode(1, os.O_BINARY)
-    WRITER = event_writer(bindings, sys.stdout.buffer, session)
+    WRITER = EventWriter(bindings, sys.stdout.buffer, session)
     WRITER.handshake(**handshake)
-    from we_control import command_session
+    from we_control import CommandSession
 
-    CONTROL = command_session(session, WRITER, cancel_callback)
+    CONTROL = CommandSession(session, WRITER, cancel_callback)
     try:
         CONTROL.start(arguments)
     except (ValueError, OSError, UnicodeError) as error:

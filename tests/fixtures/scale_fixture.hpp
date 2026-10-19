@@ -8,7 +8,7 @@
 namespace world_explorer {
 
 inline constexpr std::string_view K_SCALE_FIXTURE_SHA256 {
-    "589336d9a958d9870936b6707857e0407fd8bf0643e3d822b5c1416080ae64f8"};
+    "589336d9a958d9870936b6707857e0407fd8bf0643e3d822b5c1416080ae64f8" };
 inline constexpr std::size_t K_SCALE_FIXTURE_SPLATS { 2000000uz };
 inline constexpr std::size_t K_SCALE_FIXTURE_CONTRIBUTORS { 1000000uz };
 inline constexpr std::size_t K_SCALE_FIXTURE_REFERENCES { 1561248uz };
@@ -71,7 +71,7 @@ inline CameraView scale_fixture_camera(bool reverse = false) {
     camera.m_near_plane = 1;
     camera.m_far_plane = 32;
     camera.m_calibration = CalibratedProjection {
-        {1536, 1536, 959.5, 539.5}, K_SCALE_FIXTURE_WIDTH, K_SCALE_FIXTURE_HEIGHT};
+        { 1536, 1536, 959.5, 539.5 }, K_SCALE_FIXTURE_WIDTH, K_SCALE_FIXTURE_HEIGHT };
     return camera;
 }
 

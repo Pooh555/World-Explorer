@@ -1,10 +1,10 @@
 #include "../gpu/rebasing_fixture.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+
 #include <bit>
 #include <cstdint>
 #include <limits>
-
-#include <catch2/catch_test_macros.hpp>
 
 using namespace world_explorer;
 
@@ -12,7 +12,7 @@ TEST_CASE("synthetic floating origin preserves local float payload after joint w
     const auto K_BASELINE = rebasing_fixture({});
     REQUIRE(K_BASELINE);
     REQUIRE(validate_scene(**K_BASELINE));
-    for (const auto K_NAME : {"zero", "positive", "negative"}) {
+    for (const auto K_NAME : { "zero", "positive", "negative" }) {
         const auto K_OFFSET = rebasing_offset(K_NAME);
         REQUIRE(K_OFFSET);
         const auto K_TRANSLATED = rebasing_fixture(*K_OFFSET);
@@ -31,14 +31,15 @@ TEST_CASE("synthetic floating origin preserves local float payload after joint w
                 const auto K_ACTUAL =
                     transform_point(shifted->m_world_from_chunk, K_POINT) - *K_CAMERA;
                 REQUIRE(K_ACTUAL == K_EXPECTED);
-                for (auto pair : {std::pair { K_ACTUAL.m_x, K_EXPECTED.m_x },
-                                  {K_ACTUAL.m_y, K_EXPECTED.m_y},
-                                  {K_ACTUAL.m_z, K_EXPECTED.m_z}})
+                for (auto pair : { std::pair { K_ACTUAL.m_x, K_EXPECTED.m_x },
+                                  { K_ACTUAL.m_y, K_EXPECTED.m_y },
+                                  { K_ACTUAL.m_z, K_EXPECTED.m_z } }) {
                     REQUIRE(std::bit_cast<std::uint32_t>(static_cast<float>(pair.first)) ==
                             std::bit_cast<std::uint32_t>(static_cast<float>(pair.second)));
+                }
             }
         }
-        const auto K_MOVED = translated_diagnostic_position({-.25, .125, 6.5}, *K_OFFSET);
+        const auto K_MOVED = translated_diagnostic_position({ -.25, .125, 6.5 }, *K_OFFSET);
         REQUIRE(K_MOVED);
         REQUIRE(*K_MOVED - *K_CAMERA == Vec3d { -.25, .125, .5 });
         if (K_NAME != std::string_view { "zero" }) {
@@ -50,13 +51,14 @@ TEST_CASE("synthetic floating origin preserves local float payload after joint w
 
 TEST_CASE("synthetic floating origin rejects nonfinite and precision losing fixture translations") {
     REQUIRE(!rebasing_offset("unknown"));
-    for (const auto K_INVALID : {std::numeric_limits<double>::infinity(),
+    for (const auto K_INVALID : { std::numeric_limits<double>::infinity(),
                                  std::numeric_limits<double>::quiet_NaN(),
-                                 std::numeric_limits<double>::max()}) {
-        REQUIRE(!rebasing_fixture({K_INVALID, 0, 0}));
-        if (!std::isfinite(K_INVALID))
-            REQUIRE(!translated_diagnostic_position({K_INVALID, 0, 0}, {}));
+                                 std::numeric_limits<double>::max() }) {
+        REQUIRE(!rebasing_fixture({ K_INVALID, 0, 0 }));
+        if (!std::isfinite(K_INVALID)) {
+            REQUIRE(!translated_diagnostic_position({ K_INVALID, 0, 0 }, {}));
+        }
     }
-    REQUIRE(!rebasing_fixture({0x1p60, 0, 0}));
-    REQUIRE(!translated_diagnostic_position({.25, 0, 0}, {0x1p60, 0, 0}));
+    REQUIRE(!rebasing_fixture({ 0x1p60, 0, 0 }));
+    REQUIRE(!translated_diagnostic_position({ .25, 0, 0 }, { 0x1p60, 0, 0 }));
 }

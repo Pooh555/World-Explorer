@@ -4,6 +4,10 @@
 #include "world_explorer/render_core/update_sink.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
+#include <vulkan/vulkan.h>
+
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -14,10 +18,6 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
-
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_vulkan.h>
-#include <vulkan/vulkan.h>
 
 namespace world_explorer {
 namespace detail {
@@ -35,14 +35,17 @@ class vulkan_error : public std::runtime_error {
                              std::to_string(status) + ")"),
           status_(status) { }
 
-    VkResult status() const noexcept { return status_; }
+    VkResult status() const noexcept {
+        return status_;
+    }
 
   private:
     VkResult status_;
 };
 
 inline void check(VkResult status, const char* operation) {
-    if (status != VK_SUCCESS) throw vulkan_error(status, operation);
+    if (status != VK_SUCCESS)
+        throw vulkan_error(status, operation);
 }
 
 struct gpu_splat {
@@ -69,10 +72,10 @@ struct push_parameters {
 static_assert(sizeof(push_parameters) == 128);
 
 inline Quatd multiply(Quatd a, Quatd b) {
-    return {a.m_w * b.m_w - a.m_x * b.m_x - a.m_y * b.m_y - a.m_z * b.m_z,
+    return { a.m_w * b.m_w - a.m_x * b.m_x - a.m_y * b.m_y - a.m_z * b.m_z,
             a.m_w * b.m_x + a.m_x * b.m_w + a.m_y * b.m_z - a.m_z * b.m_y,
             a.m_w * b.m_y - a.m_x * b.m_z + a.m_y * b.m_w + a.m_z * b.m_x,
-            a.m_w * b.m_z + a.m_x * b.m_y - a.m_y * b.m_x + a.m_z * b.m_w};
+            a.m_w * b.m_z + a.m_x * b.m_y - a.m_y * b.m_x + a.m_z * b.m_w };
 }
 
 inline std::array<float, 4> floats(Vec3d v) {
@@ -80,10 +83,10 @@ inline std::array<float, 4> floats(Vec3d v) {
 }
 
 inline std::array<float, 4> floats(Quatd q) {
-    return {static_cast<float>(q.m_w),
+    return { static_cast<float>(q.m_w),
             static_cast<float>(q.m_x),
             static_cast<float>(q.m_y),
-            static_cast<float>(q.m_z)};
+            static_cast<float>(q.m_z) };
 }
 
 inline void memory_barrier(VkCommandBuffer command,

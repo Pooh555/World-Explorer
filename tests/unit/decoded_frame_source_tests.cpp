@@ -1,13 +1,13 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
 
-#include <array>
-#include <fstream>
-#include <thread>
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <nlohmann/json.hpp>
+
+#include <array>
+#include <fstream>
+#include <thread>
 
 using namespace world_explorer;
 
@@ -30,9 +30,9 @@ struct DecodedFixture {
             137, 80,  78,  71,  13,  10,  26,  10, 0,  0,  0,  13,  73, 72,  68,  82, 0,  0,
             0,   2,   0,   0,   0,   1,   8,   2,  0,  0,  0,  123, 64, 232, 221, 0,  0,  0,
             15,  73,  68,  65,  84,  120, 156, 99, 16, 84, 50, 118, 9,  77,  3,   0,  3,  191,
-            1,   102, 125, 140, 226, 99,  0,   0,  0,  0,  73, 69,  78, 68,  174, 66, 96, 130};
+            1,   102, 125, 140, 226, 99,  0,   0,  0,  0,  73, 69,  78, 68,  174, 66, 96, 130 };
         const auto K_DIGEST = sha256(std::as_bytes(std::span(K_PNG)));
-        for (const auto* name : {"first.png", "second.png"}) {
+        for (const auto* name : { "first.png", "second.png" }) {
             std::ofstream image(m_stage / "images" / name, std::ios::binary);
             image.write(reinterpret_cast<const char*>(K_PNG.data()),
                         static_cast<std::streamsize>(K_PNG.size()));
@@ -43,16 +43,16 @@ struct DecodedFixture {
                       { "source_frame_count", 11 },
                       { "frames", nlohmann::json::array() } };
         std::size_t count {};
-        for (const auto K_INDEX : {0, 10}) {
+        for (const auto K_INDEX : { 0, 10 }) {
             m_metadata["frames"].push_back(
-                {{"source_index", K_INDEX},
-                 {"frame_id", m_source_digest.substr(0, 16) + "-" + std::to_string(K_INDEX)},
-                 {"calibration_id", m_source_digest.substr(0, 16) + "-lens-0"},
-                 {"pts", K_INDEX},
-                 {"time_base", "1/30"},
-                 {"capture_time_ns", K_INDEX == 0 ? 0 : 333333333},
-                 {"file", count++ == 0 ? "images/first.png" : "images/second.png"},
-                 {"sha256", K_DIGEST}});
+                { { "source_index", K_INDEX },
+                 { "frame_id", m_source_digest.substr(0, 16) + "-" + std::to_string(K_INDEX) },
+                 { "calibration_id", m_source_digest.substr(0, 16) + "-lens-0" },
+                 { "pts", K_INDEX },
+                 { "time_base", "1/30" },
+                 { "capture_time_ns", K_INDEX == 0 ? 0 : 333333333 },
+                 { "file", count++ == 0 ? "images/first.png" : "images/second.png" },
+                 { "sha256", K_DIGEST } });
         }
         publish();
         write_decoder();
@@ -78,24 +78,24 @@ struct DecodedFixture {
     void publish() const {
         std::ofstream(m_stage / "result.json") << m_metadata.dump();
         auto inventory = nlohmann::json::array();
-        for (const auto* name : {"result.json", "images/first.png", "images/second.png"}) {
+        for (const auto* name : { "result.json", "images/first.png", "images/second.png" }) {
             const auto K_PATH = m_stage / name;
-            inventory.push_back({{"path", name},
-                                 {"bytes", std::filesystem::file_size(K_PATH)},
-                                 {"sha256", *sha256_file(K_PATH, 4096)}});
+            inventory.push_back({ { "path", name },
+                                 { "bytes", std::filesystem::file_size(K_PATH) },
+                                 { "sha256", *sha256_file(K_PATH, 4096) } });
         }
         std::ofstream(m_stage / "completion.json") << nlohmann::json {
-            {"schema_version", 1},
-            {"status", "complete"},
-            {"key", m_key},
-            {"files", inventory}}.dump();
+            { "schema_version", 1 },
+            { "status", "complete" },
+            { "key", m_key },
+            { "files", inventory } }.dump();
     }
 
     DecodedSourceConfig config(const std::string& mode = "good") const {
-        return {.m_stage_directory = m_stage,
+        return { .m_stage_directory = m_stage,
                 .m_source_sha256 = m_source_digest,
                 .m_decoder_arguments = { WE_TEST_PYTHON, m_decoder.string(), mode },
-                .m_max_image_bytes = { 6 }};
+                .m_max_image_bytes = { 6 } };
     }
 };
 
@@ -121,9 +121,9 @@ TEST_CASE("decoded replay preserves leased RGB pixels stable IDs timestamps and 
         nlohmann::json completion;
         std::ifstream(fixture.m_stage / "completion.json") >> completion;
         const auto K_PATH = fixture.m_stage / K_FILENAME;
-        completion["files"].push_back({{"path", K_NAME},
-                                       {"bytes", std::filesystem::file_size(K_PATH)},
-                                       {"sha256", *sha256_file(K_PATH, 4096)}});
+        completion["files"].push_back({ { "path", K_NAME },
+                                       { "bytes", std::filesystem::file_size(K_PATH) },
+                                       { "sha256", *sha256_file(K_PATH, 4096) } });
         std::ofstream(fixture.m_stage / "completion.json") << completion.dump();
     }
     auto source = open_decoded_frame_source(fixture.config());
@@ -155,12 +155,12 @@ TEST_CASE("decoded replay preserves leased RGB pixels stable IDs timestamps and 
     CHECK_FALSE(K_FIRST.m_measured_depth);
     CHECK(K_FIRST.m_imu_samples.empty());
     REQUIRE(std::holds_alternative<SourceEnd>(*(*source)->read_next({})));
-    REQUIRE((*source)->seek({1, 1, 3}));
+    REQUIRE((*source)->seek({ 1, 1, 3 }));
     const auto K_SOUGHT_RESET = (*source)->read_next({});
     REQUIRE(K_SOUGHT_RESET);
     CHECK(std::get<SourceReset>(*K_SOUGHT_RESET).m_epoch.m_value == 1);
     CHECK(next_frame(**source).m_id == K_SECOND.m_id);
-    REQUIRE((*source)->seek({40, 1, 30}));
+    REQUIRE((*source)->seek({ 40, 1, 30 }));
     REQUIRE(std::holds_alternative<SourceReset>(*(*source)->read_next({})));
     REQUIRE(std::holds_alternative<SourceEnd>(*(*source)->read_next({})));
     auto reopened = open_decoded_frame_source(fixture.config());
@@ -168,12 +168,12 @@ TEST_CASE("decoded replay preserves leased RGB pixels stable IDs timestamps and 
     REQUIRE((*reopened)->read_next({}));
     CHECK(next_frame(**reopened).m_id == K_FIRST.m_id);
     source->reset();
-    CHECK(*K_FIRST.m_pixels.m_bytes == std::vector<std::byte> {std::byte { 17 },
+    CHECK(*K_FIRST.m_pixels.m_bytes == std::vector<std::byte> { std::byte { 17 },
                                                                std::byte { 34 },
                                                                std::byte { 51 },
                                                                std::byte { 68 },
                                                                std::byte { 85 },
-                                                               std::byte { 102 }});
+                                                               std::byte { 102 } });
 }
 
 TEST_CASE(
@@ -226,7 +226,7 @@ TEST_CASE("decoded replay preserves position on cancellation corruption and deco
     REQUIRE_FALSE(K_CANCELLED);
     CHECK(K_CANCELLED.error().m_code == ErrorCode::CANCELLED);
     REQUIRE(std::holds_alternative<SourceReset>(*(*source)->read_next({})));
-    CHECK_FALSE((*source)->seek({1, 0, 1}));
+    CHECK_FALSE((*source)->seek({ 1, 0, 1 }));
     SECTION("changed image") {
         std::ofstream(fixture.m_stage / "images/first.png", std::ios::binary) << "changed";
         CHECK_FALSE((*source)->read_next({}));
@@ -255,9 +255,12 @@ TEST_CASE("decoded replay bounds decoder output and cancels a blocked image read
     std::stop_source cancellation;
     std::jthread stopper([&](const std::stop_token& stop) {
         if (std::string_view(K_MODE) == "wait") {
-            for (int index { 0 }; index < 10 && !stop.stop_requested(); ++index)
+            for (int index { 0 }; index < 10 && !stop.stop_requested(); ++index) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            if (!stop.stop_requested()) cancellation.request_stop();
+            }
+            if (!stop.stop_requested()) {
+                cancellation.request_stop();
+            }
         }
     });
     const auto K_START = std::chrono::steady_clock::now();

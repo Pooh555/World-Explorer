@@ -21,6 +21,13 @@ from evaluate_image_pairs import (
 )
 
 
+__all__ = [
+    "comparison_inputs",
+    "main",
+    "ppm_bytes",
+]
+
+
 def ppm_bytes(path, digest, width, height):
     data = bounded_read(path)
     header = f"P6\n{width} {height}\n255\n".encode()

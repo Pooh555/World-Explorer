@@ -10,9 +10,13 @@ using namespace world_explorer;
 namespace {
 
 std::string row(const viewer::request_summary& summary, const std::string& label) {
-    for (const auto* rows : {&summary.rows, &summary.advanced})
-        for (const auto& field : *rows)
-            if (field.label == label) return field.value;
+    for (const auto* rows : { &summary.rows, &summary.advanced }) {
+        for (const auto& field : *rows) {
+            if (field.label == label) {
+                return field.value;
+            }
+        }
+    }
     return {};
 }
 
@@ -66,8 +70,9 @@ TEST_CASE("review distinguishes retained compatibility limits from new optimizer
         CHECK(row(*K_SUMMARY, "Fit Python") == WE_TEST_PYTHON);
         CHECK(row(*K_SUMMARY, "Appearance action").find("skipped") == std::string::npos);
     }
-    if (std::string_view(K_ACTION) == "resume")
+    if (std::string_view(K_ACTION) == "resume") {
         CHECK(row(*K_SUMMARY, "Checkpoint") == test::path_utf8(fixture.root / "checkpoint.pt"));
+    }
     CHECK_FALSE(std::filesystem::exists(fixture.job.m_scene_output));
     CHECK_FALSE(std::filesystem::exists(fixture.root / "new fit"));
 }
@@ -81,7 +86,9 @@ TEST_CASE("review shows fresh frame pose storage and resource choices without ru
     auto config = nlohmann::json::parse(std::ifstream(K_REQUEST));
     config["pose_action"] = "solve";
     REQUIRE(fixture.job.m_fresh_poses);
-    if (!fixture.job.m_fresh_poses) return;
+    if (!fixture.job.m_fresh_poses) {
+        return;
+    }
     const auto& pose = *fixture.job.m_fresh_poses;
     config["pose_worker"] = { { "worker_script", test::path_utf8(pose.m_worker.m_script) },
                              { "worker_python", WE_TEST_PYTHON },
@@ -90,7 +97,9 @@ TEST_CASE("review shows fresh frame pose storage and resource choices without ru
                              { "cpu_threads", 2 },
                              { "journal_bytes", 67108864 } };
     REQUIRE(fixture.job.m_automatic_decode);
-    if (!fixture.job.m_automatic_decode) return;
+    if (!fixture.job.m_automatic_decode) {
+        return;
+    }
     const auto& decode = *fixture.job.m_automatic_decode;
     config["decode"] = { { "action", "decode" },
                         { "job_directory", test::path_utf8(decode.m_job_directory) },
@@ -293,7 +302,9 @@ TEST_CASE("automatic inspection review checks storage while leaving metadata pen
     auto config = nlohmann::json::parse(std::ifstream(K_REQUEST));
     REQUIRE(fixture.job.m_automatic_decode);
     REQUIRE(fixture.job.m_fresh_poses);
-    if (!fixture.job.m_automatic_decode || !fixture.job.m_fresh_poses) return;
+    if (!fixture.job.m_automatic_decode || !fixture.job.m_fresh_poses) {
+        return;
+    }
     const auto K_INSPECT_DIRECTORY = fixture.root / "new inspection";
     config["inspection"] = { { "action", "inspect" },
                             { "job_directory", test::path_utf8(K_INSPECT_DIRECTORY) },

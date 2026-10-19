@@ -7,6 +7,13 @@ import json
 from pathlib import Path
 import struct
 
+__all__ = [
+    "HEADER",
+    "ROOT",
+    "main",
+    "record",
+]
+
 ROOT = Path(__file__).resolve().parents[1]
 HEADER = bytes((4, 8, 8, 0))
 

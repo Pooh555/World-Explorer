@@ -3,28 +3,30 @@
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
 
-#include <fstream>
-#include <iostream>
-
 #include <SDL3/SDL.h>
 #include <nlohmann/json.hpp>
+
+#include <fstream>
+#include <iostream>
 
 using namespace world_explorer;
 
 namespace {
 
 void require(bool condition, const std::string& message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
 }
 
 }  // namespace
 int main(int argc, char** argv) try {
     std::filesystem::path output;
     bool owned = false;
-    nlohmann::json report {{"scope",
+    nlohmann::json report { { "scope",
                             "synthetic 250k native load/readback only; no performance or "
-                            "reconstruction certification"},
-                           {"passed", false}};
+                            "reconstruction certification" },
+                           { "passed", false } };
     try {
         require(argc == 3, "usage: we_gpu_portable_fixture FIXED_BUNDLE NEW_DIRECTORY");
         output = argv[2];
@@ -42,7 +44,9 @@ int main(int argc, char** argv) try {
         require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
 
         struct SdlGuard {
-            ~SdlGuard() { SDL_Quit(); }
+            ~SdlGuard() {
+                SDL_Quit();
+            }
         } sdl;
 
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -65,7 +69,7 @@ int main(int argc, char** argv) try {
         report["instance_version"] = capabilities.m_instance_version;
         report["device_version"] = capabilities.m_device_version;
         report["portability_subset"] = capabilities.m_portability_subset;
-        auto batch = make_snapshot_batch(*K_SCENE, {1}).value();
+        auto batch = make_snapshot_batch(*K_SCENE, { 1 }).value();
         const auto K_ADMITTED = renderer->updates().enqueue(batch);
         require(K_ADMITTED.has_value(), K_ADMITTED ? "" : K_ADMITTED.error().m_message);
         const auto K_SCREENSHOT = output / "fixture.ppm";
@@ -117,11 +121,13 @@ int main(int argc, char** argv) try {
                 "invalid readback byte count");
         constexpr std::array<int, 3> K_BACKGROUND { 11, 13, 16 };
         std::size_t foreground = 0;
-        for (std::size_t pixel { 0uz }; pixel < pixels.size(); pixel += 3uz)
+        for (std::size_t pixel { 0uz }; pixel < pixels.size(); pixel += 3uz) {
             if (std::abs(static_cast<int>(pixels[pixel]) - K_BACKGROUND[0]) > 8 ||
                 std::abs(static_cast<int>(pixels[pixel + 1]) - K_BACKGROUND[1]) > 8 ||
-                std::abs(static_cast<int>(pixels[pixel + 2]) - K_BACKGROUND[2]) > 8)
+                std::abs(static_cast<int>(pixels[pixel + 2]) - K_BACKGROUND[2]) > 8) {
                 ++foreground;
+            }
+        }
         // An off-screen/blank render cannot certify that the fixed scene opened.
         require(foreground > std::size_t { K_VIEWER_FIXTURE_WIDTH } * K_VIEWER_FIXTURE_HEIGHT / 100,
                 "fixture readback lacks foreground");
@@ -136,7 +142,9 @@ int main(int argc, char** argv) try {
         std::ofstream stream(output / "native.json", std::ios::binary);
         stream << report.dump(2) << '\n';
         stream.close();
-        if (!stream.good()) return 2;
+        if (!stream.good()) {
+            return 2;
+        }
     }
     std::cout << report.dump() << '\n';
     return report.at("passed").get<bool>() ? 0 : 2;

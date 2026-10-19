@@ -7,6 +7,15 @@ import re
 import struct
 import sys
 
+__all__ = [
+    "MAX_BYTES",
+    "MAX_PIXELS",
+    "encode_depth",
+    "read_depth",
+    "read_map",
+    "read_support",
+]
+
 MAX_BYTES = 256 * 1024**2
 MAX_PIXELS = 4096**2
 

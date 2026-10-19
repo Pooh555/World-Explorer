@@ -1,17 +1,19 @@
 #include "world_explorer/render_vulkan/renderer.hpp"
 
-#include <fstream>
-#include <iostream>
-
 #include <SDL3/SDL.h>
 #include <nlohmann/json.hpp>
+
+#include <fstream>
+#include <iostream>
 
 using namespace world_explorer;
 
 namespace {
 
 void require(bool condition, const std::string& message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
 }
 
 SceneSnapshot fixture(std::size_t count, SceneRevisionId revision) {
@@ -57,7 +59,9 @@ int main(int argc, char** argv) try {
     require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
 
     struct SdlGuard {
-        ~SdlGuard() { SDL_Quit(); }
+        ~SdlGuard() {
+            SDL_Quit();
+        }
     } sdl;
 
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -67,9 +71,9 @@ int main(int argc, char** argv) try {
                          SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
         SDL_DestroyWindow);
     require(window != nullptr, SDL_GetError());
-    nlohmann::json report {{"scope", "synthetic current-density admission and cached/fresh parity"},
-                           {"runs", nlohmann::json::array()}};
-    for (const bool K_REUSE : {false, true}) {
+    nlohmann::json report { { "scope", "synthetic current-density admission and cached/fresh parity" },
+                           { "runs", nlohmann::json::array() } };
+    for (const bool K_REUSE : { false, true }) {
         require(SDL_SetWindowSize(window.get(), 512, 512), SDL_GetError());
         require(SDL_SyncWindow(window.get()), SDL_GetError());
         SDL_PumpEvents();
@@ -90,7 +94,7 @@ int main(int argc, char** argv) try {
         std::uint64_t revision = 0;
         auto replace = [&](std::size_t count) {
             ++revision;
-            auto batch = make_snapshot_batch(fixture(count, {revision}), {revision}).value();
+            auto batch = make_snapshot_batch(fixture(count, { revision }), { revision }).value();
             const auto K_ADMITTED = renderer->updates().enqueue(batch);
             require(K_ADMITTED.has_value(), K_ADMITTED ? "" : K_ADMITTED.error().m_message);
         };
@@ -98,8 +102,9 @@ int main(int argc, char** argv) try {
             SDL_PumpEvents();
             const auto K_PATH =
                 K_OUTPUT / (std::string(K_REUSE ? "cached-" : "fresh-") + phase + ".ppm");
-            if (expected.m_capture)
+            if (expected.m_capture) {
                 require(renderer->request_screenshot(K_PATH).has_value(), "capture unavailable");
+            }
             const auto K_DRAWN = renderer->draw(camera, expected.m_appearance);
             require(K_DRAWN.has_value(), K_DRAWN ? "" : K_DRAWN.error().m_message);
             require(renderer->wait_for_idle().has_value(), "GPU completion failed");
@@ -116,7 +121,9 @@ int main(int argc, char** argv) try {
                     "tile coverage/reference count changed");
             bool found = false;
             for (const auto& timing : K_STATS.m_completed_timings) {
-                if (timing.m_sequence != K_STATS.m_submitted_frames) continue;
+                if (timing.m_sequence != K_STATS.m_submitted_frames) {
+                    continue;
+                }
                 found = true;
                 require(timing.m_count_submissions == expected.m_counts,
                         std::string(phase) + " count submissions " +
@@ -126,46 +133,47 @@ int main(int argc, char** argv) try {
                             std::to_string(timing.m_tile_batches));
                 require(timing.m_reused_tile_regions == expected.m_reused,
                         "stale/missing tile candidates");
-                report["runs"].push_back({{"reuse", K_REUSE},
-                                          {"phase", phase},
-                                          {"sequence", timing.m_sequence},
-                                          {"counts", timing.m_count_submissions},
-                                          {"batches", timing.m_tile_batches},
-                                          {"reused", timing.m_reused_tile_regions},
-                                          {"references", K_STATS.m_tile_reference_count},
-                                          {"splats", expected.m_splats},
-                                          {"width", K_STATS.m_framebuffer_width},
-                                          {"height", K_STATS.m_framebuffer_height},
-                                          {"allocated_bytes", K_STATS.m_allocated_bytes}});
+                report["runs"].push_back({ { "reuse", K_REUSE },
+                                          { "phase", phase },
+                                          { "sequence", timing.m_sequence },
+                                          { "counts", timing.m_count_submissions },
+                                          { "batches", timing.m_tile_batches },
+                                          { "reused", timing.m_reused_tile_regions },
+                                          { "references", K_STATS.m_tile_reference_count },
+                                          { "splats", expected.m_splats },
+                                          { "width", K_STATS.m_framebuffer_width },
+                                          { "height", K_STATS.m_framebuffer_height },
+                                          { "allocated_bytes", K_STATS.m_allocated_bytes } });
             }
             require(found, "completed frame sample absent");
-            if (expected.m_capture && K_REUSE)
+            if (expected.m_capture && K_REUSE) {
                 require(bytes(K_PATH) == bytes(K_OUTPUT / (std::string("fresh-") + phase + ".ppm")),
                         "cached partition changed pixels");
+            }
         };
         replace(1);
-        draw("sparse-cold", {1, 1, 0, 1});
-        draw("sparse-warm", {1, 1, K_REUSE ? 1U : 0U, 1, true});
+        draw("sparse-cold", { 1, 1, 0, 1 });
+        draw("sparse-warm", { 1, 1, K_REUSE ? 1U : 0U, 1, true });
         replace(8);
-        draw("dense-cold", {15, 8, K_REUSE ? 1U : 0U, 8});
-        draw("dense-warm", {K_REUSE ? 8U : 15U, 8, K_REUSE ? 8U : 0U, 8, true});
+        draw("dense-cold", { 15, 8, K_REUSE ? 1U : 0U, 8 });
+        draw("dense-warm", { K_REUSE ? 8U : 15U, 8, K_REUSE ? 8U : 0U, 8, true });
         // A camera move changes current projection, while retained rectangles still need
         // recounting.
         camera.m_position.m_z = 3.5;
         replace(32);
-        draw("denser-cold", {K_REUSE ? 56U : 63U, 32, K_REUSE ? 8U : 0U, 32});
-        draw("denser-warm", {K_REUSE ? 32U : 63U, 32, K_REUSE ? 32U : 0U, 32, true});
-        draw("paused", {0, 1, 0, 32, false, false});
-        draw("resumed", {K_REUSE ? 32U : 63U, 32, K_REUSE ? 32U : 0U, 32});
+        draw("denser-cold", { K_REUSE ? 56U : 63U, 32, K_REUSE ? 8U : 0U, 32 });
+        draw("denser-warm", { K_REUSE ? 32U : 63U, 32, K_REUSE ? 32U : 0U, 32, true });
+        draw("paused", { 0, 1, 0, 32, false, false });
+        draw("resumed", { K_REUSE ? 32U : 63U, 32, K_REUSE ? 32U : 0U, 32 });
         replace(1);
-        draw("sparse-again", {K_REUSE ? 32U : 1U, K_REUSE ? 32U : 1U, K_REUSE ? 32U : 0U, 1, true});
+        draw("sparse-again", { K_REUSE ? 32U : 1U, K_REUSE ? 32U : 1U, K_REUSE ? 32U : 0U, 1, true });
         replace(0);
-        draw("empty", {0, 1, 0, 0});
+        draw("empty", { 0, 1, 0, 0 });
         replace(1);
         require(SDL_SetWindowSize(window.get(), 640, 512), SDL_GetError());
         require(SDL_SyncWindow(window.get()), SDL_GetError());
-        draw("resize-cold", {3, 2, 0, 1});
-        draw("resize-warm", {K_REUSE ? 2U : 3U, 2, K_REUSE ? 2U : 0U, 1, true});
+        draw("resize-cold", { 3, 2, 0, 1 });
+        draw("resize-warm", { K_REUSE ? 2U : 3U, 2, K_REUSE ? 2U : 0U, 1, true });
         replace(2048);
         const auto K_OVERFLOW = renderer->draw(camera);
         require(!K_OVERFLOW &&

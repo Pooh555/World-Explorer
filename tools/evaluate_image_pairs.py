@@ -29,6 +29,31 @@ from check_metric_parity import (
     verify_manifest,
 )
 
+__all__ = [
+    "DOMAIN",
+    "MAX_ENCODED_BYTES",
+    "MAX_EVALUATION_PIXELS",
+    "MAX_PAIRS",
+    "MAX_SOURCE_PIXELS",
+    "MAX_TOTAL_ENCODED_BYTES",
+    "SCOPE",
+    "aggregate",
+    "checked_fit",
+    "decode_pair",
+    "digest_string",
+    "dimensions",
+    "evaluate",
+    "integer",
+    "main",
+    "png_dimensions",
+    "psnr_from_mse",
+    "read_image_bytes",
+    "read_json",
+    "relative_file",
+    "validate_request",
+    "verify_images",
+]
+
 MAX_ENCODED_BYTES = 128 * 1024**2
 MAX_SOURCE_PIXELS = 16 * 1024**2
 MAX_EVALUATION_PIXELS = 4 * 1024**2

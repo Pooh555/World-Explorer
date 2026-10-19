@@ -1,9 +1,9 @@
-#include <array>
-#include <cstdio>
-
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+
+#include <array>
+#include <cstdio>
 
 // Test-only window manager for an isolated rootful Xwayland server. It uses
 // actual map/unmap requests and EWMH notifications, never SDL flag injection.
@@ -13,7 +13,8 @@ int main(int argc, char** argv) {
         return 2;
     }
     auto* display = XOpenDisplay(argv[1]);
-    if (!display) return 2;
+    if (!display)
+        return 2;
     const auto root = DefaultRootWindow(display);
     // Fail with BadAccess before touching properties if another WM owns this
     // display. The runner supplies a separately spawned display explicitly.
@@ -44,7 +45,7 @@ int main(int argc, char** argv) {
                     1);
     const auto name = XInternAtom(display, "_NET_WM_NAME", False);
     const auto utf8 = XInternAtom(display, "UTF8_STRING", False);
-    constexpr unsigned char K_MANAGER_NAME[] {"World Explorer isolated verification WM"};
+    constexpr unsigned char K_MANAGER_NAME[] { "World Explorer isolated verification WM" };
     XChangeProperty(display,
                     manager,
                     name,
@@ -84,13 +85,13 @@ int main(int argc, char** argv) {
             std::puts("mapped");
         } else if (event.type == ConfigureRequest) {
             const auto& request = event.xconfigurerequest;
-            XWindowChanges changes {request.x,
+            XWindowChanges changes { request.x,
                                     request.y,
                                     request.width,
                                     request.height,
                                     request.border_width,
                                     request.above,
-                                    request.detail};
+                                    request.detail };
             XConfigureWindow(
                 display, request.window, static_cast<unsigned>(request.value_mask), &changes);
         } else if (event.type == ClientMessage && event.xclient.message_type == change_state &&

@@ -10,6 +10,15 @@ import re
 import sys
 from urllib.parse import unquote, urlsplit
 
+__all__ = [
+    "FENCE",
+    "LINK",
+    "REFERENCE",
+    "ROOT",
+    "main",
+    "targets",
+]
+
 ROOT = Path(__file__).resolve().parents[1]
 LINK = re.compile(r"!?\[[^\]\n]*\]\((<[^>]+>|[^\s)]+)(?:\s+\"[^\"]*\")?\)")
 REFERENCE = re.compile(r"^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)")

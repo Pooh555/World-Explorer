@@ -2,10 +2,10 @@
 
 #include "world_explorer/application/video_preflight.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <chrono>
 #include <fstream>
-
-#include <nlohmann/json.hpp>
 
 namespace world_explorer::test {
 

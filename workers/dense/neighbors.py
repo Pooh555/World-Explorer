@@ -15,6 +15,15 @@ from resize_inputs import transformed, validate_resize
 from resized_model import adapt_model, neighbor_rows
 from source_selection import DEFAULT_POLICY, plan_sources, report_digest
 
+__all__ = [
+    "CONFIDENCE",
+    "main",
+    "prepare",
+    "run",
+    "validate_recipe",
+    "worker_digest",
+]
+
 CONFIDENCE = "consistent_source_fraction; not probability; sigma unavailable"
 
 

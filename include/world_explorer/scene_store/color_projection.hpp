@@ -33,7 +33,9 @@ class ColorProjectionView {
                                               const std::stop_token& stop = {});
     ColorProjection project_color(Vec3d world_point, Vec3d world_normal) const;
 
-    const DepthAssetMetadata& metadata() const noexcept { return m_depth.m_metadata; }
+    const DepthAssetMetadata& metadata() const noexcept {
+        return m_depth.m_metadata;
+    }
 
   private:
     ColorProjectionView() = default;

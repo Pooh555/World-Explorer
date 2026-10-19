@@ -24,6 +24,22 @@ from cached_sources import checked_path
 from contract import load_request
 from pilot import digest, parse, publish, read_pinned
 
+__all__ = [
+    "MAX_ASSET",
+    "MAX_DOCUMENT",
+    "ROOT",
+    "STOPPED",
+    "WORKER",
+    "cancelled",
+    "check_overlap",
+    "checked_digest",
+    "checked_stage",
+    "execute",
+    "main",
+    "run_worker",
+    "stop",
+]
+
 MAX_DOCUMENT = 1024**2
 MAX_ASSET = 256 * 1024**2
 WORKER = ROOT / "workers" / "fusion" / "run.py"

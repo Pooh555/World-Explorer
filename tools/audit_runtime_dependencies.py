@@ -20,6 +20,26 @@ import time
 from audit_worker_environment import file_digest, publish_receipt
 from check_dependency_manifest import load_json, read_file, receipt_packages
 
+__all__ = [
+    "CommandRunner",
+    "ENVIRONMENT",
+    "MAX_COMMANDS",
+    "MAX_NODES",
+    "MAX_NOTICES",
+    "MAX_NOTICE_BYTES",
+    "MAX_OUTPUT",
+    "MAX_ROOTS",
+    "MAX_TOTAL_BYTES",
+    "capture",
+    "label",
+    "main",
+    "parse_elf",
+    "parse_loader",
+    "resolve_edges",
+    "selected_path",
+    "worker_owners",
+]
+
 MAX_ROOTS = 32
 MAX_NODES = 512
 MAX_COMMANDS = 2048
@@ -137,7 +157,7 @@ def resolve_edges(root_key, resolved, nodes):
     return aliases, edges, unresolved
 
 
-class commands:
+class CommandRunner:
     def __init__(self):
         self.receipts = []
 
@@ -226,7 +246,7 @@ def capture(root, selection, runner=None):
         raise ValueError("Invalid runtime selection schema/root count")
     if len({entry["id"] for entry in selection["roots"]}) != len(selection["roots"]):
         raise ValueError("Duplicate runtime root ID")
-    runner = runner or commands()
+    runner = runner or CommandRunner()
     tools = {
         name: selected_path(selection[name], root)
         for name in ("loader", "readelf", "package_tool")

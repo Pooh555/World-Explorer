@@ -39,12 +39,14 @@ inline Result<double> timestamp_duration_ms(std::uint64_t begin,
                                             std::uint64_t end,
                                             std::uint32_t valid_bits,
                                             double period_ns) {
-    if (valid_bits == 0 || valid_bits > 64 || !std::isfinite(period_ns) || period_ns <= 0)
+    if (valid_bits == 0 || valid_bits > 64 || !std::isfinite(period_ns) || period_ns <= 0) {
         return fail(ErrorCode::INVALID_ARGUMENT, "invalid GPU timestamp scale or bit width");
+    }
     const auto K_MASK = std::numeric_limits<std::uint64_t>::max() >> (64 - valid_bits);
     const auto K_DURATION = static_cast<double>((end - begin) & K_MASK) * period_ns / 1000000;
-    if (!std::isfinite(K_DURATION))
+    if (!std::isfinite(K_DURATION)) {
         return fail(ErrorCode::INVALID_ARGUMENT, "GPU timestamp duration exceeds finite range");
+    }
     return K_DURATION;
 }
 

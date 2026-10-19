@@ -20,7 +20,7 @@ from pilot import digest
     importlib.util.find_spec("numpy") and importlib.util.find_spec("PIL"),
     "Requires isolated NumPy/Pillow",
 )
-class admitted_visibility_test(unittest.TestCase):
+class AdmittedVisibilityTest(unittest.TestCase):
     def fixture(self):
         import numpy as np
         from PIL import Image

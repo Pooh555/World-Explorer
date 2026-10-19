@@ -1,9 +1,9 @@
 #include "world_explorer/scene_store/scene_store.hpp"
 
-#include <limits>
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+
+#include <limits>
 
 using namespace world_explorer;
 
@@ -21,7 +21,7 @@ std::shared_ptr<SceneChunk> valid_chunk(ChunkId id = { 1 }) {
 }
 
 SceneTransaction initial_transaction() {
-    return {{1}, {0}, {0}, {1}, {1}, {{SceneOperationKind::CREATE, {1}, valid_chunk(), {}, {}}}};
+    return { { 1 }, { 0 }, { 0 }, { 1 }, { 1 }, { { SceneOperationKind::CREATE, { 1 }, valid_chunk(), {}, {} } } };
 }
 
 }  // namespace
@@ -61,8 +61,8 @@ TEST_CASE("optical camera admission rejects nonfinite intrinsics and pixels",
     const auto K_REJECTED = project(camera, point);
     REQUIRE(!K_REJECTED);
     CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_ARGUMENT);
-    CHECK_FALSE(unproject({711, 529, 319.25, 241.75}, {K_INFINITY, 0}, 3));
-    CHECK_FALSE(unproject({711, 529, 319.25, 241.75}, {0, K_INFINITY}, 3));
+    CHECK_FALSE(unproject({ 711, 529, 319.25, 241.75 }, { K_INFINITY, 0 }, 3));
+    CHECK_FALSE(unproject({ 711, 529, 319.25, 241.75 }, { 0, K_INFINITY }, 3));
 }
 
 TEST_CASE("hostile chunk fields are rejected before scene admission", "[contracts][validation]") {
@@ -214,18 +214,19 @@ TEST_CASE("scene metadata and aggregate budgets reject hostile snapshots",
         scene.m_provenance["key"] = std::string(4097, 'x');
         break;
     case 4:
-        for (unsigned index { 0 }; index < 33; ++index)
+        for (unsigned index { 0 }; index < 33; ++index) {
             scene.m_provenance[std::to_string(index)] = "value";
+        }
         break;
     case 5:
         limits.m_max_chunks = 0;
         break;
     case 6:
-        scene.m_chunks[{1}] = nullptr;
+        scene.m_chunks[{ 1 }] = nullptr;
         expected = ErrorCode::INVALID_DATA;
         break;
     case 7:
-        scene.m_chunks[{1}] = valid_chunk({2});
+        scene.m_chunks[{ 1 }] = valid_chunk({ 2 });
         expected = ErrorCode::INVALID_DATA;
         break;
     case 8:
@@ -235,11 +236,11 @@ TEST_CASE("scene metadata and aggregate budgets reject hostile snapshots",
         limits.m_max_source_frames = 1;
         break;
     case 10:
-        scene.m_chunks.emplace(ChunkId { 2 }, valid_chunk({2}));
+        scene.m_chunks.emplace(ChunkId { 2 }, valid_chunk({ 2 }));
         limits.m_max_payload_bytes = sizeof(Gaussian);
         break;
     case 11:
-        scene.m_chunks.emplace(ChunkId { 2 }, valid_chunk({2}));
+        scene.m_chunks.emplace(ChunkId { 2 }, valid_chunk({ 2 }));
         limits.m_max_splats = 1;
         break;
     case 12:
@@ -258,11 +259,11 @@ TEST_CASE("rejected scene operations preserve snapshots and reusable operation I
           "[contracts][validation][replay]") {
     SceneStoreLimits limits;
     limits.m_scene.m_max_chunks = 2;
-    SceneStore store({1}, limits);
+    SceneStore store({ 1 }, limits);
     REQUIRE(store.commit(initial_transaction()));
     const auto K_BEFORE = store.acquire_snapshot();
     SceneTransaction transaction {
-        {1}, {0}, {1}, {2}, {2}, {{SceneOperationKind::REPLACE, {1}, valid_chunk(), {}, {}}}};
+        { 1 }, { 0 }, { 1 }, { 2 }, { 2 }, { { SceneOperationKind::REPLACE, { 1 }, valid_chunk(), {}, {} } } };
     auto replacement = std::const_pointer_cast<SceneChunk>(transaction.m_changes[0].m_chunk);
     replacement->m_generation = 2;
     const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
@@ -310,15 +311,15 @@ TEST_CASE("rejected scene operations preserve snapshots and reusable operation I
     }
     REQUIRE_FALSE(store.commit(transaction));
     CHECK(store.acquire_snapshot() == K_BEFORE);
-    SceneTransaction repair {{1},
-                             {0},
-                             {1},
-                             {2},
-                             {2},
-                             {{SceneOperationKind::INVALIDATE_GEOMETRY, {1}, nullptr, {}, {2}}}};
+    SceneTransaction repair { { 1 },
+                             { 0 },
+                             { 1 },
+                             { 2 },
+                             { 2 },
+                             { { SceneOperationKind::INVALIDATE_GEOMETRY, { 1 }, nullptr, {}, { 2 } } } };
     REQUIRE(store.commit(repair));
-    CHECK_FALSE(store.acquire_snapshot()->m_chunks.at({1})->m_geometry_valid);
-    CHECK(K_BEFORE->m_chunks.at({1})->m_geometry_valid);
+    CHECK_FALSE(store.acquire_snapshot()->m_chunks.at({ 1 })->m_geometry_valid);
+    CHECK(K_BEFORE->m_chunks.at({ 1 })->m_geometry_valid);
     REQUIRE(store.commit(repair));
 }
 
@@ -326,14 +327,14 @@ TEST_CASE("scene reset and replay honor empty windows and exhausted counters",
           "[contracts][validation][replay]") {
     SceneStoreLimits limits;
     limits.m_journal_entries = 0;
-    SceneStore store({1}, limits);
-    auto empty_replay = store.changes_since({}, {0});
+    SceneStore store({ 1 }, limits);
+    auto empty_replay = store.changes_since({}, { 0 });
     REQUIRE(empty_replay);
     CHECK(empty_replay->m_operation.m_value == 1);
     CHECK_FALSE(store.reset(nullptr));
     REQUIRE(store.commit(initial_transaction()));
-    CHECK_FALSE(store.changes_since({}, {100000}));
-    REQUIRE(store.changes_since({1}, {100000}));
+    CHECK_FALSE(store.changes_since({}, { 100000 }));
+    REQUIRE(store.changes_since({ 1 }, { 100000 }));
     auto reset = std::make_shared<SceneState>(*store.acquire_snapshot());
     CHECK_FALSE(store.reset(reset));
     reset->m_epoch = { 1 };
@@ -343,10 +344,10 @@ TEST_CASE("scene reset and replay honor empty windows and exhausted counters",
     reset->m_revision = { std::numeric_limits<std::uint64_t>::max() };
     auto chunk = valid_chunk();
     chunk->m_generation = std::numeric_limits<std::uint64_t>::max();
-    reset->m_chunks[{1}] = chunk;
+    reset->m_chunks[{ 1 }] = chunk;
     REQUIRE(store.reset(reset));
     const auto K_BEFORE = store.acquire_snapshot();
-    SceneTransaction overflow {{1}, {1}, reset->m_revision, {0}, {2}, {}};
+    SceneTransaction overflow { { 1 }, { 1 }, reset->m_revision, { 0 }, { 2 }, {} };
     REQUIRE_FALSE(store.commit(overflow));
     CHECK(store.acquire_snapshot() == K_BEFORE);
     reset->m_epoch = { 2 };
@@ -360,12 +361,12 @@ TEST_CASE("scene reset and replay honor empty windows and exhausted counters",
     REQUIRE_FALSE(store.commit(overflow));
     CHECK(store.acquire_snapshot() == K_RESET_SNAPSHOT);
     chunk->m_generation = 1;
-    CHECK(K_RESET_SNAPSHOT->m_chunks.at({1})->m_generation ==
+    CHECK(K_RESET_SNAPSHOT->m_chunks.at({ 1 })->m_generation ==
           std::numeric_limits<std::uint64_t>::max());
     auto invalid = std::make_shared<SceneState>(*reset);
     invalid->m_id = {};
     CHECK_FALSE(store.reset(invalid));
-    CHECK_FALSE(make_snapshot_batch(nullptr, {1}));
+    CHECK_FALSE(make_snapshot_batch(nullptr, { 1 }));
     CHECK_FALSE(make_snapshot_batch(K_RESET_SNAPSHOT, {}));
-    CHECK_FALSE(make_snapshot_batch(invalid, {1}));
+    CHECK_FALSE(make_snapshot_batch(invalid, { 1 }));
 }

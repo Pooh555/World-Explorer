@@ -1,10 +1,10 @@
 #include "world_explorer/navigation/fly_camera.hpp"
 
-#include <limits>
-#include <numbers>
-
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+
+#include <limits>
+#include <numbers>
 
 using namespace world_explorer;
 
@@ -15,7 +15,9 @@ TEST_CASE("fly movement is normalized, instantaneous and independent of update f
     input.m_forward = input.m_right = 1;
     input.m_captured = true;
     single.update(input, 0.1);
-    for (int step { 0 }; step < 10; ++step) repeated.update(input, 0.01);
+    for (int step { 0 }; step < 10; ++step) {
+        repeated.update(input, 0.01);
+    }
     REQUIRE(single.m_position.m_x == Catch::Approx(repeated.m_position.m_x));
     REQUIRE(single.m_position.m_z == Catch::Approx(repeated.m_position.m_z));
     const auto K_MOVED = single.m_position - K_ORIGIN;
@@ -50,10 +52,10 @@ TEST_CASE("camera axes and epoch-scoped bookmark are unambiguous") {
     REQUIRE(camera.right().m_x == 1);
     REQUIRE(camera.down().m_y == -1);
     REQUIRE(dot(cross(camera.right(), camera.down()), camera.forward()) == 1);
-    CameraBookmark bookmark {{3}, {7}, camera};
-    REQUIRE(restore_bookmark(bookmark, {3}, {7}));
-    REQUIRE_FALSE(restore_bookmark(bookmark, {3}, {8}));
-    REQUIRE_FALSE(restore_bookmark(bookmark, {4}, {7}));
+    CameraBookmark bookmark { { 3 }, { 7 }, camera };
+    REQUIRE(restore_bookmark(bookmark, { 3 }, { 7 }));
+    REQUIRE_FALSE(restore_bookmark(bookmark, { 3 }, { 8 }));
+    REQUIRE_FALSE(restore_bookmark(bookmark, { 4 }, { 7 }));
 }
 
 TEST_CASE("capture up reference survives fly movement fit and bookmarks") {
@@ -72,13 +74,13 @@ TEST_CASE("capture up reference survives fly movement fit and bookmarks") {
     camera.m_yaw = std::numbers::pi / 2;
     CHECK(camera.forward().m_x == Catch::Approx(1));
     CHECK(dot(cross(camera.right(), camera.down()), camera.forward()) == Catch::Approx(1));
-    camera.fit({{-1, -1, -1}, {1, 1, 1}});
+    camera.fit({ { -1, -1, -1 }, { 1, 1, 1 } });
     CHECK(camera.m_up_axis == Vec3d { 0, 0, 1 });
     CHECK(camera.forward() == Vec3d { 0, 1, 0 });
     CHECK(camera.m_position.m_y < 0);
-    CameraBookmark bookmark {{3}, {7}, camera};
-    REQUIRE(restore_bookmark(bookmark, {3}, {7}));
-    CHECK(restore_bookmark(bookmark, {3}, {7})->m_up_axis == camera.m_up_axis);
+    CameraBookmark bookmark { { 3 }, { 7 }, camera };
+    REQUIRE(restore_bookmark(bookmark, { 3 }, { 7 }));
+    CHECK(restore_bookmark(bookmark, { 3 }, { 7 })->m_up_axis == camera.m_up_axis);
     bookmark.m_camera.m_up_axis = { 0, 0, 0 };
-    CHECK_FALSE(restore_bookmark(bookmark, {3}, {7}));
+    CHECK_FALSE(restore_bookmark(bookmark, { 3 }, { 7 }));
 }

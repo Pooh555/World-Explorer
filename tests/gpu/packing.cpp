@@ -2,15 +2,15 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 
+#include <SDL3/SDL.h>
+#include <nlohmann/json.hpp>
+
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <numbers>
 #include <stdexcept>
-
-#include <SDL3/SDL.h>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
@@ -19,7 +19,9 @@ namespace {
 using Json = nlohmann::json;
 
 void require(bool valid, const std::string& message) {
-    if (!valid) throw std::runtime_error(message);
+    if (!valid) {
+        throw std::runtime_error(message);
+    }
 }
 
 void save(const std::filesystem::path& path, const Json& value) {
@@ -76,31 +78,33 @@ int main(int argc, char** argv) try {
         camera.m_forward = spectator.forward();
         camera.m_vertical_fov_radians = K_INSPECTION->m_vertical_fov_radians;
         require(raster_intrinsics(camera, 1280, 720).has_value(), "invalid frozen camera");
-        views.push_back({{"index", index},
-                         {"position", vector(camera.m_position)},
-                         {"right", vector(camera.m_right)},
-                         {"down", vector(camera.m_down)},
-                         {"forward", vector(camera.m_forward)},
-                         {"vertical_fov_radians", camera.m_vertical_fov_radians},
-                         {"near", camera.m_near_plane},
-                         {"far", camera.m_far_plane}});
+        views.push_back({ { "index", index },
+                         { "position", vector(camera.m_position) },
+                         { "right", vector(camera.m_right) },
+                         { "down", vector(camera.m_down) },
+                         { "forward", vector(camera.m_forward) },
+                         { "vertical_fov_radians", camera.m_vertical_fov_radians },
+                         { "near", camera.m_near_plane },
+                         { "far", camera.m_far_plane } });
     }
     const auto K_CONTENT = scene_content_hash(**K_SCENE);
     const auto K_MANIFEST = std::filesystem::path(argv[1]) / "manifest.json";
     const auto K_MANIFEST_HASH = digest(K_MANIFEST);
     save(K_OUTPUT / "path.json",
-         {{"schema_version", 1},
-          {"profile", "source_view_local_loop_v1"},
-          {"scene_content_sha256", K_CONTENT},
-          {"width", 1280},
-          {"height", 720},
-          {"world_units", "canonical scene units; may be arbitrary"},
-          {"views", views}});
+         { { "schema_version", 1 },
+          { "profile", "source_view_local_loop_v1" },
+          { "scene_content_sha256", K_CONTENT },
+          { "width", 1280 },
+          { "height", 720 },
+          { "world_units", "canonical scene units; may be arbitrary" },
+          { "views", views } });
     const auto K_PATH_HASH = digest(K_OUTPUT / "path.json");
     require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
 
     struct SdlOwner {
-        ~SdlOwner() { SDL_Quit(); }
+        ~SdlOwner() {
+            SDL_Quit();
+        }
     } sdl;
 
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -111,21 +115,21 @@ int main(int argc, char** argv) try {
         SDL_DestroyWindow);
     require(window != nullptr, SDL_GetError());
     Json report {
-        {"schema_version", 1},
-        {"scope", "local retained-scene GPU packing distortion"},
-        {"q6_qualified", false},
-        {"scene_content_sha256", K_CONTENT},
-        {"manifest_sha256", K_MANIFEST_HASH},
-        {"path_sha256", K_PATH_HASH},
-        {"scene_splats", count},
-        {"width", 1280},
-        {"height", 720},
-        {"color_domain", "display-encoded RGB8 in [0,1]; full image; no fitted correction"},
-        {"sh_order", "gsplat real basis; coefficient-major RGB; degree per splat"},
-        {"geometry_quantization", "identical FP32 geometry bytes in both GPU profiles"},
-        {"ground_truth_available", false},
-        {"runs", Json::array()}};
-    for (const auto K_PROFILE : {GpuSplatStorage::FP32, GpuSplatStorage::FP32_GEOMETRY_FP16_SH}) {
+        { "schema_version", 1 },
+        { "scope", "local retained-scene GPU packing distortion" },
+        { "q6_qualified", false },
+        { "scene_content_sha256", K_CONTENT },
+        { "manifest_sha256", K_MANIFEST_HASH },
+        { "path_sha256", K_PATH_HASH },
+        { "scene_splats", count },
+        { "width", 1280 },
+        { "height", 720 },
+        { "color_domain", "display-encoded RGB8 in [0,1]; full image; no fitted correction" },
+        { "sh_order", "gsplat real basis; coefficient-major RGB; degree per splat" },
+        { "geometry_quantization", "identical FP32 geometry bytes in both GPU profiles" },
+        { "ground_truth_available", false },
+        { "runs", Json::array() } };
+    for (const auto K_PROFILE : { GpuSplatStorage::FP32, GpuSplatStorage::FP32_GEOMETRY_FP16_SH }) {
         const std::string K_NAME = K_PROFILE == GpuSplatStorage::FP32 ? "fp32" : "fp16_sh";
         RendererOptions options;
         options.m_max_splats = 1000000;
@@ -136,7 +140,7 @@ int main(int argc, char** argv) try {
         auto renderer = std::move(*created);
         require(renderer->capabilities().m_validation_enabled, "Vulkan validation is required");
         report["device"] = renderer->capabilities().m_device_name;
-        auto batch = make_snapshot_batch(*K_SCENE, {1}).value();
+        auto batch = make_snapshot_batch(*K_SCENE, { 1 }).value();
         const auto K_TICKET = renderer->updates().enqueue(batch);
         require(K_TICKET.has_value(), "scene admission failed");
         bool visible = false;
@@ -166,14 +170,14 @@ int main(int argc, char** argv) try {
                     "validation/count/budget error");
             peak = std::max(peak, K_STATS.m_allocated_bytes);
             images.push_back(
-                {{"index", index}, {"file", K_FILE}, {"sha256", digest(K_OUTPUT / K_FILE)}});
+                { { "index", index }, { "file", K_FILE }, { "sha256", digest(K_OUTPUT / K_FILE) } });
         }
         report["runs"].push_back(
-            {{"profile", K_NAME},
-             {"splat_stride_bytes", renderer->capabilities().m_splat_stride_bytes},
-             {"peak_sampled_owned_bytes", peak},
-             {"validation_errors", 0},
-             {"images", images}});
+            { { "profile", K_NAME },
+             { "splat_stride_bytes", renderer->capabilities().m_splat_stride_bytes },
+             { "peak_sampled_owned_bytes", peak },
+             { "validation_errors", 0 },
+             { "images", images } });
     }
     require(digest(K_MANIFEST) == K_MANIFEST_HASH &&
                 digest(K_OUTPUT / "path.json") == K_PATH_HASH &&

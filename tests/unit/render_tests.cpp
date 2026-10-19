@@ -17,7 +17,9 @@ SceneDeltaBatch batch_at(SceneRevisionId revision, OperationId operation, bool f
 }
 
 AdmittedUpdate require_next(RendererUpdateSink& sink) {
-    if (auto admitted = sink.take_next()) return std::move(*admitted);
+    if (auto admitted = sink.take_next()) {
+        return std::move(*admitted);
+    }
     FAIL("expected a queued renderer update");
     return {};
 }
@@ -33,7 +35,7 @@ void make_visible(RendererUpdateSink& sink, UpdateTicket ticket, std::uint64_t t
 
 TEST_CASE("renderer admission is idempotent and rejects stale or modified retries") {
     RendererUpdateSink sink;
-    auto initial = batch_at({1}, {1}, true);
+    auto initial = batch_at({ 1 }, { 1 }, true);
     const auto K_RETRY = initial;
     auto ticket = sink.enqueue(initial);
     REQUIRE(ticket);
@@ -48,22 +50,22 @@ TEST_CASE("renderer admission is idempotent and rejects stale or modified retrie
     duplicate.m_snapshot = modified;
     REQUIRE_FALSE(sink.enqueue(duplicate));
     make_visible(sink, *ticket, 1);
-    auto stale = batch_at({3}, {3});
+    auto stale = batch_at({ 3 }, { 3 });
     REQUIRE_FALSE(sink.enqueue(stale));
     REQUIRE(stale.m_snapshot);
-    auto wrong_epoch = batch_at({2}, {2});
+    auto wrong_epoch = batch_at({ 2 }, { 2 });
     wrong_epoch.m_epoch = { 1 };
     REQUIRE_FALSE(sink.enqueue(wrong_epoch));
 }
 
 TEST_CASE("prepared renderer admission preserves retries and checks current budget") {
     const auto K_BYTES = validate_scene(*make_diagnostic_scene()).value();
-    RendererUpdateSink sink({K_BYTES * 4, 250000, 4});
-    const auto K_ORIGINAL = batch_at({1}, {11}, true);
+    RendererUpdateSink sink({ K_BYTES * 4, 250000, 4 });
+    const auto K_ORIGINAL = batch_at({ 1 }, { 11 }, true);
     auto prepared = sink.prepare(K_ORIGINAL);
     REQUIRE(prepared);
     REQUIRE(K_ORIGINAL.m_snapshot);
-    REQUIRE(sink.set_residency_budget({K_BYTES * 5, 250000, 4}));
+    REQUIRE(sink.set_residency_budget({ K_BYTES * 5, 250000, 4 }));
     const auto K_CHANGED = sink.enqueue(*prepared);
     REQUIRE_FALSE(K_CHANGED);
     CHECK(K_CHANGED.error().m_code == ErrorCode::WOULD_BLOCK);
@@ -78,7 +80,7 @@ TEST_CASE("prepared renderer admission preserves retries and checks current budg
     REQUIRE(K_REPEATED);
     CHECK(*K_REPEATED == *K_TICKET);
     CHECK(sink.enqueue(*duplicate));
-    auto altered = batch_at({2}, {11});
+    auto altered = batch_at({ 2 }, { 11 });
     auto collision = sink.prepare(altered);
     REQUIRE(collision);
     const auto K_REJECTED = sink.enqueue(*collision);
@@ -96,7 +98,7 @@ TEST_CASE("prepared renderer admission preserves retries and checks current budg
     REQUIRE_FALSE(K_CHANGED_RETRY);
     CHECK(K_CHANGED_RETRY.error().m_code == ErrorCode::DUPLICATE_OPERATION);
     make_visible(sink, *K_TICKET, 1);
-    auto stale = batch_at({3}, {12});
+    auto stale = batch_at({ 3 }, { 12 });
     auto stale_prepared = sink.prepare(stale);
     REQUIRE(stale_prepared);
     const auto K_WRONG_BASE = sink.enqueue(*stale_prepared);
@@ -106,8 +108,8 @@ TEST_CASE("prepared renderer admission preserves retries and checks current budg
 }
 
 TEST_CASE("renderer reports an oversized new snapshot as invalid before residency admission") {
-    RendererUpdateSink sink({sizeof(Gaussian) - 1, 250000, 4});
-    auto first = batch_at({1}, {1}, true);
+    RendererUpdateSink sink({ sizeof(Gaussian) - 1, 250000, 4 });
+    auto first = batch_at({ 1 }, { 1 }, true);
     const auto K_RETAINED = first.m_snapshot;
     const auto K_REJECTED = sink.enqueue(first);
     REQUIRE_FALSE(K_REJECTED);
@@ -118,18 +120,18 @@ TEST_CASE("renderer reports an oversized new snapshot as invalid before residenc
 
 TEST_CASE("old residency remains charged until GPU retirement and duplicate ack is harmless") {
     const auto K_BYTES = validate_scene(*make_diagnostic_scene()).value();
-    RendererUpdateSink sink({K_BYTES * 2, 250000, 4});
-    auto first = batch_at({1}, {1}, true);
+    RendererUpdateSink sink({ K_BYTES * 2, 250000, 4 });
+    auto first = batch_at({ 1 }, { 1 }, true);
     auto first_ticket = sink.enqueue(first);
     REQUIRE(first_ticket);
     make_visible(sink, *first_ticket, 1);
-    auto second = batch_at({2}, {2});
+    auto second = batch_at({ 2 }, { 2 });
     auto second_ticket = sink.enqueue(second);
     REQUIRE(second_ticket);
     make_visible(sink, *second_ticket, 2);
     sink.acknowledge_visible(*second_ticket, sink.visible_snapshot(), 2);
     REQUIRE(sink.queued_bytes() == 0);
-    auto third = batch_at({3}, {3});
+    auto third = batch_at({ 3 }, { 3 });
     REQUIRE_FALSE(sink.enqueue(third));
     sink.retire_completed(1);
     REQUIRE_FALSE(sink.enqueue(third));
@@ -140,34 +142,34 @@ TEST_CASE("old residency remains charged until GPU retirement and duplicate ack 
 
 TEST_CASE("cancelling queued updates preserves the in-flight revision chain") {
     RendererUpdateSink sink;
-    auto first = batch_at({1}, {1}, true);
+    auto first = batch_at({ 1 }, { 1 }, true);
     auto ticket = sink.enqueue(first);
     REQUIRE(ticket);
     const auto K_ACTIVE = require_next(sink);
-    auto second = batch_at({2}, {2});
+    auto second = batch_at({ 2 }, { 2 });
     REQUIRE(sink.enqueue(second));
     sink.cancel_pending();
     REQUIRE_FALSE(sink.take_next());
     sink.acknowledge_uploaded(*ticket, 1);
     sink.acknowledge_visible(*ticket, K_ACTIVE.m_batch.m_snapshot, 1);
-    auto replacement = batch_at({2}, {3});
+    auto replacement = batch_at({ 2 }, { 3 });
     REQUIRE(sink.enqueue(replacement));
     auto uploading = require_next(sink);
-    sink.fail_update(uploading.m_ticket, {ErrorCode::BACKEND_FAILURE, "injected upload failure"});
+    sink.fail_update(uploading.m_ticket, { ErrorCode::BACKEND_FAILURE, "injected upload failure" });
     REQUIRE(sink.visible_snapshot()->m_revision.m_value == 1);
     REQUIRE(sink.queued_bytes() == 0);
-    auto resync = batch_at({5}, {4}, true);
+    auto resync = batch_at({ 5 }, { 4 }, true);
     REQUIRE(sink.enqueue(resync));
 }
 
 TEST_CASE("renderer rejects malformed admission without consuming caller data", "[validation]") {
     RendererUpdateSink sink;
-    auto first = batch_at({1}, {1}, true);
+    auto first = batch_at({ 1 }, { 1 }, true);
     const auto K_TICKET = sink.enqueue(first);
     REQUIRE(K_TICKET);
     make_visible(sink, *K_TICKET, 1);
     const auto K_VISIBLE = sink.visible_snapshot();
-    auto next = batch_at({2}, {2});
+    auto next = batch_at({ 2 }, { 2 });
     const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8);
     CAPTURE(K_FIELD);
     auto expected = ErrorCode::INVALID_DATA;
@@ -223,14 +225,14 @@ TEST_CASE("renderer rejects malformed admission without consuming caller data", 
     CHECK(sink.visible_snapshot() == K_VISIBLE);
     CHECK(sink.queued_bytes() == 0);
     CHECK_FALSE(sink.take_next());
-    auto repair = batch_at({2}, {2});
+    auto repair = batch_at({ 2 }, { 2 });
     REQUIRE(sink.enqueue(repair));
 }
 
 TEST_CASE("renderer rejects modified retry metadata within the receipt window",
           "[validation][replay]") {
     RendererUpdateSink sink;
-    auto first = batch_at({1}, {1}, true);
+    auto first = batch_at({ 1 }, { 1 }, true);
     const auto K_ORIGINAL = first;
     REQUIRE(sink.enqueue(first));
     auto retry = K_ORIGINAL;
@@ -260,19 +262,20 @@ TEST_CASE("renderer rejects modified retry metadata within the receipt window",
 TEST_CASE("renderer budget changes account for pending visible and retired assets",
           "[validation]") {
     const auto K_BYTES = validate_scene(*make_diagnostic_scene()).value();
-    RendererUpdateSink sink({K_BYTES * 4, 250000, 1});
+    RendererUpdateSink sink({ K_BYTES * 4, 250000, 1 });
     for (const auto K_BUDGET :
-         {ResidencyBudget { 0, 1, 1 }, ResidencyBudget { 1, 0, 1 }, ResidencyBudget { 1, 1, 0 }})
+         { ResidencyBudget { 0, 1, 1 }, ResidencyBudget { 1, 0, 1 }, ResidencyBudget { 1, 1, 0 } }) {
         CHECK_FALSE(sink.set_residency_budget(K_BUDGET));
-    auto first = batch_at({1}, {1}, true);
+    }
+    auto first = batch_at({ 1 }, { 1 }, true);
     const auto K_FIRST_TICKET = sink.enqueue(first);
     REQUIRE(K_FIRST_TICKET);
-    CHECK_FALSE(sink.set_residency_budget({K_BYTES - 1, 250000, 1}));
-    auto second = batch_at({2}, {2});
+    CHECK_FALSE(sink.set_residency_budget({ K_BYTES - 1, 250000, 1 }));
+    auto second = batch_at({ 2 }, { 2 });
     CHECK_FALSE(sink.enqueue(second));
     CHECK(second.m_snapshot);
     const auto K_ACTIVE = require_next(sink);
-    auto resync = batch_at({9}, {9}, true);
+    auto resync = batch_at({ 9 }, { 9 }, true);
     CHECK_FALSE(sink.enqueue(resync));
     const auto K_SECOND_TICKET = sink.enqueue(second);
     REQUIRE(K_SECOND_TICKET);
@@ -280,10 +283,10 @@ TEST_CASE("renderer budget changes account for pending visible and retired asset
     sink.acknowledge_uploaded(*K_FIRST_TICKET, 1);
     sink.acknowledge_visible(*K_FIRST_TICKET, K_ACTIVE.m_batch.m_snapshot, 1);
     make_visible(sink, *K_SECOND_TICKET, 2);
-    CHECK_FALSE(sink.set_residency_budget({K_BYTES, 250000, 1}));
+    CHECK_FALSE(sink.set_residency_budget({ K_BYTES, 250000, 1 }));
     sink.retire_completed(2);
-    CHECK_FALSE(sink.set_residency_budget({K_BYTES, 1, 1}));
-    REQUIRE(sink.set_residency_budget({K_BYTES * 2, 250000, 1}));
+    CHECK_FALSE(sink.set_residency_budget({ K_BYTES, 1, 1 }));
+    REQUIRE(sink.set_residency_budget({ K_BYTES * 2, 250000, 1 }));
     REQUIRE(sink.enqueue(resync));
     sink.cancel_pending();
     CHECK(sink.query_progress(*K_SECOND_TICKET)->m_state == UpdateState::RENDER_VISIBLE);
@@ -292,10 +295,10 @@ TEST_CASE("renderer budget changes account for pending visible and retired asset
 TEST_CASE("renderer ignores out-of-order acknowledgements and preserves the active update",
           "[validation]") {
     RendererUpdateSink sink;
-    CHECK_FALSE(sink.query_progress({999}));
-    sink.acknowledge_uploaded({999}, 1);
-    sink.acknowledge_visible({999}, nullptr, 1);
-    auto first = batch_at({1}, {1}, true);
+    CHECK_FALSE(sink.query_progress({ 999 }));
+    sink.acknowledge_uploaded({ 999 }, 1);
+    sink.acknowledge_visible({ 999 }, nullptr, 1);
+    auto first = batch_at({ 1 }, { 1 }, true);
     const auto K_TICKET = sink.enqueue(first);
     REQUIRE(K_TICKET);
     sink.acknowledge_uploaded(*K_TICKET, 1);
@@ -337,13 +340,15 @@ TEST_CASE("renderer receipt eviction waits for retirement and requires resync fo
     RendererUpdateSink sink;
     UpdateTicket first_ticket;
     for (std::uint64_t revision { 1 }; revision <= 256; ++revision) {
-        auto batch = batch_at({revision}, {revision}, revision == 1);
+        auto batch = batch_at({ revision }, { revision }, revision == 1);
         const auto K_TICKET = sink.enqueue(batch);
         REQUIRE(K_TICKET);
-        if (revision == 1) first_ticket = *K_TICKET;
+        if (revision == 1) {
+            first_ticket = *K_TICKET;
+        }
         make_visible(sink, *K_TICKET, revision);
     }
-    auto next = batch_at({257}, {257});
+    auto next = batch_at({ 257 }, { 257 });
     const auto K_REJECTED = sink.enqueue(next);
     REQUIRE_FALSE(K_REJECTED);
     CHECK(K_REJECTED.error().m_code == ErrorCode::WOULD_BLOCK);

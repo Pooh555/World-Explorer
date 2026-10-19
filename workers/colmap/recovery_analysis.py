@@ -8,6 +8,16 @@ import tempfile
 
 from .model_selection import select_candidate
 
+__all__ = [
+    "MAX_DATABASE_BYTES",
+    "MAX_FRAMES",
+    "MAX_PAIRS",
+    "PAIR_BASE",
+    "analyze_matches",
+    "components",
+    "read_matches",
+]
+
 PAIR_BASE = 2147483647
 MAX_FRAMES = 120
 MAX_PAIRS = MAX_FRAMES * (MAX_FRAMES - 1) // 2

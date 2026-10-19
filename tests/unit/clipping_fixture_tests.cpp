@@ -1,9 +1,9 @@
 #include "../gpu/clipping_fixture.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+
 #include <bit>
 #include <cstdint>
-
-#include <catch2/catch_test_macros.hpp>
 
 using namespace world_explorer;
 
@@ -15,7 +15,7 @@ TEST_CASE("synthetic clipping fixture preserves exact float neighbors and isolat
     const auto& splats = K_SCENE->m_chunks.begin()->second->m_splats;
     REQUIRE(splats.size() == 6);
     constexpr std::array<std::uint32_t, 6> K_BITS {
-        0x3f7fffff, 0x3f800000, 0x3f800001, 0x40ffffff, 0x41000000, 0x41000001};
+        0x3f7fffff, 0x3f800000, 0x3f800001, 0x40ffffff, 0x41000000, 0x41000001 };
     const auto K_CAMERA = clipping_camera();
     const auto K_INTRINSICS = raster_intrinsics(K_CAMERA, 1280, 720);
     REQUIRE(K_INTRINSICS);

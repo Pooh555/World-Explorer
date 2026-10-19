@@ -29,9 +29,9 @@ inline double dot(Vec3d a, Vec3d b) {
 }
 
 inline Vec3d cross(Vec3d a, Vec3d b) {
-    return {a.m_y * b.m_z - a.m_z * b.m_y,
+    return { a.m_y * b.m_z - a.m_z * b.m_y,
             a.m_z * b.m_x - a.m_x * b.m_z,
-            a.m_x * b.m_y - a.m_y * b.m_x};
+            a.m_x * b.m_y - a.m_y * b.m_x };
 }
 
 inline bool finite(Vec3d value) {
@@ -70,7 +70,7 @@ inline Vec3d transform_point(const SimilarityTransform& transform, Vec3d point) 
 
 inline Vec3d inverse_transform_point(const SimilarityTransform& transform, Vec3d point) {
     auto q = transform.m_rotation;
-    return rotate({q.m_w, -q.m_x, -q.m_y, -q.m_z},
+    return rotate({ q.m_w, -q.m_x, -q.m_y, -q.m_z },
                   (point - transform.m_translation) * (1 / transform.m_scale));
 }
 
@@ -92,19 +92,21 @@ struct PinholeCamera {
 inline Result<std::array<double, 2>> project(const PinholeCamera& camera, Vec3d point) {
     if (!finite(point) || point.m_z <= 0 || !std::isfinite(camera.m_fx) ||
         !std::isfinite(camera.m_fy) || camera.m_fx <= 0 || camera.m_fy <= 0 ||
-        !std::isfinite(camera.m_cx) || !std::isfinite(camera.m_cy))
+        !std::isfinite(camera.m_cx) || !std::isfinite(camera.m_cy)) {
         return fail(ErrorCode::INVALID_ARGUMENT, "invalid camera or point behind near plane");
-    return std::array {camera.m_fx * point.m_x / point.m_z + camera.m_cx,
-                       camera.m_fy * point.m_y / point.m_z + camera.m_cy};
+    }
+    return std::array { camera.m_fx * point.m_x / point.m_z + camera.m_cx,
+                       camera.m_fy * point.m_y / point.m_z + camera.m_cy };
 }
 
 inline Result<Vec3d>
 unproject(const PinholeCamera& camera, std::array<double, 2> pixel, double z_depth) {
-    if (!project(camera, {0, 0, z_depth}) || !std::isfinite(pixel[0]) || !std::isfinite(pixel[1]))
+    if (!project(camera, { 0, 0, z_depth }) || !std::isfinite(pixel[0]) || !std::isfinite(pixel[1])) {
         return fail(ErrorCode::INVALID_ARGUMENT, "invalid unprojection input");
-    return Vec3d {(pixel[0] - camera.m_cx) * z_depth / camera.m_fx,
+    }
+    return Vec3d { (pixel[0] - camera.m_cx) * z_depth / camera.m_fx,
                   (pixel[1] - camera.m_cy) * z_depth / camera.m_fy,
-                  z_depth};
+                  z_depth };
 }
 
 }  // namespace world_explorer

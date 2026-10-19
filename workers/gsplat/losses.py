@@ -4,6 +4,11 @@ import torch
 import torch.nn.functional as functional
 
 
+__all__ = [
+    "gaussian_ssim",
+]
+
+
 def gaussian_ssim(left, right):
     if left.shape != right.shape or left.ndim != 4 or left.shape[1] != 3:
         raise ValueError("SSIM expects matching NCHW RGB images")

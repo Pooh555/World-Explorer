@@ -3,6 +3,10 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <atomic>
 #include <bit>
@@ -10,10 +14,6 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
@@ -85,7 +85,7 @@ TEST_CASE("depth planes preserve explicit unknowns camera units and wide frame i
     CHECK(decode_depth_asset(std::span(unaligned).subspan(1), sha256(*K_ENCODED)));
     // Off-axis axial Z=4 is (2,-.5,4), whose range is greater than 4.
     const auto K_POINT =
-        unproject(K_DECODED->m_metadata.m_camera, {2, 0}, K_DECODED->m_axial_depth[2]);
+        unproject(K_DECODED->m_metadata.m_camera, { 2, 0 }, K_DECODED->m_axial_depth[2]);
     REQUIRE(K_POINT);
     CHECK(*K_POINT == Vec3d { 2, -.5, 4 });
     CHECK(std::sqrt(dot(*K_POINT, *K_POINT)) > 4);
@@ -94,7 +94,7 @@ TEST_CASE("depth planes preserve explicit unknowns camera units and wide frame i
 
 TEST_CASE("depth wire planes have independent little endian scalar oracles", "[depth]") {
     auto asset = fixture();
-    asset.m_standard_deviation = std::vector<float> {.25, 0, .5, 0, 1, 0};
+    asset.m_standard_deviation = std::vector<float> { .25, 0, .5, 0, 1, 0 };
     const auto K_BYTES = encode_depth_asset(asset);
     REQUIRE(K_BYTES);
     CHECK(K_BYTES->size() == 356 + 6 * 17);
@@ -124,15 +124,18 @@ TEST_CASE(
     put_u32(bytes, K_OFFSET, K_VALUE);
     const auto K_DECODED = decode_depth_asset(bytes, sha256(bytes));
     // Scale=0 is its existing arbitrary-unit encoding; uncertainty=0 is absent.
-    if ((K_OFFSET == 20 || K_OFFSET == 32) && K_VALUE == 0) CHECK(K_DECODED);
-    else CHECK((K_DECODED).has_value() == false);
+    if ((K_OFFSET == 20 || K_OFFSET == 32) && K_VALUE == 0) {
+        CHECK(K_DECODED);
+    } else {
+        CHECK((K_DECODED).has_value() == false);
+    }
     CHECK(*encode_depth_asset(fixture()) == *K_ORIGINAL);
 }
 
 TEST_CASE("depth rejects rehashed malformed samples in every serialized plane", "[depth]") {
     const auto K_OFFSET = GENERATE(356uz, 386, 410, 434);
     auto asset = fixture();
-    asset.m_standard_deviation = std::vector<float> {.25, 0, .5, .125, 1, 0};
+    asset.m_standard_deviation = std::vector<float> { .25, 0, .5, .125, 1, 0 };
     const auto K_ORIGINAL = encode_depth_asset(asset);
     REQUIRE(K_ORIGINAL);
     auto bytes = *K_ORIGINAL;
@@ -179,10 +182,10 @@ TEST_CASE("depth validates sample support masks confidence and optional uncertai
         asset.m_standard_deviation = std::vector<float>(5);
         break;
     case 10:
-        asset.m_standard_deviation = std::vector<float> {-1, 0, .5, 0, 1, 0};
+        asset.m_standard_deviation = std::vector<float> { -1, 0, .5, 0, 1, 0 };
         break;
     case 11:
-        asset.m_standard_deviation = std::vector<float> {1, 1, 1, 1, 1, 1};
+        asset.m_standard_deviation = std::vector<float> { 1, 1, 1, 1, 1, 1 };
         break;
     default:
         FAIL("Unknown mutation");
@@ -250,9 +253,15 @@ TEST_CASE("depth wrong epoch revision and dependency require resynchronization",
     const auto K_CODE = K_MUTATION == 0   ? ErrorCode::WRONG_EPOCH
                         : K_MUTATION == 1 ? ErrorCode::WRONG_BASE
                                           : ErrorCode::RESYNC_REQUIRED;
-    if (K_MUTATION == 0) ++expected.m_dependency.m_epoch.m_value;
-    if (K_MUTATION == 1) ++expected.m_dependency.m_pose_revision.m_value;
-    if (K_MUTATION == 2) expected.m_dependency.m_pose_asset_sha256 = std::string(64, 'e');
+    if (K_MUTATION == 0) {
+        ++expected.m_dependency.m_epoch.m_value;
+    }
+    if (K_MUTATION == 1) {
+        ++expected.m_dependency.m_pose_revision.m_value;
+    }
+    if (K_MUTATION == 2) {
+        expected.m_dependency.m_pose_asset_sha256 = std::string(64, 'e');
+    }
     const auto K_REJECTED = admit_depth_asset(K_ASSET, expected);
     REQUIRE((K_REJECTED).has_value() == false);
     CHECK(K_REJECTED.error().m_code == K_CODE);
@@ -386,14 +395,22 @@ TEST_CASE("depth admission verifies the independent canonical pose file", "[dept
     REQUIRE(store.commit(transaction));
     CanonicalPoseAsset poses {
         store.acquire_snapshot(),
-        {std::string(64, '1'), std::string(64, '2'), std::string(64, '3'), {}}};
+        { std::string(64, '1'), std::string(64, '2'), std::string(64, '3'), {} } };
     const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
     if (K_MUTATION >= 7) {
         auto map = std::make_shared<MapState>(*poses.m_snapshot);
-        if (K_MUTATION == 7) map->m_invalidated_frames.insert(K_FRAME);
-        if (K_MUTATION == 8) map->m_poses.at(K_FRAME).m_tracking = TrackingState::LOST;
-        if (K_MUTATION == 9) map->m_poses.at(K_FRAME).m_tracking = TrackingState::INITIALIZING;
-        if (K_MUTATION == 10) map->m_poses.at(K_FRAME).m_tracking = TrackingState::FINISHED;
+        if (K_MUTATION == 7) {
+            map->m_invalidated_frames.insert(K_FRAME);
+        }
+        if (K_MUTATION == 8) {
+            map->m_poses.at(K_FRAME).m_tracking = TrackingState::LOST;
+        }
+        if (K_MUTATION == 9) {
+            map->m_poses.at(K_FRAME).m_tracking = TrackingState::INITIALIZING;
+        }
+        if (K_MUTATION == 10) {
+            map->m_poses.at(K_FRAME).m_tracking = TrackingState::FINISHED;
+        }
         poses.m_snapshot = map;
     }
     const auto K_POSE_PATH = root.m_path / "source.weposes";
@@ -434,7 +451,7 @@ TEST_CASE("depth admission verifies the independent canonical pose file", "[dept
     const auto K_DEPTH_DIGEST = write_depth_asset(K_DEPTH_PATH, depth);
     REQUIRE(K_DEPTH_DIGEST);
     const auto K_ADMITTED = load_pose_bound_depth(
-        {K_DEPTH_PATH, K_POSE_PATH, *K_DEPTH_DIGEST, *K_POSE_DIGEST, depth.m_metadata});
+        { K_DEPTH_PATH, K_POSE_PATH, *K_DEPTH_DIGEST, *K_POSE_DIGEST, depth.m_metadata });
     if (K_MUTATION == 0 || K_MUTATION == 10) {
         REQUIRE(K_ADMITTED);
         CHECK(K_ADMITTED->m_axial_depth == depth.m_axial_depth);

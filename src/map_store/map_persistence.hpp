@@ -18,7 +18,9 @@ class MapPersistence {
                                     const std::string& hash,
                                     const std::stop_token& stop);
 
-    bool requires_reopen() const noexcept { return uncertain_; }
+    bool requires_reopen() const noexcept {
+        return uncertain_;
+    }
 
   private:
     explicit MapPersistence(PersistentMapConfig config);

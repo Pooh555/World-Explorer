@@ -3,9 +3,9 @@
 #include "world_explorer/application/reconstruction_job.hpp"
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
 
-#include <map>
-
 #include <nlohmann/json.hpp>
+
+#include <map>
 
 namespace world_explorer::job_detail {
 

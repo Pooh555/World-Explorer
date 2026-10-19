@@ -1,7 +1,8 @@
 #pragma once
 
-#include <utility>
 #include <vk_mem_alloc.h>
+
+#include <utility>
 
 namespace world_explorer::detail {
 
@@ -17,7 +18,9 @@ struct gpu_buffer {
     gpu_buffer(const gpu_buffer&) = delete;
     gpu_buffer& operator=(const gpu_buffer&) = delete;
 
-    gpu_buffer(gpu_buffer&& other) noexcept { swap(other); }
+    gpu_buffer(gpu_buffer&& other) noexcept {
+        swap(other);
+    }
 
     gpu_buffer& operator=(gpu_buffer&& other) noexcept {
         gpu_buffer temporary(std::move(other));
@@ -26,7 +29,8 @@ struct gpu_buffer {
     }
 
     ~gpu_buffer() {
-        if (buffer) vmaDestroyBuffer(allocator, buffer, allocation);
+        if (buffer)
+            vmaDestroyBuffer(allocator, buffer, allocation);
     }
 
     void swap(gpu_buffer& other) noexcept {
@@ -48,7 +52,9 @@ struct gpu_image {
     gpu_image(const gpu_image&) = delete;
     gpu_image& operator=(const gpu_image&) = delete;
 
-    gpu_image(gpu_image&& other) noexcept { swap(other); }
+    gpu_image(gpu_image&& other) noexcept {
+        swap(other);
+    }
 
     gpu_image& operator=(gpu_image&& other) noexcept {
         gpu_image temporary(std::move(other));
@@ -57,7 +63,8 @@ struct gpu_image {
     }
 
     ~gpu_image() {
-        if (m_image) vmaDestroyImage(m_allocator, m_image, m_allocation);
+        if (m_image)
+            vmaDestroyImage(m_allocator, m_image, m_allocation);
     }
 
     void swap(gpu_image& other) noexcept {

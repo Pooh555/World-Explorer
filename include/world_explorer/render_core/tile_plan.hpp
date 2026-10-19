@@ -34,7 +34,9 @@ class TileRegionPlan {
     Result<void> commit();
     void reset() noexcept;
 
-    std::size_t cached_region_count() const noexcept { return m_cached_count; }
+    std::size_t cached_region_count() const noexcept {
+        return m_cached_count;
+    }
 
   private:
     // At most 64 binary splits along a root-to-leaf path of uint32 dimensions.

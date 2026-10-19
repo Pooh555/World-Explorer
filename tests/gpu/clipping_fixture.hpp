@@ -13,7 +13,7 @@ inline CameraView clipping_camera() {
     CameraView camera;
     camera.m_near_plane = 1.F;
     camera.m_far_plane = 8.F;
-    camera.m_calibration = CalibratedProjection {{900, 840, 639.5, 359.5}, 1280, 720};
+    camera.m_calibration = CalibratedProjection { { 900, 840, 639.5, 359.5 }, 1280, 720 };
     return camera;
 }
 
@@ -28,12 +28,12 @@ inline SceneSnapshot clipping_fixture() {
     chunk->m_bounds = { { -5, -2, -9 }, { 5, 2, 0 } };
     const auto camera = clipping_camera();
     const auto infinity = std::numeric_limits<float>::infinity();
-    const std::array depths {std::nextafter(camera.m_near_plane, 0.F),
+    const std::array depths { std::nextafter(camera.m_near_plane, 0.F),
                              camera.m_near_plane,
                              std::nextafter(camera.m_near_plane, infinity),
                              std::nextafter(camera.m_far_plane, 0.F),
                              camera.m_far_plane,
-                             std::nextafter(camera.m_far_plane, infinity)};
+                             std::nextafter(camera.m_far_plane, infinity) };
     for (std::size_t index { 0uz }; index < depths.size(); ++index) {
         const auto depth = depths[index];
         Gaussian splat;

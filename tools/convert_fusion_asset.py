@@ -19,6 +19,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "workers" / "dense"
 from pilot import parse, read_pinned, publish
 from cached_sources import checked_path, new_output
 
+__all__ = [
+    "MAX_BYTES",
+    "VOXEL_DTYPE",
+    "arrays",
+    "convert",
+]
+
 MAX_BYTES = 256 * 1024**2
 VOXEL_DTYPE = [
     ("lattice", "<i4", (3,)),

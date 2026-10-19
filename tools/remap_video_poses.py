@@ -9,6 +9,12 @@ import re
 import tempfile
 
 
+__all__ = [
+    "main",
+    "write_models",
+]
+
+
 def write_models(models, output):
     if not models:
         raise ValueError(

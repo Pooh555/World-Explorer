@@ -9,6 +9,11 @@ import signal
 import sys
 
 
+__all__ = [
+    "main",
+]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(

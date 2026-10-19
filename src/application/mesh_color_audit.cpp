@@ -8,6 +8,8 @@
 #include "world_explorer/reconstruction_adapters/image_decoder.hpp"
 #include "world_explorer/scene_store/color_projection.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -16,8 +18,6 @@
 #include <new>
 #include <set>
 
-#include <nlohmann/json.hpp>
-
 namespace world_explorer {
 namespace {
 
@@ -25,15 +25,15 @@ using Json = nlohmann::json;
 constexpr std::size_t K_INTERIOR_SAMPLES { 6uz }, K_SAMPLES_PER_FACE { 9uz };
 constexpr std::size_t K_MAX_SAMPLES { 1800000uz };
 constexpr std::array<std::array<double, 2>, K_INTERIOR_SAMPLES> K_UV {
-    std::array { .125, .125 }, { .375, .125 }, { .625, .125 }, { .125, .375 }, { .375, .375 }, { .125, .625 }};
-constexpr std::array K_STATUS_NAMES {"accepted",
+    std::array { .125, .125 }, { .375, .125 }, { .625, .125 }, { .125, .375 }, { .375, .375 }, { .125, .625 } };
+constexpr std::array K_STATUS_NAMES { "accepted",
                                      "invalid_sample",
                                      "behind_camera",
                                      "outside_image",
                                      "unknown_depth",
                                      "unsupported_depth",
                                      "grazing",
-                                     "depth_mismatch"};
+                                     "depth_mismatch" };
 
 struct Sample {
     Vec3d m_position, m_normal;
@@ -70,24 +70,30 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
                                       const std::stop_token& stop) {
     try {
         const auto K_INPUT = color_inputs::load(request, expected_sha256, destination, stop);
-        if (!K_INPUT) return std::unexpected(K_INPUT.error());
+        if (!K_INPUT) {
+            return std::unexpected(K_INPUT.error());
+        }
         const auto& scene = K_INPUT->m_scene;
         const auto& output = K_INPUT->m_output;
         const auto& receipt = K_INPUT->m_receipt;
         const auto& chunk = *scene->m_chunks.begin()->second;
-        if (!chunk.m_mesh || !chunk.m_mesh->m_observed)
+        if (!chunk.m_mesh || !chunk.m_mesh->m_observed) {
             return fail(ErrorCode::INVALID_DATA, "Missing color source");
+        }
         const auto& mesh = *chunk.m_mesh;
         const auto& source = *mesh.m_observed;
         const auto K_VOXEL = K_INPUT->m_voxel_size;
         const auto& frames = receipt.at("frames");
-        if (mesh.m_triangles.size() > K_MAX_SAMPLES / K_SAMPLES_PER_FACE)
+        if (mesh.m_triangles.size() > K_MAX_SAMPLES / K_SAMPLES_PER_FACE) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Color audit sample budget exceeded");
+        }
         std::vector<Sample> samples;
         samples.reserve(mesh.m_triangles.size() * K_SAMPLES_PER_FACE);
         std::map<std::array<std::uint32_t, 2>, Edge> edges;
         for (const auto& triangle : mesh.m_triangles) {
-            if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Color audit cancelled");
+            if (stop.stop_requested()) {
+                return fail(ErrorCode::CANCELLED, "Color audit cancelled");
+            }
             std::array<Vec3d, 3> points;
             for (std::size_t i { 0uz }; i < 3uz; ++i) {
                 const auto& position = mesh.m_vertices[triangle[i]].m_position;
@@ -95,16 +101,19 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
                                             { position[0], position[1], position[2] });
             }
             const auto K_NORMAL = cross(points[1] - points[0], points[2] - points[0]);
-            for (const auto& uv : K_UV)
-                samples.push_back({.m_position = points[0] * (1 - uv[0] - uv[1]) +
+            for (const auto& uv : K_UV) {
+                samples.push_back({ .m_position = points[0] * (1 - uv[0] - uv[1]) +
                                                  points[1] * uv[0] + points[2] * uv[1],
-                                   .m_normal = K_NORMAL});
+                                   .m_normal = K_NORMAL });
+            }
             for (std::size_t i { 0uz }; i < 3uz; ++i) {
                 const auto K_NEXT = (i + 1uz) % 3uz;
                 std::array key { triangle[i], triangle[K_NEXT] };
                 std::ranges::sort(key);
                 auto& edge = edges[key];
-                if (edge.m_incidence < 2uz) edge.m_samples[edge.m_incidence] = samples.size();
+                if (edge.m_incidence < 2uz) {
+                    edge.m_samples[edge.m_incidence] = samples.size();
+                }
                 ++edge.m_incidence;
                 samples.push_back(
                     { .m_position = (points[i] + points[K_NEXT]) * .5, .m_normal = K_NORMAL });
@@ -114,16 +123,21 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
         for (std::size_t view_index { 0uz }; view_index < frames.size(); ++view_index) {
             const FrameId K_FRAME_ID { frames[view_index].at("frame").get<std::uint64_t>() };
             auto view = color_inputs::view(*K_INPUT, view_index, stop);
-            if (!view) return std::unexpected(view.error());
+            if (!view) {
+                return std::unexpected(view.error());
+            }
             std::array<std::size_t, static_cast<std::size_t>(ColorProjectionStatus::COUNT)>
                 counts {};
             for (std::size_t i { 0uz }; i < samples.size(); ++i) {
-                if (i % 4096uz == 0uz && stop.stop_requested())
+                if (i % 4096uz == 0uz && stop.stop_requested()) {
                     return fail(ErrorCode::CANCELLED, "Color audit cancelled");
+                }
                 auto& sample = samples[i];
                 const auto K_COLOR = view->project_color(sample.m_position, sample.m_normal);
                 ++counts[static_cast<std::size_t>(K_COLOR.m_status)];
-                if (K_COLOR.m_status != ColorProjectionStatus::ACCEPTED) continue;
+                if (K_COLOR.m_status != ColorProjectionStatus::ACCEPTED) {
+                    continue;
+                }
                 sample.m_mask |= std::uint32_t { 1 } << view_index;
                 for (std::size_t channel { 0uz }; channel < 3uz; ++channel) {
                     sample.m_minimum[channel] =
@@ -139,8 +153,10 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
                     sample.m_rgb = K_COLOR.m_linear_rgb;
                 }
             }
-            Json ledger {{ "frame", K_FRAME_ID.m_value }, { "attempts", samples.size() }};
-            for (std::size_t i { 0uz }; i < counts.size(); ++i) ledger[K_STATUS_NAMES[i]] = counts[i];
+            Json ledger { { "frame", K_FRAME_ID.m_value }, { "attempts", samples.size() } };
+            for (std::size_t i { 0uz }; i < counts.size(); ++i) {
+                ledger[K_STATUS_NAMES[i]] = counts[i];
+            }
             ledgers.push_back(std::move(ledger));
         }
         std::array<std::size_t, 3> face_counts {};
@@ -149,23 +165,27 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
             different_owner {};
         double maximum_seam {}, sum_seam {}, maximum_spread {};
         auto owners = Json::object();
-        for (const auto& frame : frames)
+        for (const auto& frame : frames) {
             owners[std::to_string(frame.at("frame").get<std::uint64_t>())] = 0uz;
+        }
         for (std::size_t face { 0uz }; face < mesh.m_triangles.size(); ++face) {
             std::size_t face_known {};
             for (std::size_t i { 0uz }; i < K_INTERIOR_SAMPLES; ++i) {
                 const auto& sample = samples[face * K_SAMPLES_PER_FACE + i];
                 const auto K_VIEWS = static_cast<std::size_t>(std::popcount(sample.m_mask));
                 ++coverage_histogram[K_VIEWS];
-                if (!sample.m_owner.m_value) continue;
+                if (!sample.m_owner.m_value) {
+                    continue;
+                }
                 ++known;
                 ++face_known;
                 auto& count = owners[std::to_string(sample.m_owner.m_value)];
                 count = count.get<std::size_t>() + 1uz;
-                for (std::size_t channel { 0uz }; channel < 3uz; ++channel)
+                for (std::size_t channel { 0uz }; channel < 3uz; ++channel) {
                     maximum_spread = std::max(
                         maximum_spread,
                         static_cast<double>(sample.m_maximum[channel] - sample.m_minimum[channel]));
+                }
             }
             ++face_counts[face_known == 0uz ? 0uz : face_known == K_INTERIOR_SAMPLES ? 2uz : 1uz];
         }
@@ -181,14 +201,17 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
             }
             ++shared;
             const auto &left = samples[K_EDGE.m_samples[0]], &right = samples[K_EDGE.m_samples[1]];
-            if (!left.m_owner.m_value || !right.m_owner.m_value) continue;
+            if (!left.m_owner.m_value || !right.m_owner.m_value) {
+                continue;
+            }
             ++compared;
             different_owner += left.m_owner != right.m_owner;
             double difference {};
-            for (std::size_t channel { 0uz }; channel < 3uz; ++channel)
+            for (std::size_t channel { 0uz }; channel < 3uz; ++channel) {
                 difference = std::max(
                     difference,
                     std::abs(static_cast<double>(left.m_rgb[channel]) - right.m_rgb[channel]));
+            }
             maximum_seam = std::max(maximum_seam, difference);
             sum_seam += difference;
         }
@@ -203,42 +226,47 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
         atlas.resize(atlas.size() + K_WIDTH * K_HEIGHT * 3uz, std::byte { 32 });
         std::vector<std::byte> encoded;
         encoded.reserve(32uz + samples.size() * 44uz);
-        for (char character : std::string_view("WECLR001"))
+        for (char character : std::string_view("WECLR001")) {
             encoded.push_back(static_cast<std::byte>(character));
+        }
         integer<std::uint64_t>(encoded, mesh.m_triangles.size());
         integer<std::uint64_t>(encoded, frames.size());
         integer<std::uint64_t>(encoded, samples.size());
         for (const auto& sample : samples) {
             integer<std::uint64_t>(encoded, sample.m_owner.m_value);
             integer<std::uint32_t>(encoded, sample.m_mask);
-            for (auto color : sample.m_rgb)
+            for (auto color : sample.m_rgb) {
                 integer<std::uint32_t>(encoded, std::bit_cast<std::uint32_t>(color));
+            }
             integer<std::uint64_t>(encoded, std::bit_cast<std::uint64_t>(sample.m_score));
-            for (std::size_t channel { 0uz }; channel < 3uz; ++channel)
+            for (std::size_t channel { 0uz }; channel < 3uz; ++channel) {
                 integer<std::uint32_t>(encoded,
                                        std::bit_cast<std::uint32_t>(
                                            sample.m_owner.m_value ? sample.m_maximum[channel] -
                                                                         sample.m_minimum[channel]
                                                                   : 0.0F));
+            }
         }
-        for (std::size_t face { 0uz }; face < mesh.m_triangles.size(); ++face)
+        for (std::size_t face { 0uz }; face < mesh.m_triangles.size(); ++face) {
             for (std::size_t i { 0uz }; i < K_INTERIOR_SAMPLES; ++i) {
                 const auto& sample = samples[face * K_SAMPLES_PER_FACE + i];
                 const auto K_X = face % K_COLUMNS * 4uz + static_cast<std::size_t>(K_UV[i][0] * 4);
                 const auto K_Y = face / K_COLUMNS * 4uz + static_cast<std::size_t>(K_UV[i][1] * 4);
                 const auto K_OFFSET = K_HEADER.size() + (K_Y * K_WIDTH + K_X) * 3uz;
-                for (std::size_t channel { 0uz }; channel < 3uz; ++channel)
+                for (std::size_t channel { 0uz }; channel < 3uz; ++channel) {
                     atlas[K_OFFSET + channel] = static_cast<std::byte>(
                         sample.m_owner.m_value ? srgb_byte(sample.m_rgb[channel])
                         : channel == 1uz       ? 0
                                                : 255);
+                }
             }
+        }
         const Json K_REPORT {
             { "schema_version", 1 },
             { "kind", "CAPTURE_COLOR_PROJECTION_AUDIT_V1" },
-            {"scope",
+            { "scope",
              "diagnostic sampled atlas/edge audit; no texture export or continuous coverage "
-             "certification"},
+             "certification" },
             { "color_domain", "captured sRGB decoded to linear RGB; no albedo" },
             { "units", "ARBITRARY_POSE_CAMERA_UNITS" },
             { "walking_enabled", false },
@@ -250,8 +278,8 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
             { "triangles", mesh.m_triangles.size() },
             { "vertices", mesh.m_vertices.size() },
             { "views", frames.size() },
-            {"policy",
-             {{ "voxel_size", K_VOXEL },
+            { "policy",
+             { { "voxel_size", K_VOXEL },
               { "depth_world_voxels", 2 },
               { "relative_axial_depth", .01 },
               { "minimum_support", 2 },
@@ -260,64 +288,75 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
               { "uncertainty_used", false },
               { "atlas_tile_size", 4 },
               { "interior_uv", K_UV },
-              {"owner_score",
+              { "owner_score",
                "absolute_incidence_cosine/(1+maximum_corner_depth_residual/tolerance); ties lower "
-               "frame ID"}}},
-            {"atlas_samples",
-             {{ "total", mesh.m_triangles.size() * K_INTERIOR_SAMPLES },
+               "frame ID" } } },
+            { "atlas_samples",
+             { { "total", mesh.m_triangles.size() * K_INTERIOR_SAMPLES },
               { "known", known },
               { "unknown", mesh.m_triangles.size() * K_INTERIOR_SAMPLES - known },
               { "view_count_histogram", coverage_histogram },
               { "selected_owners", owners },
-              { "maximum_candidate_linear_rgb_spread", maximum_spread }}},
-            {"faces",
-             {{ "all_samples_unknown", face_counts[0] },
+              { "maximum_candidate_linear_rgb_spread", maximum_spread } } },
+            { "faces",
+             { { "all_samples_unknown", face_counts[0] },
               { "partially_sampled", face_counts[1] },
-              { "all_six_samples_known", face_counts[2] }}},
-            {"edges",
-             {{ "boundary", boundary },
+              { "all_six_samples_known", face_counts[2] } } },
+            { "edges",
+             { { "boundary", boundary },
               { "nonmanifold", nonmanifold },
               { "two_face", shared },
               { "both_midpoints_known", compared },
               { "unknown_comparisons", shared - compared },
               { "different_owner", different_owner },
               { "maximum_linear_rgb_linf", compared ? Json(maximum_seam) : Json(nullptr) },
-              {"mean_linear_rgb_linf",
-               compared ? Json(sum_seam / static_cast<double>(compared)) : Json(nullptr)}}},
+              { "mean_linear_rgb_linf",
+               compared ? Json(sum_seam / static_cast<double>(compared)) : Json(nullptr) } } },
             { "view_ledgers", ledgers },
-            {"atlas_diagnostic",
-             "magenta=unknown; dark gray=outside sampled triangle; no dilation or filling"}};
-        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Color audit cancelled");
-        if (!std::filesystem::create_directory(output))
+            { "atlas_diagnostic",
+             "magenta=unknown; dark gray=outside sampled triangle; no dilation or filling" } };
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Color audit cancelled");
+        }
+        if (!std::filesystem::create_directory(output)) {
             return fail(ErrorCode::IO_ERROR, "Cannot reserve color audit directory");
+        }
         const auto K_FLUSH = asset_files::flush_directory_entry(output.parent_path());
-        if (!K_FLUSH) return std::unexpected(K_FLUSH.error());
+        if (!K_FLUSH) {
+            return std::unexpected(K_FLUSH.error());
+        }
         auto files = Json::object();
         const auto K_PUBLISH = [&](const std::string& name,
                                    std::span<const std::byte> bytes) -> Result<void> {
             const auto K_HASH = asset_files::publish_asset(output / name, bytes, stop);
-            if (!K_HASH) return std::unexpected(K_HASH.error());
-            files[name] = {{ "bytes", bytes.size() }, { "sha256", *K_HASH }};
+            if (!K_HASH) {
+                return std::unexpected(K_HASH.error());
+            }
+            files[name] = { { "bytes", bytes.size() }, { "sha256", *K_HASH } };
             return {};
         };
         for (const auto& [K_NAME, K_DATA] :
              std::array<std::pair<std::string, std::span<const std::byte>>, 2> {
                  std::pair<std::string, std::span<const std::byte>> { "samples.bin", encoded },
-                 { "atlas.ppm", atlas }}) {
+                 { "atlas.ppm", atlas } }) {
             const auto K_WRITTEN = K_PUBLISH(K_NAME, K_DATA);
-            if (!K_WRITTEN) return std::unexpected(K_WRITTEN.error());
+            if (!K_WRITTEN) {
+                return std::unexpected(K_WRITTEN.error());
+            }
         }
         const auto K_REPORT_TEXT = K_REPORT.dump(2) + "\n";
         const auto K_WRITTEN_REPORT =
             K_PUBLISH("report.json", std::as_bytes(std::span(K_REPORT_TEXT)));
-        if (!K_WRITTEN_REPORT) return std::unexpected(K_WRITTEN_REPORT.error());
+        if (!K_WRITTEN_REPORT) {
+            return std::unexpected(K_WRITTEN_REPORT.error());
+        }
         const Json K_MANIFEST {
             { "schema_version", 1 },
             { "kind", "CAPTURE_COLOR_PROJECTION_AUDIT_V1" },
             { "request_sha256", expected_sha256 },
             { "scene_sha256", scene_content_hash(*scene) },
             { "files", files },
-            { "scope", "diagnostic samples only; source RGB and original geometry unchanged" }};
+            { "scope", "diagnostic samples only; source RGB and original geometry unchanged" } };
         const auto K_TEXT = K_MANIFEST.dump(2) + "\n";
         return asset_files::publish_asset(
             output / "manifest.json", std::as_bytes(std::span(K_TEXT)), stop);

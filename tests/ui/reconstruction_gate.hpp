@@ -14,7 +14,8 @@ class reconstruction_gate {
 
     void observe(const ReconstructionProgress& value, const std::stop_token& stop) {
         std::unique_lock lock(mutex_);
-        if (value.m_stage != stage_ || reached_) return;
+        if (value.m_stage != stage_ || reached_)
+            return;
         reached_ = true;
         changed_.notify_all();
         const auto resumed = changed_.wait_until(
@@ -26,7 +27,9 @@ class reconstruction_gate {
 
     bool wait_until_reached(std::chrono::seconds timeout = std::chrono::seconds(5)) {
         std::unique_lock lock(mutex_);
-        return changed_.wait_for(lock, timeout, [this] { return reached_; });
+        return changed_.wait_for(lock, timeout, [this] {
+            return reached_;
+        });
     }
 
     void release() {

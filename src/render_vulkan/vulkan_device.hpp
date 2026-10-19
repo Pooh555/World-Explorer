@@ -45,21 +45,37 @@ class vulkan_device {
                                        const std::filesystem::path& shader_directory) const;
     void create_descriptor_layout(descriptor_resources& resources);
 
-    VkInstance instance() const noexcept { return instance_; }
+    VkInstance instance() const noexcept {
+        return instance_;
+    }
 
-    VkSurfaceKHR surface() const noexcept { return surface_; }
+    VkSurfaceKHR surface() const noexcept {
+        return surface_;
+    }
 
-    VkPhysicalDevice physical_device() const noexcept { return physical_; }
+    VkPhysicalDevice physical_device() const noexcept {
+        return physical_;
+    }
 
-    VkDevice device() const noexcept { return device_; }
+    VkDevice device() const noexcept {
+        return device_;
+    }
 
-    VkQueue queue() const noexcept { return queue_; }
+    VkQueue queue() const noexcept {
+        return queue_;
+    }
 
-    std::uint32_t queue_family() const noexcept { return queue_family_; }
+    std::uint32_t queue_family() const noexcept {
+        return queue_family_;
+    }
 
-    VkPhysicalDeviceProperties properties() const noexcept { return properties_; }
+    VkPhysicalDeviceProperties properties() const noexcept {
+        return properties_;
+    }
 
-    VkSemaphore timeline() const noexcept { return timeline_; }
+    VkSemaphore timeline() const noexcept {
+        return timeline_;
+    }
 
   private:
     static VKAPI_ATTR VkBool32 VKAPI_CALL

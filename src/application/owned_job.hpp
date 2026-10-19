@@ -2,10 +2,10 @@
 
 #include "world_explorer/core/file_lock.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <set>
 #include <stop_token>
-
-#include <nlohmann/json.hpp>
 
 namespace world_explorer::job_detail {
 

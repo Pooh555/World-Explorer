@@ -4,10 +4,17 @@ import os
 import struct
 import threading
 
+__all__ = [
+    "COMMAND_LIMIT",
+    "CommandSession",
+    "CommandVerifier",
+    "read_frame",
+]
+
 COMMAND_LIMIT = 64 * 1024
 
 
-class command_verifier:
+class CommandVerifier:
     def __init__(self, data):
         self.data = data
         if not 16 <= len(data) <= COMMAND_LIMIT or self.scalar(0, "I") != len(data) - 4:
@@ -126,7 +133,7 @@ def read_frame(descriptor):
     return prefix + exact(size)
 
 
-class command_session:
+class CommandSession:
     def __init__(self, session, writer, cancel_callback):
         self.session, self.writer, self.cancel_callback = (
             session,
@@ -139,7 +146,7 @@ class command_session:
 
     def start(self, arguments):
         data = read_frame(0)
-        kind, selected = command_verifier(data).decode(self.session)
+        kind, selected = CommandVerifier(data).decode(self.session)
         if kind != "START":
             raise ValueError("START must be the first worker command")
         self.selected = tuple(selected)
@@ -161,7 +168,7 @@ class command_session:
                 data = read_frame(0)
                 if self.writer.terminal:
                     return
-                kind, selected = command_verifier(data).decode(self.session)
+                kind, selected = CommandVerifier(data).decode(self.session)
                 if kind == "START":
                     if tuple(selected) != self.selected:
                         raise ValueError(

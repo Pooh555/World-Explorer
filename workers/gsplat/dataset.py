@@ -11,7 +11,12 @@ import pycolmap
 from train import file_hash
 
 
-class capture_dataset:
+__all__ = [
+    "CaptureDataset",
+]
+
+
+class CaptureDataset:
     def __init__(self, root, max_dimension, cache_bytes=128 * 1024**2):
         self.root = Path(root).resolve(strict=True)
         sparse = self.root / "sparse"

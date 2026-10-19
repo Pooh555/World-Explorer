@@ -117,9 +117,9 @@ if TYPE_CHECKING:
 # from myproject.core import settings
 
 __all__ = [  # [RULE] Every public module defines __all__; sorted alphabetically.
-    "DEFAULT_TIMEOUT_S",
     "Color",
     "Config",
+    "DEFAULT_TIMEOUT_S",
     "Repository",
     "RetryPolicy",
     "main",

@@ -20,6 +20,32 @@ import threading
 import time
 from fractions import Fraction
 
+__all__ = [
+    "CANCELLED",
+    "Job",
+    "LIMITS",
+    "MAX_LOG_BYTES",
+    "MAX_MESSAGE_BYTES",
+    "PROTOCOL_VERSION",
+    "ROOT",
+    "WIRE",
+    "WorkerError",
+    "atomic_json",
+    "canonical_hash",
+    "capabilities",
+    "emit",
+    "executable",
+    "file_inventory",
+    "main",
+    "read_json",
+    "run_command",
+    "sha256",
+    "terminate",
+    "tool_identity",
+    "validate_request",
+    "verify_stage",
+]
+
 PROTOCOL_VERSION = 1
 MAX_MESSAGE_BYTES = 1024 * 1024
 MAX_LOG_BYTES = 8 * 1024 * 1024

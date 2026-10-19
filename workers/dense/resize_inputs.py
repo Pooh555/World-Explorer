@@ -15,6 +15,15 @@ import sys
 
 from pilot import digest, parse, publish, read_pinned
 
+__all__ = [
+    "PROFILE",
+    "main",
+    "run",
+    "transformed",
+    "validate_resize",
+    "worker_digest",
+]
+
 PROFILE = "colmap_resized_dense_input_v1"
 
 

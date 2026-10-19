@@ -19,7 +19,7 @@ import resize_inputs as resize
 from pilot import digest
 
 
-class dense_resize_test(unittest.TestCase):
+class DenseResizeTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="we_dense_resize_")
         self.addCleanup(self.temp.cleanup)

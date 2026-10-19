@@ -1,12 +1,12 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/core/hash.hpp"
 
-#include <chrono>
-#include <fstream>
-
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
+
+#include <chrono>
+#include <fstream>
 
 using namespace world_explorer;
 
@@ -18,7 +18,9 @@ struct ImportDirectory {
         ("we_import_" +
          std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
 
-    ImportDirectory() { std::filesystem::create_directories(m_path / "assets"); }
+    ImportDirectory() {
+        std::filesystem::create_directories(m_path / "assets");
+    }
 
     ~ImportDirectory() {
         std::error_code error;
@@ -49,30 +51,30 @@ TEST_CASE("fit compilation binds provenance and rejects changed assets without r
     }
     const auto K_DIGEST = sha256_file(K_PLY, 65536).value();
     const std::string K_SOURCE_HASH(64, 'a');
-    nlohmann::json manifest {{"schema_version", 1},
-                             {"status", "complete"},
-                             {"recipe", "local_gsplat_v1"},
-                             {"identity", std::string(64, 'b')},
-                             {"source_sha256", K_SOURCE_HASH},
-                             {"ply_sha256", K_DIGEST},
-                             {"ply", "assets/fit.ply"},
-                             {"steps", 7000},
-                             {"splats", 1}};
+    nlohmann::json manifest { { "schema_version", 1 },
+                             { "status", "complete" },
+                             { "recipe", "local_gsplat_v1" },
+                             { "identity", std::string(64, 'b') },
+                             { "source_sha256", K_SOURCE_HASH },
+                             { "ply_sha256", K_DIGEST },
+                             { "ply", "assets/fit.ply" },
+                             { "steps", 7000 },
+                             { "splats", 1 } };
     const auto K_INPUT = directory.m_path / "result.json";
     const auto K_BUNDLE = directory.m_path / "output.wexplore";
     const nlohmann::json K_INPUT_MANIFEST {
-        {"source_sha256", K_SOURCE_HASH},
-        {"dataset",
-         {{"scene_scale", 2},
-          {"frames",
+        { "source_sha256", K_SOURCE_HASH },
+        { "dataset",
+         { { "scene_scale", 2 },
+          { "frames",
            nlohmann::json::array(
-               {{{"name", "000001.png"},
-                 {"height", 128},
-                 {"view", {{1, 0, 0, 1}, {0, 1, 0, 2}, {0, 0, 1, 3}, {0, 0, 0, 1}}},
-                 {"intrinsic", {{200, 0, 64}, {0, 200, 64}, {0, 0, 1}}}}})}}}};
+               { { { "name", "000001.png" },
+                 { "height", 128 },
+                 { "view", { { 1, 0, 0, 1 }, { 0, 1, 0, 2 }, { 0, 0, 1, 3 }, { 0, 0, 0, 1 } } },
+                 { "intrinsic", { { 200, 0, 64 }, { 0, 200, 64 }, { 0, 0, 1 } } } } }) } } } };
     save_manifest(directory.m_path / "input_manifest.json", K_INPUT_MANIFEST);
     save_manifest(K_INPUT, manifest);
-    REQUIRE(compile_fit_scene({.m_input = K_INPUT, .m_destination = K_BUNDLE}));
+    REQUIRE(compile_fit_scene({ .m_input = K_INPUT, .m_destination = K_BUNDLE }));
     auto loaded = load_bundle(K_BUNDLE).value();
     CHECK(loaded->m_provenance.at("capture_sha256") == K_SOURCE_HASH);
     CHECK(loaded->m_provenance.at("quality_gate") == "UNVERIFIED");
@@ -88,27 +90,27 @@ TEST_CASE("fit compilation binds provenance and rejects changed assets without r
 
     manifest["ply_sha256"] = std::string(64, 'c');
     save_manifest(K_INPUT, manifest);
-    CHECK_FALSE(compile_fit_scene({.m_input = K_INPUT, .m_destination = K_BUNDLE}));
+    CHECK_FALSE(compile_fit_scene({ .m_input = K_INPUT, .m_destination = K_BUNDLE }));
     manifest["ply_sha256"] = K_DIGEST;
     manifest["splats"] = 2;
     save_manifest(K_INPUT, manifest);
-    CHECK_FALSE(compile_fit_scene({.m_input = K_INPUT, .m_destination = K_BUNDLE}));
+    CHECK_FALSE(compile_fit_scene({ .m_input = K_INPUT, .m_destination = K_BUNDLE }));
     manifest["splats"] = 1;
     manifest["ply"] = "../fit.ply";
     save_manifest(K_INPUT, manifest);
-    CHECK_FALSE(compile_fit_scene({.m_input = K_INPUT, .m_destination = K_BUNDLE}));
+    CHECK_FALSE(compile_fit_scene({ .m_input = K_INPUT, .m_destination = K_BUNDLE }));
     CHECK(sha256_file(K_BUNDLE / "manifest.json", 65536).value() == K_COMMITTED);
 }
 
 TEST_CASE("source view reset rejects missing or invalid camera metadata") {
     SceneState scene;
     CHECK_FALSE(source_view(scene));
-    scene.m_provenance["source_inspection_view"] = nlohmann::json {{"schema_version", 1},
-                                                                   {"position", {0, 0, 0}},
-                                                                   {"forward", {0, 0, -2}},
-                                                                   {"speed", 1},
-                                                                   {"vertical_fov_radians", 1},
-                                                                   {"frame_name", "000001.png"}}
+    scene.m_provenance["source_inspection_view"] = nlohmann::json { { "schema_version", 1 },
+                                                                   { "position", { 0, 0, 0 } },
+                                                                   { "forward", { 0, 0, -2 } },
+                                                                   { "speed", 1 },
+                                                                   { "vertical_fov_radians", 1 },
+                                                                   { "frame_name", "000001.png" } }
                                                        .dump();
     CHECK_FALSE(source_view(scene));
     scene.m_provenance["source_inspection_view"] = std::string(4097, ' ');
@@ -117,14 +119,14 @@ TEST_CASE("source view reset rejects missing or invalid camera metadata") {
 
 TEST_CASE("source view preserves recorded roll without claiming gravity") {
     SceneState scene;
-    nlohmann::json metadata {{"schema_version", 2},
-                             {"position", {1, 2, 3}},
-                             {"forward", {0, 0, -1}},
-                             {"up", {-1, 0, 0}},
-                             {"up_reference", "CAPTURE_ORIENTATION"},
-                             {"speed", 2},
-                             {"vertical_fov_radians", 1},
-                             {"frame_name", "000001.png"}};
+    nlohmann::json metadata { { "schema_version", 2 },
+                             { "position", { 1, 2, 3 } },
+                             { "forward", { 0, 0, -1 } },
+                             { "up", { -1, 0, 0 } },
+                             { "up_reference", "CAPTURE_ORIENTATION" },
+                             { "speed", 2 },
+                             { "vertical_fov_radians", 1 },
+                             { "frame_name", "000001.png" } };
     scene.m_provenance["source_inspection_view"] = metadata.dump();
     const auto K_VIEW = source_view(scene);
     REQUIRE(K_VIEW);

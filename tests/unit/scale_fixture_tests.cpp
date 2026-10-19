@@ -1,8 +1,8 @@
 #include "../fixtures/scale_fixture.hpp"
 
-#include <cmath>
-
 #include <catch2/catch_test_macros.hpp>
+
+#include <cmath>
 
 using namespace world_explorer;
 
@@ -74,11 +74,11 @@ TEST_CASE("maximum scale cameras have analytic full-bank coverage in both direct
     }
     CHECK(horizontal * vertical == K_SCALE_FIXTURE_REFERENCES);
     CHECK(K_SCALE_FIXTURE_REFERENCES <= 8000000);
-    for (const bool K_REVERSE : {false, true}) {
+    for (const bool K_REVERSE : { false, true }) {
         const auto K_CAMERA = scale_fixture_camera(K_REVERSE);
         const auto K_K = raster_intrinsics(K_CAMERA, 1920, 1080);
         REQUIRE(K_K);
-        CHECK(*K_K == std::array<float, 4> {1536, 1536, 960, 540});
+        CHECK(*K_K == std::array<float, 4> { 1536, 1536, 960, 540 });
         CHECK(!raster_intrinsics(K_CAMERA, 1280, 720));
         CHECK(dot(Vec3d { 0, 0, K_REVERSE ? 16. : 0. } - K_CAMERA.m_position, K_CAMERA.m_forward) ==
               8);

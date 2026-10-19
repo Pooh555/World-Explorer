@@ -28,15 +28,21 @@ struct CalibrationRecord {
 
 inline bool valid(const CalibrationRecord& value) {
     if (!value.m_id.m_value || !value.m_width || !value.m_height ||
-        !project(value.m_camera, {0, 0, 1}) ||
-        (value.m_model != CalibrationModel::PINHOLE && value.m_model != CalibrationModel::OPENCV))
+        !project(value.m_camera, { 0, 0, 1 }) ||
+        (value.m_model != CalibrationModel::PINHOLE && value.m_model != CalibrationModel::OPENCV)) {
         return false;
-    for (double coefficient : value.m_distortion)
+    }
+    for (double coefficient : value.m_distortion) {
         if (!std::isfinite(coefficient) ||
-            (value.m_model == CalibrationModel::PINHOLE && coefficient != 0))
+            (value.m_model == CalibrationModel::PINHOLE && coefficient != 0)) {
             return false;
-    for (double coefficient : value.m_image_transform)
-        if (!std::isfinite(coefficient)) return false;
+        }
+    }
+    for (double coefficient : value.m_image_transform) {
+        if (!std::isfinite(coefficient)) {
+            return false;
+        }
+    }
     return value.m_image_transform[0] > 0 && value.m_image_transform[1] > 0;
 }
 

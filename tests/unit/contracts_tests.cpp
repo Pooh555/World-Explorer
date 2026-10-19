@@ -3,16 +3,16 @@
 #include "world_explorer/scene_store/bundle.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <atomic>
 #include <fstream>
 #include <limits>
 #include <thread>
 #include <vector>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
@@ -36,7 +36,7 @@ std::shared_ptr<SceneChunk> fixture_chunk(ChunkId id = { 1 }, std::uint64_t gene
 
 SceneTransaction create_transaction() {
     return {
-        {42}, {0}, {0}, {1}, {100}, {{SceneOperationKind::CREATE, {1}, fixture_chunk(), {}, {}}}};
+        { 42 }, { 0 }, { 0 }, { 1 }, { 100 }, { { SceneOperationKind::CREATE, { 1 }, fixture_chunk(), {}, {} } } };
 }
 
 struct TemporaryDirectory {
@@ -85,8 +85,9 @@ void write_bytes(const std::filesystem::path& path, std::span<const std::byte> b
 // Schema-1 fixtures mutate fixed little-endian wire offsets independently of the reader.
 void put_integer(std::span<std::byte> bytes, std::uint64_t value) {
     REQUIRE(bytes.size() <= sizeof(value));
-    for (std::size_t index { 0uz }; index < bytes.size(); ++index)
+    for (std::size_t index { 0uz }; index < bytes.size(); ++index) {
         bytes[index] = static_cast<std::byte>((value >> (8U * index)) & 255U);
+    }
 }
 
 }  // namespace
@@ -100,19 +101,19 @@ TEST_CASE("asymmetric optical projection and world pose round trip", "[contracts
     REQUIRE(recovered);
     CHECK(std::abs(recovered->m_x - K_ORIGINAL.m_x) < 1e-12);
     CHECK(std::abs(recovered->m_y - K_ORIGINAL.m_y) < 1e-12);
-    const SimilarityTransform K_WORLD_FROM_CAMERA {{0, 1, 0, 0}, {2, -3, 7}, 2.5};
+    const SimilarityTransform K_WORLD_FROM_CAMERA { { 0, 1, 0, 0 }, { 2, -3, 7 }, 2.5 };
     const auto K_ROUND_TRIP = inverse_transform_point(
         K_WORLD_FROM_CAMERA, transform_point(K_WORLD_FROM_CAMERA, K_ORIGINAL));
     CHECK(std::abs(K_ROUND_TRIP.m_x - K_ORIGINAL.m_x) < 1e-12);
     CHECK(std::abs(K_ROUND_TRIP.m_y - K_ORIGINAL.m_y) < 1e-12);
     CHECK(std::abs(K_ROUND_TRIP.m_z - K_ORIGINAL.m_z) < 1e-12);
-    CHECK_FALSE(project(camera, {0, 0, -1}));
-    CHECK_FALSE(unproject({0, 1, 0, 0}, {1, 1}, 2));
+    CHECK_FALSE(project(camera, { 0, 0, -1 }));
+    CHECK_FALSE(unproject({ 0, 1, 0, 0 }, { 1, 1 }, 2));
 }
 
 TEST_CASE("scene transactions replay replace delete correction and epoch resync atomically",
           "[contracts][replay]") {
-    SceneStore store({42});
+    SceneStore store({ 42 });
     auto create = create_transaction();
     REQUIRE(store.commit(create));
     const auto K_OLD = store.acquire_snapshot();
@@ -120,14 +121,14 @@ TEST_CASE("scene transactions replay replace delete correction and epoch resync 
     CHECK(store.acquire_snapshot()->m_revision.m_value == 1);
     auto caller_alias = std::const_pointer_cast<SceneChunk>(create.m_changes[0].m_chunk);
     caller_alias->m_splats[0].m_mean[0] = 4;
-    CHECK(K_OLD->m_chunks.at({1})->m_splats[0].m_mean[0] == 1);
+    CHECK(K_OLD->m_chunks.at({ 1 })->m_splats[0].m_mean[0] == 1);
     CHECK_FALSE(store.commit(create));  // reused ID with modified payload
-    auto replacement = fixture_chunk({1}, 2);
+    auto replacement = fixture_chunk({ 1 }, 2);
     replacement->m_splats[0].m_opacity = 0.4F;
     SceneTransaction replace {
-        {42}, {0}, {1}, {2}, {101}, {{SceneOperationKind::REPLACE, {1}, replacement, {}, {}}}};
+        { 42 }, { 0 }, { 1 }, { 2 }, { 101 }, { { SceneOperationKind::REPLACE, { 1 }, replacement, {}, {} } } };
     REQUIRE(store.commit(replace));
-    CHECK(K_OLD->m_chunks.at({1})->m_splats[0].m_opacity == 0.7F);
+    CHECK(K_OLD->m_chunks.at({ 1 })->m_splats[0].m_opacity == 0.7F);
     auto wrong_base = replace;
     wrong_base.m_operation = { 102 };
     wrong_base.m_base_revision = { 0 };
@@ -141,24 +142,24 @@ TEST_CASE("scene transactions replay replace delete correction and epoch resync 
     REQUIRE_FALSE(rejected);
     CHECK(rejected.error().m_code == ErrorCode::WRONG_EPOCH);
     SceneTransaction correction {
-        {42},
-        {0},
-        {2},
-        {3},
-        {104},
-        {{SceneOperationKind::TRANSFORM, {1}, nullptr, {{0, 1, 0, 0}, {10, 2, 3}, 2}, {3}}}};
+        { 42 },
+        { 0 },
+        { 2 },
+        { 3 },
+        { 104 },
+        { { SceneOperationKind::TRANSFORM, { 1 }, nullptr, { { 0, 1, 0, 0 }, { 10, 2, 3 }, 2 }, { 3 } } } };
     REQUIRE(store.commit(correction));
     const auto K_CORRECTED = store.acquire_snapshot();
-    CHECK_FALSE(K_CORRECTED->m_chunks.at({1})->m_geometry_valid);
-    CHECK(K_CORRECTED->m_chunks.at({1})->m_pose_revision.m_value == 3);
-    CHECK(K_CORRECTED->m_chunks.at({1})->m_world_from_chunk.m_translation.m_x == 10);
-    auto replay = store.changes_since({1}, {100000});
+    CHECK_FALSE(K_CORRECTED->m_chunks.at({ 1 })->m_geometry_valid);
+    CHECK(K_CORRECTED->m_chunks.at({ 1 })->m_pose_revision.m_value == 3);
+    CHECK(K_CORRECTED->m_chunks.at({ 1 })->m_world_from_chunk.m_translation.m_x == 10);
+    auto replay = store.changes_since({ 1 }, { 100000 });
     REQUIRE(replay);
     CHECK(replay->m_base_revision.m_value == 1);
     CHECK(replay->m_new_revision.m_value == 3);
-    CHECK_FALSE(store.changes_since({1}, {1}));
+    CHECK_FALSE(store.changes_since({ 1 }, { 1 }));
     SceneTransaction deletion {
-        {42}, {0}, {3}, {4}, {105}, {{SceneOperationKind::ERASE, {1}, nullptr, {}, {}}}};
+        { 42 }, { 0 }, { 3 }, { 4 }, { 105 }, { { SceneOperationKind::ERASE, { 1 }, nullptr, {}, {} } } };
     REQUIRE(store.commit(deletion));
     CHECK(store.acquire_snapshot()->m_chunks.empty());
     CHECK(K_CORRECTED->m_chunks.size() == 1);
@@ -174,25 +175,25 @@ TEST_CASE("invalid transactions leave all state untouched and replay window is b
     SceneStoreLimits limits;
     limits.m_journal_entries = 1;
     limits.m_remembered_operations = 2;
-    SceneStore store({42}, limits);
+    SceneStore store({ 42 }, limits);
     REQUIRE(store.commit(create_transaction()));
-    auto invalid = fixture_chunk({2});
+    auto invalid = fixture_chunk({ 2 });
     invalid->m_splats[0].m_scale[0] = -1;
-    SceneTransaction transaction {{42},
-                                  {0},
-                                  {1},
-                                  {2},
-                                  {102},
-                                  {{SceneOperationKind::ERASE, {1}, nullptr, {}, {}},
-                                   {SceneOperationKind::CREATE, {2}, invalid, {}, {}}}};
+    SceneTransaction transaction { { 42 },
+                                  { 0 },
+                                  { 1 },
+                                  { 2 },
+                                  { 102 },
+                                  { { SceneOperationKind::ERASE, { 1 }, nullptr, {}, {} },
+                                   { SceneOperationKind::CREATE, { 2 }, invalid, {}, {} } } };
     REQUIRE_FALSE(store.commit(transaction));
-    CHECK(store.acquire_snapshot()->m_chunks.contains({1}));
+    CHECK(store.acquire_snapshot()->m_chunks.contains({ 1 }));
     transaction.m_changes.pop_back();
     REQUIRE(store.commit(transaction));
-    auto missed = store.changes_since({0}, {100000});
+    auto missed = store.changes_since({ 0 }, { 100000 });
     REQUIRE_FALSE(missed);
     CHECK(missed.error().m_code == ErrorCode::RESYNC_REQUIRED);
-    CHECK_FALSE(store.changes_since({3}, {100000}));
+    CHECK_FALSE(store.changes_since({ 3 }, { 100000 }));
     auto bad = fixture_chunk();
     bad->m_splats[0].m_rotation = { 0, 0, 0, 0 };
     CHECK_FALSE(validate_chunk(*bad));
@@ -204,24 +205,25 @@ TEST_CASE("invalid transactions leave all state untouched and replay window is b
 }
 
 TEST_CASE("concurrent readers retain immutable scene revisions", "[contracts][threads]") {
-    SceneStore store({42});
+    SceneStore store({ 42 });
     REQUIRE(store.commit(create_transaction()));
     std::atomic<bool> valid_snapshots { true };
     std::jthread reader([&] {
         for (int i { 0 }; i < 1000; ++i) {
             const auto K_SNAPSHOT = store.acquire_snapshot();
-            if (K_SNAPSHOT->m_chunks.size() != 1 || K_SNAPSHOT->m_revision.m_value == 0)
+            if (K_SNAPSHOT->m_chunks.size() != 1 || K_SNAPSHOT->m_revision.m_value == 0) {
                 valid_snapshots = false;
+            }
         }
     });
     for (std::uint64_t i { 2 }; i < 30; ++i) {
         SceneTransaction change {
-            {42},
-            {0},
-            {i - 1},
-            {i},
-            {100 + i},
-            {{SceneOperationKind::REPLACE, {1}, fixture_chunk({1}, i), {}, {}}}};
+            { 42 },
+            { 0 },
+            { i - 1 },
+            { i },
+            { 100 + i },
+            { { SceneOperationKind::REPLACE, { 1 }, fixture_chunk({ 1 }, i), {}, {} } } };
         REQUIRE(store.commit(change));
     }
     reader.join();
@@ -234,10 +236,10 @@ TEST_CASE("map corrections invalidate dependencies and reject stale submissions"
     MapTransaction first;
     first.m_operation = { 1 };
     first.m_new_revision = { 1 };
-    first.m_calibrations.push_back({{1}, {711, 529, 319.25, 241.75}, 640, 480});
+    first.m_calibrations.push_back({ { 1 }, { 711, 529, 319.25, 241.75 }, 640, 480 });
     first.m_observations.push_back(
-        {{1}, {1}, {1}, {3, 1, 30}, std::chrono::nanoseconds { 100 }, std::string(64, 'a')});
-    first.m_alignments.push_back({{1}, {1}, {}});
+        { { 1 }, { 1 }, { 1 }, { 3, 1, 30 }, std::chrono::nanoseconds { 100 }, std::string(64, 'a') });
+    first.m_alignments.push_back({ { 1 }, { 1 }, {} });
     PoseEstimate pose;
     pose.m_frame = { 1 };
     pose.m_submap = { 1 };
@@ -256,18 +258,18 @@ TEST_CASE("map corrections invalidate dependencies and reject stale submissions"
     pose.m_submap_from_camera.m_translation = { 2, 3, 4 };
     correction.m_poses.push_back(pose);
     REQUIRE(store.commit(correction));
-    CHECK(store.acquire_snapshot()->m_invalidated_frames.contains({1}));
-    CHECK(K_OLD->m_poses.at({1}).m_submap_from_camera.m_translation.m_x == 0);
+    CHECK(store.acquire_snapshot()->m_invalidated_frames.contains({ 1 }));
+    CHECK(K_OLD->m_poses.at({ 1 }).m_submap_from_camera.m_translation.m_x == 0);
     correction.m_operation = { 3 };
     CHECK_FALSE(store.commit(correction));
     MapTransaction alignment;
     alignment.m_operation = { 4 };
     alignment.m_base_revision = { 2 };
     alignment.m_new_revision = { 3 };
-    alignment.m_alignments.push_back({{1}, {3}, {{0, 1, 0, 0}, {4, 5, 6}, 2}});
+    alignment.m_alignments.push_back({ { 1 }, { 3 }, { { 0, 1, 0, 0 }, { 4, 5, 6 }, 2 } });
     REQUIRE(store.commit(alignment));
-    CHECK(store.acquire_snapshot()->m_invalidated_frames.contains({1}));
-    REQUIRE(store.reset({1}));
+    CHECK(store.acquire_snapshot()->m_invalidated_frames.contains({ 1 }));
+    REQUIRE(store.reset({ 1 }));
     CHECK(store.acquire_snapshot()->m_poses.empty());
     CHECK_FALSE(store.commit(first));
 }
@@ -275,7 +277,7 @@ TEST_CASE("map corrections invalidate dependencies and reject stale submissions"
 TEST_CASE("invalid memory map retry windows reject admission without retaining an operation",
           "[map_transaction_admission][limits]") {
     const auto K_RECEIPTS = GENERATE(0uz, 65537uz);
-    MapStore store({.m_remembered_operations = K_RECEIPTS});
+    MapStore store({ .m_remembered_operations = K_RECEIPTS });
     MapTransaction transaction;
     transaction.m_operation = { 1 };
     transaction.m_new_revision = { 1 };
@@ -288,7 +290,7 @@ TEST_CASE("invalid memory map retry windows reject admission without retaining a
     CHECK(transaction.m_operation.m_value == 1);
     CHECK(transaction.m_new_revision.m_value == 1);
     // Configuration is immutable; a valid store accepts this same caller-owned input.
-    MapStore repaired({.m_remembered_operations = 1});
+    MapStore repaired({ .m_remembered_operations = 1 });
     REQUIRE(repaired.commit(transaction));
     REQUIRE(repaired.commit(transaction));
     CHECK(repaired.acquire_snapshot()->m_revision.m_value == 1);
@@ -303,8 +305,9 @@ TEST_CASE("SHA-256 matches an independent standard test vector", "[contracts][ha
 TEST_CASE("SHA-256 builder preserves a digest across small updates and buffer boundaries",
           "[contracts][hash]") {
     std::vector<std::byte> bytes(65537);
-    for (std::size_t index { 0uz }; index < bytes.size(); ++index)
+    for (std::size_t index { 0uz }; index < bytes.size(); ++index) {
         bytes[index] = static_cast<std::byte>(index % 251);
+    }
     const auto K_EXPECTED = sha256(bytes);
     Sha256Builder streamed;
     for (std::size_t offset { 0uz }; offset < bytes.size();) {
@@ -326,7 +329,7 @@ TEST_CASE("bundle round trip enforces checksums paths conventions and allocation
     const auto K_BUNDLE_PATH =
         directory.m_path / GENERATE(std::filesystem::path("scene.wexplore"),
                                     std::filesystem::path(u8"room \u00e9\u623f.wexplore"));
-    SceneStore store({42});
+    SceneStore store({ 42 });
     REQUIRE(store.commit(create_transaction()));
     auto snapshot = std::make_shared<SceneState>(*store.acquire_snapshot());
     const std::string K_UTF8_LABEL = "room \xc3\xa9\xe6\x88\xbf";
@@ -334,7 +337,7 @@ TEST_CASE("bundle round trip enforces checksums paths conventions and allocation
     REQUIRE(write_bundle(K_BUNDLE_PATH, snapshot));
     auto loaded = load_bundle(K_BUNDLE_PATH);
     REQUIRE(loaded);
-    CHECK((*loaded)->m_chunks.at({1})->m_splats[0].m_mean[1] == 2);
+    CHECK((*loaded)->m_chunks.at({ 1 })->m_splats[0].m_mean[1] == 2);
     CHECK((*loaded)->m_provenance.at("label") == K_UTF8_LABEL);
     auto manifest = read_json(K_BUNDLE_PATH / "manifest.json");
     const auto K_ORIGINAL = manifest;
@@ -345,10 +348,10 @@ TEST_CASE("bundle round trip enforces checksums paths conventions and allocation
     manifest["coordinates"]["quaternion_order"] = "xyzw";
     write_json(K_BUNDLE_PATH / "manifest.json", manifest);
     CHECK_FALSE(load_bundle(K_BUNDLE_PATH));
-    for (const auto& malformed : {std::string {},
+    for (const auto& malformed : { std::string {},
                                   std::string("{"),
                                   std::string("{\"label\":\"\xff\"}"),
-                                  std::string("{}\0trailing", 11)}) {
+                                  std::string("{}\0trailing", 11) }) {
         std::ofstream input(K_BUNDLE_PATH / "manifest.json", std::ios::binary);
         input.write(malformed.data(), static_cast<std::streamsize>(malformed.size()));
         input.close();
@@ -370,17 +373,17 @@ TEST_CASE("bundle round trip enforces checksums paths conventions and allocation
 
 TEST_CASE("failed publication preserves previous valid bundle", "[contracts][bundle]") {
     TemporaryDirectory directory;
-    SceneStore store({42});
+    SceneStore store({ 42 });
     REQUIRE(store.commit(create_transaction()));
     REQUIRE(write_bundle(directory.m_path, store.acquire_snapshot()));
     auto invalid = std::make_shared<SceneState>(*store.acquire_snapshot());
     auto chunk = fixture_chunk();
     chunk->m_splats[0].m_scale[0] = 0;
-    invalid->m_chunks[{1}] = chunk;
+    invalid->m_chunks[{ 1 }] = chunk;
     REQUIRE_FALSE(write_bundle(directory.m_path, invalid));
     auto loaded = load_bundle(directory.m_path);
     REQUIRE(loaded);
-    CHECK((*loaded)->m_chunks.at({1})->m_splats[0].m_scale[0] == 0.3F);
+    CHECK((*loaded)->m_chunks.at({ 1 })->m_splats[0].m_scale[0] == 0.3F);
 }
 
 TEST_CASE(
@@ -398,31 +401,31 @@ TEST_CASE(
         std::ofstream output(K_PATH);
         output << K_HEADER << "1 2 3 0.2 0.3 0.4 0 0 0 0 2 0 0 0\n";
     }
-    auto loaded = load_gsplat_ply(K_PATH, {42});
+    auto loaded = load_gsplat_ply(K_PATH, { 42 });
     REQUIRE(loaded);
-    const auto& chunk = *(*loaded)->m_chunks.at({1});
+    const auto& chunk = *(*loaded)->m_chunks.at({ 1 });
     CHECK(chunk.m_splats[0].m_opacity == 0.5F);
     CHECK(chunk.m_splats[0].m_scale[0] == 1);
     CHECK(chunk.m_splats[0].m_rotation[0] == 1);
-    const auto K_TRANSFORMED = transform_point(chunk.m_world_from_chunk, {1, 2, 3});
+    const auto K_TRANSFORMED = transform_point(chunk.m_world_from_chunk, { 1, 2, 3 });
     CHECK(K_TRANSFORMED.m_y == -2);
     CHECK(K_TRANSFORMED.m_z == -3);
     {
         std::ofstream output(K_PATH);
         output << K_HEADER << "1 2 3 0.2 0.3 0.4 0 1000 0 0 1 0 0 0\n";
     }
-    CHECK_FALSE(load_gsplat_ply(K_PATH, {42}));
+    CHECK_FALSE(load_gsplat_ply(K_PATH, { 42 }));
     {
         std::ofstream output(K_PATH);
         output << "ply\nformat ascii 1.0\nelement vertex 1\nend_header\n";
     }
-    CHECK_FALSE(load_gsplat_ply(K_PATH, {42}));
+    CHECK_FALSE(load_gsplat_ply(K_PATH, { 42 }));
 }
 
 TEST_CASE("checksummed hostile bundle indexes never bypass package validation",
           "[validation][bundle]") {
     TemporaryDirectory directory;
-    SceneStore store({42});
+    SceneStore store({ 42 });
     REQUIRE(store.commit(create_transaction()));
     REQUIRE(write_bundle(directory.m_path, store.acquire_snapshot()));
     auto manifest = read_json(directory.m_path / "manifest.json");
@@ -489,7 +492,7 @@ TEST_CASE("checksummed hostile bundle indexes never bypass package validation",
 TEST_CASE("checksummed hostile chunk payloads reject counts enums and trailing bytes",
           "[validation][bundle]") {
     TemporaryDirectory directory;
-    SceneStore store({42});
+    SceneStore store({ 42 });
     REQUIRE(store.commit(create_transaction()));
     REQUIRE(write_bundle(directory.m_path, store.acquire_snapshot()));
     auto manifest = read_json(directory.m_path / "manifest.json");
@@ -535,8 +538,9 @@ TEST_CASE("checksummed hostile chunk payloads reject counts enums and trailing b
     write_bytes(K_CHUNK_PATH, bytes);
     put_integer(std::span(index).subspan(24, 8), bytes.size());
     const auto K_CHUNK_HASH = sha256(bytes);
-    for (std::size_t offset { 0uz }; offset < K_CHUNK_HASH.size(); ++offset)
+    for (std::size_t offset { 0uz }; offset < K_CHUNK_HASH.size(); ++offset) {
         index[32 + offset] = static_cast<std::byte>(K_CHUNK_HASH[offset]);
+    }
     write_bytes(K_INDEX_PATH, index);
     manifest["index_sha256"] = sha256(index);
     write_json(directory.m_path / "manifest.json", manifest);
@@ -548,7 +552,7 @@ TEST_CASE("checksummed hostile chunk payloads reject counts enums and trailing b
 TEST_CASE("bundle manifest validation preserves scale and enforces declared identities",
           "[validation][bundle]") {
     TemporaryDirectory directory;
-    SceneStore store({42});
+    SceneStore store({ 42 });
     REQUIRE(store.commit(create_transaction()));
     auto measured = std::make_shared<SceneState>(*store.acquire_snapshot());
     measured->m_scale = ScaleStatus::METRIC_MEASURED;

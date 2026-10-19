@@ -22,8 +22,8 @@ TEST_CASE("portable synthetic viewer fixture freezes the complete 250k payload a
         REQUIRE(K_CHUNK->m_pose_revision.m_value == 0);
         const auto& first = K_CHUNK->m_splats.front();
         const auto& last = K_CHUNK->m_splats.back();
-        REQUIRE(first.m_mean == std::array<float, 3> {-3.890625F, -3.890625F, 0});
-        REQUIRE(last.m_mean == std::array<float, 3> {3.890625F, 3.890625F, -.015625F});
+        REQUIRE(first.m_mean == std::array<float, 3> { -3.890625F, -3.890625F, 0 });
+        REQUIRE(last.m_mean == std::array<float, 3> { 3.890625F, 3.890625F, -.015625F });
         REQUIRE(first.m_sh_degree == 3);
         REQUIRE(last.m_sh_degree == 3);
         REQUIRE(K_CHUNK->m_world_from_chunk.m_translation.m_z ==
@@ -50,6 +50,6 @@ TEST_CASE(
     REQUIRE(K_CAMERA.m_far_plane == 64);
     const auto K_K = raster_intrinsics(K_CAMERA, 1280, 720);
     REQUIRE(K_K);
-    REQUIRE(*K_K == std::array<float, 4> {900, 900, 640, 360});
+    REQUIRE(*K_K == std::array<float, 4> { 900, 900, 640, 360 });
     REQUIRE(!raster_intrinsics(K_CAMERA, 1920, 1080));
 }

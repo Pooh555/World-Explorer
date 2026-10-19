@@ -19,27 +19,33 @@ class CompletedPoseReplay final : public PoseEstimator {
   public:
     explicit CompletedPoseReplay(std::shared_ptr<const CompletedPoseDataset> dataset)
         : m_dataset(std::move(dataset)) {
-        for (std::size_t index { 0uz }; index < m_dataset->m_observations.size(); ++index)
+        for (std::size_t index { 0uz }; index < m_dataset->m_observations.size(); ++index) {
             m_observations.emplace(m_dataset->m_observations[index].m_id, index);
-        for (std::size_t index { 0uz }; index < m_dataset->m_poses.size(); ++index)
+        }
+        for (std::size_t index { 0uz }; index < m_dataset->m_poses.size(); ++index) {
             m_poses.emplace(m_dataset->m_poses[index].m_frame, index);
+        }
     }
 
     EstimatorCapabilities capabilities() const noexcept override {
-        return {false,
+        return { false,
                 false,
                 m_started ? m_config.m_max_pending_observations : m_dataset->m_observations.size(),
-                EstimatorMode::COMPLETED_REPLAY};
+                EstimatorMode::COMPLETED_REPLAY };
     }
 
     Result<void> start(const PoseEstimatorConfig& config) override {
-        if (m_cancellation.stop_requested())
+        if (m_cancellation.stop_requested()) {
             return fail(ErrorCode::CANCELLED, "Completed pose replay cancelled");
-        if (m_started) return fail(ErrorCode::INVALID_ARGUMENT, "Pose replay has already started");
+        }
+        if (m_started) {
+            return fail(ErrorCode::INVALID_ARGUMENT, "Pose replay has already started");
+        }
         if (config.m_max_pending_observations == 0 ||
             config.m_max_pending_observations > m_dataset->m_observations.size() ||
-            config.m_memory.m_bytes <= K_METADATA_BUDGET)
+            config.m_memory.m_bytes <= K_METADATA_BUDGET) {
             return fail(ErrorCode::INVALID_ARGUMENT, "Invalid pose replay capacity/memory budget");
+        }
         m_config = config;
         m_started = true;
         return {};
@@ -47,11 +53,13 @@ class CompletedPoseReplay final : public PoseEstimator {
 
     Result<ObservationTicket> submit(FrameObservation& observation) override {
         try {
-            if (m_cancellation.stop_requested())
+            if (m_cancellation.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Completed pose replay cancelled");
-            if (!m_started || !observation.m_operation.m_value)
+            }
+            if (!m_started || !observation.m_operation.m_value) {
                 return fail(ErrorCode::INVALID_ARGUMENT,
                             "Pose replay requires start and operation ID");
+            }
             const auto K_HEADER = adapter_detail::header_digest(observation.m_frame);
             if (const auto K_PRIOR = m_receipts.find(observation.m_operation);
                 K_PRIOR != m_receipts.end()) {
@@ -59,19 +67,22 @@ class CompletedPoseReplay final : public PoseEstimator {
                     (observation.m_frame.m_pixels.m_bytes &&
                      (observation.m_frame.m_pixels.m_bytes->size() !=
                           K_PRIOR->second.m_image_bytes ||
-                      sha256(*observation.m_frame.m_pixels.m_bytes) != K_PRIOR->second.m_pixels)))
+                      sha256(*observation.m_frame.m_pixels.m_bytes) != K_PRIOR->second.m_pixels))) {
                     return fail(ErrorCode::DUPLICATE_OPERATION,
                                 "Pose operation reused with different content");
+                }
                 observation.m_frame.m_pixels.m_bytes.reset();
                 return K_PRIOR->second.m_ticket;
             }
-            if (m_closed)
+            if (m_closed) {
                 return fail(ErrorCode::INVALID_ARGUMENT,
                             "Pose replay no longer accepts observations");
+            }
             const auto K_FOUND = m_observations.find(observation.m_frame.m_id);
-            if (K_FOUND == m_observations.end())
+            if (K_FOUND == m_observations.end()) {
                 return fail(ErrorCode::INVALID_DATA,
                             "Observation is absent from completed pose dataset");
+            }
             const auto& frame = observation.m_frame;
             const auto& expected = m_dataset->m_observations[K_FOUND->second];
             const auto& calibration = m_dataset->m_calibrations.front();
@@ -85,25 +96,31 @@ class CompletedPoseReplay final : public PoseEstimator {
                     expected.m_timestamp.m_time_base_denominator ||
                 frame.m_pixels.m_width != calibration.m_width ||
                 frame.m_pixels.m_height != calibration.m_height ||
-                frame.m_pixels.m_row_stride != calibration.m_width * 3)
+                frame.m_pixels.m_row_stride != calibration.m_width * 3) {
                 return fail(ErrorCode::INVALID_DATA,
                             "Observation metadata differs from completed dataset");
+            }
             if (frame.m_pixels.m_format != PixelFormat::RGB8 || frame.m_measured_depth ||
-                !frame.m_imu_samples.empty())
+                !frame.m_imu_samples.empty()) {
                 return fail(ErrorCode::UNSUPPORTED_OPERATION,
                             "Pose replay accepts packed RGB8 observations only");
+            }
             const auto K_IMAGE_BYTES =
                 static_cast<std::uint64_t>(frame.m_pixels.m_row_stride) * frame.m_pixels.m_height;
-            if (!frame.m_pixels.m_bytes || frame.m_pixels.m_bytes->size() != K_IMAGE_BYTES)
+            if (!frame.m_pixels.m_bytes || frame.m_pixels.m_bytes->size() != K_IMAGE_BYTES) {
                 return fail(ErrorCode::INVALID_DATA, "Invalid RGB lease byte count");
-            if (K_IMAGE_BYTES > m_config.m_memory.m_bytes - K_METADATA_BUDGET)
+            }
+            if (K_IMAGE_BYTES > m_config.m_memory.m_bytes - K_METADATA_BUDGET) {
                 return fail(ErrorCode::RESOURCE_EXHAUSTED,
                             "Observation exceeds pose replay memory budget");
-            if (m_admitted.contains(frame.m_id))
+            }
+            if (m_admitted.contains(frame.m_id)) {
                 return fail(ErrorCode::DUPLICATE_OPERATION,
                             "Frame already admitted under another operation");
-            if (m_pending.size() == m_config.m_max_pending_observations)
+            }
+            if (m_pending.size() == m_config.m_max_pending_observations) {
                 return fail(ErrorCode::WOULD_BLOCK, "Pose replay queue is full; drain events");
+            }
             const auto K_PIXELS = sha256(*frame.m_pixels.m_bytes);
             const ObservationTicket K_TICKET { m_receipts.size() + 1 };
             // Prepare bounded next state before consuming caller leases; allocation
@@ -128,9 +145,12 @@ class CompletedPoseReplay final : public PoseEstimator {
 
     Result<std::vector<PoseEvent>> drain_events(EventBudget budget) override {
         try {
-            if (m_cancellation.stop_requested())
+            if (m_cancellation.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Completed pose replay cancelled");
-            if (!m_started) return fail(ErrorCode::INVALID_ARGUMENT, "Pose replay has not started");
+            }
+            if (!m_started) {
+                return fail(ErrorCode::INVALID_ARGUMENT, "Pose replay has not started");
+            }
             std::vector<PoseEvent> events;
             const auto K_MAXIMUM = std::min(budget.m_count, m_pending.size() + 5);
             events.reserve(K_MAXIMUM);
@@ -139,29 +159,41 @@ class CompletedPoseReplay final : public PoseEstimator {
             std::size_t consumed {};
             while (events.size() < K_MAXIMUM) {
                 if (initial < 3) {
-                    if (initial == 0)
+                    if (initial == 0) {
                         events.emplace_back(TrackingChange { TrackingState::INITIALIZING });
-                    if (initial == 1) events.emplace_back(SubmapCreated { m_dataset->m_submap });
-                    if (initial == 2)
+                    }
+                    if (initial == 1) {
+                        events.emplace_back(SubmapCreated { m_dataset->m_submap });
+                    }
+                    if (initial == 2) {
                         events.emplace_back(
-                            MapAlignment {m_dataset->m_submap, m_dataset->m_revision, {}});
+                            MapAlignment { m_dataset->m_submap, m_dataset->m_revision, {} });
+                    }
                     ++initial;
                 } else if (consumed < m_pending.size()) {
                     const auto K_POSE = m_poses.find(m_pending[consumed]);
-                    if (K_POSE != m_poses.end())
+                    if (K_POSE != m_poses.end()) {
                         events.emplace_back(m_dataset->m_poses[K_POSE->second]);
-                    else events.emplace_back(TrackingChange { TrackingState::LOST });
+                    } else {
+                        events.emplace_back(TrackingChange { TrackingState::LOST });
+                    }
                     ++consumed;
                 } else if (m_closed && terminal < 2) {
-                    if (terminal == 0)
+                    if (terminal == 0) {
                         events.emplace_back(TrackingChange { TrackingState::FINISHED });
-                    else events.emplace_back(EstimatorFinished {});
+                    } else {
+                        events.emplace_back(EstimatorFinished {});
+                    }
                     ++terminal;
-                } else break;
+                } else {
+                    break;
+                }
             }
             m_initial = initial;
             m_terminal = terminal;
-            for (std::size_t index { 0uz }; index < consumed; ++index) m_pending.pop_front();
+            for (std::size_t index { 0uz }; index < consumed; ++index) {
+                m_pending.pop_front();
+            }
             return events;
         } catch (const std::bad_alloc&) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Pose replay event allocation failed");
@@ -169,16 +201,20 @@ class CompletedPoseReplay final : public PoseEstimator {
     }
 
     Result<void> finish() override {
-        if (m_cancellation.stop_requested())
+        if (m_cancellation.stop_requested()) {
             return fail(ErrorCode::CANCELLED, "Completed pose replay cancelled");
-        if (!m_started || m_admitted.size() != m_dataset->m_observations.size())
+        }
+        if (!m_started || m_admitted.size() != m_dataset->m_observations.size()) {
             return fail(ErrorCode::INVALID_ARGUMENT,
                         "Pose replay requires every selected observation before finish");
+        }
         m_closed = true;
         return {};
     }
 
-    void request_stop() noexcept override { m_cancellation.request_stop(); }
+    void request_stop() noexcept override {
+        m_cancellation.request_stop();
+    }
 
   private:
     struct Receipt {
@@ -214,8 +250,9 @@ make_completed_pose_replay(const std::shared_ptr<const CompletedPoseDataset>& da
             dataset->m_scale != ScaleStatus::ARBITRARY || dataset->m_observations.size() < 3 ||
             dataset->m_observations.size() > 120 || dataset->m_poses.size() < 3 ||
             dataset->m_poses.size() > dataset->m_observations.size() ||
-            dataset->m_poses.size() * 10 < dataset->m_observations.size() * 9)
+            dataset->m_poses.size() * 10 < dataset->m_observations.size() * 9) {
             return fail(ErrorCode::INVALID_DATA, "Invalid completed pose replay dataset");
+        }
         std::map<FrameId, const ObservationRecord*> observations;
         for (const auto& frame : dataset->m_observations) {
             if (!frame.m_id.m_value || !frame.m_capture.m_value ||
@@ -224,8 +261,9 @@ make_completed_pose_replay(const std::shared_ptr<const CompletedPoseDataset>& da
                 frame.m_timestamp.m_time_base_denominator <= 0 ||
                 !adapter_detail::valid_digest(frame.m_image_sha256) ||
                 frame.m_capture != dataset->m_observations.front().m_capture ||
-                !observations.emplace(frame.m_id, &frame).second)
+                !observations.emplace(frame.m_id, &frame).second) {
                 return fail(ErrorCode::INVALID_DATA, "Invalid or duplicate replay observation");
+            }
         }
         std::set<FrameId> registered;
         for (const auto& pose : dataset->m_poses) {
@@ -234,8 +272,9 @@ make_completed_pose_replay(const std::shared_ptr<const CompletedPoseDataset>& da
                 pose.m_capture_time != K_FOUND->second->m_capture_time ||
                 pose.m_submap != dataset->m_submap || pose.m_revision != dataset->m_revision ||
                 pose.m_tracking != TrackingState::TRACKING || pose.m_covariance ||
-                !valid(pose.m_submap_from_camera) || pose.m_submap_from_camera.m_scale != 1)
+                !valid(pose.m_submap_from_camera) || pose.m_submap_from_camera.m_scale != 1) {
                 return fail(ErrorCode::INVALID_DATA, "Invalid or duplicate replay pose");
+            }
         }
         // Freeze independently of any mutable shared_ptr alias held by a caller.
         auto snapshot = std::make_shared<const CompletedPoseDataset>(*dataset);

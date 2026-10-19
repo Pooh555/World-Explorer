@@ -7,6 +7,15 @@ from pathlib import Path
 
 from pilot import digest
 
+__all__ = [
+    "DEFAULT_POLICY",
+    "MAX_PAIR_TRACKS",
+    "choose_sources",
+    "plan_sources",
+    "report_digest",
+    "validate_policy",
+]
+
 DEFAULT_POLICY = {
     "algorithm": "COVISIBLE_PARALLAX_GREEDY_V1",
     "reference_indices": list(range(9)),

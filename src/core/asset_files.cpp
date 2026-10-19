@@ -39,19 +39,25 @@ struct StagedFile {
 };
 
 struct FileCloser {
-    void operator()(std::FILE* file) const noexcept { std::fclose(file); }
+    void operator()(std::FILE* file) const noexcept {
+        std::fclose(file);
+    }
 };
 
 Result<StagedFile> stage_bytes(const std::filesystem::path& destination,
                                std::span<const std::byte> bytes,
                                const std::stop_token& stop) {
     try {
-        if (destination.filename().empty())
+        if (destination.filename().empty()) {
             return fail(ErrorCode::INVALID_ARGUMENT, "Asset destination must name a file");
+        }
         auto parent = destination.parent_path();
-        if (parent.empty()) parent = ".";
-        if (!std::filesystem::is_directory(parent))
+        if (parent.empty()) {
+            parent = ".";
+        }
+        if (!std::filesystem::is_directory(parent)) {
             return fail(ErrorCode::IO_ERROR, "Asset destination parent is missing");
+        }
         static std::atomic<std::uint64_t> sequence {};
         StagedFile staging;
         for (std::size_t attempt { 0uz }; attempt < 32uz; ++attempt) {
@@ -65,36 +71,44 @@ Result<StagedFile> stage_bytes(const std::filesystem::path& destination,
                 break;
             }
         }
-        if (staging.m_path.empty())
+        if (staging.m_path.empty()) {
             return fail(ErrorCode::IO_ERROR, "Cannot reserve asset staging directory");
+        }
         const auto K_TEMPORARY = staging.m_path / "payload.bin";
         std::FILE* raw {};
 #ifdef _WIN32
-        if (_wfopen_s(&raw, K_TEMPORARY.c_str(), L"wb") != 0) raw = nullptr;
+        if (_wfopen_s(&raw, K_TEMPORARY.c_str(), L"wb") != 0)
+            raw = nullptr;
 #else
         raw = std::fopen(K_TEMPORARY.c_str(), "wb");
 #endif
         std::unique_ptr<std::FILE, FileCloser> file(raw);
-        if (!file) return fail(ErrorCode::IO_ERROR, "Cannot open staged asset asset");
+        if (!file) {
+            return fail(ErrorCode::IO_ERROR, "Cannot open staged asset asset");
+        }
         for (std::size_t offset { 0uz }; offset < bytes.size();) {
-            if (stop.stop_requested())
+            if (stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Asset asset cancelled before publication");
+            }
             const auto K_COUNT = std::min(K_IO_BLOCK_BYTES, bytes.size() - offset);
             const auto K_BLOCK = bytes.subspan(offset, K_COUNT);
-            if (std::fwrite(K_BLOCK.data(), 1, K_BLOCK.size(), file.get()) != K_BLOCK.size())
+            if (std::fwrite(K_BLOCK.data(), 1, K_BLOCK.size(), file.get()) != K_BLOCK.size()) {
                 return fail(ErrorCode::IO_ERROR, "Asset asset write failed");
+            }
             offset += K_COUNT;
         }
-        if (std::fflush(file.get()) != 0)
+        if (std::fflush(file.get()) != 0) {
             return fail(ErrorCode::IO_ERROR, "Asset asset flush failed");
+        }
 #ifdef _WIN32
         const bool K_FLUSHED = _commit(_fileno(file.get())) == 0;
 #else
         const bool K_FLUSHED = fsync(fileno(file.get())) == 0;
 #endif
         const bool K_CLOSED = std::fclose(file.release()) == 0;
-        if (!K_FLUSHED || !K_CLOSED)
+        if (!K_FLUSHED || !K_CLOSED) {
             return fail(ErrorCode::IO_ERROR, "Asset asset durable write failed");
+        }
         return staging;
     } catch (const std::bad_alloc&) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "File staging allocation failed");
@@ -106,13 +120,18 @@ Result<StagedFile> stage_bytes(const std::filesystem::path& destination,
 Result<void> flush_parent(const std::filesystem::path& destination) {
 #ifndef _WIN32
     auto parent = destination.parent_path();
-    if (parent.empty()) parent = ".";
+    if (parent.empty()) {
+        parent = ".";
+    }
     const int K_DESCRIPTOR = open(parent.c_str(), O_RDONLY | O_DIRECTORY);
-    if (K_DESCRIPTOR < 0)
+    if (K_DESCRIPTOR < 0) {
         return fail(ErrorCode::IO_ERROR, "Cannot open publication directory for durability");
+    }
     const int K_STATUS = fsync(K_DESCRIPTOR);
     close(K_DESCRIPTOR);
-    if (K_STATUS != 0) return fail(ErrorCode::IO_ERROR, "Directory flush failed after publication");
+    if (K_STATUS != 0) {
+        return fail(ErrorCode::IO_ERROR, "Directory flush failed after publication");
+    }
 #else
     (void)destination;
 #endif
@@ -128,28 +147,39 @@ Result<void> flush_directory_entry(const std::filesystem::path& directory) {
 Result<std::vector<std::byte>>
 read_bytes(const std::filesystem::path& path, std::size_t maximum, const std::stop_token& stop) {
     try {
-        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Asset asset cancelled");
-        if (!maximum || maximum > 256uz * 1024 * 1024)
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Asset asset cancelled");
+        }
+        if (!maximum || maximum > 256uz * 1024 * 1024) {
             return fail(ErrorCode::INVALID_ARGUMENT, "Invalid file byte budget");
-        if (!std::filesystem::is_regular_file(std::filesystem::symlink_status(path)))
+        }
+        if (!std::filesystem::is_regular_file(std::filesystem::symlink_status(path))) {
             return fail(ErrorCode::INVALID_DATA, "Asset asset must be a regular nonsymlink file");
+        }
         const auto K_SIZE = std::filesystem::file_size(path);
-        if (!K_SIZE || K_SIZE > maximum)
+        if (!K_SIZE || K_SIZE > maximum) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Asset asset file exceeds budget");
+        }
         std::ifstream input(path, std::ios::binary);
-        if (!input) return fail(ErrorCode::IO_ERROR, "Cannot open asset asset");
+        if (!input) {
+            return fail(ErrorCode::IO_ERROR, "Cannot open asset asset");
+        }
         std::vector<std::byte> bytes(static_cast<std::size_t>(K_SIZE));
         for (std::size_t offset { 0uz }; offset < bytes.size();) {
-            if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Asset asset cancelled");
+            if (stop.stop_requested()) {
+                return fail(ErrorCode::CANCELLED, "Asset asset cancelled");
+            }
             const auto K_COUNT = std::min(K_IO_BLOCK_BYTES, bytes.size() - offset);
             input.read(reinterpret_cast<char*>(bytes.data() + offset),
                        static_cast<std::streamsize>(K_COUNT));
-            if (input.gcount() != static_cast<std::streamsize>(K_COUNT))
+            if (input.gcount() != static_cast<std::streamsize>(K_COUNT)) {
                 return fail(ErrorCode::IO_ERROR, "Asset asset truncated during read");
+            }
             offset += K_COUNT;
         }
-        if (input.peek() != std::char_traits<char>::eof() || input.bad())
+        if (input.peek() != std::char_traits<char>::eof() || input.bad()) {
             return fail(ErrorCode::INVALID_DATA, "Asset asset grew or failed during read");
+        }
         return bytes;
     } catch (const std::bad_alloc&) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Asset asset allocation failed");
@@ -163,20 +193,27 @@ Result<std::string> publish_asset(const std::filesystem::path& destination,
                                   const std::stop_token& stop) {
     try {
         auto staged = stage_bytes(destination, bytes, stop);
-        if (!staged) return std::unexpected(staged.error());
+        if (!staged) {
+            return std::unexpected(staged.error());
+        }
         Sha256Builder digest;
         for (std::size_t offset { 0uz }; offset < bytes.size();) {
-            if (stop.stop_requested())
+            if (stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Asset publication cancelled");
+            }
             const auto K_COUNT = std::min(K_IO_BLOCK_BYTES, bytes.size() - offset);
             digest.update(bytes.subspan(offset, K_COUNT));
             offset += K_COUNT;
         }
         auto hash = digest.finish();
-        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Asset publication cancelled");
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Asset publication cancelled");
+        }
         std::filesystem::create_hard_link(staged->m_path / "payload.bin", destination);
         const auto K_FLUSHED = flush_parent(destination);
-        if (!K_FLUSHED) return std::unexpected(K_FLUSHED.error());
+        if (!K_FLUSHED) {
+            return std::unexpected(K_FLUSHED.error());
+        }
         return hash;
     } catch (const std::bad_alloc&) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Asset publication allocation failed");
@@ -192,9 +229,12 @@ Result<void> replace_manifest(const std::filesystem::path& destination,
     replaced = false;
     try {
         auto staged = stage_bytes(destination, bytes, stop);
-        if (!staged) return std::unexpected(staged.error());
-        if (stop.stop_requested())
+        if (!staged) {
+            return std::unexpected(staged.error());
+        }
+        if (stop.stop_requested()) {
             return fail(ErrorCode::CANCELLED, "Manifest publication cancelled");
+        }
         const auto K_TEMPORARY = staged->m_path / "payload.bin";
 #ifdef _WIN32
         if (!MoveFileExW(K_TEMPORARY.c_str(),

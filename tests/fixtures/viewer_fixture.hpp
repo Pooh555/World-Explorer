@@ -8,7 +8,7 @@
 namespace world_explorer {
 
 inline constexpr std::string_view K_VIEWER_FIXTURE_SHA256 {
-    "10ddfa905d3136ed8343d13393cfdab1c79cc23bfd846d23bc237793492b65ba"};
+    "10ddfa905d3136ed8343d13393cfdab1c79cc23bfd846d23bc237793492b65ba" };
 inline constexpr std::size_t K_VIEWER_FIXTURE_SPLATS { 250000uz };
 inline constexpr std::uint32_t K_VIEWER_FIXTURE_WIDTH { 1280 };
 inline constexpr std::uint32_t K_VIEWER_FIXTURE_HEIGHT { 720 };
@@ -65,7 +65,7 @@ inline CameraView portable_viewer_camera() {
     camera.m_near_plane = 1;
     camera.m_far_plane = 64;
     camera.m_calibration = CalibratedProjection {
-        {900, 900, 639.5, 359.5}, K_VIEWER_FIXTURE_WIDTH, K_VIEWER_FIXTURE_HEIGHT};
+        { 900, 900, 639.5, 359.5 }, K_VIEWER_FIXTURE_WIDTH, K_VIEWER_FIXTURE_HEIGHT };
     return camera;
 }
 

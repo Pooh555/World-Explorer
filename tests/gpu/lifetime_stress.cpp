@@ -2,6 +2,9 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 
+#include <SDL3/SDL.h>
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -19,9 +22,6 @@
 #include <string>
 #include <string_view>
 
-#include <SDL3/SDL.h>
-#include <nlohmann/json.hpp>
-
 using namespace world_explorer;
 
 namespace {
@@ -31,7 +31,9 @@ using SteadyClock = std::chrono::steady_clock;
 using Seconds = std::chrono::seconds;
 
 void require(bool valid, const std::string& message) {
-    if (!valid) throw std::runtime_error(message);
+    if (!valid) {
+        throw std::runtime_error(message);
+    }
 }
 
 std::optional<std::size_t> process_status_bytes(std::string_view field) {
@@ -44,8 +46,9 @@ std::optional<std::size_t> process_status_bytes(std::string_view field) {
             std::string key, unit;
             std::size_t value {};
             if (entry >> key >> value >> unit && unit == "kB" &&
-                value <= std::numeric_limits<std::size_t>::max() / 1024)
+                value <= std::numeric_limits<std::size_t>::max() / 1024) {
                 return value * 1024;
+            }
             return {};
         }
     }
@@ -69,7 +72,9 @@ SceneSnapshot
 revision_of(const SceneSnapshot& original, std::uint64_t revision, bool resident_mode) {
     auto copy = std::make_shared<SceneState>(*original);
     copy->m_revision = { revision };
-    if (!full_revision(revision, resident_mode)) copy->m_chunks.clear();
+    if (!full_revision(revision, resident_mode)) {
+        copy->m_chunks.clear();
+    }
     return copy;
 }
 
@@ -117,21 +122,23 @@ void check_frame(StressContext& context) {
     require(K_STATS.m_allocated_bytes <= context.m_residency_bytes,
             "renderer owned-byte budget exceeded");
     const auto K_VISIBLE = context.m_renderer.updates().visible_snapshot();
-    if (K_VISIBLE)
+    if (K_VISIBLE) {
         require(K_STATS.m_resident_splat_count ==
                     (full_revision(K_VISIBLE->m_revision.m_value, context.m_resident_mode)
                          ? context.m_full_splats
                          : 0),
                 "resident splat count differs from visible revision");
+    }
     context.m_peak_owned_bytes = std::max(context.m_peak_owned_bytes, K_STATS.m_allocated_bytes);
     context.m_frames = K_STATS.m_submitted_frames;
     auto latest = context.m_last_timing;
-    for (const auto& sample : K_STATS.m_completed_timings)
+    for (const auto& sample : K_STATS.m_completed_timings) {
         if (sample.m_sequence > context.m_last_timing) {
             context.m_host_copy_bytes += sample.m_host_copy_bytes;
             context.m_resident_copy_bytes += sample.m_resident_copy_bytes;
             latest = std::max(latest, sample.m_sequence);
         }
+    }
     context.m_last_timing = latest;
 }
 
@@ -141,7 +148,9 @@ void wait_for_revision(StressContext& context, UpdateTicket ticket) {
         check_frame(context);
         const auto K_PROGRESS = context.m_renderer.updates().query_progress(ticket);
         require(K_PROGRESS.has_value(), K_PROGRESS ? "" : K_PROGRESS.error().m_message);
-        if (K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) return;
+        if (K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
+            return;
+        }
         require(K_PROGRESS->m_state != UpdateState::FAILED &&
                     K_PROGRESS->m_state != UpdateState::CANCELLED,
                 "stress scene update failed or was cancelled");
@@ -171,9 +180,13 @@ int main(int argc, char** argv) try {
     bool resident_mode = false, packed = false;
     for (const auto* argument : K_ARGUMENTS.subspan(4)) {
         const std::string_view K_OPTION(argument);
-        if (K_OPTION == "--resident-reuse" && !resident_mode) resident_mode = true;
-        else if (K_OPTION == "--fp16-sh" && !packed) packed = true;
-        else throw std::runtime_error("unknown or duplicate stress option");
+        if (K_OPTION == "--resident-reuse" && !resident_mode) {
+            resident_mode = true;
+        } else if (K_OPTION == "--fp16-sh" && !packed) {
+            packed = true;
+        } else {
+            throw std::runtime_error("unknown or duplicate stress option");
+        }
     }
     const std::string_view K_DURATION_TEXT(K_ARGUMENTS[3]);
     std::uint64_t duration {};
@@ -202,7 +215,9 @@ int main(int argc, char** argv) try {
     require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
 
     struct SdlOwner {
-        ~SdlOwner() { SDL_Quit(); }
+        ~SdlOwner() {
+            SDL_Quit();
+        }
     } sdl;
 
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -213,7 +228,9 @@ int main(int argc, char** argv) try {
         SDL_DestroyWindow);
     require(window != nullptr, SDL_GetError());
     RendererOptions options;
-    if (packed) options.m_splat_storage = GpuSplatStorage::FP32_GEOMETRY_FP16_SH;
+    if (packed) {
+        options.m_splat_storage = GpuSplatStorage::FP32_GEOMETRY_FP16_SH;
+    }
     options.m_max_splats = 1000000;
     options.m_shader_directory = WE_SHADER_DIRECTORY;
     options.m_collect_timings = resident_mode;
@@ -229,15 +246,15 @@ int main(int argc, char** argv) try {
     require(static_cast<bool>(events), "cannot open stress event log");
     std::size_t peak_owned_bytes {};
     std::uint64_t frames {}, revision = 1, updates {}, resizes {}, captures {};
-    StressContext context {*renderer,
+    StressContext context { *renderer,
                            window.get(),
                            K_CAMERA,
                            options.m_residency_bytes,
                            full_splats,
                            peak_owned_bytes,
                            frames,
-                           resident_mode};
-    auto initial = make_snapshot_batch(revision_of(original, revision, resident_mode), {revision});
+                           resident_mode };
+    auto initial = make_snapshot_batch(revision_of(original, revision, resident_mode), { revision });
     require(initial.has_value(), initial ? "" : initial.error().m_message);
     const auto K_INITIAL_TICKET = renderer->updates().enqueue(*initial);
     require(K_INITIAL_TICKET.has_value(),
@@ -247,23 +264,23 @@ int main(int argc, char** argv) try {
     const auto K_BASELINE = capture(context, K_OUTPUT / "capture-0.ppm");
     ++captures;
     write_event(events,
-                {{"event", "start"},
-                 {"scene_content_sha256", K_SCENE_HASH},
-                 {"scene_splats", full_splats},
-                 {"gpu_storage", packed ? "fp16_sh" : "fp32"},
-                 {"splat_stride_bytes", K_STRIDE},
-                 {"scene_payload_bytes", K_PAYLOAD_BYTES},
-                 {"device", renderer->capabilities().m_device_name},
-                 {"duration_seconds", duration},
-                 {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
-                 {"process_rss_bytes", process_status_bytes("VmRSS:")},
-                 {"baseline_readback_sha256", K_BASELINE}});
+                { { "event", "start" },
+                 { "scene_content_sha256", K_SCENE_HASH },
+                 { "scene_splats", full_splats },
+                 { "gpu_storage", packed ? "fp16_sh" : "fp32" },
+                 { "splat_stride_bytes", K_STRIDE },
+                 { "scene_payload_bytes", K_PAYLOAD_BYTES },
+                 { "device", renderer->capabilities().m_device_name },
+                 { "duration_seconds", duration },
+                 { "update_mode", resident_mode ? "full_full_empty" : "full_empty" },
+                 { "process_rss_bytes", process_status_bytes("VmRSS:") },
+                 { "baseline_readback_sha256", K_BASELINE } });
 
     struct Extent {
         std::uint32_t m_width, m_height;
     };
 
-    const std::array<Extent, 4> K_EXTENTS {{{1024, 640}, {1600, 900}, {1920, 1080}, {1280, 720}}};
+    const std::array<Extent, 4> K_EXTENTS { { { 1024, 640 }, { 1600, 900 }, { 1920, 1080 }, { 1280, 720 } } };
     std::size_t extent_index {};
     auto next_update = K_START + Seconds(15);
     auto next_resize = K_START + Seconds(20);
@@ -283,10 +300,10 @@ int main(int argc, char** argv) try {
                 ++updates;
                 write_event(
                     events,
-                    {{"event", "revision"},
-                     {"elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count()},
-                     {"revision", revision},
-                     {"splats", full_revision(revision, resident_mode) ? full_splats : 0}});
+                    { { "event", "revision" },
+                     { "elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count() },
+                     { "revision", revision },
+                     { "splats", full_revision(revision, resident_mode) ? full_splats : 0 } });
             }
         }
         if (!pending && K_NOW >= next_update) {
@@ -301,9 +318,10 @@ int main(int argc, char** argv) try {
                 pending = *admitted;
                 revision = K_NEXT_REVISION;
                 next_update = K_NOW + Seconds(15);
-            } else
+            } else {
                 require(admitted.error().m_code == ErrorCode::WOULD_BLOCK,
                         "stress update admission failed: " + admitted.error().m_message);
+            }
         }
         if (K_NOW >= next_resize) {
             const auto K_EXTENT = K_EXTENTS[extent_index++ % K_EXTENTS.size()];
@@ -312,10 +330,10 @@ int main(int argc, char** argv) try {
             next_resize = K_NOW + Seconds(20);
             write_event(
                 events,
-                {{"event", "resize"},
-                 {"elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count()},
-                 {"width", K_EXTENT.m_width},
-                 {"height", K_EXTENT.m_height}});
+                { { "event", "resize" },
+                 { "elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count() },
+                 { "width", K_EXTENT.m_width },
+                 { "height", K_EXTENT.m_height } });
         }
         const bool K_TAKE_CAPTURE =
             K_NOW >= next_capture && !pending && full_revision(revision, resident_mode);
@@ -327,27 +345,29 @@ int main(int argc, char** argv) try {
             next_capture = K_NOW + Seconds(600);
             write_event(
                 events,
-                {{"event", "capture"},
-                 {"elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count()},
-                 {"revision", revision},
-                 {"sha256", K_HASH}});
-        } else check_frame(context);
+                { { "event", "capture" },
+                 { "elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count() },
+                 { "revision", revision },
+                 { "sha256", K_HASH } });
+        } else {
+            check_frame(context);
+        }
         if (K_NOW >= next_sample) {
             const auto K_STATS = renderer->diagnostics();
             write_event(
                 events,
-                {{"event", "sample"},
-                 {"elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count()},
-                 {"revision", renderer->updates().visible_snapshot()->m_revision.m_value},
-                 {"submitted_frames", K_STATS.m_submitted_frames},
-                 {"completed_timeline", K_STATS.m_completed_timeline},
-                 {"owned_bytes", K_STATS.m_allocated_bytes},
-                 {"peak_owned_bytes", peak_owned_bytes},
-                 {"host_copy_bytes", context.m_host_copy_bytes},
-                 {"resident_copy_bytes", context.m_resident_copy_bytes},
-                 {"process_rss_bytes", process_status_bytes("VmRSS:")},
-                 {"process_peak_rss_bytes", process_status_bytes("VmHWM:")},
-                 {"validation_errors", K_STATS.m_validation_errors}});
+                { { "event", "sample" },
+                 { "elapsed_seconds", std::chrono::duration<double>(K_NOW - K_START).count() },
+                 { "revision", renderer->updates().visible_snapshot()->m_revision.m_value },
+                 { "submitted_frames", K_STATS.m_submitted_frames },
+                 { "completed_timeline", K_STATS.m_completed_timeline },
+                 { "owned_bytes", K_STATS.m_allocated_bytes },
+                 { "peak_owned_bytes", peak_owned_bytes },
+                 { "host_copy_bytes", context.m_host_copy_bytes },
+                 { "resident_copy_bytes", context.m_resident_copy_bytes },
+                 { "process_rss_bytes", process_status_bytes("VmRSS:") },
+                 { "process_peak_rss_bytes", process_status_bytes("VmHWM:") },
+                 { "validation_errors", K_STATS.m_validation_errors } });
             next_sample = K_NOW + Seconds(60);
         }
         SDL_Delay(20);
@@ -356,12 +376,12 @@ int main(int argc, char** argv) try {
         wait_for_revision(context, *pending);
         ++updates;
         write_event(events,
-                    {{"event", "revision"},
-                     {"elapsed_seconds",
-                      std::chrono::duration<double>(SteadyClock::now() - K_START).count()},
-                     {"revision", revision},
-                     {"splats", full_revision(revision, resident_mode) ? full_splats : 0},
-                     {"awaited_after_duration", true}});
+                    { { "event", "revision" },
+                     { "elapsed_seconds",
+                      std::chrono::duration<double>(SteadyClock::now() - K_START).count() },
+                     { "revision", revision },
+                     { "splats", full_revision(revision, resident_mode) ? full_splats : 0 },
+                     { "awaited_after_duration", true } });
     }
     if (!full_revision(revision, resident_mode)) {
         auto final = make_snapshot_batch(revision_of(original, revision + 1, resident_mode),
@@ -393,33 +413,33 @@ int main(int argc, char** argv) try {
             "stress transfer byte totals differ from the full/full/empty sequence");
     const auto K_ELAPSED = std::chrono::duration<double>(SteadyClock::now() - K_START).count();
     Json summary {
-        {"passed", true},
-        {"scope", "native read-only retained-scene update/resize stress"},
-        {"elapsed_seconds", K_ELAPSED},
-        {"requested_seconds", duration},
-        {"update_mode", resident_mode ? "full_full_empty" : "full_empty"},
-        {"scene_content_sha256", K_SCENE_HASH},
-        {"scene_splats", full_splats},
-        {"gpu_storage", packed ? "fp16_sh" : "fp32"},
-        {"splat_stride_bytes", K_STRIDE},
-        {"scene_payload_bytes", K_PAYLOAD_BYTES},
-        {"device", renderer->capabilities().m_device_name},
-        {"updates_visible", updates},
-        {"last_visible_revision", renderer->updates().visible_snapshot()->m_revision.m_value},
-        {"resizes", resizes},
-        {"captures", captures},
-        {"readback_sha256", K_BASELINE},
-        {"submitted_frames", frames},
-        {"peak_owned_bytes", peak_owned_bytes},
-        {"host_copy_bytes", context.m_host_copy_bytes},
-        {"resident_copy_bytes", context.m_resident_copy_bytes},
-        {"process_rss_bytes", process_status_bytes("VmRSS:")},
-        {"process_peak_rss_bytes", process_status_bytes("VmHWM:")},
-        {"validation_errors", K_STATS.m_validation_errors}};
+        { "passed", true },
+        { "scope", "native read-only retained-scene update/resize stress" },
+        { "elapsed_seconds", K_ELAPSED },
+        { "requested_seconds", duration },
+        { "update_mode", resident_mode ? "full_full_empty" : "full_empty" },
+        { "scene_content_sha256", K_SCENE_HASH },
+        { "scene_splats", full_splats },
+        { "gpu_storage", packed ? "fp16_sh" : "fp32" },
+        { "splat_stride_bytes", K_STRIDE },
+        { "scene_payload_bytes", K_PAYLOAD_BYTES },
+        { "device", renderer->capabilities().m_device_name },
+        { "updates_visible", updates },
+        { "last_visible_revision", renderer->updates().visible_snapshot()->m_revision.m_value },
+        { "resizes", resizes },
+        { "captures", captures },
+        { "readback_sha256", K_BASELINE },
+        { "submitted_frames", frames },
+        { "peak_owned_bytes", peak_owned_bytes },
+        { "host_copy_bytes", context.m_host_copy_bytes },
+        { "resident_copy_bytes", context.m_resident_copy_bytes },
+        { "process_rss_bytes", process_status_bytes("VmRSS:") },
+        { "process_peak_rss_bytes", process_status_bytes("VmHWM:") },
+        { "validation_errors", K_STATS.m_validation_errors } };
     std::ofstream result(K_OUTPUT / "summary.json", std::ios::binary);
     result << summary.dump(2) << '\n';
     require(static_cast<bool>(result), "stress summary write failed");
-    write_event(events, {{"event", "complete"}, {"elapsed_seconds", K_ELAPSED}});
+    write_event(events, { { "event", "complete" }, { "elapsed_seconds", K_ELAPSED } });
     std::cout << summary.dump() << '\n';
     return 0;
 } catch (const std::exception& exception) {

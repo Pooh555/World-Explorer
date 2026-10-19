@@ -11,30 +11,30 @@ TEST_CASE("storage inspection reports existing volumes without creating future o
           "[inspection][storage]") {
     test::inspection_fixture fixture;
     const auto K_OUTPUT = fixture.root / "future" / "nested" / "scene.wexplore";
-    const auto K_REPORT = inspect_output_storage({K_OUTPUT}, 1);
+    const auto K_REPORT = inspect_output_storage({ K_OUTPUT }, 1);
     REQUIRE(K_REPORT);
     REQUIRE(K_REPORT->size() == 1);
     CHECK(K_REPORT->front().m_output == std::filesystem::weakly_canonical(K_OUTPUT));
     CHECK(K_REPORT->front().m_existing_directory == std::filesystem::canonical(fixture.root));
     CHECK(K_REPORT->front().m_available_bytes >= 1);
     CHECK_FALSE(std::filesystem::exists(fixture.root / "future"));
-    CHECK_FALSE(inspect_output_storage({K_OUTPUT}, 0));
-    CHECK_FALSE(inspect_output_storage({K_OUTPUT}, UINT64_MAX));
+    CHECK_FALSE(inspect_output_storage({ K_OUTPUT }, 0));
+    CHECK_FALSE(inspect_output_storage({ K_OUTPUT }, UINT64_MAX));
     CHECK_FALSE(inspect_output_storage({}, 1));
-    CHECK_FALSE(inspect_output_storage({K_OUTPUT, K_OUTPUT, K_OUTPUT, K_OUTPUT, K_OUTPUT}, 1));
-    CHECK_FALSE(inspect_output_storage({fixture.request.m_video / "nested"}, 1));
+    CHECK_FALSE(inspect_output_storage({ K_OUTPUT, K_OUTPUT, K_OUTPUT, K_OUTPUT, K_OUTPUT }, 1));
+    CHECK_FALSE(inspect_output_storage({ fixture.request.m_video / "nested" }, 1));
     const auto K_CONSTRAINED_VOLUME = std::filesystem::is_directory("/dev/shm")
                                           ? std::filesystem::path { "/dev/shm" }
                                           : fixture.root;
     const auto K_AVAILABLE = std::filesystem::space(K_CONSTRAINED_VOLUME).available;
     if (K_AVAILABLE < 32ULL * 1024 * 1024 * 1024) {
-        const auto K_INSUFFICIENT = inspect_output_storage({K_CONSTRAINED_VOLUME}, K_AVAILABLE + 1);
+        const auto K_INSUFFICIENT = inspect_output_storage({ K_CONSTRAINED_VOLUME }, K_AVAILABLE + 1);
         REQUIRE_FALSE(K_INSUFFICIENT);
         CHECK(K_INSUFFICIENT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
     }
     std::stop_source cancellation;
     cancellation.request_stop();
-    const auto K_CANCELLED = inspect_output_storage({K_OUTPUT}, 1, cancellation.get_token());
+    const auto K_CANCELLED = inspect_output_storage({ K_OUTPUT }, 1, cancellation.get_token());
     REQUIRE_FALSE(K_CANCELLED);
     CHECK(K_CANCELLED.error().m_code == ErrorCode::CANCELLED);
 }
@@ -43,8 +43,9 @@ TEST_CASE("automatic inspection gates capabilities and binds returned immutable 
           "[inspection]") {
     test::inspection_fixture fixture;
     std::string log;
-    const auto K_FIRST =
-        inspect_video(fixture.request, {}, [&](const std::string& text) { log += text; });
+    const auto K_FIRST = inspect_video(fixture.request, {}, [&](const std::string& text) {
+        log += text;
+    });
     INFO(log);
     INFO((K_FIRST ? "inspected" : K_FIRST.error().m_message));
     REQUIRE(K_FIRST);
@@ -60,8 +61,9 @@ TEST_CASE("automatic inspection gates capabilities and binds returned immutable 
     CHECK(sha256_file(K_DIRECTORY / ".we-inspection-owner.json", 65536).value() == K_OWNER_HASH);
     CHECK(sha256_file(K_FIRST->m_inspection.m_stage / "completion.json", 65536).value() ==
           K_COMPLETION_HASH);
-    for (const auto& output : fixture.request.m_outputs)
+    for (const auto& output : fixture.request.m_outputs) {
         CHECK_FALSE(std::filesystem::exists(output));
+    }
     SECTION("different worker identity") {
         std::ofstream(fixture.request.m_configuration.m_worker.m_script, std::ios::app)
             << "\n# changed\n";
@@ -103,10 +105,11 @@ TEST_CASE("inspection capability rejection prevents START and unsafe completions
                                  "wrong_stage",
                                  "change_source",
                                  "change_script");
-    test::inspection_fixture fixture {{}, {}, K_MODE};
+    test::inspection_fixture fixture { {}, {}, K_MODE };
     std::string log;
-    const auto K_RESULT =
-        inspect_video(fixture.request, {}, [&](const std::string& text) { log += text; });
+    const auto K_RESULT = inspect_video(fixture.request, {}, [&](const std::string& text) {
+        log += text;
+    });
     INFO(log);
     REQUIRE_FALSE(K_RESULT);
     const auto K_MARKER = fixture.request.m_configuration.m_job_directory / "capabilities.json";
@@ -115,9 +118,12 @@ TEST_CASE("inspection capability rejection prevents START and unsafe completions
         CHECK(K_RESULT.error().m_code == ErrorCode::UNSUPPORTED_OPERATION);
         CHECK_FALSE(std::filesystem::exists(K_MARKER));
         CHECK(log.find("Worker accepted START") == std::string::npos);
-    } else CHECK(std::filesystem::exists(K_MARKER));
-    for (const auto& output : fixture.request.m_outputs)
+    } else {
+        CHECK(std::filesystem::exists(K_MARKER));
+    }
+    for (const auto& output : fixture.request.m_outputs) {
         CHECK_FALSE(std::filesystem::exists(output));
+    }
 }
 
 TEST_CASE("inspection rejects unowned output overlap and cancellation without launching a worker",
@@ -156,22 +162,24 @@ TEST_CASE("inspection rejects unowned output overlap and cancellation without la
 
 TEST_CASE("inspection cooperative cancellation releases ownership for same-configuration restart",
           "[inspection]") {
-    test::inspection_fixture fixture {{}, {}, "cancel_once"};
+    test::inspection_fixture fixture { {}, {}, "cancel_once" };
     std::stop_source cancellation;
     std::string log;
     const auto K_CANCELLED =
         inspect_video(fixture.request, cancellation.get_token(), [&](const std::string& text) {
             log += text;
-            if (text.find("Worker accepted START") != std::string::npos)
+            if (text.find("Worker accepted START") != std::string::npos) {
                 cancellation.request_stop();
+            }
         });
     INFO(log);
     REQUIRE_FALSE(K_CANCELLED);
     CHECK(K_CANCELLED.error().m_code == ErrorCode::CANCELLED);
     CHECK(log.find("Worker accepted CANCEL") != std::string::npos);
     REQUIRE(inspect_video(fixture.request, {}));
-    for (const auto& output : fixture.request.m_outputs)
+    for (const auto& output : fixture.request.m_outputs) {
         CHECK_FALSE(std::filesystem::exists(output));
+    }
 }
 
 TEST_CASE("file writer locks reject aliases and release without deleting the lock inode",

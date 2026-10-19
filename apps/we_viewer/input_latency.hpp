@@ -2,14 +2,14 @@
 
 #include "world_explorer/navigation/fly_camera.hpp"
 
+#include <SDL3/SDL_events.h>
+#include <nlohmann/json_fwd.hpp>
+
 #include <array>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <vector>
-
-#include <SDL3/SDL_events.h>
-#include <nlohmann/json_fwd.hpp>
 
 namespace world_explorer::viewer {
 

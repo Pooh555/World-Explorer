@@ -13,7 +13,7 @@ import visibility
 
 
 @unittest.skipUnless(importlib.util.find_spec("numpy"), "Requires isolated NumPy")
-class dense_reliability_test(unittest.TestCase):
+class DenseReliabilityTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import numpy as np

@@ -3,19 +3,21 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
-
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
 namespace {
 
 void require(bool condition, const std::string& message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
 }
 
 }  // namespace
@@ -38,36 +40,38 @@ int main(int argc, char** argv) try {
     auto assets = nlohmann::json::array();
     for (const auto& entry : std::filesystem::recursive_directory_iterator(K_OUTPUT)) {
         require(!entry.is_symlink(), "unexpected generated link");
-        if (!entry.is_regular_file()) continue;
+        if (!entry.is_regular_file()) {
+            continue;
+        }
         const auto K_DIGEST = sha256_file(entry.path(), 128ULL * 1024 * 1024);
         require(K_DIGEST.has_value(), "cannot hash generated asset");
-        assets.push_back({{"path", entry.path().lexically_relative(K_OUTPUT).generic_string()},
-                          {"bytes", entry.file_size()},
-                          {"sha256", *K_DIGEST}});
+        assets.push_back({ { "path", entry.path().lexically_relative(K_OUTPUT).generic_string() },
+                          { "bytes", entry.file_size() },
+                          { "sha256", *K_DIGEST } });
     }
     std::sort(assets.begin(), assets.end(), [](const auto& a, const auto& b) {
         return a.at("path").template get<std::string>() < b.at("path").template get<std::string>();
     });
     const nlohmann::json K_PROFILE {
-        {"schema_version", 1},
-        {"scope", "synthetic maximum-scale admission/memory fixture; no capture or FPS gate"},
-        {"fixture", K_SCENE->m_provenance.at("fixture")},
-        {"asset_license", "MIT"},
-        {"scene_content_sha256", K_HASH},
-        {"resident_splats", K_SCALE_FIXTURE_SPLATS},
-        {"projectable_splats_per_view", K_SCALE_FIXTURE_CONTRIBUTORS},
-        {"expected_tile_references_per_view", K_SCALE_FIXTURE_REFERENCES},
-        {"sh_degree", 3},
-        {"chunks", 8},
-        {"width", K_SCALE_FIXTURE_WIDTH},
-        {"height", K_SCALE_FIXTURE_HEIGHT},
-        {"camera_position", {0, 0, 8}},
-        {"intrinsics", {1536, 1536, 959.5, 539.5}},
-        {"clip", {1, 32}},
-        {"views", {"forward -Z/right +X/down -Y", "forward +Z/right -X/down -Y"}},
-        {"scale", "ARBITRARY"},
-        {"collision", "UNAVAILABLE"},
-        {"assets", std::move(assets)}};
+        { "schema_version", 1 },
+        { "scope", "synthetic maximum-scale admission/memory fixture; no capture or FPS gate" },
+        { "fixture", K_SCENE->m_provenance.at("fixture") },
+        { "asset_license", "MIT" },
+        { "scene_content_sha256", K_HASH },
+        { "resident_splats", K_SCALE_FIXTURE_SPLATS },
+        { "projectable_splats_per_view", K_SCALE_FIXTURE_CONTRIBUTORS },
+        { "expected_tile_references_per_view", K_SCALE_FIXTURE_REFERENCES },
+        { "sh_degree", 3 },
+        { "chunks", 8 },
+        { "width", K_SCALE_FIXTURE_WIDTH },
+        { "height", K_SCALE_FIXTURE_HEIGHT },
+        { "camera_position", { 0, 0, 8 } },
+        { "intrinsics", { 1536, 1536, 959.5, 539.5 } },
+        { "clip", { 1, 32 } },
+        { "views", { "forward -Z/right +X/down -Y", "forward +Z/right -X/down -Y" } },
+        { "scale", "ARBITRARY" },
+        { "collision", "UNAVAILABLE" },
+        { "assets", std::move(assets) } };
     std::ofstream stream(K_OUTPUT / "fixture.json.partial", std::ios::binary | std::ios::noreplace);
     stream << K_PROFILE.dump(2) << '\n';
     stream.close();

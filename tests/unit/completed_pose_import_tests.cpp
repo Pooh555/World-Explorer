@@ -1,13 +1,13 @@
 #include "pose_fixture.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+
 #include <fstream>
 #include <limits>
 #include <map>
 #include <string_view>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
 
 using namespace world_explorer;
 
@@ -39,13 +39,14 @@ std::map<std::string, std::string> fixture_tree(const std::filesystem::path& roo
         const auto K_NAME = entry.path().lexically_relative(root).generic_string();
         CAPTURE(K_NAME);
         const auto K_STATUS = entry.symlink_status();
-        if (std::filesystem::is_directory(K_STATUS)) result.emplace(K_NAME, "directory");
-        else {
+        if (std::filesystem::is_directory(K_STATUS)) {
+            result.emplace(K_NAME, "directory");
+        } else {
             REQUIRE(std::filesystem::is_regular_file(K_STATUS));
             REQUIRE(entry.file_size() <= 16uz * 1024 * 1024);
             std::ifstream input(entry.path(), std::ios::binary);
             REQUIRE(input);
-            std::string bytes {std::istreambuf_iterator<char>(input), {}};
+            std::string bytes { std::istreambuf_iterator<char>(input), {} };
             REQUIRE(!input.bad());
             result.emplace(K_NAME, "file:" + bytes);
         }
@@ -55,9 +56,11 @@ std::map<std::string, std::string> fixture_tree(const std::filesystem::path& roo
 
 void restore_fixture_files(const pose_fixture& fixture,
                            const std::map<std::string, std::string>& original) {
-    for (const auto& [K_NAME, K_VALUE] : original)
-        if (K_VALUE.starts_with("file:"))
+    for (const auto& [K_NAME, K_VALUE] : original) {
+        if (K_VALUE.starts_with("file:")) {
             write_text(fixture.root / K_NAME, std::string_view(K_VALUE).substr(5));
+        }
+    }
 }
 
 std::vector<std::byte> dataset_bytes(const CompletedPoseDataset& dataset) {
@@ -71,17 +74,19 @@ std::vector<std::byte> dataset_bytes(const CompletedPoseDataset& dataset) {
     tx.m_poses = dataset.m_poses;
     tx.m_alignments = { { dataset.m_submap, dataset.m_revision, {} } };
     REQUIRE(map.commit(tx));
-    const auto K_ENCODED = encode_pose_asset({map.acquire_snapshot(),
-                                              {dataset.m_source_sha256,
+    const auto K_ENCODED = encode_pose_asset({ map.acquire_snapshot(),
+                                              { dataset.m_source_sha256,
                                                dataset.m_decode_completion_sha256,
                                                dataset.m_pose_completion_sha256,
-                                               dataset.m_journal_sha256}});
+                                               dataset.m_journal_sha256 } });
     REQUIRE(K_ENCODED);
     return *K_ENCODED;
 }
 
 void extend_selection(pose_fixture& fixture, std::size_t count) {
-    if (count == 3) return;
+    if (count == 3) {
+        return;
+    }
     REQUIRE(count >= 3);
     REQUIRE(count <= 120);
     auto decoded = read_metadata(fixture.decoded / "result.json");
@@ -89,9 +94,10 @@ void extend_selection(pose_fixture& fixture, std::size_t count) {
     auto poses = nlohmann::json::array();
     for (std::size_t index { 0uz }; index < count; ++index) {
         const auto K_FILE = "images/" + std::to_string(index) + ".png";
-        if (index >= 3)
+        if (index >= 3) {
             REQUIRE(std::filesystem::copy_file(fixture.decoded / "images/0.png",
                                                fixture.decoded / K_FILE));
+        }
         auto frame = decoded.at("frames")[0];
         frame["file"] = K_FILE;
         frame["frame_id"] = fixture.source_digest.substr(0, 16) + "-" + std::to_string(index * 10);
@@ -154,16 +160,23 @@ TEST_CASE("pose import rejects invalid source configuration and pre-cancelled wo
     const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5);
     CAPTURE(K_FIELD);
     std::stop_source cancellation;
-    if (K_FIELD >= 4) cancellation.request_stop();
+    if (K_FIELD >= 4) {
+        cancellation.request_stop();
+    }
     reject_import_and_repair(
         K_FIELD >= 4   ? ErrorCode::CANCELLED
         : K_FIELD == 3 ? ErrorCode::INVALID_DATA
                        : ErrorCode::INVALID_ARGUMENT,
         [K_FIELD](const pose_fixture& fixture, CompletedPoseConfig& config) {
-            if (K_FIELD == 0 || K_FIELD == 5) config.m_source_sha256.clear();
-            else if (K_FIELD == 1) config.m_source_sha256.pop_back();
-            else if (K_FIELD == 2) config.m_source_sha256[0] = 'G';
-            else if (K_FIELD == 3) config.m_pose_job = fixture.root / "missing-job";
+            if (K_FIELD == 0 || K_FIELD == 5) {
+                config.m_source_sha256.clear();
+            } else if (K_FIELD == 1) {
+                config.m_source_sha256.pop_back();
+            } else if (K_FIELD == 2) {
+                config.m_source_sha256[0] = 'G';
+            } else if (K_FIELD == 3) {
+                config.m_pose_job = fixture.root / "missing-job";
+            }
         },
         3,
         cancellation.get_token());
@@ -297,9 +310,13 @@ TEST_CASE("checked pose stage results reject unsupported artifact scale and geom
                              [K_FIELD](const pose_fixture& fixture, CompletedPoseConfig&) {
                                  const auto K_PATH = fixture.posed / "result.json";
                                  auto value = read_metadata(K_PATH);
-                                 if (K_FIELD == 0) value["canonical_poses"] = "other.json";
-                                 else if (K_FIELD == 1) value["scale_status"] = "METRIC_MEASURED";
-                                 else value["geometry"] = "COLLISION_READY";
+                                 if (K_FIELD == 0) {
+                                     value["canonical_poses"] = "other.json";
+                                 } else if (K_FIELD == 1) {
+                                     value["scale_status"] = "METRIC_MEASURED";
+                                 } else {
+                                     value["geometry"] = "COLLISION_READY";
+                                 }
                                  write_metadata(K_PATH, value);
                                  fixture.inventory(fixture.posed);
                              });

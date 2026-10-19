@@ -2,14 +2,14 @@
 #include "world_explorer/scene_store/fusion_cleanup.hpp"
 #include "world_explorer/scene_store/fusion_components.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <cfenv>
 #include <limits>
 #include <numeric>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
@@ -21,17 +21,21 @@ ObservedFusionAsset fan_fixture() {
     ObservedFusionAsset asset;
     asset.m_asset_sha256 = std::string(64uz, 'f');
     asset.m_voxel_size = 1;
-    for (std::int32_t x { 0 }; x < 3; ++x)
-        for (std::int32_t y { 0 }; y < 3; ++y)
-            for (std::int32_t z { -1 }; z < 2; ++z)
-                asset.m_voxels.push_back({{ x, y, z }, 0, 2, 3, 6, 1, 0, 0});
-    for (const auto& p : std::array<std::array<float, 3>, 5> {{{ .55F, .55F, .3F },
+    for (std::int32_t x { 0 }; x < 3; ++x) {
+        for (std::int32_t y { 0 }; y < 3; ++y) {
+            for (std::int32_t z { -1 }; z < 2; ++z) {
+                asset.m_voxels.push_back({ { x, y, z }, 0, 2, 3, 6, 1, 0, 0 });
+            }
+        }
+    }
+    for (const auto& p : std::array<std::array<float, 3>, 5> { { { .55F, .55F, .3F },
                                                                { .25F, .25F, .25F },
                                                                { 1.25F, .25F, .25F },
                                                                { .25F, 1.25F, .25F },
-                                                               { .5F, .5F, -.5F }}})
-        asset.m_vertices.push_back({p, { 0, 0, 1 }});
-    asset.m_triangles = {{ 0, 1, 2 }, { 0, 2, 3 }, { 0, 3, 1 }, { 1, 4, 2 }, { 2, 4, 3 }, { 3, 4, 1 }};
+                                                               { .5F, .5F, -.5F } } }) {
+        asset.m_vertices.push_back({ p, { 0, 0, 1 } });
+    }
+    asset.m_triangles = { { 0, 1, 2 }, { 0, 2, 3 }, { 0, 3, 1 }, { 1, 4, 2 }, { 2, 4, 3 }, { 3, 4, 1 } };
     return asset;
 }
 
@@ -43,15 +47,16 @@ Result<FusionCleanup> replay(const ObservedFusionAsset& asset, const std::string
 ObservedFusionAsset edge_fixture() {
     auto asset = fan_fixture();
     asset.m_vertices.clear();
-    for (const auto& p : std::array<std::array<float, 3>, 6> {{{ .5F, .5F, .3F },
+    for (const auto& p : std::array<std::array<float, 3>, 6> { { { .5F, .5F, .3F },
                                                                { .55F, .5F, .25F },
                                                                { .5F, 1.25F, .25F },
                                                                { 0, .5F, .25F },
                                                                { .5F, 0, .25F },
-                                                               { .5F, .5F, -.5F }}})
-        asset.m_vertices.push_back({p, { 0, 0, 1 }});
+                                                               { .5F, .5F, -.5F } } }) {
+        asset.m_vertices.push_back({ p, { 0, 0, 1 } });
+    }
     asset.m_triangles = {
-        { 0, 1, 2 }, { 0, 2, 3 }, { 0, 3, 4 }, { 0, 4, 1 }, { 5, 2, 1 }, { 5, 3, 2 }, { 5, 4, 3 }, { 5, 1, 4 }};
+        { 0, 1, 2 }, { 0, 2, 3 }, { 0, 3, 4 }, { 0, 4, 1 }, { 5, 2, 1 }, { 5, 3, 2 }, { 5, 4, 3 }, { 5, 1, 4 } };
     return asset;
 }
 
@@ -84,10 +89,12 @@ TEST_CASE("cleanup protects a pinched manifold link and bounds input counts", "[
     auto asset = edge_fixture();
     // A separate closed tetrahedron shares only vertex 1: all edge incidences
     // remain two, but its disconnected vertex link must protect the first patch.
-    for (const auto& p : std::array<std::array<float, 3>, 3> {{{ 2, 0, 0 }, { 2, 1, 0 }, { 2, 0, 1 }}})
-        asset.m_vertices.push_back({p, { 0, 0, 1 }});
-    for (const auto& t : std::array<Triangle, 4> {{{ 1, 6, 7 }, { 1, 7, 8 }, { 1, 8, 6 }, { 6, 8, 7 }}})
+    for (const auto& p : std::array<std::array<float, 3>, 3> { { { 2, 0, 0 }, { 2, 1, 0 }, { 2, 0, 1 } } }) {
+        asset.m_vertices.push_back({ p, { 0, 0, 1 } });
+    }
+    for (const auto& t : std::array<Triangle, 4> { { { 1, 6, 7 }, { 1, 7, 8 }, { 1, 8, 6 }, { 6, 8, 7 } } }) {
         asset.m_triangles.push_back(t);
+    }
     const auto K_RESULT = simplify_fusion_mesh(asset);
     REQUIRE(K_RESULT);
     CHECK(K_RESULT->m_patches.empty());
@@ -137,18 +144,32 @@ TEST_CASE("fan cleanup protects boundary unknown weak support winding and excess
           "[cleanup]") {
     auto asset = fan_fixture();
     const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6);
-    if (K_MUTATION == 0) asset.m_triangles.pop_back();
-    if (K_MUTATION == 1) asset.m_voxels.clear();
-    if (K_MUTATION == 2)
+    if (K_MUTATION == 0) {
+        asset.m_triangles.pop_back();
+    }
+    if (K_MUTATION == 1) {
+        asset.m_voxels.clear();
+    }
+    if (K_MUTATION == 2) {
         for (auto& voxel : asset.m_voxels) {
             voxel.m_observation_count = 1;
             voxel.m_weight = 1;
         }
-    if (K_MUTATION == 3)
-        for (auto& voxel : asset.m_voxels) voxel.m_support_sum = 5;
-    if (K_MUTATION == 4) std::swap(asset.m_triangles[1][1], asset.m_triangles[1][2]);
-    if (K_MUTATION == 5) asset.m_vertices[0].m_position[2] = .6F;
-    if (K_MUTATION == 6) asset.m_vertices[0].m_position[0] = 2.5F;
+    }
+    if (K_MUTATION == 3) {
+        for (auto& voxel : asset.m_voxels) {
+            voxel.m_support_sum = 5;
+        }
+    }
+    if (K_MUTATION == 4) {
+        std::swap(asset.m_triangles[1][1], asset.m_triangles[1][2]);
+    }
+    if (K_MUTATION == 5) {
+        asset.m_vertices[0].m_position[2] = .6F;
+    }
+    if (K_MUTATION == 6) {
+        asset.m_vertices[0].m_position[0] = 2.5F;
+    }
     const auto K_RESULT = simplify_fusion_mesh(asset);
     REQUIRE(K_RESULT);
     CHECK(K_RESULT->m_patches.empty());
@@ -159,7 +180,7 @@ TEST_CASE("fan cleanup protects boundary unknown weak support winding and excess
 
 TEST_CASE("fan cleanup refuses to flatten a tetrahedron onto an existing face", "[cleanup]") {
     auto asset = fan_fixture();
-    asset.m_triangles = {{ 0, 1, 2 }, { 0, 2, 3 }, { 0, 3, 1 }, { 1, 3, 2 }};
+    asset.m_triangles = { { 0, 1, 2 }, { 0, 2, 3 }, { 0, 3, 1 }, { 1, 3, 2 } };
     const auto K_RESULT = simplify_fusion_mesh(asset);
     REQUIRE(K_RESULT);
     CHECK(K_RESULT->m_patches.empty());
@@ -225,10 +246,18 @@ TEST_CASE("fan cleanup bounds JSON decoding cancellation and floating mode", "[c
     REQUIRE(K_RESULT);
     const auto K_MUTATION = GENERATE(0, 1, 2, 3);
     auto text = K_RESULT->m_document;
-    if (K_MUTATION == 0) text += std::string(1uz, '\0') + "ignored";
-    if (K_MUTATION == 1) text.insert(1uz, "\"schema_version\":1,");
-    if (K_MUTATION == 2) text = std::string(8uz, '[') + "0" + std::string(8uz, ']');
-    if (K_MUTATION == 3) text.resize(4uz * 1024uz * 1024uz + 1uz, ' ');
+    if (K_MUTATION == 0) {
+        text += std::string(1uz, '\0') + "ignored";
+    }
+    if (K_MUTATION == 1) {
+        text.insert(1uz, "\"schema_version\":1,");
+    }
+    if (K_MUTATION == 2) {
+        text = std::string(8uz, '[') + "0" + std::string(8uz, ']');
+    }
+    if (K_MUTATION == 3) {
+        text.resize(4uz * 1024uz * 1024uz + 1uz, ' ');
+    }
     CHECK(replay(K_ASSET, text).has_value() == false);
     std::stop_source cancel;
     cancel.request_stop();
@@ -239,7 +268,9 @@ TEST_CASE("fan cleanup bounds JSON decoding cancellation and floating mode", "[c
     struct RoundingGuard {
         int m_old { std::fegetround() };
 
-        ~RoundingGuard() { std::fesetround(m_old); }
+        ~RoundingGuard() {
+            std::fesetround(m_old);
+        }
     } guard;
 
     REQUIRE(std::fesetround(FE_DOWNWARD) == 0);

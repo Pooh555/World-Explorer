@@ -14,12 +14,16 @@ Result<std::vector<std::byte>> decode_calibrated_rgb(const std::filesystem::path
                                                      std::uint32_t height,
                                                      const std::stop_token& stop) {
     try {
-        if (!width || !height || width > 4096 || height > 4096)
+        if (!width || !height || width > 4096 || height > 4096) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "RGB image dimensions exceed budget");
+        }
         const auto K_INITIAL = sha256_file(path, 64uz * 1024uz * 1024uz, stop);
-        if (!K_INITIAL) return std::unexpected(K_INITIAL.error());
-        if (*K_INITIAL != expected_sha256)
+        if (!K_INITIAL) {
+            return std::unexpected(K_INITIAL.error());
+        }
+        if (*K_INITIAL != expected_sha256) {
             return fail(ErrorCode::INVALID_DATA, "RGB checksum differs");
+        }
         const auto K_UTF8 = path.u8string();
         const std::vector<std::string> K_COMMAND {
             "ffmpeg",    "-nostdin",   "-hide_banner", "-loglevel",
@@ -27,7 +31,7 @@ Result<std::vector<std::byte>> decode_calibrated_rgb(const std::filesystem::path
             "-threads",  "1",          "-i",           std::string(K_UTF8.begin(), K_UTF8.end()),
             "-frames:v", "1",          "-threads",     "1",
             "-f",        "image2pipe", "-c:v",         "ppm",
-            "-pix_fmt",  "rgb24",      "pipe:1"};
+            "-pix_fmt",  "rgb24",      "pipe:1" };
         const auto K_SIZE = static_cast<std::size_t>(width) * height * 3uz;
         const auto K_HEADER =
             "P6\n" + std::to_string(width) + " " + std::to_string(height) + "\n255\n";
@@ -35,7 +39,9 @@ Result<std::vector<std::byte>> decode_calibrated_rgb(const std::filesystem::path
         std::vector<std::byte> rgb;
         rgb.reserve(K_OUTPUT_SIZE);
         std::stop_source cancellation;
-        std::stop_callback forward(stop, [&] { cancellation.request_stop(); });
+        std::stop_callback forward(stop, [&] {
+            cancellation.request_stop();
+        });
         bool oversized = false;
         std::string diagnostic;
         const auto K_RESULT = execute_process(
@@ -53,19 +59,28 @@ Result<std::vector<std::byte>> decode_calibrated_rgb(const std::filesystem::path
             [&](const std::string& output) {
                 diagnostic.append(output, 0uz, std::min(output.size(), 4096uz - diagnostic.size()));
             });
-        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "RGB decode cancelled");
-        if (oversized)
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "RGB decode cancelled");
+        }
+        if (oversized) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "RGB decoder output exceeds budget");
-        if (!K_RESULT) return std::unexpected(K_RESULT.error());
+        }
+        if (!K_RESULT) {
+            return std::unexpected(K_RESULT.error());
+        }
         if (*K_RESULT || rgb.size() != K_OUTPUT_SIZE ||
             !std::ranges::equal(std::span(rgb).first(K_HEADER.size()),
-                                std::as_bytes(std::span(K_HEADER))))
+                                std::as_bytes(std::span(K_HEADER)))) {
             return fail(ErrorCode::BACKEND_FAILURE,
                         "RGB decoder failed or image dimensions differ: " + diagnostic);
+        }
         const auto K_FINAL = sha256_file(path, 64uz * 1024uz * 1024uz, stop);
-        if (!K_FINAL) return std::unexpected(K_FINAL.error());
-        if (*K_FINAL != expected_sha256)
+        if (!K_FINAL) {
+            return std::unexpected(K_FINAL.error());
+        }
+        if (*K_FINAL != expected_sha256) {
             return fail(ErrorCode::INVALID_DATA, "RGB changed during decode");
+        }
         rgb.erase(rgb.begin(), rgb.begin() + static_cast<std::ptrdiff_t>(K_HEADER.size()));
         return rgb;
     } catch (const std::bad_alloc&) {

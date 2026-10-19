@@ -27,9 +27,22 @@ import torch.nn.functional as functional
 from gsplat import rasterization
 from gsplat.strategy import DefaultStrategy
 
-from dataset import capture_dataset
+from dataset import CaptureDataset
 from losses import gaussian_ssim
 from train import GSPLAT_COMMIT, deny_network, export_ascii, file_hash
+
+__all__ = [
+    "BudgetStrategy",
+    "RECIPE",
+    "STOP_REQUESTED",
+    "atomic_json",
+    "checkpoint",
+    "fit",
+    "initialize",
+    "main",
+    "render",
+    "request_stop",
+]
 
 RECIPE = "local_gsplat_v1"
 STOP_REQUESTED = False
@@ -87,7 +100,7 @@ def initialize(dataset):
     return params, optimizers
 
 
-class budget_strategy(DefaultStrategy):
+class BudgetStrategy(DefaultStrategy):
     def __init__(self, maximum):
         super().__init__()
         self.maximum = maximum
@@ -174,7 +187,7 @@ def fit(args):
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.manual_seed(42)
     torch.cuda.manual_seed_all(42)
-    dataset = capture_dataset(args.data, args.max_image_dimension)
+    dataset = CaptureDataset(args.data, args.max_image_dimension)
     if len(dataset.points) < 4 or len(dataset.points) > args.max_splats:
         raise RuntimeError(
             "Initial training-visible SfM points violate the splat budget"
@@ -214,7 +227,7 @@ def fit(args):
     scheduler = torch.optim.lr_scheduler.ExponentialLR(
         optimizers["means"], gamma=0.01 ** (1 / args.steps)
     )
-    strategy = budget_strategy(args.max_splats)
+    strategy = BudgetStrategy(args.max_splats)
     state = strategy.initialize_state(scene_scale=dataset.scene_scale)
     first_step = 0
     if args.resume:

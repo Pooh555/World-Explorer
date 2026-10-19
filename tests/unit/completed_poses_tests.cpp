@@ -5,16 +5,16 @@
 #include "world_explorer/reconstruction_adapters/batch_poses.hpp"
 #include "world_explorer/reconstruction_adapters/completed_poses.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <array>
 #include <bit>
 #include <fstream>
 #include <limits>
 #include <thread>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
@@ -27,19 +27,19 @@ constexpr std::size_t K_REPLAY_MEMORY_BYTES { K_REPLAY_METADATA_BYTES + 6uz };
 
 FrameObservation observation(const CompletedPoseDataset& dataset, std::size_t index) {
     const auto& record = dataset.m_observations[index];
-    FramePacket frame {record.m_id,
+    FramePacket frame { record.m_id,
                        record.m_capture,
                        record.m_capture_time,
                        record.m_timestamp,
                        record.m_calibration,
-                       {std::make_shared<const std::vector<std::byte>>(6, std::byte { 17 }),
+                       { std::make_shared<const std::vector<std::byte>>(6, std::byte { 17 }),
                         2,
                         1,
                         6,
-                        PixelFormat::RGB8},
+                        PixelFormat::RGB8 },
                        {},
-                       {}};
-    return {{index + 1}, std::move(frame)};
+                       {} };
+    return { { index + 1 }, std::move(frame) };
 }
 
 // Entirely in-memory diagnostic input; these hashes do not identify a real capture.
@@ -55,19 +55,19 @@ std::shared_ptr<CompletedPoseDataset> replay_dataset(std::size_t count = 3) {
         { { 7 }, { 711, 529, .25, .75 }, 2, 1, CalibrationModel::OPENCV, { .1, -.2, .003, -.004 } } };
     for (std::size_t index { 0uz }; index < count; ++index) {
         const auto K_TIME = std::chrono::nanoseconds { static_cast<std::int64_t>(index) * 333333333 };
-        dataset->m_observations.push_back({{index + 1},
-                                           {9},
-                                           {7},
-                                           {static_cast<std::int64_t>(index) * 10 - 7, 1001, 30000},
+        dataset->m_observations.push_back({ { index + 1 },
+                                           { 9 },
+                                           { 7 },
+                                           { static_cast<std::int64_t>(index) * 10 - 7, 1001, 30000 },
                                            K_TIME,
-                                           std::string(64, 'd')});
-        dataset->m_poses.push_back({{index + 1},
-                                    {55},
-                                    {{.5, .5, .5, .5}, {static_cast<double>(index), -2, 3}, 1},
+                                           std::string(64, 'd') });
+        dataset->m_poses.push_back({ { index + 1 },
+                                    { 55 },
+                                    { { .5, .5, .5, .5 }, { static_cast<double>(index), -2, 3 }, 1 },
                                     K_TIME,
-                                    {1},
+                                    { 1 },
                                     TrackingState::TRACKING,
-                                    {}});
+                                    {} });
     }
     return dataset;
 }
@@ -111,7 +111,7 @@ void check_frame_preserved(const FrameObservation& actual,
 }
 
 PoseEvent single_replay_event(PoseEstimator& replay) {
-    const auto K_EVENTS = replay.drain_events({1});
+    const auto K_EVENTS = replay.drain_events({ 1 });
     REQUIRE(K_EVENTS);
     REQUIRE(K_EVENTS->size() == 1);
     return K_EVENTS->front();
@@ -127,7 +127,7 @@ void check_replay_after_first(PoseEstimator& replay, const CompletedPoseDataset&
     }
     REQUIRE(replay.finish());
     REQUIRE(replay.finish());
-    const auto K_EVENTS = replay.drain_events({std::numeric_limits<std::size_t>::max()});
+    const auto K_EVENTS = replay.drain_events({ std::numeric_limits<std::size_t>::max() });
     REQUIRE(K_EVENTS);
     REQUIRE(K_EVENTS->size() == dataset.m_observations.size() + 5);
     REQUIRE(std::holds_alternative<TrackingChange>((*K_EVENTS)[0]));
@@ -176,7 +176,7 @@ void check_replay_after_first(PoseEstimator& replay, const CompletedPoseDataset&
     CHECK(std::get<TrackingChange>((*K_EVENTS)[K_EVENTS->size() - 2]).m_state ==
           TrackingState::FINISHED);
     CHECK(std::holds_alternative<EstimatorFinished>(K_EVENTS->back()));
-    const auto K_EMPTY = replay.drain_events({1});
+    const auto K_EMPTY = replay.drain_events({ 1 });
     REQUIRE(K_EMPTY);
     CHECK(K_EMPTY->empty());
 }
@@ -199,15 +199,17 @@ BatchPoseConfig batch_config(const pose_fixture& fixture, const std::string& mod
         << "request=json.loads(Path(sys.argv[sys.argv.index('--request')+1]).read_text())\n"
         << "root=Path(request['job_dir'])\n"
         << "with (root/'launches').open('a') as f: f.write('launch\\n')\n";
-    if (mode == "wait") output << "time.sleep(30)\n";
+    if (mode == "wait") {
+        output << "time.sleep(30)\n";
+    }
     output << "we_protocol.failure('DIAGNOSTIC_FAILURE','poses','synthetic failure; no solver')\n"
               "sys.exit(2)\n";
-    return {.m_decode_stage = fixture.decoded,
+    return { .m_decode_stage = fixture.decoded,
             .m_job_directory = fixture.root / "fresh job",
             .m_worker_script = K_SCRIPT,
             .m_source_sha256 = fixture.source_digest,
             .m_worker_python = WE_TEST_PYTHON,
-            .m_pose_python = WE_TEST_PYTHON};
+            .m_pose_python = WE_TEST_PYTHON };
 }
 
 }  // namespace
@@ -221,9 +223,9 @@ TEST_CASE("batch admission writes RGB before consuming leases and bounds memory 
     REQUIRE(batch);
     CHECK((*batch)->capabilities().m_mode == EstimatorMode::BATCH_SOLVE);
     CHECK_FALSE((*batch)->capabilities().m_streaming_tracking);
-    CHECK_FALSE((*batch)->start({{4uz * 1024 * 1024}, 2}));
+    CHECK_FALSE((*batch)->start({ { 4uz * 1024 * 1024 }, 2 }));
     CHECK_FALSE(std::filesystem::exists(K_CONFIG.m_job_directory));
-    REQUIRE((*batch)->start({{4uz * 1024 * 1024}, 3}));
+    REQUIRE((*batch)->start({ { 4uz * 1024 * 1024 }, 3 }));
     CHECK_FALSE((*batch)->acquire_dataset());
     CHECK_FALSE((*batch)->finish());
     auto wrong_order = observation(**K_DATASET, 1);
@@ -242,7 +244,7 @@ TEST_CASE("batch admission writes RGB before consuming leases and bounds memory 
     CHECK_FALSE(first.m_frame.m_pixels.m_bytes);
     CHECK(retained->size() == 6);
     std::ifstream input(K_CONFIG.m_job_directory / "input/1.ppm", std::ios::binary);
-    std::string bytes(std::istreambuf_iterator<char> {input}, {});
+    std::string bytes(std::istreambuf_iterator<char> { input }, {});
     CHECK(bytes == std::string("P6\n2 1\n255\n") + std::string(6, char { 17 }));
     REQUIRE((*batch)->submit(first));
     CHECK((*batch)->submit(retry)->m_value == K_TICKET->m_value);
@@ -259,18 +261,18 @@ TEST_CASE("batch admission writes RGB before consuming leases and bounds memory 
     CHECK_FALSE((*batch)->submit(wrong_metadata));
     CHECK(wrong_metadata.m_frame.m_pixels.m_bytes);
     REQUIRE((*batch)->submit(second));
-    const auto K_INITIAL = (*batch)->drain_events({1000000});
+    const auto K_INITIAL = (*batch)->drain_events({ 1000000 });
     REQUIRE(K_INITIAL);
     REQUIRE(K_INITIAL->size() == 1);
     CHECK(std::get<TrackingChange>(K_INITIAL->front()).m_state == TrackingState::INITIALIZING);
-    CHECK((*batch)->drain_events({1})->empty());
+    CHECK((*batch)->drain_events({ 1 })->empty());
 
     auto disk_config = K_CONFIG;
     disk_config.m_job_directory = fixture.root / "disk limited";
     disk_config.m_journal_bytes = { 2uz * 1024 * 1024 + bytes.size() };
     auto disk = make_batch_pose_estimator(disk_config);
     REQUIRE(disk);
-    REQUIRE((*disk)->start({{4uz * 1024 * 1024}, 3}));
+    REQUIRE((*disk)->start({ { 4uz * 1024 * 1024 }, 3 }));
     auto disk_first = observation(**K_DATASET, 0);
     REQUIRE((*disk)->submit(disk_first));
     auto disk_second = observation(**K_DATASET, 1);
@@ -284,7 +286,7 @@ TEST_CASE("batch admission writes RGB before consuming leases and bounds memory 
     memory_config.m_job_directory = fixture.root / "memory limited";
     auto memory = make_batch_pose_estimator(memory_config);
     REQUIRE(memory);
-    REQUIRE((*memory)->start({{2uz * 1024 * 1024 + 5}, 3}));
+    REQUIRE((*memory)->start({ { 2uz * 1024 * 1024 + 5 }, 3 }));
     auto memory_first = observation(**K_DATASET, 0);
     const auto K_EXHAUSTED = (*memory)->submit(memory_first);
     REQUIRE_FALSE(K_EXHAUSTED);
@@ -299,7 +301,7 @@ TEST_CASE("batch worker failure retains a checked journal and finish does not re
     const auto K_CONFIG = batch_config(fixture);
     auto batch = make_batch_pose_estimator(K_CONFIG);
     REQUIRE(batch);
-    REQUIRE((*batch)->start({{4uz * 1024 * 1024}, 3}));
+    REQUIRE((*batch)->start({ { 4uz * 1024 * 1024 }, 3 }));
     for (std::size_t index { 0uz }; index < 3uz; ++index) {
         auto frame = observation(**K_DATASET, index);
         REQUIRE((*batch)->submit(frame));
@@ -309,7 +311,7 @@ TEST_CASE("batch worker failure retains a checked journal and finish does not re
     CHECK(K_FAILED.error().m_code == ErrorCode::BACKEND_FAILURE);
     CHECK(K_FAILED.error().m_message.find("DIAGNOSTIC_FAILURE") != std::string::npos);
     CHECK_FALSE((*batch)->finish());
-    CHECK_FALSE((*batch)->drain_events({1}));
+    CHECK_FALSE((*batch)->drain_events({ 1 }));
     CHECK_FALSE((*batch)->acquire_dataset());
     std::ifstream launches(K_CONFIG.m_job_directory / "launches");
     std::string line;
@@ -328,7 +330,7 @@ TEST_CASE("batch worker failure retains a checked journal and finish does not re
     CHECK_FALSE(std::filesystem::exists(K_CONFIG.m_job_directory / "result.json"));
     auto duplicate = make_batch_pose_estimator(K_CONFIG);
     REQUIRE(duplicate);
-    const auto K_OCCUPIED = (*duplicate)->start({{4uz * 1024 * 1024}, 3});
+    const auto K_OCCUPIED = (*duplicate)->start({ { 4uz * 1024 * 1024 }, 3 });
     REQUIRE_FALSE(K_OCCUPIED);
     CHECK(K_OCCUPIED.error().m_code == ErrorCode::WOULD_BLOCK);
     CHECK(std::filesystem::exists(K_CONFIG.m_job_directory / "input/journal.json"));
@@ -341,17 +343,20 @@ TEST_CASE("batch cancellation interrupts isolated finish without publishing succ
     const auto K_CONFIG = batch_config(fixture, "wait");
     auto batch = make_batch_pose_estimator(K_CONFIG);
     REQUIRE(batch);
-    REQUIRE((*batch)->start({{4uz * 1024 * 1024}, 3}));
+    REQUIRE((*batch)->start({ { 4uz * 1024 * 1024 }, 3 }));
     for (std::size_t index { 0uz }; index < 3uz; ++index) {
         auto frame = observation(**K_DATASET, index);
         REQUIRE((*batch)->submit(frame));
     }
     Result<void> finished;
-    std::jthread running([&] { finished = (*batch)->finish(); });
+    std::jthread running([&] {
+        finished = (*batch)->finish();
+    });
     for (int iteration { 0 };
          iteration < 200 && !std::filesystem::exists(K_CONFIG.m_job_directory / "launches");
-         ++iteration)
+         ++iteration) {
         std::this_thread::sleep_for(std::chrono::milliseconds { 10 });
+    }
     const auto K_START = std::chrono::steady_clock::now();
     (*batch)->request_stop();
     running.join();
@@ -371,7 +376,7 @@ TEST_CASE("owned batch resume verifies admitted RGB and preserves caller data on
     const auto K_DATASET = fixture.load().value();
     auto config = batch_config(fixture);
     auto initial = make_batch_pose_estimator(config).value();
-    REQUIRE(initial->start({{4uz * 1024 * 1024}, 3}));
+    REQUIRE(initial->start({ { 4uz * 1024 * 1024 }, 3 }));
     auto first = observation(*K_DATASET, 0);
     REQUIRE(initial->submit(first));
     const auto K_ASSET = config.m_job_directory / "input/1.ppm";
@@ -380,7 +385,7 @@ TEST_CASE("owned batch resume verifies admitted RGB and preserves caller data on
     config.m_resume_input = true;
     SECTION("identical replay") {
         auto resumed = make_batch_pose_estimator(config).value();
-        REQUIRE(resumed->start({{4uz * 1024 * 1024}, 3}));
+        REQUIRE(resumed->start({ { 4uz * 1024 * 1024 }, 3 }));
         auto replay = observation(*K_DATASET, 0);
         REQUIRE(resumed->submit(replay));
         CHECK_FALSE(replay.m_frame.m_pixels.m_bytes);
@@ -390,7 +395,7 @@ TEST_CASE("owned batch resume verifies admitted RGB and preserves caller data on
         std::ofstream(K_ASSET) << "changed RGB";
         const auto K_RETAINED = sha256_file(K_ASSET, 4096).value();
         auto resumed = make_batch_pose_estimator(config).value();
-        REQUIRE(resumed->start({{4uz * 1024 * 1024}, 3}));
+        REQUIRE(resumed->start({ { 4uz * 1024 * 1024 }, 3 }));
         auto replay = observation(*K_DATASET, 0);
         CHECK_FALSE(resumed->submit(replay));
         CHECK(replay.m_frame.m_pixels.m_bytes);
@@ -399,7 +404,7 @@ TEST_CASE("owned batch resume verifies admitted RGB and preserves caller data on
     SECTION("uncommitted temporary input") {
         std::ofstream(config.m_job_directory / "input/2.ppm.tmp") << "partial";
         auto resumed = make_batch_pose_estimator(config).value();
-        CHECK_FALSE(resumed->start({{4uz * 1024 * 1024}, 3}));
+        CHECK_FALSE(resumed->start({ { 4uz * 1024 * 1024 }, 3 }));
         CHECK(sha256_file(K_ASSET, 4096).value() == K_HASH);
     }
 }
@@ -419,7 +424,7 @@ TEST_CASE("completed pose import preserves calibration model coefficients optica
     CHECK(calibration.m_image_transform == std::array { 1., 1., 0., 0. });
     const auto& pose = (*K_DATASET)->m_poses.front();
     CHECK(pose.m_submap_from_camera.m_translation == Vec3d { 1, 2, 3 });
-    CHECK(transform_point(pose.m_submap_from_camera, {1, 0, 0}) == Vec3d { 1, 3, 3 });
+    CHECK(transform_point(pose.m_submap_from_camera, { 1, 0, 0 }) == Vec3d { 1, 3, 3 });
     CHECK_FALSE(pose.m_covariance);
     CHECK(pose.m_capture_time == (*K_DATASET)->m_observations.front().m_capture_time);
     const auto K_AGAIN = fixture.load();
@@ -543,11 +548,14 @@ TEST_CASE("replay factory rejects unsupported profiles and malformed producer id
     const auto K_REJECTED = make_completed_pose_replay(candidate);
     REQUIRE(!K_REJECTED);
     CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
-    if (candidate) *candidate = *K_ORIGINAL;
-    else candidate = std::make_shared<CompletedPoseDataset>(*K_ORIGINAL);
+    if (candidate) {
+        *candidate = *K_ORIGINAL;
+    } else {
+        candidate = std::make_shared<CompletedPoseDataset>(*K_ORIGINAL);
+    }
     auto repaired = make_completed_pose_replay(candidate);
     REQUIRE(repaired);
-    REQUIRE((*repaired)->start({{K_REPLAY_MEMORY_BYTES}, 3}));
+    REQUIRE((*repaired)->start({ { K_REPLAY_MEMORY_BYTES }, 3 }));
     auto first = observation(*K_ORIGINAL, 0);
     REQUIRE((*repaired)->submit(first));
     check_replay_after_first(**repaired, *K_ORIGINAL);
@@ -558,11 +566,15 @@ TEST_CASE("replay factory enforces selection counts and the unchanged registrati
     auto candidate = replay_dataset();
     const auto K_FIELD = GENERATE(0, 1, 2, 3, 4);
     CAPTURE(K_FIELD);
-    if (K_FIELD == 0) candidate->m_observations.resize(2);
-    else if (K_FIELD == 1) candidate = replay_dataset(121);
-    else if (K_FIELD == 2) candidate->m_poses.resize(2);
-    else if (K_FIELD == 3) candidate->m_poses.push_back(candidate->m_poses[0]);
-    else {
+    if (K_FIELD == 0) {
+        candidate->m_observations.resize(2);
+    } else if (K_FIELD == 1) {
+        candidate = replay_dataset(121);
+    } else if (K_FIELD == 2) {
+        candidate->m_poses.resize(2);
+    } else if (K_FIELD == 3) {
+        candidate->m_poses.push_back(candidate->m_poses[0]);
+    } else {
         candidate = replay_dataset(10);
         candidate->m_poses.resize(8);
     }
@@ -629,7 +641,7 @@ TEST_CASE("replay factory rejects invalid duplicate and mixed-capture observatio
     candidate->m_observations = K_ORIGINAL->m_observations;
     auto repaired = make_completed_pose_replay(candidate);
     REQUIRE(repaired);
-    REQUIRE((*repaired)->start({{K_REPLAY_MEMORY_BYTES}, 3}));
+    REQUIRE((*repaired)->start({ { K_REPLAY_MEMORY_BYTES }, 3 }));
     auto first = observation(*K_ORIGINAL, 0);
     REQUIRE((*repaired)->submit(first));
     check_replay_after_first(**repaired, *K_ORIGINAL);
@@ -688,7 +700,7 @@ TEST_CASE("replay factory rejects invalid pose dependencies transforms and unsup
     candidate->m_poses = K_ORIGINAL->m_poses;
     auto repaired = make_completed_pose_replay(candidate);
     REQUIRE(repaired);
-    REQUIRE((*repaired)->start({{K_REPLAY_MEMORY_BYTES}, 3}));
+    REQUIRE((*repaired)->start({ { K_REPLAY_MEMORY_BYTES }, 3 }));
     auto first = observation(*K_ORIGINAL, 0);
     REQUIRE((*repaired)->submit(first));
     check_replay_after_first(**repaired, *K_ORIGINAL);
@@ -699,17 +711,23 @@ TEST_CASE("failed replay start retains capabilities and permits corrected exact-
     const auto K_DATASET = replay_dataset();
     auto replay = make_completed_pose_replay(K_DATASET);
     REQUIRE(replay);
-    const auto K_BEFORE_START = (*replay)->drain_events({1});
+    const auto K_BEFORE_START = (*replay)->drain_events({ 1 });
     REQUIRE(!K_BEFORE_START);
     CHECK(K_BEFORE_START.error().m_code == ErrorCode::INVALID_ARGUMENT);
-    auto config = PoseEstimatorConfig {{K_REPLAY_MEMORY_BYTES}, 3};
+    auto config = PoseEstimatorConfig { { K_REPLAY_MEMORY_BYTES }, 3 };
     const auto K_FIELD = GENERATE(0, 1, 2, 3, 4);
     CAPTURE(K_FIELD);
-    if (K_FIELD == 0) config.m_max_pending_observations = 0;
-    else if (K_FIELD == 1) config.m_max_pending_observations = 4;
-    else if (K_FIELD == 2) config.m_memory.m_bytes = 0;
-    else if (K_FIELD == 3) config.m_memory.m_bytes = K_REPLAY_METADATA_BYTES - 1;
-    else config.m_memory.m_bytes = K_REPLAY_METADATA_BYTES;
+    if (K_FIELD == 0) {
+        config.m_max_pending_observations = 0;
+    } else if (K_FIELD == 1) {
+        config.m_max_pending_observations = 4;
+    } else if (K_FIELD == 2) {
+        config.m_memory.m_bytes = 0;
+    } else if (K_FIELD == 3) {
+        config.m_memory.m_bytes = K_REPLAY_METADATA_BYTES - 1;
+    } else {
+        config.m_memory.m_bytes = K_REPLAY_METADATA_BYTES;
+    }
     const auto K_REJECTED = (*replay)->start(config);
     REQUIRE(!K_REJECTED);
     CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_ARGUMENT);
@@ -719,8 +737,8 @@ TEST_CASE("failed replay start retains capabilities and permits corrected exact-
     const auto K_FAILED_SUBMIT = (*replay)->submit(first);
     REQUIRE(!K_FAILED_SUBMIT);
     CHECK(K_FAILED_SUBMIT.error().m_code == ErrorCode::INVALID_ARGUMENT);
-    check_frame_preserved(first, K_SAVED, {1});
-    REQUIRE((*replay)->start({{K_REPLAY_MEMORY_BYTES}, 3}));
+    check_frame_preserved(first, K_SAVED, { 1 });
+    REQUIRE((*replay)->start({ { K_REPLAY_MEMORY_BYTES }, 3 }));
     REQUIRE((*replay)->submit(first));
     check_replay_after_first(**replay, *K_DATASET);
 }
@@ -730,7 +748,7 @@ TEST_CASE("replay frame admission preserves rejected headers payloads and operat
     const auto K_DATASET = replay_dataset();
     auto replay = make_completed_pose_replay(K_DATASET);
     REQUIRE(replay);
-    REQUIRE((*replay)->start({{K_REPLAY_MEMORY_BYTES}, 3}));
+    REQUIRE((*replay)->start({ { K_REPLAY_MEMORY_BYTES }, 3 }));
     auto candidate = observation(*K_DATASET, 0);
     auto code = ErrorCode::INVALID_DATA;
     const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18);
@@ -776,7 +794,7 @@ TEST_CASE("replay frame admission preserves rejected headers payloads and operat
         break;
     case 12:
         candidate.m_frame.m_imu_samples.push_back(
-            {std::chrono::nanoseconds { 7 }, {1, 2, 3}, {4, 5, 6}});
+            { std::chrono::nanoseconds { 7 }, { 1, 2, 3 }, { 4, 5, 6 } });
         code = ErrorCode::UNSUPPORTED_OPERATION;
         break;
     case 13:
@@ -820,7 +838,7 @@ TEST_CASE("replay retry collisions preserve acknowledged tickets and emit each p
     const auto K_DATASET = replay_dataset();
     auto replay = make_completed_pose_replay(K_DATASET);
     REQUIRE(replay);
-    REQUIRE((*replay)->start({{K_REPLAY_MEMORY_BYTES}, 3}));
+    REQUIRE((*replay)->start({ { K_REPLAY_MEMORY_BYTES }, 3 }));
     auto first = observation(*K_DATASET, 0);
     const auto K_TICKET = (*replay)->submit(first);
     REQUIRE(K_TICKET);
@@ -866,7 +884,7 @@ TEST_CASE("replay retry collisions preserve acknowledged tickets and emit each p
         break;
     case 12:
         candidate.m_frame.m_imu_samples.push_back(
-            {std::chrono::nanoseconds { 7 }, {1, 2, 3}, {4, 5, 6}});
+            { std::chrono::nanoseconds { 7 }, { 1, 2, 3 }, { 4, 5, 6 } });
         break;
     case 13:
         candidate.m_frame.m_pixels.m_bytes = std::make_shared<const std::vector<std::byte>>(5);
@@ -906,7 +924,7 @@ TEST_CASE("replay queue slots are released only by observation events and finish
     const auto K_DATASET = replay_dataset();
     auto replay = make_completed_pose_replay(K_DATASET);
     REQUIRE(replay);
-    REQUIRE((*replay)->start({{K_REPLAY_MEMORY_BYTES}, 1}));
+    REQUIRE((*replay)->start({ { K_REPLAY_MEMORY_BYTES }, 1 }));
     auto first = observation(*K_DATASET, 0);
     const auto K_LEASE = first.m_frame.m_pixels.m_bytes;
     const auto K_FIRST_TICKET = (*replay)->submit(first);
@@ -916,20 +934,23 @@ TEST_CASE("replay queue slots are released only by observation events and finish
     const auto K_PREMATURE_FINISH = (*replay)->finish();
     REQUIRE(!K_PREMATURE_FINISH);
     CHECK(K_PREMATURE_FINISH.error().m_code == ErrorCode::INVALID_ARGUMENT);
-    const auto K_ZERO = (*replay)->drain_events({0});
+    const auto K_ZERO = (*replay)->drain_events({ 0 });
     REQUIRE(K_ZERO);
     CHECK(K_ZERO->empty());
     for (int index { 0 }; index < 3; ++index) {
         const auto K_FULL = (*replay)->submit(second);
         REQUIRE(!K_FULL);
         CHECK(K_FULL.error().m_code == ErrorCode::WOULD_BLOCK);
-        check_frame_preserved(second, K_SAVED, {2});
+        check_frame_preserved(second, K_SAVED, { 2 });
         const auto K_EVENT = single_replay_event(**replay);
         if (index == 0) {
             REQUIRE(std::holds_alternative<TrackingChange>(K_EVENT));
             CHECK(std::get<TrackingChange>(K_EVENT).m_state == TrackingState::INITIALIZING);
-        } else if (index == 1) CHECK(std::holds_alternative<SubmapCreated>(K_EVENT));
-        else CHECK(std::holds_alternative<MapAlignment>(K_EVENT));
+        } else if (index == 1) {
+            CHECK(std::holds_alternative<SubmapCreated>(K_EVENT));
+        } else {
+            CHECK(std::holds_alternative<MapAlignment>(K_EVENT));
+        }
     }
     const auto K_STILL_FULL = (*replay)->submit(second);
     REQUIRE(!K_STILL_FULL);
@@ -948,7 +969,7 @@ TEST_CASE("replay queue slots are released only by observation events and finish
     const auto K_REJECTED = (*replay)->submit(closed);
     REQUIRE(!K_REJECTED);
     CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_ARGUMENT);
-    check_frame_preserved(closed, K_CLOSED_SAVED, {99});
+    check_frame_preserved(closed, K_CLOSED_SAVED, { 99 });
     auto authentic = observation(*K_DATASET, 0);
     const auto K_RETRY = (*replay)->submit(authentic);
     REQUIRE(K_RETRY);
@@ -961,7 +982,7 @@ TEST_CASE("replay queue slots are released only by observation events and finish
     REQUIRE(std::holds_alternative<TrackingChange>(K_FINISHED));
     CHECK(std::get<TrackingChange>(K_FINISHED).m_state == TrackingState::FINISHED);
     CHECK(std::holds_alternative<EstimatorFinished>(single_replay_event(**replay)));
-    const auto K_EMPTY = (*replay)->drain_events({1});
+    const auto K_EMPTY = (*replay)->drain_events({ 1 });
     REQUIRE(K_EMPTY);
     CHECK(K_EMPTY->empty());
     replay->reset();
@@ -978,7 +999,7 @@ TEST_CASE("replay emits LOST for unregistered selections at exactly ninety perce
     dataset->m_poses.resize(K_COUNT * 9 / 10);
     auto replay = make_completed_pose_replay(dataset);
     REQUIRE(replay);
-    REQUIRE((*replay)->start({{K_REPLAY_MEMORY_BYTES}, K_COUNT}));
+    REQUIRE((*replay)->start({ { K_REPLAY_MEMORY_BYTES }, K_COUNT }));
     auto first = observation(*dataset, 0);
     REQUIRE((*replay)->submit(first));
     check_replay_after_first(**replay, *dataset);
@@ -998,7 +1019,7 @@ TEST_CASE("replay freezes all producer records before mutable aliases are change
     producer->m_poses.clear();
     producer.reset();
     CHECK((*replay)->capabilities().m_observation_capacity == 3);
-    REQUIRE((*replay)->start({{K_REPLAY_MEMORY_BYTES}, 3}));
+    REQUIRE((*replay)->start({ { K_REPLAY_MEMORY_BYTES }, 3 }));
     auto first = observation(K_ORIGINAL, 0);
     REQUIRE((*replay)->submit(first));
     check_replay_after_first(**replay, K_ORIGINAL);
@@ -1011,7 +1032,9 @@ TEST_CASE("replay cancellation takes precedence at every lifecycle boundary and 
     REQUIRE(replay);
     const auto K_BOUNDARY = GENERATE(0, 1, 2, 3);
     CAPTURE(K_BOUNDARY);
-    if (K_BOUNDARY > 0) REQUIRE((*replay)->start({{K_REPLAY_MEMORY_BYTES}, 3}));
+    if (K_BOUNDARY > 0) {
+        REQUIRE((*replay)->start({ { K_REPLAY_MEMORY_BYTES }, 3 }));
+    }
     if (K_BOUNDARY > 1) {
         auto first = observation(*K_DATASET, 0);
         REQUIRE((*replay)->submit(first));
@@ -1023,7 +1046,9 @@ TEST_CASE("replay cancellation takes precedence at every lifecycle boundary and 
         }
         REQUIRE((*replay)->finish());
     }
-    std::jthread stopper([&] { (*replay)->request_stop(); });
+    std::jthread stopper([&] {
+        (*replay)->request_stop();
+    });
     stopper.join();
     (*replay)->request_stop();
     auto candidate = observation(*K_DATASET, 0);
@@ -1031,11 +1056,11 @@ TEST_CASE("replay cancellation takes precedence at every lifecycle boundary and 
     const auto K_SUBMIT = (*replay)->submit(candidate);
     REQUIRE(!K_SUBMIT);
     CHECK(K_SUBMIT.error().m_code == ErrorCode::CANCELLED);
-    check_frame_preserved(candidate, K_SAVED, {1});
-    const auto K_START = (*replay)->start({{K_REPLAY_MEMORY_BYTES}, 3});
+    check_frame_preserved(candidate, K_SAVED, { 1 });
+    const auto K_START = (*replay)->start({ { K_REPLAY_MEMORY_BYTES }, 3 });
     REQUIRE(!K_START);
     CHECK(K_START.error().m_code == ErrorCode::CANCELLED);
-    const auto K_DRAIN = (*replay)->drain_events({1});
+    const auto K_DRAIN = (*replay)->drain_events({ 1 });
     REQUIRE(!K_DRAIN);
     CHECK(K_DRAIN.error().m_code == ErrorCode::CANCELLED);
     const auto K_FINISH = (*replay)->finish();
@@ -1048,14 +1073,14 @@ TEST_CASE("replay image budget rejects one byte short without consuming caller d
     const auto K_DATASET = replay_dataset();
     auto replay = make_completed_pose_replay(K_DATASET);
     REQUIRE(replay);
-    REQUIRE((*replay)->start({{K_REPLAY_MEMORY_BYTES - 1}, 3}));
+    REQUIRE((*replay)->start({ { K_REPLAY_MEMORY_BYTES - 1 }, 3 }));
     auto first = observation(*K_DATASET, 0);
     const auto K_SAVED = first.m_frame;
     const auto K_REJECTED = (*replay)->submit(first);
     REQUIRE(!K_REJECTED);
     CHECK(K_REJECTED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
-    check_frame_preserved(first, K_SAVED, {1});
-    const auto K_ONLY_INITIAL = (*replay)->drain_events({100});
+    check_frame_preserved(first, K_SAVED, { 1 });
+    const auto K_ONLY_INITIAL = (*replay)->drain_events({ 100 });
     REQUIRE(K_ONLY_INITIAL);
     CHECK(K_ONLY_INITIAL->size() == 3);
     const auto K_FINISH = (*replay)->finish();
@@ -1064,7 +1089,7 @@ TEST_CASE("replay image budget rejects one byte short without consuming caller d
     // Start configuration is immutable; a new instance admits the exact six-byte lease.
     replay = make_completed_pose_replay(K_DATASET);
     REQUIRE(replay);
-    REQUIRE((*replay)->start({{K_REPLAY_MEMORY_BYTES}, 3}));
+    REQUIRE((*replay)->start({ { K_REPLAY_MEMORY_BYTES }, 3 }));
     const auto K_ADMITTED = (*replay)->submit(first);
     REQUIRE(K_ADMITTED);
     CHECK(K_ADMITTED->m_value == 1);
@@ -1084,9 +1109,9 @@ TEST_CASE("completed replay enforces bounded admission retry identity and owned 
     CHECK_FALSE((*replay)->capabilities().m_streaming_tracking);
     CHECK_FALSE((*replay)->capabilities().m_covariance);
     CHECK_FALSE((*replay)->finish());
-    REQUIRE((*replay)->start({{1024uz * 1024}, 1}));
+    REQUIRE((*replay)->start({ { 1024uz * 1024 }, 1 }));
     CHECK((*replay)->capabilities().m_observation_capacity == 1);
-    CHECK_FALSE((*replay)->start({{1024uz * 1024}, 1}));
+    CHECK_FALSE((*replay)->start({ { 1024uz * 1024 }, 1 }));
     auto first = observation(**K_DATASET, 0);
     const auto K_LEASE = first.m_frame.m_pixels.m_bytes;
     const auto K_ADMITTED = (*replay)->submit(first);
@@ -1111,28 +1136,28 @@ TEST_CASE("completed replay enforces bounded admission retry identity and owned 
     REQUIRE_FALSE(K_FULL);
     CHECK(K_FULL.error().m_code == ErrorCode::WOULD_BLOCK);
     CHECK(second.m_frame.m_pixels.m_bytes == K_RETAINED);
-    const auto K_ZERO = (*replay)->drain_events({0});
+    const auto K_ZERO = (*replay)->drain_events({ 0 });
     REQUIRE(K_ZERO);
     CHECK(K_ZERO->empty());
-    const auto K_INITIAL = (*replay)->drain_events({3});
+    const auto K_INITIAL = (*replay)->drain_events({ 3 });
     REQUIRE(K_INITIAL);
     CHECK(K_INITIAL->size() == 3);
     CHECK(std::holds_alternative<MapAlignment>(K_INITIAL->back()));
-    const auto K_EVENT = (*replay)->drain_events({1});
+    const auto K_EVENT = (*replay)->drain_events({ 1 });
     REQUIRE(K_EVENT);
     REQUIRE(K_EVENT->size() == 1);
     CHECK(std::get<PoseEstimate>(K_EVENT->front()).m_frame == first.m_frame.m_id);
     REQUIRE((*replay)->submit(second));
-    REQUIRE((*replay)->drain_events({1}));
+    REQUIRE((*replay)->drain_events({ 1 }));
     auto third = observation(**K_DATASET, 2);
     REQUIRE((*replay)->submit(third));
     REQUIRE((*replay)->finish());
     REQUIRE((*replay)->finish());
-    const auto K_TERMINAL = (*replay)->drain_events({1000000});
+    const auto K_TERMINAL = (*replay)->drain_events({ 1000000 });
     REQUIRE(K_TERMINAL);
     CHECK(K_TERMINAL->size() == 3);
     CHECK(std::holds_alternative<EstimatorFinished>(K_TERMINAL->back()));
-    const auto K_EMPTY = (*replay)->drain_events({10});
+    const auto K_EMPTY = (*replay)->drain_events({ 10 });
     REQUIRE(K_EMPTY);
     CHECK(K_EMPTY->empty());
     replay->reset();
@@ -1144,14 +1169,14 @@ TEST_CASE("completed replay enforces bounded admission retry identity and owned 
 TEST_CASE("completed pose import requires explicit selection when the decode pointer is stale") {
     pose_fixture fixture;
     std::ofstream(fixture.root / "decode.json") << nlohmann::json {
-        {"key", std::string(64, 'd')},
-        {"output",
+        { "key", std::string(64, 'd') },
+        { "output",
          path_utf8(
              fixture.root / "stages" /
-             ("decode-" + std::string(64, 'd')))}}.dump();
+             ("decode-" + std::string(64, 'd'))) } }.dump();
     CHECK_FALSE(fixture.load());
     const auto K_DATASET =
-        load_completed_poses({fixture.root, fixture.source_digest, fixture.decoded});
+        load_completed_poses({ fixture.root, fixture.source_digest, fixture.decoded });
     REQUIRE(K_DATASET);
     CHECK((*K_DATASET)->m_observations.size() == 3);
     nlohmann::json pointer;
@@ -1171,24 +1196,26 @@ TEST_CASE("completed replay preserves failed observations and supports concurren
         CHECK_FALSE((*replay)->submit(frame));
     }
     SECTION("malformed metadata") {
-        REQUIRE((*replay)->start({{1024uz * 1024}, 1}));
+        REQUIRE((*replay)->start({ { 1024uz * 1024 }, 1 }));
         frame.m_frame.m_capture_time += std::chrono::nanoseconds(1);
         CHECK_FALSE((*replay)->submit(frame));
     }
     SECTION("memory budget") {
-        REQUIRE((*replay)->start({{256uz * 1024 + 1}, 1}));
+        REQUIRE((*replay)->start({ { 256uz * 1024 + 1 }, 1 }));
         const auto K_RESULT = (*replay)->submit(frame);
         REQUIRE_FALSE(K_RESULT);
         CHECK(K_RESULT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
     }
     SECTION("cancellation") {
-        REQUIRE((*replay)->start({{1024uz * 1024}, 1}));
-        std::jthread stopper([&] { (*replay)->request_stop(); });
+        REQUIRE((*replay)->start({ { 1024uz * 1024 }, 1 }));
+        std::jthread stopper([&] {
+            (*replay)->request_stop();
+        });
         stopper.join();
         const auto K_RESULT = (*replay)->submit(frame);
         REQUIRE_FALSE(K_RESULT);
         CHECK(K_RESULT.error().m_code == ErrorCode::CANCELLED);
-        CHECK_FALSE((*replay)->drain_events({1}));
+        CHECK_FALSE((*replay)->drain_events({ 1 }));
         CHECK_FALSE((*replay)->finish());
     }
     CHECK(frame.m_frame.m_pixels.m_bytes == K_PIXELS);
@@ -1204,7 +1231,7 @@ TEST_CASE("map transactions retain distortion and reject calibration operation c
     transaction.m_calibrations = (*K_DATASET)->m_calibrations;
     transaction.m_observations = (*K_DATASET)->m_observations;
     transaction.m_poses = (*K_DATASET)->m_poses;
-    transaction.m_alignments.push_back({(*K_DATASET)->m_submap, {1}, {}});
+    transaction.m_alignments.push_back({ (*K_DATASET)->m_submap, { 1 }, {} });
     MapStore maps;
     REQUIRE(maps.commit(transaction));
     REQUIRE(maps.commit(transaction));
@@ -1234,7 +1261,7 @@ TEST_CASE("canonical export verifies the retained synthetic job without launchin
     pose_fixture fixture;
     const auto K_DESTINATION = fixture.root / "canonical.weposes";
     const auto K_EXPORTED = export_completed_pose_asset(
-        {{fixture.root, fixture.root / "source.mp4", {}}, K_DESTINATION}, {});
+        { { fixture.root, fixture.root / "source.mp4", {} }, K_DESTINATION }, {});
     REQUIRE(K_EXPORTED);
     const auto K_LOADED = read_pose_asset(K_DESTINATION, *K_EXPORTED);
     REQUIRE(K_LOADED);
@@ -1244,11 +1271,11 @@ TEST_CASE("canonical export verifies the retained synthetic job without launchin
     CHECK(K_LOADED->m_provenance.m_source_sha256 == fixture.source_digest);
     CHECK_FALSE(K_LOADED->m_provenance.m_journal_sha256);
     CHECK_FALSE(export_completed_pose_asset(
-        {{fixture.root, fixture.root / "source.mp4", {}}, K_DESTINATION}, {}));
+        { { fixture.root, fixture.root / "source.mp4", {} }, K_DESTINATION }, {}));
     CHECK(read_pose_asset(K_DESTINATION, *K_EXPORTED));
     std::ofstream(fixture.root / "source.mp4") << "changed synthetic input";
     CHECK_FALSE(export_completed_pose_asset(
-        {{fixture.root, fixture.root / "source.mp4", {}}, fixture.root / "changed.weposes"}, {}));
+        { { fixture.root, fixture.root / "source.mp4", {} }, fixture.root / "changed.weposes" }, {}));
     CHECK_FALSE(std::filesystem::exists(fixture.root / "changed.weposes"));
 }
 

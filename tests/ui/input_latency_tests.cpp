@@ -1,12 +1,12 @@
 #include "input_latency.hpp"
 #include "preferences.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <nlohmann/json.hpp>
+
 #include <chrono>
 #include <fstream>
 #include <limits>
-
-#include <catch2/catch_test_macros.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 using namespace world_explorer::viewer;
@@ -41,8 +41,9 @@ TEST_CASE("input timing rejects missing reversed and future timestamps without u
     LatencyFixture fixture;
     input_latency_recorder recorder(fixture.m_path);
     const FlyCamera K_CAMERA;
-    for (const auto K_EVENT_NS : {0ULL, 301ULL, 99ULL})
+    for (const auto K_EVENT_NS : { 0ULL, 301ULL, 99ULL }) {
         recorder.observe(key_event(K_EVENT_NS), 200, preferences {}.keys);
+    }
     recorder.finish_frame(1, 100, K_CAMERA, K_CAMERA, {}, false);
     const auto K_REPORT = recorder.report();
     CHECK(K_REPORT.at("invalid_timestamps") == 3);
@@ -87,10 +88,10 @@ TEST_CASE("input timing bounds event storage and exposes truncation in the saved
         recorder.observe(key_event(10), 20, preferences {}.keys);
         recorder.finish_frame(static_cast<unsigned>(index + 1), 30, K_CAMERA, K_CAMERA, {}, false);
     }
-    recorder.write({.video_driver = "synthetic",
+    recorder.write({ .video_driver = "synthetic",
                     .device = "synthetic",
                     .resident_splats = 0,
-                    .validation_errors = 0});
+                    .validation_errors = 0 });
     std::ifstream saved(fixture.m_path);
     const auto K_REPORT = nlohmann::json::parse(saved);
     CHECK(K_REPORT.at("recorded_events") == input_latency_recorder::K_MAX_EVENTS);

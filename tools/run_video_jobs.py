@@ -12,6 +12,13 @@ import sys
 from pathlib import Path
 
 
+__all__ = [
+    "main",
+    "owned_job_directories",
+    "write_json",
+]
+
+
 def write_json(path, value):
     pending = path.with_suffix(path.suffix + ".tmp")
     pending.write_text(json.dumps(value, indent=2) + "\n")

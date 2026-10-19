@@ -5,13 +5,13 @@
 #include "world_explorer/core/asset_files.hpp"
 #include "world_explorer/core/hash.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <exception>
 #include <new>
 #include <set>
 #include <string_view>
-
-#include <nlohmann/json.hpp>
 
 namespace world_explorer {
 namespace {
@@ -29,9 +29,12 @@ Result<std::vector<std::byte>> pinned(const std::filesystem::path& path,
                                       std::size_t maximum,
                                       const std::stop_token& stop) {
     auto bytes = asset_files::read_bytes(path, maximum, stop);
-    if (!bytes) return std::unexpected(bytes.error());
-    if (sha256(*bytes) != expected)
+    if (!bytes) {
+        return std::unexpected(bytes.error());
+    }
+    if (sha256(*bytes) != expected) {
         return fail(ErrorCode::INVALID_DATA, "Visibility input checksum differs");
+    }
     return bytes;
 }
 
@@ -42,11 +45,16 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
                                                   const std::filesystem::path& destination,
                                                   const std::stop_token& stop) {
     try {
-        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Visibility export cancelled");
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Visibility export cancelled");
+        }
         const auto K_CONFIG_BYTES = pinned(request, request_sha256, 1024uz * 1024uz, stop);
-        if (!K_CONFIG_BYTES) return std::unexpected(K_CONFIG_BYTES.error());
-        if (std::ranges::find(*K_CONFIG_BYTES, std::byte {}) != K_CONFIG_BYTES->end())
+        if (!K_CONFIG_BYTES) {
+            return std::unexpected(K_CONFIG_BYTES.error());
+        }
+        if (std::ranges::find(*K_CONFIG_BYTES, std::byte {}) != K_CONFIG_BYTES->end()) {
             return fail(ErrorCode::INVALID_DATA, "Visibility request contains a raw NUL byte");
+        }
         const auto K_CONFIG_TEXT =
             K_CONFIG_BYTES->empty()
                 ? std::string_view {}
@@ -66,16 +74,19 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
                                               "manifest_sha256",
                                               "decode_stage",
                                               "outputs" };
-        if (!K_CONFIG.is_object() || K_CONFIG.size() != K_FIELDS.size())
+        if (!K_CONFIG.is_object() || K_CONFIG.size() != K_FIELDS.size()) {
             return fail(ErrorCode::INVALID_DATA, "Invalid visibility request schema");
+        }
         for (const auto& key : K_FIELDS) {
-            if (!K_CONFIG.contains(key))
+            if (!K_CONFIG.contains(key)) {
                 return fail(ErrorCode::INVALID_DATA, "Missing visibility request field");
+            }
         }
         if (!K_CONFIG.at("schema_version").is_number_unsigned() ||
             K_CONFIG.at("schema_version") != 1 || !K_CONFIG.at("outputs").is_array() ||
-            K_CONFIG.at("outputs").empty() || K_CONFIG.at("outputs").size() > 18uz)
+            K_CONFIG.at("outputs").empty() || K_CONFIG.at("outputs").size() > 18uz) {
             return fail(ErrorCode::INVALID_DATA, "Invalid visibility inventory/version");
+        }
         const auto K_BASE = std::filesystem::canonical(request).parent_path();
         const auto K_PATH = [&](const std::string& key) {
             const std::filesystem::path K_VALUE { K_CONFIG.at(key).get<std::string>() };
@@ -92,8 +103,9 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
             K_NATIVE, K_PATH("recipe"), K_CONFIG.at("recipe_sha256").get<std::string>() };
         const auto K_MANIFEST = K_PATH("manifest");
         if (destination.empty() ||
-            std::filesystem::exists(std::filesystem::symlink_status(destination)))
+            std::filesystem::exists(std::filesystem::symlink_status(destination))) {
             return fail(ErrorCode::INVALID_ARGUMENT, "Visibility destination must be new");
+        }
         const auto K_OUTPUT = std::filesystem::weakly_canonical(destination);
         std::vector<std::filesystem::path> inputs { request,
                                                    K_NATIVE.m_completed.m_pose_job,
@@ -106,23 +118,31 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
         for (const auto& record : K_CONFIG.at("outputs")) {
             if (!record.is_object() || record.size() != 3uz || !record.contains("frame") ||
                 !record.at("frame").is_number_unsigned() || !record.contains("path") ||
-                !record.contains("sha256"))
+                !record.contains("sha256")) {
                 return fail(ErrorCode::INVALID_DATA, "Invalid selected depth record");
+            }
             const std::filesystem::path K_PATH_VALUE { record.at("path").get<std::string>() };
-            if (K_PATH_VALUE.empty()) return fail(ErrorCode::INVALID_DATA, "Empty depth path");
+            if (K_PATH_VALUE.empty()) {
+                return fail(ErrorCode::INVALID_DATA, "Empty depth path");
+            }
             const auto K_DEPTH = std::filesystem::absolute(K_BASE / K_PATH_VALUE);
             depth_paths.push_back(K_DEPTH);
             inputs.push_back(K_DEPTH.parent_path());
         }
         for (const auto& input : inputs) {
-            if (input.empty()) continue;
+            if (input.empty()) {
+                continue;
+            }
             const auto K_SELECTED = std::filesystem::canonical(input);
-            if (within(K_OUTPUT, K_SELECTED) || within(K_SELECTED, K_OUTPUT))
+            if (within(K_OUTPUT, K_SELECTED) || within(K_SELECTED, K_OUTPUT)) {
                 return fail(ErrorCode::INVALID_ARGUMENT, "Visibility output overlaps an input");
+            }
         }
         const auto K_PREPARED = load_resized_dense_inputs(
             K_INPUT, K_MANIFEST, K_CONFIG.at("manifest_sha256").get<std::string>(), stop);
-        if (!K_PREPARED) return std::unexpected(K_PREPARED.error());
+        if (!K_PREPARED) {
+            return std::unexpected(K_PREPARED.error());
+        }
         const auto K_DOCUMENT = nlohmann::json::parse(K_PREPARED->m_manifest_json);
         std::vector<std::size_t> indices;
         std::size_t pixels {};
@@ -131,36 +151,45 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
             const auto K_FOUND = std::ranges::find_if(K_PREPARED->m_frames, [&](const auto& frame) {
                 return frame.m_expected_depth.m_dependency.m_frame.m_value == K_FRAME;
             });
-            if (K_FOUND == K_PREPARED->m_frames.end())
+            if (K_FOUND == K_PREPARED->m_frames.end()) {
                 return fail(ErrorCode::INVALID_DATA,
                             "Selected depth frame is not in checked inputs");
+            }
             const auto K_INDEX = static_cast<std::size_t>(K_FOUND - K_PREPARED->m_frames.begin());
-            if (!indices.empty() && K_INDEX <= indices.back())
+            if (!indices.empty() && K_INDEX <= indices.back()) {
                 return fail(ErrorCode::INVALID_DATA,
                             "Depth inventory must follow unique manifest order");
+            }
             indices.push_back(K_INDEX);
             const auto& metadata = K_FOUND->m_expected_depth;
             const auto K_PIXELS = static_cast<std::size_t>(metadata.m_width) * metadata.m_height;
-            if (K_PIXELS > K_MAX_PIXELS - pixels)
+            if (K_PIXELS > K_MAX_PIXELS - pixels) {
                 return fail(ErrorCode::RESOURCE_EXHAUSTED,
                             "Visibility decoded pixel budget exceeded");
+            }
             pixels += K_PIXELS;
         }
-        if (!std::filesystem::create_directory(K_OUTPUT))
+        if (!std::filesystem::create_directory(K_OUTPUT)) {
             return fail(ErrorCode::IO_ERROR, "Cannot reserve visibility directory");
+        }
         const auto K_DIRECTORY_FLUSH = asset_files::flush_directory_entry(K_OUTPUT.parent_path());
-        if (!K_DIRECTORY_FLUSH) return std::unexpected(K_DIRECTORY_FLUSH.error());
+        if (!K_DIRECTORY_FLUSH) {
+            return std::unexpected(K_DIRECTORY_FLUSH.error());
+        }
         std::filesystem::create_directory(K_OUTPUT / "assets");
         std::filesystem::create_directory(K_OUTPUT / "images");
         auto files = nlohmann::json::object();
         std::size_t total_bytes {};
         const auto K_PUBLISH = [&](const std::string& name,
                                    std::span<const std::byte> bytes) -> Result<std::string> {
-            if (bytes.size() > K_MAX_CACHE_BYTES - total_bytes)
+            if (bytes.size() > K_MAX_CACHE_BYTES - total_bytes) {
                 return fail(ErrorCode::RESOURCE_EXHAUSTED,
                             "Visibility encoded byte budget exceeded");
+            }
             const auto K_HASH = asset_files::publish_asset(K_OUTPUT / name, bytes, stop);
-            if (!K_HASH) return std::unexpected(K_HASH.error());
+            if (!K_HASH) {
+                return std::unexpected(K_HASH.error());
+            }
             total_bytes += bytes.size();
             files[name] = { { "sha256", *K_HASH }, { "bytes", bytes.size() } };
             return K_HASH;
@@ -177,9 +206,13 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
                        entry.second.second,
                        entry.first == "poses.weposes" ? 256uz * 1024uz * 1024uz : 1024uz * 1024uz,
                        stop);
-            if (!K_BYTES) return std::unexpected(K_BYTES.error());
+            if (!K_BYTES) {
+                return std::unexpected(K_BYTES.error());
+            }
             const auto K_WRITTEN = K_PUBLISH(entry.first, *K_BYTES);
-            if (!K_WRITTEN) return std::unexpected(K_WRITTEN.error());
+            if (!K_WRITTEN) {
+                return std::unexpected(K_WRITTEN.error());
+            }
         }
         auto frames = nlohmann::json::array();
         for (std::size_t i { 0uz }; i < indices.size(); ++i) {
@@ -192,24 +225,35 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
                                                         selected.m_expected_depth },
                                                        {},
                                                        stop);
-            if (!K_DEPTH) return std::unexpected(K_DEPTH.error());
+            if (!K_DEPTH) {
+                return std::unexpected(K_DEPTH.error());
+            }
             const auto K_BYTES = encode_depth_asset(*K_DEPTH, {}, stop);
-            if (!K_BYTES) return std::unexpected(K_BYTES.error());
-            if (sha256(*K_BYTES) != record.at("sha256").get<std::string>())
+            if (!K_BYTES) {
+                return std::unexpected(K_BYTES.error());
+            }
+            if (sha256(*K_BYTES) != record.at("sha256").get<std::string>()) {
                 return fail(ErrorCode::INVALID_DATA,
                             "Admitted depth re-encoding differs from selected bytes");
+            }
             const auto K_NAME = std::filesystem::path(selected.m_image_name).filename().string();
             const auto K_DEPTH_NAME = "assets/" + K_NAME + ".wedepth";
             const auto K_WRITTEN_DEPTH = K_PUBLISH(K_DEPTH_NAME, *K_BYTES);
-            if (!K_WRITTEN_DEPTH) return std::unexpected(K_WRITTEN_DEPTH.error());
+            if (!K_WRITTEN_DEPTH) {
+                return std::unexpected(K_WRITTEN_DEPTH.error());
+            }
             const auto K_RGB = pinned(selected.m_calibrated_image,
                                       selected.m_expected_depth.m_calibrated_image_sha256,
                                       64uz * 1024uz * 1024uz,
                                       stop);
-            if (!K_RGB) return std::unexpected(K_RGB.error());
+            if (!K_RGB) {
+                return std::unexpected(K_RGB.error());
+            }
             const auto K_IMAGE_NAME = "images/" + K_NAME;
             const auto K_WRITTEN_RGB = K_PUBLISH(K_IMAGE_NAME, *K_RGB);
-            if (!K_WRITTEN_RGB) return std::unexpected(K_WRITTEN_RGB.error());
+            if (!K_WRITTEN_RGB) {
+                return std::unexpected(K_WRITTEN_RGB.error());
+            }
             auto frame = K_DOCUMENT.at("frames")[indices[i]];
             frame["image"] = K_IMAGE_NAME;
             frame["manifest_index"] = indices[i];
@@ -242,8 +286,9 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
             { "frames", frames },
             { "files", files } };
         const auto K_TEXT = K_RECEIPT.dump(2) + "\n";
-        if (K_TEXT.size() > 1024uz * 1024uz)
+        if (K_TEXT.size() > 1024uz * 1024uz) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Visibility receipt exceeds byte budget");
+        }
         return asset_files::publish_asset(
             K_OUTPUT / "manifest.json", std::as_bytes(std::span(K_TEXT)), stop);
     } catch (const std::bad_alloc&) {

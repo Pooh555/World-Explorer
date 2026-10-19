@@ -8,24 +8,24 @@
 #if defined(WE_VULKAN_TEST_FAULTS)
 #include "renderer_faults.hpp"
 #endif
+#include <SDL3/SDL.h>
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
+#include <imgui_impl_vulkan.h>
+#include <nlohmann/json.hpp>
+#include <vulkan/vulkan.h>
+
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <fstream>
-#include <imgui.h>
-#include <imgui_impl_sdl3.h>
-#include <imgui_impl_vulkan.h>
 #include <iostream>
 #include <mutex>
 #include <optional>
 #include <thread>
 #include <utility>
-
-#include <SDL3/SDL.h>
-#include <nlohmann/json.hpp>
-#include <vulkan/vulkan.h>
 
 namespace {
 
@@ -37,11 +37,13 @@ using viewer::read_preferences;
 using viewer::save_preferences;
 
 template <class HandleType> HandleType native(std::uintptr_t value) {
-    if constexpr (std::is_pointer_v<HandleType>)
+    if constexpr (std::is_pointer_v<HandleType>) {
         // Opaque Vulkan handles cross the public renderer boundary as uintptr_t.
         // NOLINTNEXTLINE(performance-no-int-to-ptr)
         return reinterpret_cast<HandleType>(value);
-    else return static_cast<HandleType>(value);
+    } else {
+        return static_cast<HandleType>(value);
+    }
 }
 
 int viewer_main(int argc, char** argv) {
@@ -81,54 +83,85 @@ int viewer_main(int argc, char** argv) {
 #endif
             return 0;
         }
-        if (K_OPTION == "--diagnostic-fixture") diagnostic_fixture = true;
-        else if (K_OPTION == "--no-validation") validation = false;
-        else if (K_OPTION == "--source-view") inspect_source = true;
-        else if (argument + 1 < argc) {
+        if (K_OPTION == "--diagnostic-fixture") {
+            diagnostic_fixture = true;
+        } else if (K_OPTION == "--no-validation") {
+            validation = false;
+        } else if (K_OPTION == "--source-view") {
+            inspect_source = true;
+        } else if (argument + 1 < argc) {
             const std::string K_VALUE = argv[++argument];
-            if (K_OPTION == "--fusion-request") fusion_request = K_VALUE;
-            else if (K_OPTION == "--fusion-request-sha") fusion_request_sha256 = K_VALUE;
-            else if (K_OPTION == "--scene") scene_path = K_VALUE;
-            else if (K_OPTION == "--reconstruction-request") reconstruction_request = K_VALUE;
-            else if (K_OPTION == "--review-request") review_request = K_VALUE;
-            else if (K_OPTION == "--screenshot") screenshot = K_VALUE;
-            else if (K_OPTION == "--settings") settings_path = K_VALUE;
-            else if (K_OPTION == "--input-trace") input_trace_path = K_VALUE;
-            else if (K_OPTION == "--input-latency") input_latency_path = K_VALUE;
-            else if (K_OPTION == "--shader-dir") shader_path = K_VALUE;
-            else if (K_OPTION == "--worker-python") worker.m_python = K_VALUE;
-            else if (K_OPTION == "--worker-script") worker.m_script = K_VALUE;
-            else if (K_OPTION == "--frames")
+            if (K_OPTION == "--fusion-request") {
+                fusion_request = K_VALUE;
+            } else if (K_OPTION == "--fusion-request-sha") {
+                fusion_request_sha256 = K_VALUE;
+            } else if (K_OPTION == "--scene") {
+                scene_path = K_VALUE;
+            } else if (K_OPTION == "--reconstruction-request") {
+                reconstruction_request = K_VALUE;
+            } else if (K_OPTION == "--review-request") {
+                review_request = K_VALUE;
+            } else if (K_OPTION == "--screenshot") {
+                screenshot = K_VALUE;
+            } else if (K_OPTION == "--settings") {
+                settings_path = K_VALUE;
+            } else if (K_OPTION == "--input-trace") {
+                input_trace_path = K_VALUE;
+            } else if (K_OPTION == "--input-latency") {
+                input_latency_path = K_VALUE;
+            } else if (K_OPTION == "--shader-dir") {
+                shader_path = K_VALUE;
+            } else if (K_OPTION == "--worker-python") {
+                worker.m_python = K_VALUE;
+            } else if (K_OPTION == "--worker-script") {
+                worker.m_script = K_VALUE;
+            } else if (K_OPTION == "--frames") {
                 frame_limit = static_cast<unsigned>(std::stoul(K_VALUE));
 #if defined(WE_VULKAN_TEST_FAULTS)
-            else if (K_OPTION == "--inject-device-loss-frame")
+            } else if (K_OPTION == "--inject-device-loss-frame") {
                 inject_device_loss_frame = static_cast<unsigned>(std::stoul(K_VALUE));
 #endif
-            else if (K_OPTION == "--max-splats") max_splats = std::stoull(K_VALUE);
-            else if (K_OPTION == "--residency-mib") residency_mib = std::stoull(K_VALUE);
-            else throw std::runtime_error("Unknown option: " + K_OPTION);
-        } else throw std::runtime_error("Missing option value: " + K_OPTION);
+            } else if (K_OPTION == "--max-splats") {
+                max_splats = std::stoull(K_VALUE);
+            } else if (K_OPTION == "--residency-mib") {
+                residency_mib = std::stoull(K_VALUE);
+            } else {
+                throw std::runtime_error("Unknown option: " + K_OPTION);
+            }
+        } else {
+            throw std::runtime_error("Missing option value: " + K_OPTION);
+        }
     }
     if (!fusion_request.empty() && (!scene_path.empty() || diagnostic_fixture ||
-                                    !reconstruction_request.empty() || !review_request.empty()))
+                                    !reconstruction_request.empty() || !review_request.empty())) {
         throw std::runtime_error("Choose one startup scene source");
-    if (fusion_request.empty() != fusion_request_sha256.empty())
+    }
+    if (fusion_request.empty() != fusion_request_sha256.empty()) {
         throw std::runtime_error("Fusion request requires its SHA-256 pin");
-    if (!input_latency_path.empty() && (!input_trace_path.empty() || !screenshot.empty()))
+    }
+    if (!input_latency_path.empty() && (!input_trace_path.empty() || !screenshot.empty())) {
         throw std::runtime_error("Input latency requires traces and screenshots disabled");
-    if (!SDL_Init(SDL_INIT_VIDEO)) throw std::runtime_error(SDL_GetError());
+    }
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        throw std::runtime_error(SDL_GetError());
+    }
     const bool K_REQUIRE_RECONSTRUCTION_SUCCESS = !reconstruction_request.empty();
     const bool K_REQUIRE_REVIEW_SUCCESS = !review_request.empty();
-    if (K_REQUIRE_REVIEW_SUCCESS && K_REQUIRE_RECONSTRUCTION_SUCCESS)
+    if (K_REQUIRE_REVIEW_SUCCESS && K_REQUIRE_RECONSTRUCTION_SUCCESS) {
         throw std::runtime_error("Choose either startup review or startup reconstruction");
+    }
 
     struct SdlOwner {
-        ~SdlOwner() { SDL_Quit(); }
+        ~SdlOwner() {
+            SDL_Quit();
+        }
     } sdl;
 
     if (settings_path.empty()) {
         const char* pref = SDL_GetPrefPath("WorldExplorer", "WorldExplorer");
-        if (pref) settings_path = std::filesystem::path(pref) / "settings.json";
+        if (pref) {
+            settings_path = std::filesystem::path(pref) / "settings.json";
+        }
     }
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
         SDL_CreateWindow("World Explorer — development",
@@ -136,17 +169,22 @@ int viewer_main(int argc, char** argv) {
                          900,
                          SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY),
         SDL_DestroyWindow);
-    if (!window) throw std::runtime_error(SDL_GetError());
+    if (!window) {
+        throw std::runtime_error(SDL_GetError());
+    }
     SDL_SetWindowMinimumSize(window.get(), 800, 480);
     RendererOptions options;
-    if (!max_splats || max_splats > 2000000 || residency_mib < 64 || residency_mib > 4096)
+    if (!max_splats || max_splats > 2000000 || residency_mib < 64 || residency_mib > 4096) {
         throw std::runtime_error("Viewer budget requires 1–2,000,000 splats and 64–4,096 MiB");
+    }
     options.m_max_splats = max_splats;
     options.m_residency_bytes = residency_mib * 1024 * 1024;
     options.m_shader_directory = shader_path;
     options.m_validation = validation;
     auto renderer_result = VulkanRenderer::create(window.get(), options);
-    if (!renderer_result) throw std::runtime_error(renderer_result.error().m_message);
+    if (!renderer_result) {
+        throw std::runtime_error(renderer_result.error().m_message);
+    }
     auto renderer = std::move(*renderer_result);
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -158,12 +196,18 @@ int viewer_main(int argc, char** argv) {
         ~GuiOwner() {
             if (m_renderer) {
                 m_renderer->set_overlay_callback({});
-                if (!m_device_lost)
-                    if (const auto K_COMPLETED = m_renderer->wait_for_idle(); !K_COMPLETED)
+                if (!m_device_lost) {
+                    if (const auto K_COMPLETED = m_renderer->wait_for_idle(); !K_COMPLETED) {
                         std::cerr << "GPU shutdown: " << K_COMPLETED.error().m_message << '\n';
+                    }
+                }
             }
-            if (m_vulkan) ImGui_ImplVulkan_Shutdown();
-            if (m_sdl) ImGui_ImplSDL3_Shutdown();
+            if (m_vulkan) {
+                ImGui_ImplVulkan_Shutdown();
+            }
+            if (m_sdl) {
+                ImGui_ImplSDL3_Shutdown();
+            }
             ImGui::DestroyContext();
         }
     } gui { renderer.get() };
@@ -177,11 +221,15 @@ int viewer_main(int argc, char** argv) {
         ImFontConfig font;
         font.SizePixels = 13.F * (1.F + static_cast<float>(index) * 0.25F);
         fonts[index] = io.Fonts->AddFontDefault(&font);
-        if (!fonts[index]) throw std::runtime_error("Cannot prepare display font atlas");
+        if (!fonts[index]) {
+            throw std::runtime_error("Cannot prepare display font atlas");
+        }
     }
     viewer::apply_theme(scale);
     gui.m_sdl = ImGui_ImplSDL3_InitForVulkan(window.get());
-    if (!gui.m_sdl) throw std::runtime_error("ImGui SDL initialization failed");
+    if (!gui.m_sdl) {
+        throw std::runtime_error("ImGui SDL initialization failed");
+    }
     const auto K_INITIALIZE_VULKAN_OVERLAY = [&] {
         const auto K_CONTEXT = renderer->overlay_context();
         // The external initialization struct must start zeroed; samples is assigned below.
@@ -200,7 +248,9 @@ int viewer_main(int argc, char** argv) {
         init.ImageCount = K_CONTEXT.m_image_count;
         init.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         gui.m_vulkan = ImGui_ImplVulkan_Init(&init);
-        if (!gui.m_vulkan) throw std::runtime_error("ImGui Vulkan initialization failed");
+        if (!gui.m_vulkan) {
+            throw std::runtime_error("ImGui Vulkan initialization failed");
+        }
         renderer->set_overlay_callback([](std::uintptr_t command) {
             ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), native<VkCommandBuffer>(command));
         });
@@ -231,17 +281,23 @@ int viewer_main(int argc, char** argv) {
     unsigned input_readbacks {};
     unsigned device_recoveries {};
     std::unique_ptr<viewer::input_latency_recorder> input_latency;
-    if (!input_latency_path.empty())
+    if (!input_latency_path.empty()) {
         input_latency = std::make_unique<viewer::input_latency_recorder>(input_latency_path);
+    }
     nlohmann::json input_widgets = nlohmann::json::object();
     if (!input_trace_path.empty()) {
-        if (std::filesystem::exists(std::filesystem::symlink_status(input_trace_path)))
+        if (std::filesystem::exists(std::filesystem::symlink_status(input_trace_path))) {
             throw std::runtime_error("Choose a new input trace file");
+        }
         input_trace.open(input_trace_path, std::ios::binary);
-        if (!input_trace) throw std::runtime_error("Cannot create input trace");
+        if (!input_trace) {
+            throw std::runtime_error("Cannot create input trace");
+        }
     }
     const auto K_TRACE_ITEM = [&](const char* name) {
-        if (!input_trace.is_open()) return;
+        if (!input_trace.is_open()) {
+            return;
+        }
         const auto K_MINIMUM = ImGui::GetItemRectMin(), K_MAXIMUM = ImGui::GetItemRectMax();
         input_widgets[name] = {
             K_MINIMUM.x, K_MINIMUM.y, K_MAXIMUM.x, K_MAXIMUM.y, ImGui::IsItemVisible() };
@@ -254,8 +310,11 @@ int viewer_main(int argc, char** argv) {
     if (!fusion_request.empty()) {
         representation = SceneRepresentation::OBSERVED_MESH;
         state.load_fusion(fusion_request, fusion_request_sha256);
-    } else if (diagnostic_fixture) state.loaded = make_diagnostic_scene();
-    else if (!scene_path.empty()) state.load(scene_path);
+    } else if (diagnostic_fixture) {
+        state.loaded = make_diagnostic_scene();
+    } else if (!scene_path.empty()) {
+        state.load(scene_path);
+    }
     auto release_mouse = [&] {
         SDL_SetWindowRelativeMouseMode(window.get(), false);
         captured = false;
@@ -264,32 +323,43 @@ int viewer_main(int argc, char** argv) {
         FlyInput movement;
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (input_latency) input_latency->observe(event, SDL_GetTicksNS(), settings.keys);
+            if (input_latency) {
+                input_latency->observe(event, SDL_GetTicksNS(), settings.keys);
+            }
             ImGui_ImplSDL3_ProcessEvent(&event);
-            if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+            if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
                 running = false;
-            if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) release_mouse();
-            if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_ESCAPE)
+            }
+            if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
                 release_mouse();
+            }
+            if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_ESCAPE) {
+                release_mouse();
+            }
             if (input_trace.is_open() && input_readbacks < 16 && event.type == SDL_EVENT_KEY_DOWN &&
                 !event.key.repeat && event.key.scancode == SDL_SCANCODE_F12 && remapping < 0) {
                 const auto K_READBACK =
                     input_trace_path.parent_path() /
                     (input_trace_path.stem().string() + "-" + std::to_string(frames) + ".ppm");
                 const auto K_REQUESTED = renderer->request_screenshot(K_READBACK);
-                if (!K_REQUESTED) throw std::runtime_error(K_REQUESTED.error().m_message);
+                if (!K_REQUESTED) {
+                    throw std::runtime_error(K_REQUESTED.error().m_message);
+                }
                 ++input_readbacks;
             }
             if (event.type == SDL_EVENT_KEY_DOWN && remapping >= 0) {
-                if (event.key.scancode != SDL_SCANCODE_ESCAPE)
+                if (event.key.scancode != SDL_SCANCODE_ESCAPE) {
                     settings.keys[static_cast<std::size_t>(remapping)] = event.key.scancode;
+                }
                 remapping = -1;
             }
             if (event.type == SDL_EVENT_MOUSE_MOTION && captured) {
                 movement.m_mouse_x += event.motion.xrel;
                 movement.m_mouse_y += event.motion.yrel;
             }
-            if (event.type == SDL_EVENT_MOUSE_WHEEL && captured) movement.m_wheel += event.wheel.y;
+            if (event.type == SDL_EVENT_MOUSE_WHEEL && captured) {
+                movement.m_wheel += event.wheel.y;
+            }
             if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
                 event.button.button == SDL_BUTTON_LEFT && !io.WantCaptureMouse && !show_open &&
                 !show_import && !show_settings) {
@@ -304,8 +374,9 @@ int viewer_main(int argc, char** argv) {
         }
         if (!review_request.empty() && !state.has_pending_work() && !pending_ticket) {
             const auto K_SELECTED = review_request.string();
-            if (K_SELECTED.size() >= request_path.size())
+            if (K_SELECTED.size() >= request_path.size()) {
                 throw std::runtime_error("Request path exceeds Import field capacity");
+            }
             std::snprintf(request_path.data(), request_path.size(), "%s", K_SELECTED.c_str());
             state.review_request(std::exchange(review_request, {}));
             show_import = true;
@@ -324,13 +395,14 @@ int viewer_main(int argc, char** argv) {
         movement.m_accelerate = keys[settings.keys[6]];
         const auto K_CAMERA_BEFORE = camera;
         camera.update(movement, K_ELAPSED);
-        if (input_latency)
+        if (input_latency) {
             input_latency->finish_frame(frames + 1,
                                         SDL_GetTicksNS(),
                                         K_CAMERA_BEFORE,
                                         camera,
                                         movement,
                                         current && !pending_ticket && !state.processing.load());
+        }
         SceneSnapshot loaded;
         {
             std::lock_guard lock(state.mutex);
@@ -339,7 +411,7 @@ int viewer_main(int argc, char** argv) {
         if (loaded) {
             auto batch = make_snapshot_batch(loaded, OperationId { next_operation++ });
             auto admitted = batch ? renderer->updates().enqueue(*batch)
-                                  : Result<UpdateTicket> {std::unexpected(batch.error())};
+                                  : Result<UpdateTicket> { std::unexpected(batch.error()) };
             std::lock_guard lock(state.mutex);
             if (admitted) {
                 pending_ticket = *admitted;
@@ -362,18 +434,23 @@ int viewer_main(int argc, char** argv) {
                 camera.fit(world_bounds(*current));
                 if (inspect_source) {
                     const auto K_INSPECTION = source_view(*current);
-                    if (!K_INSPECTION) throw std::runtime_error(K_INSPECTION.error().m_message);
+                    if (!K_INSPECTION) {
+                        throw std::runtime_error(K_INSPECTION.error().m_message);
+                    }
                     camera = K_INSPECTION->m_camera;
                     camera_fov = K_INSPECTION->m_vertical_fov_radians;
                 }
                 state.status = "Uploading validated scene...";
-            } else
+            } else {
                 state.status = "Scene admission failed: " + admitted.error().m_message +
                                ". Previous visible scene retained.";
+            }
         }
         const auto K_SCALING = viewer::display_scaling(SDL_GetWindowDisplayScale(window.get()),
                                                        SDL_GetWindowPixelDensity(window.get()));
-        if (!K_SCALING) throw std::runtime_error(K_SCALING.error().m_message);
+        if (!K_SCALING) {
+            throw std::runtime_error(K_SCALING.error().m_message);
+        }
         if (scale != K_SCALING->layout_scale) {
             scale = K_SCALING->layout_scale;
             viewer::apply_theme(scale);
@@ -387,12 +464,12 @@ int viewer_main(int argc, char** argv) {
         const auto K_DISPLAY = io.DisplaySize;
         const float K_TOP = 56 * scale, K_BOTTOM = 120 * scale;
         const bool K_COMPACT = K_DISPLAY.x < 1200 * scale;
-        constexpr auto K_PANEL_FLAGS {static_cast<ImGuiWindowFlags>(
+        constexpr auto K_PANEL_FLAGS { static_cast<ImGuiWindowFlags>(
             static_cast<unsigned>(ImGuiWindowFlags_NoMove) | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
-            ImGuiWindowFlags_NoSavedSettings)};
-        ImGui::SetNextWindowPos({0, 0});
-        ImGui::SetNextWindowSize({K_DISPLAY.x, K_TOP});
+            ImGuiWindowFlags_NoSavedSettings) };
+        ImGui::SetNextWindowPos({ 0, 0 });
+        ImGui::SetNextWindowSize({ K_DISPLAY.x, K_TOP });
         ImGui::Begin("Toolbar", nullptr, K_PANEL_FLAGS);
         ImGui::TextUnformatted(is_synthetic_scene(current) ? "SYNTHETIC SCENE" : "WORLD EXPLORER");
         ImGui::SameLine(210 * scale);
@@ -427,18 +504,20 @@ int viewer_main(int argc, char** argv) {
         }
         K_TRACE_ITEM("source");
         ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip("Reset using the recorded capture orientation. Fly keeps this up "
                               "direction; gravity remains unmeasured. No camera following.");
+        }
         ImGui::SameLine();
         ImGui::TextUnformatted("Fly");
         ImGui::SameLine();
         ImGui::BeginDisabled();
         ImGui::Button("Walk unavailable");
         ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip(
                 "Walking requires independently measured scale and validated collision geometry.");
+        }
         ImGui::SameLine();
         if (ImGui::Button("Settings")) {
             show_settings = true;
@@ -447,8 +526,8 @@ int viewer_main(int argc, char** argv) {
         K_TRACE_ITEM("settings");
         ImGui::End();
         if (settings.left && !K_COMPACT) {
-            ImGui::SetNextWindowPos({0, K_TOP});
-            ImGui::SetNextWindowSize({232 * scale, K_DISPLAY.y - K_TOP - K_BOTTOM});
+            ImGui::SetNextWindowPos({ 0, K_TOP });
+            ImGui::SetNextWindowSize({ 232 * scale, K_DISPLAY.y - K_TOP - K_BOTTOM });
             ImGui::Begin("Project", nullptr, K_PANEL_FLAGS);
             ImGui::TextUnformatted("PROJECT");
             ImGui::Separator();
@@ -475,33 +554,40 @@ int viewer_main(int argc, char** argv) {
                 }
                 if (has_mesh) {
                     if (ImGui::RadioButton("Observed surfaces",
-                                           representation == SceneRepresentation::OBSERVED_MESH))
+                                           representation == SceneRepresentation::OBSERVED_MESH)) {
                         representation = SceneRepresentation::OBSERVED_MESH;
-                    if (has_baked &&
-                        ImGui::RadioButton("Baked captured color",
-                                           representation == SceneRepresentation::BAKED_APPEARANCE))
+                    }
+                    if (has_baked && ImGui::RadioButton(
+                                         "Baked captured color",
+                                         representation == SceneRepresentation::BAKED_APPEARANCE)) {
                         representation = SceneRepresentation::BAKED_APPEARANCE;
+                    }
                     if (has_splats &&
                         ImGui::RadioButton("Captured appearance",
                                            representation ==
-                                               SceneRepresentation::CAPTURED_APPEARANCE))
+                                               SceneRepresentation::CAPTURED_APPEARANCE)) {
                         representation = SceneRepresentation::CAPTURED_APPEARANCE;
-                    if (representation == SceneRepresentation::BAKED_APPEARANCE)
+                    }
+                    if (representation == SceneRepresentation::BAKED_APPEARANCE) {
                         ImGui::TextWrapped("Captured unlit color. Unknown texels are masked. Not "
                                            "albedo; no measured scale or collision.");
-                    else
+                    } else {
                         ImGui::TextWrapped("Normals diagnostic. Partial surfaces; gaps are "
                                            "unknown. No collision or measured scale.");
-                    if (has_portable && representation == SceneRepresentation::BAKED_APPEARANCE)
+                    }
+                    if (has_portable && representation == SceneRepresentation::BAKED_APPEARANCE) {
                         ImGui::TextWrapped(
                             "Portable texture preview. Quantized color; conservative masking may "
                             "hide supported surface edges.");
-                    if (current->m_provenance.contains("geometry_processing"))
+                    }
+                    if (current->m_provenance.contains("geometry_processing")) {
                         ImGui::TextWrapped("Simplified observed proxy. Raw source retained.");
+                    }
                 }
             }
-            if (is_synthetic_scene(current))
+            if (is_synthetic_scene(current)) {
                 ImGui::TextWrapped("Synthetic renderer diagnostic. Not a reconstructed capture.");
+            }
             if (current) {
                 ImGui::Text("Revision %llu",
                             static_cast<unsigned long long>(current->m_revision.m_value));
@@ -514,8 +600,9 @@ int viewer_main(int argc, char** argv) {
                                    camera.m_up_axis == Vec3d { 0, 1, 0 } ? "world axis"
                                                                        : "capture orientation");
                 ImGui::TextWrapped("Coverage outside captured surfaces is unknown.");
-                if (ImGui::Button("Save bookmark"))
-                    bookmark = SavedView {{current->m_id, current->m_epoch, camera}, camera_fov};
+                if (ImGui::Button("Save bookmark")) {
+                    bookmark = SavedView { { current->m_id, current->m_epoch, camera }, camera_fov };
+                }
                 K_TRACE_ITEM("save_bookmark");
                 if (ImGui::Button("Return to bookmark") && bookmark) {
                     auto restored =
@@ -533,8 +620,8 @@ int viewer_main(int argc, char** argv) {
             ImGui::End();
         }
         if (settings.right && !K_COMPACT) {
-            ImGui::SetNextWindowPos({K_DISPLAY.x - 248 * scale, K_TOP});
-            ImGui::SetNextWindowSize({248 * scale, K_DISPLAY.y - K_TOP - K_BOTTOM});
+            ImGui::SetNextWindowPos({ K_DISPLAY.x - 248 * scale, K_TOP });
+            ImGui::SetNextWindowSize({ 248 * scale, K_DISPLAY.y - K_TOP - K_BOTTOM });
             ImGui::Begin("Inspector", nullptr, K_PANEL_FLAGS);
             ImGui::TextUnformatted("INSPECTOR");
             ImGui::Separator();
@@ -559,8 +646,8 @@ int viewer_main(int argc, char** argv) {
         }
         if (!current) {
             ImGui::SetNextWindowPos(
-                {K_DISPLAY.x * 0.5F, K_DISPLAY.y * 0.45F}, ImGuiCond_Always, {0.5F, 0.5F});
-            ImGui::SetNextWindowSize({420 * scale, 0});
+                { K_DISPLAY.x * 0.5F, K_DISPLAY.y * 0.45F }, ImGuiCond_Always, { 0.5F, 0.5F });
+            ImGui::SetNextWindowSize({ 420 * scale, 0 });
             ImGui::Begin("Start",
                          nullptr,
                          static_cast<ImGuiWindowFlags>(static_cast<unsigned>(K_PANEL_FLAGS) |
@@ -579,8 +666,8 @@ int viewer_main(int argc, char** argv) {
             }
             ImGui::End();
         }
-        ImGui::SetNextWindowPos({0, K_DISPLAY.y - K_BOTTOM});
-        ImGui::SetNextWindowSize({K_DISPLAY.x, K_BOTTOM});
+        ImGui::SetNextWindowPos({ 0, K_DISPLAY.y - K_BOTTOM });
+        ImGui::SetNextWindowSize({ K_DISPLAY.x, K_BOTTOM });
         ImGui::Begin("Job status", nullptr, K_PANEL_FLAGS);
         bool cancel_requested = false;
         {
@@ -593,14 +680,18 @@ int viewer_main(int argc, char** argv) {
                 ImGui::SameLine();
                 cancel_requested = ImGui::Button("Cancel");
             }
-            if (state.progress && state.progress->m_backend_elapsed_seconds)
+            if (state.progress && state.progress->m_backend_elapsed_seconds) {
                 ImGui::Text("Backend event elapsed %.1fs (ETA unknown)",
                             *state.progress->m_backend_elapsed_seconds);
-            if (ImGui::CollapsingHeader("Diagnostic log"))
+            }
+            if (ImGui::CollapsingHeader("Diagnostic log")) {
                 ImGui::TextUnformatted(state.log.c_str());
+            }
         }
-        if (cancel_requested) state.request_cancel();
-        if (settings.controls)
+        if (cancel_requested) {
+            state.request_cancel();
+        }
+        if (settings.controls) {
             ImGui::TextWrapped("Click viewport: mouse look | %s/%s/%s/%s: move | %s/%s: vertical "
                                "| %s: accelerate | Wheel: speed | Esc: release. Remap in Settings.",
                                SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[0])),
@@ -610,8 +701,11 @@ int viewer_main(int argc, char** argv) {
                                SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[4])),
                                SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[5])),
                                SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[6])));
+        }
         ImGui::End();
-        if (show_open) ImGui::OpenPopup("Open scene");
+        if (show_open) {
+            ImGui::OpenPopup("Open scene");
+        }
         if (ImGui::BeginPopupModal("Open scene", &show_open, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Checkbox("Observed geometry", &open_geometry);
             ImGui::TextWrapped("%s",
@@ -621,8 +715,11 @@ int viewer_main(int argc, char** argv) {
             ImGui::InputText("Path", path.data(), path.size());
             ImGui::BeginDisabled(state.busy);
             if (ImGui::Button("Open")) {
-                if (open_geometry) state.load_fusion(path.data());
-                else state.load(path.data());
+                if (open_geometry) {
+                    state.load_fusion(path.data());
+                } else {
+                    state.load(path.data());
+                }
                 show_open = false;
                 ImGui::CloseCurrentPopup();
             }
@@ -634,15 +731,17 @@ int viewer_main(int argc, char** argv) {
             }
             ImGui::EndPopup();
         }
-        if (show_import) ImGui::OpenPopup("Import video");
+        if (show_import) {
+            ImGui::OpenPopup("Import video");
+        }
         const ImVec2 K_IMPORT_LIMIT { K_DISPLAY.x - 32 * scale, K_DISPLAY.y - 32 * scale };
         ImGui::SetNextWindowSizeConstraints(
-            {std::min(480 * scale, K_IMPORT_LIMIT.x), std::min(360 * scale, K_IMPORT_LIMIT.y)},
+            { std::min(480 * scale, K_IMPORT_LIMIT.x), std::min(360 * scale, K_IMPORT_LIMIT.y) },
             K_IMPORT_LIMIT);
         ImGui::SetNextWindowPos(
-            {K_DISPLAY.x * 0.5F, K_DISPLAY.y * 0.5F}, ImGuiCond_Always, {0.5F, 0.5F});
-        ImGui::SetNextWindowSize({std::min(820 * scale, K_DISPLAY.x - 32 * scale),
-                                  std::min(680 * scale, K_DISPLAY.y - 32 * scale)},
+            { K_DISPLAY.x * 0.5F, K_DISPLAY.y * 0.5F }, ImGuiCond_Always, { 0.5F, 0.5F });
+        ImGui::SetNextWindowSize({ std::min(820 * scale, K_DISPLAY.x - 32 * scale),
+                                  std::min(680 * scale, K_DISPLAY.y - 32 * scale) },
                                  ImGuiCond_Appearing);
         if (ImGui::BeginPopupModal("Import video", &show_import, ImGuiWindowFlags_NoMove)) {
             ImGui::TextWrapped("Review a local reconstruction request before running. "
@@ -651,10 +750,13 @@ int viewer_main(int argc, char** argv) {
             ImGui::BeginDisabled(state.busy);
             ImGui::SetNextItemWidth(-1);
             if (ImGui::InputText(
-                    "##Reconstruction request", request_path.data(), request_path.size()))
+                    "##Reconstruction request", request_path.data(), request_path.size())) {
                 state.clear_request_review();
+            }
             ImGui::BeginDisabled(!request_path[0]);
-            if (ImGui::Button("Review request")) state.review_request(request_path.data());
+            if (ImGui::Button("Review request")) {
+                state.review_request(request_path.data());
+            }
             K_TRACE_ITEM("review");
             ImGui::EndDisabled();
             ImGui::EndDisabled();
@@ -667,9 +769,11 @@ int viewer_main(int argc, char** argv) {
             }
             ImGui::BeginChild(
                 "Request details",
-                {0, std::max(120 * scale, ImGui::GetContentRegionAvail().y - 88 * scale)},
+                { 0, std::max(120 * scale, ImGui::GetContentRegionAvail().y - 88 * scale) },
                 ImGuiChildFlags_Borders);
-            if (!review_error.empty()) ImGui::TextWrapped("Cannot run: %s", review_error.c_str());
+            if (!review_error.empty()) {
+                ImGui::TextWrapped("Cannot run: %s", review_error.c_str());
+            }
             if (summary) {
                 const auto K_ROWS = [&](const std::vector<viewer::request_summary_row>& values,
                                         const char* table) {
@@ -691,11 +795,13 @@ int viewer_main(int argc, char** argv) {
                 ImGui::TextWrapped("Review checks passed. Current storage is a snapshot, not a "
                                    "reservation. Inputs, storage and backend capabilities are "
                                    "checked when running. ETA unknown.");
-                if (ImGui::CollapsingHeader("Advanced request details"))
+                if (ImGui::CollapsingHeader("Advanced request details")) {
                     K_ROWS(summary->advanced, "Backend details");
-            } else if (review_error.empty())
+                }
+            } else if (review_error.empty()) {
                 ImGui::TextWrapped("Select a request and choose Review request to see its "
                                    "actions and limits. Reviewing keeps scene viewing available.");
+            }
             if (ImGui::CollapsingHeader("Advanced local worker commands")) {
                 ImGui::SetNextItemWidth(-1);
                 ImGui::InputText("Video", source.data(), source.size());
@@ -705,18 +811,21 @@ int viewer_main(int argc, char** argv) {
                     "These fields apply to the separate worker commands below. "
                     "The reviewed request selects the reconstruction source and output.");
                 ImGui::BeginDisabled(state.has_pending_work() || pending_ticket.has_value());
-                if (ImGui::Button("Inspect video"))
+                if (ImGui::Button("Inspect video")) {
                     state.worker(
-                        worker, {"inspect", "--source", source.data(), "--job-dir", output.data()});
+                        worker, { "inspect", "--source", source.data(), "--job-dir", output.data() });
+                }
                 ImGui::SetNextItemWidth(-1);
                 ImGui::InputText(
                     "Pose-worker request", pose_request_path.data(), pose_request_path.size());
                 ImGui::BeginDisabled(!pose_request_path[0]);
-                if (ImGui::Button("Run configured pose job"))
-                    state.worker(worker, {"run", "--request", pose_request_path.data()});
+                if (ImGui::Button("Run configured pose job")) {
+                    state.worker(worker, { "run", "--request", pose_request_path.data() });
+                }
                 ImGui::EndDisabled();
-                if (ImGui::Button("Check worker capabilities"))
-                    state.worker(worker, {"capabilities"});
+                if (ImGui::Button("Check worker capabilities")) {
+                    state.worker(worker, { "capabilities" });
+                }
                 ImGui::EndDisabled();
             }
             ImGui::EndChild();
@@ -738,24 +847,31 @@ int viewer_main(int argc, char** argv) {
                                "Changed requests require another review.");
             ImGui::EndPopup();
         }
-        if (show_settings) ImGui::OpenPopup("Settings");
+        if (show_settings) {
+            ImGui::OpenPopup("Settings");
+        }
         if (ImGui::BeginPopupModal("Settings", &show_settings, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Checkbox("Project panel", &settings.left);
             ImGui::Checkbox("Inspector panel", &settings.right);
-            if (ImGui::Button("Reset layout and bindings")) settings = preferences {};
+            if (ImGui::Button("Reset layout and bindings")) {
+                settings = preferences {};
+            }
             K_TRACE_ITEM("reset_settings");
             constexpr std::array K_NAMES {
-                "Forward", "Backward", "Left", "Right", "Up", "Down", "Accelerate"};
+                "Forward", "Backward", "Left", "Right", "Up", "Down", "Accelerate" };
             for (std::size_t index { 0uz }; index < settings.keys.size(); ++index) {
                 ImGui::PushID(static_cast<int>(index));
                 ImGui::TextUnformatted(K_NAMES[index]);
                 ImGui::SameLine(140 * scale);
-                if (ImGui::Button(
-                        remapping == static_cast<int>(index)
-                            ? "Press a key..."
-                            : SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[index]))))
+                if (ImGui::Button(remapping == static_cast<int>(index)
+                                      ? "Press a key..."
+                                      : SDL_GetScancodeName(
+                                            static_cast<SDL_Scancode>(settings.keys[index])))) {
                     remapping = static_cast<int>(index);
-                if (index == 0) K_TRACE_ITEM("forward_binding");
+                }
+                if (index == 0) {
+                    K_TRACE_ITEM("forward_binding");
+                }
                 ImGui::PopID();
             }
             if (ImGui::Button("Close")) {
@@ -781,15 +897,20 @@ int viewer_main(int argc, char** argv) {
              (current && !pending_ticket))) {
             if (K_REQUIRE_RECONSTRUCTION_SUCCESS) {
                 std::lock_guard lock(state.mutex);
-                if (!state.reconstruction_error.empty())
+                if (!state.reconstruction_error.empty()) {
                     throw std::runtime_error(state.reconstruction_error);
+                }
             }
             if (K_REQUIRE_REVIEW_SUCCESS) {
                 std::lock_guard lock(state.mutex);
-                if (!state.reviewed_request) throw std::runtime_error(state.review_error);
+                if (!state.reviewed_request) {
+                    throw std::runtime_error(state.review_error);
+                }
             }
             const auto K_REQUESTED = renderer->request_screenshot(screenshot);
-            if (!K_REQUESTED) throw std::runtime_error(K_REQUESTED.error().m_message);
+            if (!K_REQUESTED) {
+                throw std::runtime_error(K_REQUESTED.error().m_message);
+            }
             screenshot_requested = true;
         }
 #if defined(WE_VULKAN_TEST_FAULTS)
@@ -800,7 +921,7 @@ int viewer_main(int argc, char** argv) {
         }
 #endif
         const auto K_DRAWN = renderer->draw(
-            {camera.m_position, camera.right(), camera.down(), camera.forward(), camera_fov},
+            { camera.m_position, camera.right(), camera.down(), camera.forward(), camera_fov },
             !state.processing.load(),
             representation);
         if (!K_DRAWN && K_DRAWN.error().m_code == ErrorCode::DEVICE_LOST) {
@@ -822,9 +943,10 @@ int viewer_main(int argc, char** argv) {
             gui.m_renderer = nullptr;
             renderer.reset();
             renderer_result = VulkanRenderer::create(window.get(), options);
-            if (!renderer_result)
+            if (!renderer_result) {
                 throw std::runtime_error("Renderer recreation after device loss failed: " +
                                          renderer_result.error().m_message);
+            }
             renderer = std::move(*renderer_result);
             gui.m_renderer = renderer.get();
             gui.m_device_lost = false;
@@ -832,13 +954,15 @@ int viewer_main(int argc, char** argv) {
             pending_ticket.reset();
             if (K_REPLAY) {
                 auto batch = make_snapshot_batch(K_REPLAY, OperationId { next_operation++ });
-                if (!batch)
+                if (!batch) {
                     throw std::runtime_error("Scene replay after device loss failed: " +
                                              batch.error().m_message);
+                }
                 auto admitted = renderer->updates().enqueue(*batch);
-                if (!admitted)
+                if (!admitted) {
                     throw std::runtime_error("Scene replay after device loss was rejected: " +
                                              admitted.error().m_message);
+                }
                 pending_ticket = *admitted;
             }
             screenshot_requested = false;
@@ -849,7 +973,9 @@ int viewer_main(int argc, char** argv) {
             }
             continue;
         }
-        if (!K_DRAWN) throw std::runtime_error(K_DRAWN.error().m_message);
+        if (!K_DRAWN) {
+            throw std::runtime_error(K_DRAWN.error().m_message);
+        }
         if (pending_ticket) {
             const auto K_PROGRESS = renderer->updates().query_progress(*pending_ticket);
             if (K_PROGRESS && K_PROGRESS->m_state == UpdateState::FAILED) {
@@ -861,7 +987,9 @@ int viewer_main(int argc, char** argv) {
                 std::lock_guard lock(state.mutex);
                 state.status =
                     "Scene upload failed: " + K_MESSAGE + ". Previous visible scene retained.";
-                if (frame_limit) throw std::runtime_error(state.status);
+                if (frame_limit) {
+                    throw std::runtime_error(state.status);
+                }
             } else if (K_PROGRESS && K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
                 std::lock_guard lock(state.mutex);
                 state.status =
@@ -882,87 +1010,101 @@ int viewer_main(int argc, char** argv) {
                 reviewed = state.reviewed_request != nullptr;
             }
             input_trace
-                << nlohmann::json {{"frame", frames},
-                                   {"position",
-                                    {camera.m_position.m_x,
+                << nlohmann::json { { "frame", frames },
+                                   { "position",
+                                    { camera.m_position.m_x,
                                      camera.m_position.m_y,
-                                     camera.m_position.m_z}},
-                                   {"yaw", camera.m_yaw},
-                                   {"fov", camera_fov},
-                                   {"pitch", camera.m_pitch},
-                                   {"speed", camera.m_speed},
-                                   {"up",
-                                    {camera.m_up_axis.m_x,
+                                     camera.m_position.m_z } },
+                                   { "yaw", camera.m_yaw },
+                                   { "fov", camera_fov },
+                                   { "pitch", camera.m_pitch },
+                                   { "speed", camera.m_speed },
+                                   { "up",
+                                    { camera.m_up_axis.m_x,
                                      camera.m_up_axis.m_y,
-                                     camera.m_up_axis.m_z}},
-                                   {"captured", captured},
-                                   {"ui_mouse", io.WantCaptureMouse},
-                                   {"mouse", {io.MousePos.x, io.MousePos.y}},
-                                   {"focused", movement.m_focused},
-                                   {"forward", movement.m_forward},
-                                   {"text_input", movement.m_text_input},
-                                   {"import", show_import},
-                                   {"settings", show_settings},
-                                   {"remapping", remapping},
-                                   {"keys", settings.keys},
-                                   {"busy", state.busy.load()},
-                                   {"device_recoveries", device_recoveries},
-                                   {"reviewed", reviewed},
-                                   {"visible", current && !pending_ticket},
-                                   {"logical", {K_DISPLAY.x, K_DISPLAY.y}},
-                                   {"display_scale", SDL_GetWindowDisplayScale(window.get())},
-                                   {"pixel_density", SDL_GetWindowPixelDensity(window.get())},
-                                   {"layout_scale", scale},
-                                   {"widgets", input_widgets}}
+                                     camera.m_up_axis.m_z } },
+                                   { "captured", captured },
+                                   { "ui_mouse", io.WantCaptureMouse },
+                                   { "mouse", { io.MousePos.x, io.MousePos.y } },
+                                   { "focused", movement.m_focused },
+                                   { "forward", movement.m_forward },
+                                   { "text_input", movement.m_text_input },
+                                   { "import", show_import },
+                                   { "settings", show_settings },
+                                   { "remapping", remapping },
+                                   { "keys", settings.keys },
+                                   { "busy", state.busy.load() },
+                                   { "device_recoveries", device_recoveries },
+                                   { "reviewed", reviewed },
+                                   { "visible", current && !pending_ticket },
+                                   { "logical", { K_DISPLAY.x, K_DISPLAY.y } },
+                                   { "display_scale", SDL_GetWindowDisplayScale(window.get()) },
+                                   { "pixel_density", SDL_GetWindowPixelDensity(window.get()) },
+                                   { "layout_scale", scale },
+                                   { "widgets", input_widgets } }
                        .dump()
                 << '\n';
             input_trace.flush();
-            if (!input_trace) throw std::runtime_error("Input trace write failed");
+            if (!input_trace) {
+                throw std::runtime_error("Input trace write failed");
+            }
         }
         if (frame_limit && frames >= frame_limit && !state.has_pending_work() && !pending_ticket &&
             reconstruction_request.empty() && review_request.empty()) {
             if (K_REQUIRE_RECONSTRUCTION_SUCCESS) {
                 std::lock_guard lock(state.mutex);
-                if (!state.reconstruction_error.empty())
+                if (!state.reconstruction_error.empty()) {
                     throw std::runtime_error(state.reconstruction_error);
+                }
             }
             if (K_REQUIRE_REVIEW_SUCCESS) {
                 std::lock_guard lock(state.mutex);
-                if (!state.reviewed_request) throw std::runtime_error(state.review_error);
+                if (!state.reviewed_request) {
+                    throw std::runtime_error(state.review_error);
+                }
             }
             if ((!scene_path.empty() || !fusion_request.empty()) && !current) {
                 std::lock_guard lock(state.mutex);
                 throw std::runtime_error(state.status);
             }
             // Allow a requested scene to become visible before capturing it.
-            if (screenshot.empty() || screenshot_requested) running = false;
+            if (screenshot.empty() || screenshot_requested) {
+                running = false;
+            }
         }
-        if (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED) SDL_Delay(20);
+        if (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED) {
+            SDL_Delay(20);
+        }
     }
     release_mouse();
     state.job.request_stop();
-    if (state.job.joinable()) state.job.join();
-    if (const auto K_COMPLETED = renderer->wait_for_idle(); !K_COMPLETED)
+    if (state.job.joinable()) {
+        state.job.join();
+    }
+    if (const auto K_COMPLETED = renderer->wait_for_idle(); !K_COMPLETED) {
         throw std::runtime_error(K_COMPLETED.error().m_message);
-    if (const auto K_SAVED = save_preferences(settings_path, settings); !K_SAVED)
+    }
+    if (const auto K_SAVED = save_preferences(settings_path, settings); !K_SAVED) {
         std::cerr << "Settings not saved: " << K_SAVED.error().m_message << '\n';
+    }
     const auto K_STATS = renderer->diagnostics();
-    if (input_latency)
-        input_latency->write({.video_driver = SDL_GetCurrentVideoDriver(),
+    if (input_latency) {
+        input_latency->write({ .video_driver = SDL_GetCurrentVideoDriver(),
                               .device = renderer->capabilities().m_device_name.c_str(),
                               .resident_splats = K_STATS.m_resident_splat_count,
-                              .validation_errors = K_STATS.m_validation_errors});
-    std::cout << nlohmann::json {{"device", renderer->capabilities().m_device_name},
-                                 {"frames", K_STATS.m_submitted_frames},
-                                 {"resident_splats", K_STATS.m_resident_splat_count},
+                              .validation_errors = K_STATS.m_validation_errors });
+    }
+    std::cout << nlohmann::json { { "device", renderer->capabilities().m_device_name },
+                                 { "frames", K_STATS.m_submitted_frames },
+                                 { "resident_splats", K_STATS.m_resident_splat_count },
                                  { "resident_mesh_vertices", K_STATS.m_resident_mesh_vertices },
                                  { "resident_mesh_triangles", K_STATS.m_resident_mesh_triangles },
-                                 {"allocated_bytes", K_STATS.m_allocated_bytes},
-                                 {"framebuffer_bytes", K_STATS.m_framebuffer_bytes},
-                                 {"fp32_compositing", renderer->capabilities().m_fp32_compositing},
-                                 {"validation_errors", K_STATS.m_validation_errors},
-                                 {"fixture",
-                                  is_synthetic_scene(current) ? "synthetic" : "user-selected"}}
+                                 { "allocated_bytes", K_STATS.m_allocated_bytes },
+                                 { "framebuffer_bytes", K_STATS.m_framebuffer_bytes },
+                                 { "fp32_compositing", renderer->capabilities().m_fp32_compositing },
+                                 { "validation_errors", K_STATS.m_validation_errors },
+                                 { "fixture",
+                                  is_synthetic_scene(current) ? "synthetic" : "user-selected" } }
                      .dump()
               << '\n';
     return K_STATS.m_validation_errors ? 2 : 0;

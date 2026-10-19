@@ -3,13 +3,13 @@
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
 
-#include <chrono>
-#include <fstream>
-#include <optional>
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <nlohmann/json.hpp>
+
+#include <chrono>
+#include <fstream>
+#include <optional>
 #ifdef __linux__
 #include <csignal>
 #endif
@@ -21,7 +21,7 @@ using namespace world_explorer;
 namespace {
 
 constexpr std::string_view K_SESSION {
-    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" };
 
 std::vector<std::byte> handshake_frame(std::uint16_t major = 2,
                                        std::string_view backend = "diagnostic") {
@@ -98,7 +98,9 @@ struct TemporaryWorker {
         std::filesystem::temp_directory_path() /
         ("we_wire_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
 
-    TemporaryWorker() { std::filesystem::create_directories(m_directory); }
+    TemporaryWorker() {
+        std::filesystem::create_directories(m_directory);
+    }
 
     ~TemporaryWorker() {
         std::error_code ignored;
@@ -121,7 +123,9 @@ TEST_CASE(
             CHECK_FALSE(capabilities->m_streaming_tracking);
         }
     };
-    for (const auto& byte : K_HANDSHAKE) REQUIRE(decoder.feed(std::span(&byte, 1), K_RECEIVED));
+    for (const auto& byte : K_HANDSHAKE) {
+        REQUIRE(decoder.feed(std::span(&byte, 1), K_RECEIVED));
+    }
     CHECK(events == 1);
     CHECK_FALSE(decoder.finish(0));
     decoder.expect_start();
@@ -170,7 +174,9 @@ TEST_CASE("worker wire rejects untrusted lengths offsets versions and UTF-8 with
         bytes = completion_frame(0);
     }
     std::size_t events {};
-    CHECK_FALSE(decoder.feed(bytes, [&](const WorkerEvent&) { ++events; }));
+    CHECK_FALSE(decoder.feed(bytes, [&](const WorkerEvent&) {
+        ++events;
+    }));
     CHECK(events == 0);
     CHECK_FALSE(decoder.finish(0));
     CHECK_FALSE(decoder.feed(handshake_frame(), {}));
@@ -214,11 +220,15 @@ TEST_CASE("native framed worker separates diagnostics and verifies completion ma
     const auto K_RESULT = execute_worker_protocol(
         WE_TEST_PYTHON,
         K_SCRIPT,
-        {K_MODE, K_ARTIFACT.string()},
+        { K_MODE, K_ARTIFACT.string() },
         {},
-        [&](const std::string& text) { log += text; },
+        [&](const std::string& text) {
+            log += text;
+        },
         [&](const WorkerEvent& event) {
-            if (std::holds_alternative<WorkerCompleted>(event)) verified_completion = true;
+            if (std::holds_alternative<WorkerCompleted>(event)) {
+                verified_completion = true;
+            }
         });
     INFO(log);
     CHECK(std::chrono::steady_clock::now() - K_STARTED < std::chrono::seconds(4));
@@ -231,12 +241,14 @@ TEST_CASE("native framed worker separates diagnostics and verifies completion ma
         REQUIRE(K_RESULT);
         CHECK(*K_RESULT == 2);
         CHECK(log.find("explicit failure") != std::string::npos);
-    } else CHECK_FALSE(K_RESULT);
+    } else {
+        CHECK_FALSE(K_RESULT);
+    }
 }
 
 TEST_CASE("worker START and CANCEL encoding enforce bounded structured arguments") {
     const auto K_STARTED = encode_worker_start(std::string(K_SESSION),
-                                               {"run", "--request", "path with $ ; spaces.json"});
+                                               { "run", "--request", "path with $ ; spaces.json" });
     REQUIRE(K_STARTED);
     flatbuffers::Verifier verifier(reinterpret_cast<const std::uint8_t*>(K_STARTED->data()),
                                    K_STARTED->size());
@@ -250,11 +262,11 @@ TEST_CASE("worker START and CANCEL encoding enforce bounded structured arguments
     const auto* cancel = control::GetSizePrefixedcommand_envelope(K_CANCELLED->data());
     CHECK(cancel->operation() == 2);
     CHECK(cancel->body_as_cancel_command()->target_operation() == 1);
-    CHECK_FALSE(encode_worker_start("wrong", {"run"}));
+    CHECK_FALSE(encode_worker_start("wrong", { "run" }));
     CHECK_FALSE(encode_worker_start(std::string(K_SESSION), {}));
-    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), {std::string("NUL\0tail", 8)}));
-    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), {std::string(1, '\xff')}));
-    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), {std::string(4097, 'x')}));
+    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), { std::string("NUL\0tail", 8) }));
+    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), { std::string(1, '\xff') }));
+    CHECK_FALSE(encode_worker_start(std::string(K_SESSION), { std::string(4097, 'x') }));
     CHECK_FALSE(encode_worker_start(std::string(K_SESSION), std::vector<std::string>(65, "x")));
     CHECK_FALSE(encode_worker_start(std::string(K_SESSION),
                                     std::vector<std::string>(9, std::string(4096, 'x'))));
@@ -292,9 +304,11 @@ TEST_CASE("worker completion observers require actual regular-file size and chec
     const auto K_RESULT = execute_worker_protocol(
         WE_TEST_PYTHON,
         K_SCRIPT,
-        {K_MODE, K_ARTIFACT.string()},
+        { K_MODE, K_ARTIFACT.string() },
         {},
-        [&](const std::string& message) { log += message; },
+        [&](const std::string& message) {
+            log += message;
+        },
         [&](const WorkerEvent& event) {
             completions += std::holds_alternative<WorkerCompleted>(event) ? 1U : 0U;
         });
@@ -320,7 +334,7 @@ TEST_CASE("worker invocation rejects invalid START before launching a process",
           "[worker_validation]") {
     TemporaryWorker worker;
     const auto K_RESULT = execute_worker_protocol(
-        WE_TEST_PYTHON, worker.m_directory / "never-created.py", {""}, {}, {});
+        WE_TEST_PYTHON, worker.m_directory / "never-created.py", { "" }, {}, {});
     REQUIRE(!K_RESULT);
     CHECK(K_RESULT.error().m_code == ErrorCode::INVALID_ARGUMENT);
 }
@@ -399,7 +413,7 @@ TEST_CASE("Python command verification rejects hostile START before executing an
     const auto K_SCRIPT = worker.m_directory / "control.py";
     const auto K_MARKER = worker.m_directory / "launches";
     control_fixture(K_SCRIPT);
-    auto start = encode_worker_start(std::string(K_SESSION), {"wait", K_MARKER.string()}).value();
+    auto start = encode_worker_start(std::string(K_SESSION), { "wait", K_MARKER.string() }).value();
     const auto K_MODE = GENERATE("length",
                                  "identifier",
                                  "root",
@@ -411,9 +425,15 @@ TEST_CASE("Python command verification rejects hostile START before executing an
                                  "utf8",
                                  "cancel_first");
     const auto* root = control::GetSizePrefixedcommand_envelope(start.data());
-    if (std::string_view(K_MODE) == "length") std::fill_n(start.begin(), 4, std::byte { 0xff });
-    if (std::string_view(K_MODE) == "identifier") start[8] = std::byte { 'X' };
-    if (std::string_view(K_MODE) == "root") std::fill_n(start.begin() + 4, 4, std::byte { 0xff });
+    if (std::string_view(K_MODE) == "length") {
+        std::fill_n(start.begin(), 4, std::byte { 0xff });
+    }
+    if (std::string_view(K_MODE) == "identifier") {
+        start[8] = std::byte { 'X' };
+    }
+    if (std::string_view(K_MODE) == "root") {
+        std::fill_n(start.begin() + 4, 4, std::byte { 0xff });
+    }
     // Locate pointers only before mutations that make root access invalid.
     if (std::string_view(K_MODE) == "vtable") {
         const auto K_OFFSET = reinterpret_cast<const std::byte*>(root) - start.data();
@@ -456,36 +476,42 @@ TEST_CASE("Python command verification rejects hostile START before executing an
         start[static_cast<std::size_t>(K_OFFSET)] =
             std::string_view(K_MODE) == "nul" ? std::byte { 0 } : std::byte { 0xff };
     }
-    if (std::string_view(K_MODE) == "cancel_first")
+    if (std::string_view(K_MODE) == "cancel_first") {
         start = encode_worker_cancel(std::string(K_SESSION)).value();
+    }
     WorkerStreamDecoder decoder { std::string(K_SESSION) };
     bool sent {}, rejected {};
     std::stop_source cancellation;
     const auto K_EXECUTED =
-        execute_process({WE_TEST_PYTHON,
+        execute_process({ WE_TEST_PYTHON,
                          "-u",
                          K_SCRIPT.string(),
                          "--wire-bindings",
                          WE_TEST_WIRE_BINDINGS,
                          "--wire-session",
-                         std::string(K_SESSION)},
+                         std::string(K_SESSION) },
                         cancellation.get_token(),
                         [&](const std::string& bytes) {
                             const auto K_DECODED = decoder.feed(
                                 std::as_bytes(std::span(bytes.data(), bytes.size())),
                                 [&](const WorkerEvent& event) {
-                                    if (const auto* failure = std::get_if<WorkerFailure>(&event))
+                                    if (const auto* failure = std::get_if<WorkerFailure>(&event)) {
                                         rejected = failure->m_code == "PROTOCOL_INVALID";
+                                    }
                                 });
-                            if (!K_DECODED) cancellation.request_stop();
+                            if (!K_DECODED) {
+                                cancellation.request_stop();
+                            }
                         },
                         {},
-                        {[&](bool) -> Result<std::vector<std::byte>> {
-                             if (sent) return std::vector<std::byte> {};
+                        { [&](bool) -> Result<std::vector<std::byte>> {
+                             if (sent) {
+                                 return std::vector<std::byte> {};
+                             }
                              sent = true;
                              return start;
                          },
-                         {}});
+                         {} });
     REQUIRE(K_EXECUTED);
     CHECK(*K_EXECUTED == 2);
     CHECK(decoder.finish(*K_EXECUTED));
@@ -507,9 +533,11 @@ TEST_CASE("typed worker cancellation acknowledges cooperative stop and bounds an
     const auto K_RESULT = execute_worker_protocol(
         WE_TEST_PYTHON,
         K_SCRIPT,
-        {K_MODE, K_MARKER.string()},
+        { K_MODE, K_MARKER.string() },
         cancellation.get_token(),
-        [&](const std::string& text) { log += text; },
+        [&](const std::string& text) {
+            log += text;
+        },
         [&](const WorkerEvent& event) {
             if (const auto* ack = std::get_if<WorkerCommandAcknowledged>(&event)) {
                 start_ack |= ack->m_kind == WorkerCommandKind::START;
@@ -518,7 +546,9 @@ TEST_CASE("typed worker cancellation acknowledges cooperative stop and bounds an
             if ((std::string_view(K_MODE) == "before_start" &&
                  std::holds_alternative<WorkerHandshake>(event)) ||
                 std::holds_alternative<WorkerProgress>(event)) {
-                if (!cancel_began) cancel_began = std::chrono::steady_clock::now();
+                if (!cancel_began) {
+                    cancel_began = std::chrono::steady_clock::now();
+                }
                 cancellation.request_stop();
             }
         });
@@ -534,8 +564,9 @@ TEST_CASE("typed worker cancellation acknowledges cooperative stop and bounds an
              << std::chrono::duration<double>(K_ENDED - *cancel_began).count());
         // Startup and work before the request do not consume the cancellation bound.
         CHECK(K_ENDED - *cancel_began < std::chrono::seconds(6));
-        if (std::string_view(K_MODE) == "slow_ready")
+        if (std::string_view(K_MODE) == "slow_ready") {
             CHECK(*cancel_began - K_BEGAN >= std::chrono::seconds(6));
+        }
     } else {
         FAIL("Worker fixture never requested cancellation");
     }
@@ -563,8 +594,9 @@ TEST_CASE("typed worker cancellation acknowledges cooperative stop and bounds an
             if (std::getline(status, line)) {
                 const auto K_STATE = line.at(line.rfind(')') + 2);
                 CHECK((K_STATE == 'Z' || K_STATE == 'X'));
-                if (K_STATE != 'Z' && K_STATE != 'X')
+                if (K_STATE != 'Z' && K_STATE != 'X') {
                     kill(child_pid, SIGKILL);  // Only this fixture's recorded child.
+                }
             }
         }
 #endif
@@ -577,8 +609,7 @@ TEST_CASE("worker command retries execute once and reject changed operation cont
     const auto K_MARKER = worker.m_directory / "launches";
     control_fixture(K_SCRIPT);
     bool changed {}, fragmented {}, alternate_encoding {};
-    SECTION("identical START and CANCEL retries") {
-    }
+    SECTION("identical START and CANCEL retries") { }
     SECTION("fragmented START prefix and body") {
         fragmented = true;
     }
@@ -589,11 +620,11 @@ TEST_CASE("worker command retries execute once and reject changed operation cont
         changed = true;
     }
     const auto K_START =
-        encode_worker_start(std::string(K_SESSION), {changed ? "wait" : "retry", K_MARKER.string()})
+        encode_worker_start(std::string(K_SESSION), { changed ? "wait" : "retry", K_MARKER.string() })
             .value();
     auto retry =
         changed
-            ? encode_worker_start(std::string(K_SESSION), {"different", K_MARKER.string()}).value()
+            ? encode_worker_start(std::string(K_SESSION), { "different", K_MARKER.string() }).value()
             : K_START;
     if (alternate_encoding) {
         flatbuffers::FlatBufferBuilder builder;
@@ -622,13 +653,13 @@ TEST_CASE("worker command retries execute once and reject changed operation cont
     std::size_t start_acks {}, cancel_acks {}, sent {}, fragment_offset {};
     bool invalid_operation {};
     const auto K_EXECUTED = execute_process(
-        {WE_TEST_PYTHON,
+        { WE_TEST_PYTHON,
          "-u",
          K_SCRIPT.string(),
          "--wire-bindings",
          WE_TEST_WIRE_BINDINGS,
          "--wire-session",
-         std::string(K_SESSION)},
+         std::string(K_SESSION) },
         {},
         [&](const std::string& bytes) {
             REQUIRE(decoder.feed(
@@ -643,7 +674,7 @@ TEST_CASE("worker command retries execute once and reject changed operation cont
                 }));
         },
         {},
-        {[&](bool) -> Result<std::vector<std::byte>> {
+        { [&](bool) -> Result<std::vector<std::byte>> {
              if (sent == 0) {
                  if (fragmented && fragment_offset == 0) {
                      fragment_offset = 3;
@@ -668,7 +699,7 @@ TEST_CASE("worker command retries execute once and reject changed operation cont
              }
              return std::vector<std::byte> {};
          },
-         {}});
+         {} });
     REQUIRE(K_EXECUTED);
     CHECK(*K_EXECUTED == 130);
     CHECK(decoder.finish(*K_EXECUTED));
@@ -699,7 +730,9 @@ TEST_CASE("worker launch reserves descriptors when the desktop host has no stdin
     struct StdinGuard {
         int m_original { dup(STDIN_FILENO) };
 
-        StdinGuard() { close(STDIN_FILENO); }
+        StdinGuard() {
+            close(STDIN_FILENO);
+        }
 
         ~StdinGuard() {
             if (m_original >= 0) {
@@ -710,7 +743,7 @@ TEST_CASE("worker launch reserves descriptors when the desktop host has no stdin
     } restore;
 
     const auto K_RESULT =
-        execute_worker_protocol(WE_TEST_PYTHON, K_SCRIPT, {"capabilities"}, {}, {});
+        execute_worker_protocol(WE_TEST_PYTHON, K_SCRIPT, { "capabilities" }, {}, {});
     INFO((K_RESULT ? "completed" : K_RESULT.error().m_message));
     REQUIRE(K_RESULT);
     CHECK(*K_RESULT == 0);

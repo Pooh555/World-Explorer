@@ -19,7 +19,7 @@ from geometry import (
 )
 
 
-class fusion_contract_test(unittest.TestCase):
+class FusionContractTest(unittest.TestCase):
     def fixture(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
@@ -68,7 +68,7 @@ class fusion_contract_test(unittest.TestCase):
 
 
 @unittest.skipUnless(importlib.util.find_spec("numpy"), "Requires isolated NumPy")
-class fusion_geometry_test(unittest.TestCase):
+class FusionGeometryTest(unittest.TestCase):
     def fixture(self):
         import numpy as np
 

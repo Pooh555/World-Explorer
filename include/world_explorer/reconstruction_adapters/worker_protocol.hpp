@@ -62,9 +62,13 @@ class WorkerStreamDecoder {
   public:
     explicit WorkerStreamDecoder(std::string session) : m_session(std::move(session)) { }
 
-    void expect_start() noexcept { m_start_sent = true; }
+    void expect_start() noexcept {
+        m_start_sent = true;
+    }
 
-    void expect_cancel() noexcept { m_cancel_sent = true; }
+    void expect_cancel() noexcept {
+        m_cancel_sent = true;
+    }
 
     Result<void> feed(std::span<const std::byte> bytes, const WorkerEventCallback& callback);
     Result<void> finish(int exit_code) const;

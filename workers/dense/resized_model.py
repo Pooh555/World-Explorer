@@ -8,6 +8,12 @@ from pathlib import Path
 import math
 
 
+__all__ = [
+    "adapt_model",
+    "neighbor_rows",
+]
+
+
 def neighbor_rows(frames, selection, radius=3):
     if (
         type(radius) is not int

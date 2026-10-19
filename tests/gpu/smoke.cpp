@@ -6,18 +6,20 @@
 #include "renderer_faults.hpp"
 #include "vulkan_swapchain.hpp"
 #endif
+#include <SDL3/SDL.h>
+
 #include <fstream>
 #include <iostream>
 #include <set>
-
-#include <SDL3/SDL.h>
 
 using namespace world_explorer;
 
 namespace {
 
 void require(bool condition, const std::string& message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
 }
 
 SceneSnapshot overlap_fixture() {
@@ -50,7 +52,7 @@ void verify_acquire_deferral(SDL_Window* window,
     auto renderer = std::move(*created);
     CameraView camera;
     camera.m_position = { 0, 0, 4 };
-    auto initial = make_snapshot_batch(overlap_fixture(), {1}).value();
+    auto initial = make_snapshot_batch(overlap_fixture(), { 1 }).value();
     require(renderer->updates().enqueue(initial).has_value(), "acquire fixture admission failed");
     require(renderer->draw(camera).has_value(), "acquire fixture initial draw failed");
     const auto K_BASELINE_PATH = output.parent_path() / "acquire-baseline.ppm";
@@ -62,17 +64,17 @@ void verify_acquire_deferral(SDL_Window* window,
     const auto K_BEFORE = renderer->diagnostics().m_submitted_frames;
     auto replacement = std::make_shared<SceneState>(*renderer->updates().visible_snapshot());
     replacement->m_revision = { 2 };
-    auto batch = make_snapshot_batch(replacement, {2}).value();
+    auto batch = make_snapshot_batch(replacement, { 2 }).value();
     const auto K_TICKET = renderer->updates().enqueue(batch);
     require(K_TICKET.has_value(), "deferred-acquire update admission failed");
     const auto K_PENDING_PATH = output.parent_path() / "acquire-recovered.ppm";
     require(!std::filesystem::exists(K_PENDING_PATH), "deferred-acquire capture must be new");
     require(renderer->request_screenshot(K_PENDING_PATH).has_value(),
             "deferred capture request failed");
-    for (const auto K_DELAY : {detail::frame_acquire_delay::TIMEOUT,
+    for (const auto K_DELAY : { detail::frame_acquire_delay::TIMEOUT,
                                detail::frame_acquire_delay::NOT_READY,
                                detail::frame_acquire_delay::TIMEOUT,
-                               detail::frame_acquire_delay::NOT_READY}) {
+                               detail::frame_acquire_delay::NOT_READY }) {
         detail::defer_next_frame_acquisition(K_DELAY);
         const auto K_DEFERRED = renderer->draw(camera);
         require(K_DEFERRED.has_value(), K_DEFERRED ? "" : K_DEFERRED.error().m_message);
@@ -100,7 +102,9 @@ bool wait_for_window_flag(SDL_Window* window, SDL_WindowFlags flag, bool enabled
     const auto K_DEADLINE = SDL_GetTicks() + 2000;
     do {
         SDL_PumpEvents();
-        if (((SDL_GetWindowFlags(window) & flag) != 0) == enabled) return true;
+        if (((SDL_GetWindowFlags(window) & flag) != 0) == enabled) {
+            return true;
+        }
         SDL_Delay(10);
     } while (SDL_GetTicks() < K_DEADLINE);
     return false;
@@ -130,11 +134,12 @@ bool check_minimize(VulkanRenderer& renderer,
         const auto K_BEFORE = renderer.diagnostics().m_submitted_frames;
         auto replacement = std::make_shared<SceneState>(*renderer.updates().visible_snapshot());
         replacement->m_revision = { 2 };
-        auto batch = make_snapshot_batch(replacement, {2}).value();
+        auto batch = make_snapshot_batch(replacement, { 2 }).value();
         const auto K_TICKET = renderer.updates().enqueue(batch);
         require(K_TICKET.has_value(), "minimized update admission failed");
-        for (int index { 0 }; index < 3; ++index)
+        for (int index { 0 }; index < 3; ++index) {
             require(renderer.draw(camera).has_value(), "minimized draw failed");
+        }
         const auto K_PROGRESS = renderer.updates().query_progress(*K_TICKET);
         require(renderer.diagnostics().m_submitted_frames == K_BEFORE && K_PROGRESS &&
                     K_PROGRESS->m_state == UpdateState::ACCEPTED &&
@@ -171,10 +176,13 @@ int main(int argc, char** argv) {
         bool timings = false, require_minimize = false;
         for (int index { 2 }; index < argc; ++index) {
             const auto K_OPTION = std::string_view(argv[index]);
-            if (K_OPTION == "--timings") timings = true;
-            else if (K_OPTION == "--require-minimize") require_minimize = true;
-            else
+            if (K_OPTION == "--timings") {
+                timings = true;
+            } else if (K_OPTION == "--require-minimize") {
+                require_minimize = true;
+            } else {
                 require(false, "usage: we_gpu_smoke [output.ppm] [--timings] [--require-minimize]");
+            }
         }
         const auto K_OUTPUT =
             argc > 1 ? std::filesystem::path(argv[1])
@@ -182,7 +190,9 @@ int main(int argc, char** argv) {
         require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
 
         struct SdlGuard {
-            ~SdlGuard() { SDL_Quit(); }
+            ~SdlGuard() {
+                SDL_Quit();
+            }
         } sdl;
 
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -227,7 +237,7 @@ int main(int argc, char** argv) {
         created = VulkanRenderer::create(window.get(), constrained);
         require(created.has_value(), created ? "" : created.error().m_message);
         renderer = std::move(*created);
-        auto retained = make_snapshot_batch(overlap_fixture(), {1}).value();
+        auto retained = make_snapshot_batch(overlap_fixture(), { 1 }).value();
         require(renderer->updates().enqueue(retained).has_value(),
                 "resize failure fixture admission failed");
         CameraView retained_camera;
@@ -255,7 +265,7 @@ int main(int argc, char** argv) {
         created = VulkanRenderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().m_message);
         renderer = std::move(*created);
-        auto recovery_scene = make_snapshot_batch(overlap_fixture(), {1}).value();
+        auto recovery_scene = make_snapshot_batch(overlap_fixture(), { 1 }).value();
         require(renderer->updates().enqueue(recovery_scene).has_value(),
                 "post-create failure fixture admission failed");
         require(renderer->draw(retained_camera).has_value(),
@@ -290,7 +300,7 @@ int main(int argc, char** argv) {
         created = VulkanRenderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().m_message);
         renderer = std::move(*created);
-        auto replay_batch = make_snapshot_batch(K_REPLAY, {2}).value();
+        auto replay_batch = make_snapshot_batch(K_REPLAY, { 2 }).value();
         const auto K_REPLAY_TICKET = renderer->updates().enqueue(replay_batch);
         require(K_REPLAY_TICKET.has_value(), "device-loss scene replay admission failed");
         const auto K_RECOVERY_READBACK = K_OUTPUT.parent_path() / "device-recovery.ppm";
@@ -321,7 +331,7 @@ int main(int argc, char** argv) {
             std::ios::cur);
         std::array<unsigned char, 3> recovered_pixel {};
         recovered_image.read(reinterpret_cast<char*>(recovered_pixel.data()), 3);
-        require(recovered_image && recovered_pixel == std::array<unsigned char, 3> {130, 3, 68},
+        require(recovered_image && recovered_pixel == std::array<unsigned char, 3> { 130, 3, 68 },
                 "device-loss recreation changed the overlap readback");
         renderer.reset();
         require(SDL_HideWindow(window.get()), SDL_GetError());
@@ -330,26 +340,28 @@ int main(int argc, char** argv) {
         created = VulkanRenderer::create(window.get(), options);
         require(created.has_value(), created ? "" : created.error().m_message);
         renderer = std::move(*created);
-        auto batch = make_snapshot_batch(overlap_fixture(), {1}).value();
+        auto batch = make_snapshot_batch(overlap_fixture(), { 1 }).value();
         require(renderer->updates().enqueue(batch).has_value(), "initial scene admission failed");
         CameraView camera;
         camera.m_position = { 0, 0, 4 };
         std::set<std::uint64_t> paused_samples;
         for (int frame { 0 }; frame < 11; ++frame) {
             SDL_PumpEvents();
-            if (frame == 9)
+            if (frame == 9) {
                 require(renderer->request_screenshot(K_OUTPUT).has_value(), "capture unsupported");
+            }
             const bool K_PAUSED = frame >= 4 && frame <= 6;
             const auto K_DRAWN = renderer->draw(camera, !K_PAUSED);
             require(K_DRAWN.has_value(), K_DRAWN ? "" : K_DRAWN.error().m_message);
-            if (K_PAUSED)
+            if (K_PAUSED) {
                 require(renderer->diagnostics().m_resident_splat_count == 2,
                         "Paused appearance lost resident scene assets");
+            }
             if (timings) {
                 const auto K_STATS = renderer->diagnostics();
                 require(K_STATS.m_submitted_frames == static_cast<std::uint64_t>(frame) + 1,
                         "timed smoke draw did not submit its frame");
-                for (const auto& sample : K_STATS.m_completed_timings)
+                for (const auto& sample : K_STATS.m_completed_timings) {
                     if (sample.m_sequence >= 5 && sample.m_sequence <= 7) {
                         require(sample.m_count_submissions == 0 && sample.m_tile_batches == 1 &&
                                     sample.m_gpu_ms[static_cast<std::size_t>(
@@ -361,6 +373,7 @@ int main(int argc, char** argv) {
                                 "paused timing retained stale appearance work");
                         paused_samples.insert(sample.m_sequence);
                     }
+                }
             }
         }
         require(!timings || paused_samples.size() == 3,
@@ -379,27 +392,32 @@ int main(int argc, char** argv) {
         image.read(reinterpret_cast<char*>(pixel.data()), 3);
         // Independent two-layer alpha result: near red .5, far blue .5 over background.
         const std::array<double, 3> K_EXPECTED {
-            (0.5 + 0.25 * 0.045) * 255, 0.25 * 0.051 * 255, (0.25 + 0.25 * 0.063) * 255};
-        for (std::size_t channel { 0uz }; channel < 3uz; ++channel)
+            (0.5 + 0.25 * 0.045) * 255, 0.25 * 0.051 * 255, (0.25 + 0.25 * 0.063) * 255 };
+        for (std::size_t channel { 0uz }; channel < 3uz; ++channel) {
             require(std::abs(pixel[channel] - K_EXPECTED[channel]) <= 3,
                     "Two-splat compositing or depth sort mismatch");
+        }
         auto replacement = std::make_shared<SceneState>(*make_diagnostic_scene());
         replacement->m_id = { 19 };
         replacement->m_revision = { 2 };
-        auto delta = make_snapshot_batch(replacement, {2}).value();
+        auto delta = make_snapshot_batch(replacement, { 2 }).value();
         delta.m_full_snapshot = false;
         delta.m_base_revision = { 1 };
         require(renderer->updates().enqueue(delta).has_value(), "replacement admission failed");
         bool resized = false, restored = false;
         for (int frame { 0 }; frame < 40; ++frame) {
             SDL_PumpEvents();
-            if (frame == 8) SDL_SetWindowSize(window.get(), 640, 360);
-            if (frame == 16) SDL_SetWindowSize(window.get(), 512, 512);
+            if (frame == 8) {
+                SDL_SetWindowSize(window.get(), 640, 360);
+            }
+            if (frame == 16) {
+                SDL_SetWindowSize(window.get(), 512, 512);
+            }
             if (frame == 24) {
                 auto empty = std::make_shared<SceneState>();
                 empty->m_id = { 19 };
                 empty->m_revision = { 3 };
-                auto deletion = make_snapshot_batch(empty, {3}).value();
+                auto deletion = make_snapshot_batch(empty, { 3 }).value();
                 deletion.m_full_snapshot = false;
                 deletion.m_base_revision = { 2 };
                 require(renderer->updates().enqueue(deletion).has_value(),
@@ -408,18 +426,20 @@ int main(int argc, char** argv) {
             const auto K_DRAWN = renderer->draw(camera);
             require(K_DRAWN.has_value(), K_DRAWN ? "" : K_DRAWN.error().m_message);
             const auto K_EXTENT = renderer->diagnostics();
-            if (frame >= 8 && frame < 16)
+            if (frame >= 8 && frame < 16) {
                 resized = resized || (K_EXTENT.m_framebuffer_width == 640 &&
                                       K_EXTENT.m_framebuffer_height == 360);
-            if (frame >= 16)
+            }
+            if (frame >= 16) {
                 restored = restored || (K_EXTENT.m_framebuffer_width == 512 &&
                                         K_EXTENT.m_framebuffer_height == 512);
+            }
         }
         require(resized && restored, "native framebuffer resize/restore was not observed");
         require(renderer->wait_for_idle().has_value(), "final GPU completion failed");
         const auto K_STATS = renderer->diagnostics();
-        if (timings)
-            for (const auto& sample : K_STATS.m_completed_timings)
+        if (timings) {
+            for (const auto& sample : K_STATS.m_completed_timings) {
                 require(sample.m_sequence > 0 && sample.m_count_submissions == 0 &&
                             sample.m_tile_batches == 1 &&
                             sample.m_width == K_STATS.m_framebuffer_width &&
@@ -427,6 +447,8 @@ int main(int argc, char** argv) {
                             sample.m_gpu_valid ==
                                 renderer->capabilities().m_gpu_timestamps_supported,
                         "empty/resize timing was missing or retained stale counts");
+            }
+        }
         require(K_STATS.m_allocated_bytes <= options.m_residency_bytes &&
                     K_STATS.m_allocated_bytes >=
                         K_STATS.m_framebuffer_bytes + K_STATS.m_scratch_bytes,
@@ -441,7 +463,7 @@ int main(int argc, char** argv) {
         created = VulkanRenderer::create(window.get(), constrained);
         require(created.has_value(), created ? "" : created.error().m_message);
         renderer = std::move(*created);
-        auto overflowing = make_snapshot_batch(overlap_fixture(), {1}).value();
+        auto overflowing = make_snapshot_batch(overlap_fixture(), { 1 }).value();
         require(renderer->updates().enqueue(overflowing).has_value(),
                 "reference overflow fixture admission failed");
         const auto K_OVERFLOW = renderer->draw(camera);
@@ -468,7 +490,7 @@ int main(int argc, char** argv) {
         require(minimize_created.has_value(),
                 minimize_created ? "" : minimize_created.error().m_message);
         auto minimize_renderer = std::move(*minimize_created);
-        auto minimize_scene = make_snapshot_batch(overlap_fixture(), {1}).value();
+        auto minimize_scene = make_snapshot_batch(overlap_fixture(), { 1 }).value();
         require(minimize_renderer->updates().enqueue(minimize_scene).has_value(),
                 "minimize fixture admission failed");
         require(minimize_renderer->draw(retained_camera).has_value(),

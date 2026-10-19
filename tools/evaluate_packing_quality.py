@@ -29,6 +29,19 @@ from evaluate_image_pairs import (
 )
 from evaluate_packing import ppm_bytes
 
+__all__ = [
+    "DOMAIN",
+    "HELPERS",
+    "SCOPE",
+    "camera_matches",
+    "evaluate",
+    "main",
+    "prepare",
+    "quality_delta",
+    "require",
+    "validate",
+]
+
 SCOPE = "development calibrated GPU packing quality against captured targets"
 DOMAIN = {
     "color": "display-encoded RGB [0,1]",

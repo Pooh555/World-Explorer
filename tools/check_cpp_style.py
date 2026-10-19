@@ -17,9 +17,27 @@ import subprocess
 import sys
 from pathlib import Path
 
+__all__ = [
+    "CPP_SUFFIXES",
+    "DEFAULT_SEARCH_ROOTS",
+    "HEADER_SUFFIXES",
+    "ROOT",
+    "check_format",
+    "check_header_policy",
+    "check_template_initialization",
+    "discover_cpp_files",
+    "main",
+    "normalize_brace_spacing",
+    "resolve_targets",
+    "run_command",
+    "run_repo_quality_checks",
+    "select_tidy_files",
+]
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SEARCH_ROOTS = ("apps", "include", "src", "tests", "workers")
 CPP_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
+HEADER_SUFFIXES = {".h", ".hh", ".hpp", ".hxx"}
 
 
 def discover_cpp_files(search_roots: tuple[str, ...]) -> list[Path]:
@@ -165,6 +183,27 @@ def check_template_initialization(files: list[Path]) -> int:
     return 0
 
 
+def check_header_policy(files: list[Path]) -> int:
+    violations: list[str] = []
+    for path in files:
+        if path.suffix.lower() not in HEADER_SUFFIXES:
+            continue
+        lines = path.read_text(encoding="utf-8").splitlines()
+        if not lines or lines[0] != "#pragma once":
+            violations.append(
+                f"{path}:1: headers must start with '#pragma once'"
+            )
+        if sum(line.strip() == "#pragma once" for line in lines) != 1:
+            violations.append(
+                f"{path}: headers must contain exactly one '#pragma once'"
+            )
+    if violations:
+        print("Header policy checks failed:", file=sys.stderr)
+        print("\n".join(violations), file=sys.stderr)
+        return 1
+    return 0
+
+
 def check_format(format_executable: str, files: list[Path]) -> int:
     failed = False
     for path in files:
@@ -238,6 +277,10 @@ def main() -> int:
             file=sys.stderr,
         )
         return format_rc
+
+    header_policy_rc = check_header_policy(files)
+    if header_policy_rc != 0:
+        return header_policy_rc
 
     initialization_rc = check_template_initialization(files)
     if initialization_rc != 0:

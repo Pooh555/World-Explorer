@@ -11,6 +11,12 @@ from pilot import digest, parse, publish, read_pinned
 from source_selection import DEFAULT_POLICY, plan_sources, report_digest
 
 
+__all__ = [
+    "main",
+    "run",
+]
+
+
 def run(args):
     native = parse(read_pinned(args.manifest, args.manifest_sha256, 1024**2))
     if native["schema_version"] != 1 or native["kind"] != "DENSE_INPUTS_NATIVE_GRID":

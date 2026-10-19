@@ -2,6 +2,8 @@
 
 #include "world_explorer/core/hash.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -10,8 +12,6 @@
 #include <set>
 #include <stdexcept>
 #include <string_view>
-
-#include <nlohmann/json.hpp>
 
 namespace world_explorer {
 namespace {
@@ -26,7 +26,9 @@ static_assert(sizeof(float) == 4 && std::numeric_limits<float>::is_iec559);
 static_assert(sizeof(double) == 8 && std::numeric_limits<double>::is_iec559);
 
 void require(bool condition, const char* message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
 }
 
 std::string text_hash(const std::string& text) {
@@ -42,11 +44,16 @@ Json document(const std::string& text) {
     std::vector<std::set<std::string>> keys;
     return Json::parse(text, [&](int depth, Json::parse_event_t event, Json& value) {
         require(depth <= 32, "Fusion JSON nesting limit exceeded");
-        if (event == Json::parse_event_t::object_start) keys.emplace_back();
-        if (event == Json::parse_event_t::key)
+        if (event == Json::parse_event_t::object_start) {
+            keys.emplace_back();
+        }
+        if (event == Json::parse_event_t::key) {
             require(!keys.empty() && keys.back().insert(value.get<std::string>()).second,
                     "Duplicate fusion metadata key");
-        if (event == Json::parse_event_t::object_end) keys.pop_back();
+        }
+        if (event == Json::parse_event_t::object_end) {
+            keys.pop_back();
+        }
         return true;
     });
 }
@@ -73,9 +80,10 @@ struct Decoder {
     std::uint64_t integer(std::size_t width) {
         require(width <= m_bytes.size() - m_position, "Truncated fusion asset");
         std::uint64_t value {};
-        for (std::size_t i { 0uz }; i < width; ++i)
+        for (std::size_t i { 0uz }; i < width; ++i) {
             value |= std::uint64_t { std::to_integer<unsigned char>(m_bytes[m_position++]) }
                      << (i * 8uz);
+        }
         return value;
     }
 
@@ -86,9 +94,13 @@ struct Decoder {
         return K_TEXT;
     }
 
-    float real32() { return std::bit_cast<float>(static_cast<std::uint32_t>(integer(4uz))); }
+    float real32() {
+        return std::bit_cast<float>(static_cast<std::uint32_t>(integer(4uz)));
+    }
 
-    double real64() { return std::bit_cast<double>(integer(8uz)); }
+    double real64() {
+        return std::bit_cast<double>(integer(8uz));
+    }
 };
 
 bool text_is(const Json& value, std::string_view expected) {
@@ -184,23 +196,30 @@ Result<ObservedFusionAsset> decode_fusion_asset(std::span<const std::byte> bytes
                                                 FusionAssetLimits limits,
                                                 const std::stop_token& stop) {
     try {
-        if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Fusion admission cancelled");
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Fusion admission cancelled");
+        }
         if (!limits.m_encoded_bytes.m_bytes || limits.m_encoded_bytes.m_bytes > K_MAX_BYTES ||
             !limits.m_max_voxels || limits.m_max_voxels > 16777216uz || !limits.m_max_vertices ||
             limits.m_max_vertices > 4000000uz || !limits.m_max_triangles ||
-            limits.m_max_triangles > 8000000uz)
+            limits.m_max_triangles > 8000000uz) {
             return fail(ErrorCode::INVALID_ARGUMENT, "Invalid fusion limits");
-        if (bytes.size() > limits.m_encoded_bytes.m_bytes)
+        }
+        if (bytes.size() > limits.m_encoded_bytes.m_bytes) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Fusion encoded byte limit exceeded");
-        for (const auto& pin : {expected_sha256,
+        }
+        for (const auto& pin : { expected_sha256,
                                 expected.m_manifest_sha256,
                                 expected.m_recipe_sha256,
                                 expected.m_receipt_sha256,
-                                expected.m_pose_sha256})
+                                expected.m_pose_sha256 }) {
             require(digest_valid(pin), "Invalid fusion SHA-256 pin");
+        }
         Sha256Builder hash;
         for (std::size_t offset { 0uz }; offset < bytes.size();) {
-            if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Fusion hash cancelled");
+            if (stop.stop_requested()) {
+                return fail(ErrorCode::CANCELLED, "Fusion hash cancelled");
+            }
             const auto K_SIZE = std::min(256uz * 1024uz, bytes.size() - offset);
             hash.update(bytes.subspan(offset, K_SIZE));
             offset += K_SIZE;
@@ -250,12 +269,14 @@ Result<ObservedFusionAsset> decode_fusion_asset(std::span<const std::byte> bytes
                 K_RECEIPT.at("files").at("poses.weposes").at("sha256") == expected.m_pose_sha256,
             "Fusion dependency graph differs");
         if (count(K_MANIFEST, "world_epoch", UINT64_MAX) != expected.m_epoch.m_value ||
-            count(K_RECEIPT, "world_epoch", UINT64_MAX) != expected.m_epoch.m_value)
+            count(K_RECEIPT, "world_epoch", UINT64_MAX) != expected.m_epoch.m_value) {
             return fail(ErrorCode::WRONG_EPOCH, "Fusion pose epoch differs");
+        }
         if (!expected.m_pose_revision.m_value ||
             count(K_MANIFEST, "pose_revision", UINT64_MAX) != expected.m_pose_revision.m_value ||
-            count(K_RECEIPT, "pose_revision", UINT64_MAX) != expected.m_pose_revision.m_value)
+            count(K_RECEIPT, "pose_revision", UINT64_MAX) != expected.m_pose_revision.m_value) {
             return fail(ErrorCode::WRONG_BASE, "Fusion pose revision differs");
+        }
         check_policy(K_MANIFEST, K_RECIPE, K_RECEIPT);
         check_coverage(K_MANIFEST, K_RECEIPT.at("frames").get_ref<const Json::array_t&>());
         asset.m_extent = positive(K_MANIFEST, "extent");
@@ -275,8 +296,9 @@ Result<ObservedFusionAsset> decode_fusion_asset(std::span<const std::byte> bytes
         asset.m_voxels.reserve(K_VOXELS);
         std::size_t front {}, sigma {};
         for (std::size_t i { 0uz }; i < K_VOXELS; ++i) {
-            if (i % 4096uz == 0uz && stop.stop_requested())
+            if (i % 4096uz == 0uz && stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Fusion voxel admission cancelled");
+            }
             ObservedVoxel voxel;
             for (auto& coordinate : voxel.m_lattice) {
                 coordinate =
@@ -315,8 +337,9 @@ Result<ObservedFusionAsset> decode_fusion_asset(std::span<const std::byte> bytes
                 "Fusion evidence denominators differ");
         asset.m_vertices.reserve(K_VERTICES);
         for (std::size_t i { 0uz }; i < K_VERTICES; ++i) {
-            if (i % 4096uz == 0uz && stop.stop_requested())
+            if (i % 4096uz == 0uz && stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Fusion mesh admission cancelled");
+            }
             FusionVertex vertex;
             for (auto& position : vertex.m_position) {
                 position = decoder.real32();
@@ -337,8 +360,9 @@ Result<ObservedFusionAsset> decode_fusion_asset(std::span<const std::byte> bytes
         }
         asset.m_triangles.reserve(K_TRIANGLES);
         for (std::size_t i { 0uz }; i < K_TRIANGLES; ++i) {
-            if (i % 4096uz == 0uz && stop.stop_requested())
+            if (i % 4096uz == 0uz && stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Fusion indices admission cancelled");
+            }
             std::array<std::uint32_t, 3> triangle {};
             for (auto& index : triangle) {
                 index = static_cast<std::uint32_t>(decoder.integer(4uz));

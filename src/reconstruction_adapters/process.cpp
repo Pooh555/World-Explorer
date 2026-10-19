@@ -8,15 +8,15 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
-#include <cerrno>
-#include <csignal>
 #include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <spawn.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
-#include <sys/wait.h>
+#include <cerrno>
+#include <csignal>
 extern char** environ;
 #endif
 
@@ -28,7 +28,8 @@ namespace {
 std::wstring widen(const std::string& value) {
     const int count = MultiByteToWideChar(
         CP_UTF8, MB_ERR_INVALID_CHARS, value.data(), static_cast<int>(value.size()), nullptr, 0);
-    if (count <= 0) return {};
+    if (count <= 0)
+        return {};
     std::wstring output(static_cast<std::size_t>(count), 0);
     MultiByteToWideChar(CP_UTF8,
                         MB_ERR_INVALID_CHARS,
@@ -59,7 +60,8 @@ struct native_handle {
     HANDLE value {};
 
     ~native_handle() {
-        if (value && value != INVALID_HANDLE_VALUE) CloseHandle(value);
+        if (value && value != INVALID_HANDLE_VALUE)
+            CloseHandle(value);
     }
 };
 
@@ -78,7 +80,8 @@ struct pipe_pair {
                                       65536,
                                       0,
                                       nullptr);
-        if (read.value == INVALID_HANDLE_VALUE) return false;
+        if (read.value == INVALID_HANDLE_VALUE)
+            return false;
         SECURITY_ATTRIBUTES security { sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE };
         write.value =
             CreateFileW(name.c_str(), GENERIC_WRITE, 0, &security, OPEN_EXISTING, 0, nullptr);
@@ -127,9 +130,11 @@ struct input_channel {
                                         65536,
                                         0,
                                         nullptr);
-        if (server.value == INVALID_HANDLE_VALUE) return false;
+        if (server.value == INVALID_HANDLE_VALUE)
+            return false;
         event.value = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-        if (!event.value) return false;
+        if (!event.value)
+            return false;
         overlap.hEvent = event.value;
         child.value =
             CreateFileW(name.c_str(), GENERIC_READ, 0, &security, OPEN_EXISTING, 0, nullptr);
@@ -138,12 +143,14 @@ struct input_channel {
     }
 
     Result<void> pump(const ProcessControl& control, bool cancelling) {
-        if (!control.m_next_input || closed) return {};
+        if (!control.m_next_input || closed)
+            return {};
         if (writing) {
             DWORD transferred {};
             if (!GetOverlappedResult(server.value, &overlap, &transferred, FALSE)) {
                 const auto code = GetLastError();
-                if (code == ERROR_IO_INCOMPLETE) return {};
+                if (code == ERROR_IO_INCOMPLETE)
+                    return {};
                 writing = false;
                 if (code == ERROR_BROKEN_PIPE || code == ERROR_NO_DATA) {
                     closed = true;
@@ -153,17 +160,20 @@ struct input_channel {
             }
             writing = false;
             offset += transferred;
-            if (offset == pending.size()) pending.clear();
+            if (offset == pending.size())
+                pending.clear();
         }
         if (pending.empty()) {
             auto next = control.m_next_input(cancelling);
-            if (!next) return std::unexpected(next.error());
+            if (!next)
+                return std::unexpected(next.error());
             if (next->size() > K_PROCESS_INPUT_LIMIT)
                 return fail(ErrorCode::RESOURCE_EXHAUSTED, "Process input exceeds frame budget");
             pending = std::move(*next);
             offset = 0;
         }
-        if (pending.empty()) return {};
+        if (pending.empty())
+            return {};
         ResetEvent(event.value);
         overlap = {};
         overlap.hEvent = event.value;
@@ -198,7 +208,8 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
     for (const auto& argument : arguments) {
         if (argument.find('\0') != std::string::npos || argument.size() > 32768)
             return fail(ErrorCode::INVALID_ARGUMENT, "Invalid process argument");
-        if (!command.empty()) command += L' ';
+        if (!command.empty())
+            command += L' ';
         const auto wide = widen(argument);
         if (!argument.empty() && wide.empty())
             return fail(ErrorCode::INVALID_ARGUMENT, "Invalid UTF-8 process argument");
@@ -234,7 +245,9 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
     struct attribute_owner {
         LPPROC_THREAD_ATTRIBUTE_LIST list;
 
-        ~attribute_owner() { DeleteProcThreadAttributeList(list); }
+        ~attribute_owner() {
+            DeleteProcThreadAttributeList(list);
+        }
     } attribute_cleanup { startup.lpAttributeList };
 
     std::array inherited { input.child.value, stdout_pipe.write.value, stderr_pipe.write.value };
@@ -294,10 +307,11 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
         if (cancelling && std::chrono::steady_clock::now() - cancelled_at >= grace)
             TerminateJobObject(job.value, 130);
         const auto sent = input.pump(control, cancelling);
-        if (!sent) return std::unexpected(sent.error());
+        if (!sent)
+            return std::unexpected(sent.error());
         bool drained = false;
-        const std::array streams {std::pair { stdout_pipe.read.value, &output },
-                                  std::pair { stderr_pipe.read.value, &diagnostic }};
+        const std::array streams { std::pair { stdout_pipe.read.value, &output },
+                                  std::pair { stderr_pipe.read.value, &diagnostic } };
         for (const auto& [pipe, callback] : streams) {
             for (int block { 0 }; block < 16; ++block) {
                 DWORD available {}, read {};
@@ -307,12 +321,15 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
                     !read)
                     break;
                 drained = true;
-                if (*callback) (*callback)(std::string(buffer.data(), read));
+                if (*callback)
+                    (*callback)(std::string(buffer.data(), read));
             }
         }
-        if (ended && !drained) break;
+        if (ended && !drained)
+            break;
         ended = WaitForSingleObject(process.hProcess, 10) == WAIT_OBJECT_0;
-        if (ended) TerminateJobObject(job.value, 130);
+        if (ended)
+            TerminateJobObject(job.value, 130);
     }
     DWORD code = 1;
     GetExitCodeProcess(process.hProcess, &code);
@@ -324,7 +341,9 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
 namespace {
 
 int reserve_descriptor(int descriptor) {
-    if (descriptor < 0 || descriptor >= 3) return descriptor;
+    if (descriptor < 0 || descriptor >= 3) {
+        return descriptor;
+    }
     const auto K_OWNED = fcntl(descriptor, F_DUPFD_CLOEXEC, 3);
     close(descriptor);
     return K_OWNED;
@@ -364,21 +383,30 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
                             const ProcessOutputCallback& output,
                             const ProcessOutputCallback& diagnostic,
                             const ProcessControl& control) {
-    if (arguments.empty()) return fail(ErrorCode::INVALID_ARGUMENT, "Empty process command");
-    if (stop.stop_requested()) return fail(ErrorCode::CANCELLED, "Process cancelled before launch");
+    if (arguments.empty()) {
+        return fail(ErrorCode::INVALID_ARGUMENT, "Empty process command");
+    }
+    if (stop.stop_requested()) {
+        return fail(ErrorCode::CANCELLED, "Process cancelled before launch");
+    }
     if (control.m_cancellation_grace < std::chrono::milliseconds(0) ||
-        control.m_cancellation_grace > std::chrono::seconds(5))
+        control.m_cancellation_grace > std::chrono::seconds(5)) {
         return fail(ErrorCode::INVALID_ARGUMENT, "Invalid process cancellation deadline");
-    for (const auto& argument : arguments)
-        if (argument.find('\0') != std::string::npos)
+    }
+    for (const auto& argument : arguments) {
+        if (argument.find('\0') != std::string::npos) {
             return fail(ErrorCode::INVALID_ARGUMENT, "NUL in process argument");
+        }
+    }
 
     struct Descriptors {
         int m_read { -1 }, m_write { -1 };
 
         bool create() {
             int handles[2];
-            if (pipe(handles) != 0) return false;
+            if (pipe(handles) != 0) {
+                return false;
+            }
             m_read = reserve_descriptor(handles[0]);
             m_write = reserve_descriptor(handles[1]);
             return fcntl(m_read, F_SETFD, FD_CLOEXEC) >= 0 &&
@@ -387,20 +415,29 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
         }
 
         ~Descriptors() {
-            if (m_read >= 0) close(m_read);
-            if (m_write >= 0) close(m_write);
+            if (m_read >= 0) {
+                close(m_read);
+            }
+            if (m_write >= 0) {
+                close(m_write);
+            }
         }
     } stdout_pipe, stderr_pipe;
 
-    if (!stdout_pipe.create() || !stderr_pipe.create())
+    if (!stdout_pipe.create() || !stderr_pipe.create()) {
         return fail(ErrorCode::IO_ERROR, "Unable to create worker streams");
+    }
 
     struct InputChannel {
         int m_child { -1 }, m_parent { -1 };
 
         ~InputChannel() {
-            if (m_child >= 0) close(m_child);
-            if (m_parent >= 0) close(m_parent);
+            if (m_child >= 0) {
+                close(m_child);
+            }
+            if (m_parent >= 0) {
+                close(m_parent);
+            }
         }
 
         bool create(bool duplex) {
@@ -409,7 +446,9 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
                 return m_child >= 0;
             }
             int handles[2];
-            if (pipe(handles) != 0) return false;
+            if (pipe(handles) != 0) {
+                return false;
+            }
             m_child = reserve_descriptor(handles[0]);
             m_parent = reserve_descriptor(handles[1]);
 
@@ -419,8 +458,9 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
         }
     } input;
 
-    if (!input.create(static_cast<bool>(control.m_next_input)))
+    if (!input.create(static_cast<bool>(control.m_next_input))) {
         return fail(ErrorCode::IO_ERROR, "Unable to create worker input");
+    }
     std::vector<std::byte> pending_input;
     std::size_t input_offset {};
     posix_spawn_file_actions_t actions;
@@ -440,24 +480,30 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
 
     posix_spawn_file_actions_adddup2(&actions, input.m_child, STDIN_FILENO);
     posix_spawn_file_actions_addclose(&actions, input.m_child);
-    if (input.m_parent >= 0) posix_spawn_file_actions_addclose(&actions, input.m_parent);
+    if (input.m_parent >= 0) {
+        posix_spawn_file_actions_addclose(&actions, input.m_parent);
+    }
     posix_spawn_file_actions_adddup2(&actions, stdout_pipe.m_write, STDOUT_FILENO);
     posix_spawn_file_actions_adddup2(&actions, stderr_pipe.m_write, STDERR_FILENO);
     for (const auto K_HANDLE :
-         {stdout_pipe.m_read, stdout_pipe.m_write, stderr_pipe.m_read, stderr_pipe.m_write})
+         { stdout_pipe.m_read, stdout_pipe.m_write, stderr_pipe.m_read, stderr_pipe.m_write }) {
         posix_spawn_file_actions_addclose(&actions, K_HANDLE);
+    }
     posix_spawnattr_setflags(&attributes, POSIX_SPAWN_SETPGROUP);
     posix_spawnattr_setpgroup(&attributes, 0);
     std::vector<char*> argv;
     argv.reserve(arguments.size() + 1);
-    for (const auto& argument : arguments) argv.push_back(const_cast<char*>(argument.c_str()));
+    for (const auto& argument : arguments) {
+        argv.push_back(const_cast<char*>(argument.c_str()));
+    }
     argv.push_back(nullptr);
     pid_t child {};
     const auto K_SPAWNED =
         posix_spawnp(&child, argv[0], &actions, &attributes, argv.data(), environ);
-    if (K_SPAWNED != 0)
+    if (K_SPAWNED != 0) {
         return fail(ErrorCode::BACKEND_FAILURE,
                     "Unable to start worker executable (code " + std::to_string(K_SPAWNED) + ")");
+    }
     close(input.m_child);
     input.m_child = -1;
     close(stdout_pipe.m_write);
@@ -494,15 +540,19 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
             signalled = true;
         }
         if (terminating &&
-            std::chrono::steady_clock::now() - cancelled_at >= K_GRACE + std::chrono::seconds(2))
+            std::chrono::steady_clock::now() - cancelled_at >= K_GRACE + std::chrono::seconds(2)) {
             kill(-child, SIGKILL);
+        }
         if (input.m_parent >= 0) {
             if (pending_input.empty()) {
                 auto next = control.m_next_input(terminating);
-                if (!next) return std::unexpected(next.error());
-                if (next->size() > K_PROCESS_INPUT_LIMIT)
+                if (!next) {
+                    return std::unexpected(next.error());
+                }
+                if (next->size() > K_PROCESS_INPUT_LIMIT) {
                     return fail(ErrorCode::RESOURCE_EXHAUSTED,
                                 "Process input exceeds frame budget");
+                }
                 pending_input = std::move(*next);
                 input_offset = 0;
             }
@@ -512,13 +562,16 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
                                                  pending_input.size() - input_offset);
                 if (K_COUNT > 0) {
                     input_offset += static_cast<std::size_t>(K_COUNT);
-                    if (input_offset == pending_input.size()) pending_input.clear();
+                    if (input_offset == pending_input.size()) {
+                        pending_input.clear();
+                    }
                 } else if (K_COUNT < 0 && errno != EAGAIN && errno != EWOULDBLOCK &&
                            errno != EINTR) {
-                    if (errno != EPIPE && errno != ECONNRESET)
+                    if (errno != EPIPE && errno != ECONNRESET) {
                         return fail(ErrorCode::IO_ERROR,
                                     "Unable to write worker input (code " + std::to_string(errno) +
                                         ")");
+                    }
                     close(input.m_parent);
                     input.m_parent = -1;
                     pending_input.clear();
@@ -526,17 +579,20 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
             }
         }
         std::array<pollfd, 2> poll_descriptors {
-            {{stdout_pipe.m_read, POLLIN, 0}, {stderr_pipe.m_read, POLLIN, 0}}};
+            { { stdout_pipe.m_read, POLLIN, 0 }, { stderr_pipe.m_read, POLLIN, 0 } } };
         poll(poll_descriptors.data(), static_cast<nfds_t>(poll_descriptors.size()), 20);
         // Bound work each cycle so continuous log output cannot starve cancellation.
-        const std::array K_STREAMS {std::pair { stdout_pipe.m_read, &output },
-                                    std::pair { stderr_pipe.m_read, &diagnostic }};
+        const std::array K_STREAMS { std::pair { stdout_pipe.m_read, &output },
+                                    std::pair { stderr_pipe.m_read, &diagnostic } };
         for (const auto& [K_PIPE, K_CALLBACK] : K_STREAMS) {
             for (int block { 0 }; block < 16; ++block) {
                 const auto K_COUNT = read(K_PIPE, buffer.data(), buffer.size());
-                if (K_COUNT <= 0) break;
-                if (*K_CALLBACK)
+                if (K_COUNT <= 0) {
+                    break;
+                }
+                if (*K_CALLBACK) {
                     (*K_CALLBACK)(std::string(buffer.data(), static_cast<std::size_t>(K_COUNT)));
+                }
             }
         }
         const auto K_WAITED = waitpid(child, &status, WNOHANG);
@@ -547,19 +603,24 @@ Result<int> execute_process(const std::vector<std::string>& arguments,
             for (const auto& [K_PIPE, K_CALLBACK] : K_STREAMS) {
                 while (true) {
                     const auto K_COUNT = read(K_PIPE, buffer.data(), buffer.size());
-                    if (K_COUNT <= 0) break;
-                    if (*K_CALLBACK)
+                    if (K_COUNT <= 0) {
+                        break;
+                    }
+                    if (*K_CALLBACK) {
                         (*K_CALLBACK)(
                             std::string(buffer.data(), static_cast<std::size_t>(K_COUNT)));
+                    }
                 }
             }
             break;
         }
-        if (K_WAITED < 0 && errno != EINTR)
+        if (K_WAITED < 0 && errno != EINTR) {
             return fail(ErrorCode::IO_ERROR, "Unable to reap worker process");
+        }
     }
-    if (terminating)
+    if (terminating) {
         return fail(ErrorCode::CANCELLED, "Worker cancelled; committed stages retained");
+    }
     return WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
 }
 #endif

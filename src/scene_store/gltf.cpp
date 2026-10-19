@@ -25,9 +25,10 @@ Json parse(std::string_view text) {
             keys.resize(K_DEPTH + 1uz);
             keys[K_DEPTH].clear();
         }
-        if (event == Json::parse_event_t::key)
+        if (event == Json::parse_event_t::key) {
             require(keys.at(K_DEPTH - 1uz).insert(value.get<std::string>()).second,
                     "Duplicate GLB JSON key");
+        }
         return true;
     });
 }
@@ -37,27 +38,30 @@ std::array<std::uint32_t, 2> image_extent(const BakedMeshAppearance& baked) {
 }
 
 Json chunk_header(const SceneChunk& chunk) {
-    if (!chunk.m_mesh || !chunk.m_mesh->m_baked)
+    if (!chunk.m_mesh || !chunk.m_mesh->m_baked) {
         throw std::runtime_error("Missing captured appearance");
+    }
     const auto& mesh = *chunk.m_mesh;
     const auto& baked = *mesh.m_baked;
     Json frames = Json::array();
-    for (auto frame : chunk.m_source_frames) frames.push_back(std::to_string(frame.m_value));
+    for (auto frame : chunk.m_source_frames) {
+        frames.push_back(std::to_string(frame.m_value));
+    }
     Json source = nullptr;
     if (mesh.m_observed) {
         const auto& observed = *mesh.m_observed;
         const auto& context = observed.m_context;
-        source = {{"pins",
-                   {context.m_manifest_sha256,
+        source = { { "pins",
+                   { context.m_manifest_sha256,
                     context.m_receipt_sha256,
                     context.m_recipe_sha256,
                     context.m_pose_sha256,
                     observed.m_asset_sha256,
-                    observed.m_cleanup_sha256}},
-                  {"documents",
-                   { observed.m_manifest_json, observed.m_receipt_json, observed.m_cleanup_json }},
+                    observed.m_cleanup_sha256 } },
+                  { "documents",
+                   { observed.m_manifest_json, observed.m_receipt_json, observed.m_cleanup_json } },
                   { "epoch", std::to_string(context.m_epoch.m_value) },
-                  { "pose_revision", std::to_string(context.m_pose_revision.m_value) }};
+                  { "pose_revision", std::to_string(context.m_pose_revision.m_value) } };
     }
     const auto& transform = chunk.m_world_from_chunk;
     return {
@@ -65,20 +69,20 @@ Json chunk_header(const SceneChunk& chunk) {
         { "generation", std::to_string(chunk.m_generation) },
         { "pose_revision", std::to_string(chunk.m_pose_revision.m_value) },
         { "frames", frames },
-        {"bounds",
-         {chunk.m_bounds.m_minimum.m_x,
+        { "bounds",
+         { chunk.m_bounds.m_minimum.m_x,
           chunk.m_bounds.m_minimum.m_y,
           chunk.m_bounds.m_minimum.m_z,
           chunk.m_bounds.m_maximum.m_x,
           chunk.m_bounds.m_maximum.m_y,
-          chunk.m_bounds.m_maximum.m_z}},
-        {"rotation",
-         {transform.m_rotation.m_w,
+          chunk.m_bounds.m_maximum.m_z } },
+        { "rotation",
+         { transform.m_rotation.m_w,
           transform.m_rotation.m_x,
           transform.m_rotation.m_y,
-          transform.m_rotation.m_z}},
-        {"translation",
-         { transform.m_translation.m_x, transform.m_translation.m_y, transform.m_translation.m_z }},
+          transform.m_rotation.m_z } },
+        { "translation",
+         { transform.m_translation.m_x, transform.m_translation.m_y, transform.m_translation.m_z } },
         { "scale", transform.m_scale },
         { "source", source },
         { "vertices", mesh.m_vertices.size() },
@@ -88,7 +92,7 @@ Json chunk_header(const SceneChunk& chunk) {
         { "appearance_json", baked.m_manifest_json },
         { "appearance_sha256", baked.m_manifest_sha256 },
         { "source_chunk_sha256", baked.m_source_chunk_sha256 },
-        { "parent_chunk_sha256", scene_chunk_content_hash(chunk) }};
+        { "parent_chunk_sha256", scene_chunk_content_hash(chunk) } };
 }
 
 SceneChunk read_header(const Json& document) {
@@ -116,15 +120,17 @@ SceneChunk read_header(const Json& document) {
     chunk.m_geometry_valid = true;
     require(document.at("frames").is_array() && document.at("frames").size() <= 18uz,
             "Invalid GLB source frames");
-    for (const auto& frame : document.at("frames")) chunk.m_source_frames.push_back({ K_ID(frame) });
+    for (const auto& frame : document.at("frames")) {
+        chunk.m_source_frames.push_back({ K_ID(frame) });
+    }
     const auto K_BOUNDS = document.at("bounds").get<std::array<double, 6>>();
-    chunk.m_bounds = {{ K_BOUNDS[0], K_BOUNDS[1], K_BOUNDS[2] },
-                      { K_BOUNDS[3], K_BOUNDS[4], K_BOUNDS[5] }};
+    chunk.m_bounds = { { K_BOUNDS[0], K_BOUNDS[1], K_BOUNDS[2] },
+                      { K_BOUNDS[3], K_BOUNDS[4], K_BOUNDS[5] } };
     const auto K_ROTATION = document.at("rotation").get<std::array<double, 4>>();
     const auto K_TRANSLATION = document.at("translation").get<std::array<double, 3>>();
-    chunk.m_world_from_chunk = {{ K_ROTATION[0], K_ROTATION[1], K_ROTATION[2], K_ROTATION[3] },
+    chunk.m_world_from_chunk = { { K_ROTATION[0], K_ROTATION[1], K_ROTATION[2], K_ROTATION[3] },
                                 { K_TRANSLATION[0], K_TRANSLATION[1], K_TRANSLATION[2] },
-                                document.at("scale").get<double>()};
+                                document.at("scale").get<double>() };
     auto& mesh = chunk.m_mesh.emplace();
     if (!document.at("source").is_null()) {
         const auto& source = document.at("source");
@@ -133,17 +139,17 @@ SceneChunk read_header(const Json& document) {
         K_ARRAY_SIZE(source.at("documents"), 3uz);
         const auto K_PINS = source.at("pins").get<std::array<std::string, 6>>();
         const auto K_TEXTS = source.at("documents").get<std::array<std::string, 3>>();
-        mesh.m_observed = ObservedMeshSource {{K_PINS[0],
+        mesh.m_observed = ObservedMeshSource { { K_PINS[0],
                                                K_PINS[1],
                                                K_PINS[2],
                                                K_PINS[3],
                                                { K_ID(source.at("epoch")) },
-                                               { K_ID(source.at("pose_revision")) }},
+                                               { K_ID(source.at("pose_revision")) } },
                                               K_PINS[4],
                                               K_TEXTS[0],
                                               K_TEXTS[1],
                                               K_PINS[5],
-                                              K_TEXTS[2]};
+                                              K_TEXTS[2] };
     }
     auto& baked = mesh.m_baked.emplace();
     baked.m_width = static_cast<std::uint32_t>(count(document.at("width"), 4096uz));
@@ -160,7 +166,7 @@ SceneChunk read_header(const Json& document) {
 Json document_base(const SceneState& scene) {
     const bool K_SYNTHETIC = scene.m_provenance.contains("source_kind") &&
                              scene.m_provenance.at("source_kind") == "synthetic_diagnostic";
-    return {{"asset", {{ "version", "2.0" }, { "generator", "World Explorer captured unlit V1" }}},
+    return { { "asset", { { "version", "2.0" }, { "generator", "World Explorer captured unlit V1" } } },
             { "scene", 0 },
             { "scenes", Json::array() },
             { "nodes", Json::array() },
@@ -171,18 +177,18 @@ Json document_base(const SceneState& scene) {
             { "images", Json::array() },
             { "textures", Json::array() },
             { "materials", Json::array() },
-            {"samplers",
+            { "samplers",
              Json::array(
-                 {{{ "magFilter", 9729 }, { "minFilter", 9729 }, { "wrapS", 33071 }, { "wrapT", 33071 }}})},
-            {"extensionsUsed", { "KHR_materials_unlit" }},
-            {"extensionsRequired", { "KHR_materials_unlit" }},
-            {"extras",
-             {{ "profile", "WE_CAPTURED_GLB_V1" },
+                 { { { "magFilter", 9729 }, { "minFilter", 9729 }, { "wrapS", 33071 }, { "wrapT", 33071 } } }) },
+            { "extensionsUsed", { "KHR_materials_unlit" } },
+            { "extensionsRequired", { "KHR_materials_unlit" } },
+            { "extras",
+             { { "profile", "WE_CAPTURED_GLB_V1" },
               { "source_scene_sha256", scene_content_hash(scene) },
-              {"scene_identity",
-               {std::to_string(scene.m_id.m_value),
+              { "scene_identity",
+               { std::to_string(scene.m_id.m_value),
                 std::to_string(scene.m_epoch.m_value),
-                std::to_string(scene.m_revision.m_value)}},
+                std::to_string(scene.m_revision.m_value) } },
               { "synthetic", K_SYNTHETIC },
               { "unit_mapping", "1 arbitrary world unit to 1 nominal glTF metre; uncalibrated" },
               { "walking_enabled", false },
@@ -190,7 +196,7 @@ Json document_base(const SceneState& scene) {
               { "location_fields_added", false },
               { "authoring_documents_included", true },
               { "authoring_metadata_review", "UNINSPECTED_RETAINED_DOCUMENTS" },
-              { "filter", "bilinear_mask_cutoff_one_no_mips" }}}};
+              { "filter", "bilinear_mask_cutoff_one_no_mips" } } } };
 }
 
 }  // namespace world_explorer::gltf_detail
@@ -202,9 +208,13 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
     using namespace gltf_detail;
     try {
         cancelled(stop);
-        if (!scene) return fail(ErrorCode::INVALID_ARGUMENT, "Missing GLB scene");
+        if (!scene) {
+            return fail(ErrorCode::INVALID_ARGUMENT, "Missing GLB scene");
+        }
         const auto K_VALID = validate_scene(*scene);
-        if (!K_VALID) return std::unexpected(K_VALID.error());
+        if (!K_VALID) {
+            return std::unexpected(K_VALID.error());
+        }
         require(scene->m_scale == ScaleStatus::ARBITRARY && !scene->m_chunks.empty(),
                 "GLB profile requires explicit arbitrary-scale captured meshes");
         auto document = document_base(*scene);
@@ -214,9 +224,10 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
             static_cast<void>(K_ID);
             cancelled(stop);
             if (!K_CHUNK->m_geometry_valid || !K_CHUNK->m_splats.empty() || !K_CHUNK->m_mesh ||
-                !K_CHUNK->m_mesh->m_baked)
+                !K_CHUNK->m_mesh->m_baked) {
                 throw std::runtime_error(
                     "GLB export cannot omit stale, splat or untextured chunks");
+            }
             const auto& mesh = *K_CHUNK->m_mesh;
             const auto& baked = *mesh.m_baked;
             require(baked.m_portable_parent_sha256.empty(),
@@ -225,7 +236,7 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
             Image image {
                 K_EXTENT[0],
                 K_EXTENT[1],
-                std::vector<std::byte>(static_cast<std::size_t>(K_EXTENT[0]) * K_EXTENT[1] * 4uz)};
+                std::vector<std::byte>(static_cast<std::size_t>(K_EXTENT[0]) * K_EXTENT[1] * 4uz) };
             for (std::size_t y { 0uz }; y < baked.m_height; ++y) {
                 cancelled(stop);
                 for (std::size_t x { 0uz }; x < baked.m_width; ++x) {
@@ -246,9 +257,9 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
             const auto K_VIEW = document["bufferViews"].size();
             const auto K_ACCESSOR = document["accessors"].size();
             const auto K_ADD_VIEW = [&](std::size_t begin, bool render) {
-                Json view {{ "buffer", 0 },
+                Json view { { "buffer", 0 },
                            { "byteOffset", begin },
-                           { "byteLength", binary.m_data.size() - begin }};
+                           { "byteLength", binary.m_data.size() - begin } };
                 if (render) {
                     view["byteStride"] = 20;
                     view["target"] = 34962;
@@ -257,9 +268,9 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
                 binary.align();
             };
             auto begin = binary.m_data.size();
-            std::array<float, 3> minimum {std::numeric_limits<float>::max(),
+            std::array<float, 3> minimum { std::numeric_limits<float>::max(),
                                           std::numeric_limits<float>::max(),
-                                          std::numeric_limits<float>::max()};
+                                          std::numeric_limits<float>::max() };
             auto maximum = minimum;
             maximum.fill(std::numeric_limits<float>::lowest());
             std::size_t corner {};
@@ -278,27 +289,34 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
                 }
             }
             K_ADD_VIEW(begin, true);
-            document["accessors"].push_back({{ "bufferView", K_VIEW },
+            document["accessors"].push_back({ { "bufferView", K_VIEW },
                                              { "byteOffset", 0 },
                                              { "componentType", 5126 },
                                              { "count", corner },
                                              { "type", "VEC3" },
                                              { "min", minimum },
-                                             { "max", maximum }});
-            document["accessors"].push_back({{ "bufferView", K_VIEW },
+                                             { "max", maximum } });
+            document["accessors"].push_back({ { "bufferView", K_VIEW },
                                              { "byteOffset", 12 },
                                              { "componentType", 5126 },
                                              { "count", corner },
-                                             { "type", "VEC2" }});
+                                             { "type", "VEC2" } });
             begin = binary.m_data.size();
             for (const auto& vertex : mesh.m_vertices) {
-                for (float v : vertex.m_position) binary.real(v);
-                for (float v : vertex.m_normal) binary.real(v);
+                for (float v : vertex.m_position) {
+                    binary.real(v);
+                }
+                for (float v : vertex.m_normal) {
+                    binary.real(v);
+                }
             }
             K_ADD_VIEW(begin, false);
             begin = binary.m_data.size();
-            for (const auto& triangle : mesh.m_triangles)
-                for (auto index : triangle) binary.integer(index);
+            for (const auto& triangle : mesh.m_triangles) {
+                for (auto index : triangle) {
+                    binary.integer(index);
+                }
+            }
             K_ADD_VIEW(begin, false);
             begin = binary.m_data.size();
             binary.append(encode_png(image, stop));
@@ -309,45 +327,47 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
                 binary.integer(baked.m_candidates[i]);
             }
             K_ADD_VIEW(begin, false);
-            document["images"].push_back({{ "bufferView", K_VIEW + 3uz }, { "mimeType", "image/png" }});
-            document["textures"].push_back({{ "sampler", 0 }, { "source", K_INDEX }});
+            document["images"].push_back({ { "bufferView", K_VIEW + 3uz }, { "mimeType", "image/png" } });
+            document["textures"].push_back({ { "sampler", 0 }, { "source", K_INDEX } });
             document["materials"].push_back(
-                {{ "name", "baked_appearance" },
-                 {"extensions", {{ "KHR_materials_unlit", Json::object() }}},
+                { { "name", "baked_appearance" },
+                 { "extensions", { { "KHR_materials_unlit", Json::object() } } },
                  { "alphaMode", "MASK" },
                  { "alphaCutoff", 1.0 },
                  { "doubleSided", true },
-                 {"pbrMetallicRoughness",
-                  {{"baseColorTexture", {{ "index", K_INDEX }}},
+                 { "pbrMetallicRoughness",
+                  { { "baseColorTexture", { { "index", K_INDEX } } },
                    { "metallicFactor", 0 },
-                   { "roughnessFactor", 1 }}}});
+                   { "roughnessFactor", 1 } } } });
             document["meshes"].push_back(
-                {{"primitives",
-                  Json::array({{{"attributes",
-                                 {{ "POSITION", K_ACCESSOR }, { "TEXCOORD_0", K_ACCESSOR + 1uz }}},
+                { { "primitives",
+                  Json::array({ { { "attributes",
+                                 { { "POSITION", K_ACCESSOR }, { "TEXCOORD_0", K_ACCESSOR + 1uz } } },
                                 { "material", K_INDEX },
-                                { "mode", 4 }}})}});
+                                { "mode", 4 } } }) } });
             const auto& transform = K_CHUNK->m_world_from_chunk;
             document["nodes"].push_back(
-                {{ "mesh", K_INDEX },
-                 {"translation",
-                  {transform.m_translation.m_x,
+                { { "mesh", K_INDEX },
+                 { "translation",
+                  { transform.m_translation.m_x,
                    transform.m_translation.m_y,
-                   transform.m_translation.m_z}},
-                 {"rotation",
-                  {transform.m_rotation.m_x,
+                   transform.m_translation.m_z } },
+                 { "rotation",
+                  { transform.m_rotation.m_x,
                    transform.m_rotation.m_y,
                    transform.m_rotation.m_z,
-                   transform.m_rotation.m_w}},
-                 {"scale", { transform.m_scale, transform.m_scale, transform.m_scale }},
-                 { "extras", chunk_header(*K_CHUNK) }});
+                   transform.m_rotation.m_w } },
+                 { "scale", { transform.m_scale, transform.m_scale, transform.m_scale } },
+                 { "extras", chunk_header(*K_CHUNK) } });
             nodes.push_back(K_INDEX);
         }
-        document["scenes"].push_back({{ "nodes", nodes }});
-        document["buffers"].push_back({{ "byteLength", binary.m_data.size() }});
+        document["scenes"].push_back({ { "nodes", nodes } });
+        document["buffers"].push_back({ { "byteLength", binary.m_data.size() } });
         auto text = document.dump();
         require(text.size() <= 16uz * 1024uz * 1024uz, "GLB JSON exceeds budget");
-        while (text.size() % 4uz) text.push_back(' ');
+        while (text.size() % 4uz) {
+            text.push_back(' ');
+        }
         Writer output;
         output.integer(0x46546c67U);
         output.integer(2);

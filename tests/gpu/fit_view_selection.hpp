@@ -28,7 +28,8 @@ inline Result<std::vector<std::size_t>> parse_fit_view_indices(std::string_view 
             return fail(ErrorCode::INVALID_ARGUMENT, "invalid or duplicate fit index selection");
         seen[index] = true;
         indices.push_back(index);
-        if (end == std::string_view::npos) break;
+        if (end == std::string_view::npos)
+            break;
         input.remove_prefix(end + 1);
         if (input.empty())
             return fail(ErrorCode::INVALID_ARGUMENT, "empty trailing fit index selection");

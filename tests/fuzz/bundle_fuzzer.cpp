@@ -1,6 +1,8 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <array>
 #include <bit>
@@ -16,8 +18,6 @@
 #include <stdexcept>
 #include <string>
 
-#include <nlohmann/json.hpp>
-
 namespace {
 
 using namespace world_explorer;
@@ -28,7 +28,8 @@ constexpr std::size_t K_MAX_INPUT_BYTES { K_HEADER_BYTES + 4096uz };
 constexpr std::size_t K_INDEX_ENTRY_BYTES { 158uz };  // 84 fixed bytes plus 74-byte chunk filename.
 
 void require(bool condition) {
-    if (!condition) std::abort();
+    if (!condition)
+        std::abort();
 }
 
 std::string read_bytes(const std::filesystem::path& path) {
@@ -44,7 +45,8 @@ void write_bytes(const std::filesystem::path& path, const std::string& bytes) {
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
     output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
     output.close();
-    if (!output) throw std::runtime_error("Cannot write private synthetic bundle input");
+    if (!output)
+        throw std::runtime_error("Cannot write private synthetic bundle input");
 }
 
 std::string digest(const std::string& bytes) {
@@ -56,7 +58,8 @@ FileTree tree(const std::filesystem::path& root) {
     for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
         const auto name = entry.path().lexically_relative(root).generic_string();
         const auto status = entry.symlink_status();
-        if (std::filesystem::is_directory(status)) result.emplace(name, "directory");
+        if (std::filesystem::is_directory(status))
+            result.emplace(name, "directory");
         else {
             require(std::filesystem::is_regular_file(status));
             result.emplace(name, "file:" + read_bytes(entry.path()));
@@ -221,7 +224,7 @@ class FuzzBundle {
             auto value = json::parse(payload.begin(), payload.end(), nullptr, false);
             if (value.is_discarded())
                 value = std::string(reinterpret_cast<const char*>(payload.data()), payload.size());
-            constexpr std::array FIELDS {"/schema_version",
+            constexpr std::array FIELDS { "/schema_version",
                                          "/scene_id",
                                          "/epoch",
                                          "/revision",
@@ -241,15 +244,18 @@ class FuzzBundle {
                                          "/appearance/lighting",
                                          "/appearance/color_domain",
                                          "/appearance/sh_basis",
-                                         "/compression"};
+                                         "/compression" };
             const json::json_pointer field(FIELDS[header[5] % FIELDS.size()]);
-            if ((header[2] & 2U) != 0) manifest = value;
-            else manifest[field] = std::move(value);
+            if ((header[2] & 2U) != 0)
+                manifest = value;
+            else
+                manifest[field] = std::move(value);
         }
         if (target != 0)
             files.at("manifest.json") =
                 manifest.dump(-1, ' ', false, json::error_handler_t::replace);
-        for (const auto& [name, bytes] : files) write_bytes(m_directory / name, bytes);
+        for (const auto& [name, bytes] : files)
+            write_bytes(m_directory / name, bytes);
         const auto before = tree(m_root);
         auto budget = limits();
         switch (header[6] % 7) {
@@ -320,9 +326,10 @@ class FuzzBundle {
 
 // NOLINTNEXTLINE(readability-identifier-naming): libFuzzer's required external C entry point.
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
-    if (size > K_MAX_INPUT_BYTES) return 0;
+    if (size > K_MAX_INPUT_BYTES)
+        return 0;
     // libFuzzer serializes callbacks; processes reserve independent synthetic file trees.
     static FuzzBundle bundle;
-    bundle.exercise({data, size});
+    bundle.exercise({ data, size });
     return 0;
 }

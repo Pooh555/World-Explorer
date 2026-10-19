@@ -1,6 +1,9 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 
+#include <SDL3/SDL.h>
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -15,9 +18,6 @@
 #include <thread>
 #include <vector>
 
-#include <SDL3/SDL.h>
-#include <nlohmann/json.hpp>
-
 using namespace world_explorer;
 
 namespace {
@@ -26,7 +26,9 @@ using Clock = std::chrono::steady_clock;
 using Json = nlohmann::json;
 
 void require(bool condition, const std::string& message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
 }
 
 double milliseconds(Clock::duration duration) {
@@ -77,14 +79,14 @@ SceneDeltaBatch make_update(const SceneSnapshot& original,
         marker->m_world_from_chunk.m_translation.m_x += revision % 3 == 2 ? 0.005 : -0.005;
         scene->m_chunks.emplace(marker_id, std::move(marker));
     }
-    return {scene->m_id,
+    return { scene->m_id,
             scene->m_epoch,
-            {revision - 1},
-            {revision},
-            {revision},
+            { revision - 1 },
+            { revision },
+            { revision },
             std::move(scene),
             false,
-            0};
+            0 };
 }
 
 void produce(const std::stop_token& stop,
@@ -112,11 +114,11 @@ void produce(const std::stop_token& stop,
                 const auto K_ENDED = Clock::now();
                 if (K_TICKET) {
                     std::lock_guard lock(state.m_mutex);
-                    state.m_samples.push_back({K_REVISION,
+                    state.m_samples.push_back({ K_REVISION,
                                                K_PREPARE_MS,
                                                milliseconds(K_ENDED - K_BEGAN),
                                                milliseconds(K_BEGAN - K_SCHEDULED),
-                                               retries});
+                                               retries });
                     break;
                 }
                 require(K_TICKET.error().m_code == ErrorCode::WOULD_BLOCK,
@@ -169,7 +171,9 @@ int main(int argc, char** argv) try {
     require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
 
     struct SdlOwner {
-        ~SdlOwner() { SDL_Quit(); }
+        ~SdlOwner() {
+            SDL_Quit();
+        }
     } sdl;
 
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -186,7 +190,7 @@ int main(int argc, char** argv) try {
     require(created.has_value(), created ? "" : created.error().m_message);
     auto renderer = std::move(*created);
     require(renderer->capabilities().m_validation_enabled, "Vulkan validation is required");
-    auto initial = make_snapshot_batch(original, {1});
+    auto initial = make_snapshot_batch(original, { 1 });
     require(initial.has_value(), initial ? "" : initial.error().m_message);
     const auto K_INITIAL_TICKET = renderer->updates().enqueue(*initial);
     require(K_INITIAL_TICKET.has_value(),
@@ -198,7 +202,9 @@ int main(int argc, char** argv) try {
         require(K_DRAWN.has_value(), K_DRAWN ? "" : K_DRAWN.error().m_message);
         const auto K_PROGRESS = renderer->updates().query_progress(*K_INITIAL_TICKET);
         require(K_PROGRESS.has_value(), K_PROGRESS ? "" : K_PROGRESS.error().m_message);
-        if (K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) break;
+        if (K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
+            break;
+        }
         require(K_PROGRESS->m_state != UpdateState::FAILED, "initial GPU upload failed");
     }
     const auto K_INITIAL_VISIBLE = renderer->updates().visible_snapshot();
@@ -239,9 +245,11 @@ int main(int argc, char** argv) try {
         require(K_STATS.m_allocated_bytes <= options.m_residency_bytes,
                 "renderer owned-byte budget exceeded");
         peak_owned_bytes = std::max(peak_owned_bytes, K_STATS.m_allocated_bytes);
-        for (const auto& sample : K_STATS.m_completed_timings)
-            if (sample.m_sequence > K_BASELINE.m_submitted_frames)
+        for (const auto& sample : K_STATS.m_completed_timings) {
+            if (sample.m_sequence > K_BASELINE.m_submitted_frames) {
                 timing_samples.try_emplace(sample.m_sequence, sample);
+            }
+        }
         const auto K_VISIBLE = renderer->updates().visible_snapshot();
         require(K_VISIBLE &&
                     K_STATS.m_resident_splat_count ==
@@ -252,7 +260,9 @@ int main(int argc, char** argv) try {
             std::lock_guard lock(producer_state.m_mutex);
             const auto K_ADMITTED_REVISION =
                 producer_state.m_samples.empty() ? 1 : producer_state.m_samples.back().m_revision;
-            if (K_VISIBLE->m_revision.m_value == K_ADMITTED_REVISION) break;
+            if (K_VISIBLE->m_revision.m_value == K_ADMITTED_REVISION) {
+                break;
+            }
         }
     }
     producer.join();
@@ -267,16 +277,20 @@ int main(int argc, char** argv) try {
         SDL_PumpEvents();
         const auto K_DRAWN = renderer->draw(K_CAMERA);
         require(K_DRAWN.has_value(), K_DRAWN ? "" : K_DRAWN.error().m_message);
-        for (const auto& sample : renderer->diagnostics().m_completed_timings)
-            if (sample.m_sequence > K_BASELINE.m_submitted_frames)
+        for (const auto& sample : renderer->diagnostics().m_completed_timings) {
+            if (sample.m_sequence > K_BASELINE.m_submitted_frames) {
                 timing_samples.try_emplace(sample.m_sequence, sample);
+            }
+        }
     }
     const auto K_IDLE = renderer->wait_for_idle();
     require(K_IDLE.has_value(), K_IDLE ? "" : K_IDLE.error().m_message);
     const auto K_FINAL = renderer->diagnostics();
-    for (const auto& sample : K_FINAL.m_completed_timings)
-        if (sample.m_sequence > K_BASELINE.m_submitted_frames)
+    for (const auto& sample : K_FINAL.m_completed_timings) {
+        if (sample.m_sequence > K_BASELINE.m_submitted_frames) {
             timing_samples.try_emplace(sample.m_sequence, sample);
+        }
+    }
     std::vector<double> prepare_ms, enqueue_ms, schedule_lag_ms, upload_ms;
     std::uint64_t retries {};
     Json updates = Json::array();
@@ -285,11 +299,11 @@ int main(int argc, char** argv) try {
         enqueue_ms.push_back(sample.m_enqueue_ms);
         schedule_lag_ms.push_back(sample.m_schedule_lag_ms);
         retries += sample.m_would_block_retries;
-        updates.push_back({{"revision", sample.m_revision},
-                           {"prepare_ms", sample.m_prepare_ms},
-                           {"enqueue_ms", sample.m_enqueue_ms},
-                           {"schedule_lag_ms", sample.m_schedule_lag_ms},
-                           {"would_block_retries", sample.m_would_block_retries}});
+        updates.push_back({ { "revision", sample.m_revision },
+                           { "prepare_ms", sample.m_prepare_ms },
+                           { "enqueue_ms", sample.m_enqueue_ms },
+                           { "schedule_lag_ms", sample.m_schedule_lag_ms },
+                           { "would_block_retries", sample.m_would_block_retries } });
     }
     std::size_t host_copy_bytes {}, resident_copy_bytes {};
     for (const auto& [K_SEQUENCE, K_SAMPLE] : timing_samples) {
@@ -297,63 +311,66 @@ int main(int argc, char** argv) try {
         host_copy_bytes += K_SAMPLE.m_host_copy_bytes;
         resident_copy_bytes += K_SAMPLE.m_resident_copy_bytes;
         if (K_SAMPLE.m_gpu_valid &&
-            K_SAMPLE.m_gpu_ms[static_cast<std::size_t>(GpuTimingStage::UPLOAD)] > 0)
+            K_SAMPLE.m_gpu_ms[static_cast<std::size_t>(GpuTimingStage::UPLOAD)] > 0) {
             upload_ms.push_back(
                 K_SAMPLE.m_gpu_ms[static_cast<std::size_t>(GpuTimingStage::UPLOAD)]);
+        }
     }
-    if (renderer->capabilities().m_gpu_timestamps_supported)
+    if (renderer->capabilities().m_gpu_timestamps_supported) {
         require(upload_ms.size() >= producer_state.m_samples.size(),
                 "completed GPU upload timing samples were lost");
+    }
     const auto K_IDLE_WAITS =
         K_FINAL.m_interactive_device_idle_waits - K_BASELINE.m_interactive_device_idle_waits;
-    Json summary {{"scope", "retained real scene with synthetic marker replacements and evictions"},
-                  {"device", renderer->capabilities().m_device_name},
-                  {"width", K_FINAL.m_framebuffer_width},
-                  {"height", K_FINAL.m_framebuffer_height},
-                  {"real_scene_splats", real_splats},
-                  {"scene_content_sha256", K_SCENE_HASH},
-                  {"synthetic_marker_splats", marker.m_splats.size()},
-                  {"scheduled_updates", K_TARGET_COUNT},
-                  {"admitted_updates", producer_state.m_samples.size()},
-                  {"visible_revision", K_ADMITTED_REVISION},
-                  {"failure", producer_state.m_failure},
-                  {"requested_seconds", K_SECONDS},
-                  {"replay_seconds", K_REPLAY_SECONDS},
-                  {"visible_updates_per_second",
-                   static_cast<double>(producer_state.m_samples.size()) / K_REPLAY_SECONDS},
-                  {"submitted_frames", K_FINAL.m_submitted_frames - K_BASELINE.m_submitted_frames},
-                  {"peak_owned_bytes", peak_owned_bytes},
-                  {"validation_errors", K_FINAL.m_validation_errors},
-                  {"interactive_device_idle_waits", K_IDLE_WAITS},
-                  {"resident_reuse_enabled", options.m_reuse_resident_chunks},
-                  {"host_copy_bytes", host_copy_bytes},
-                  {"resident_copy_bytes", resident_copy_bytes},
-                  {"would_block_retries", retries},
-                  {"draw_ms",
-                   {{"p50", percentile(draw_ms, 0.5)},
-                    {"p95", percentile(draw_ms, 0.95)},
-                    {"p99", percentile(draw_ms, 0.99)}}},
-                  {"enqueue_ms",
-                   {{"p50", percentile(enqueue_ms, 0.5)},
-                    {"p95", percentile(enqueue_ms, 0.95)},
-                    {"p99", percentile(enqueue_ms, 0.99)}}},
-                  {"prepare_ms",
-                   {{"p50", percentile(prepare_ms, 0.5)},
-                    {"p95", percentile(prepare_ms, 0.95)},
-                    {"p99", percentile(prepare_ms, 0.99)}}},
-                  {"schedule_lag_ms",
-                   {{"p50", percentile(schedule_lag_ms, 0.5)},
-                    {"p95", percentile(schedule_lag_ms, 0.95)},
-                    {"p99", percentile(schedule_lag_ms, 0.99)}}},
-                  {"gpu_upload_samples", upload_ms.size()},
-                  {"gpu_upload_ms_samples", upload_ms},
-                  {"gpu_timestamp_supported", renderer->capabilities().m_gpu_timestamps_supported},
-                  {"updates", std::move(updates)}};
-    if (!upload_ms.empty())
+    Json summary { { "scope", "retained real scene with synthetic marker replacements and evictions" },
+                  { "device", renderer->capabilities().m_device_name },
+                  { "width", K_FINAL.m_framebuffer_width },
+                  { "height", K_FINAL.m_framebuffer_height },
+                  { "real_scene_splats", real_splats },
+                  { "scene_content_sha256", K_SCENE_HASH },
+                  { "synthetic_marker_splats", marker.m_splats.size() },
+                  { "scheduled_updates", K_TARGET_COUNT },
+                  { "admitted_updates", producer_state.m_samples.size() },
+                  { "visible_revision", K_ADMITTED_REVISION },
+                  { "failure", producer_state.m_failure },
+                  { "requested_seconds", K_SECONDS },
+                  { "replay_seconds", K_REPLAY_SECONDS },
+                  { "visible_updates_per_second",
+                   static_cast<double>(producer_state.m_samples.size()) / K_REPLAY_SECONDS },
+                  { "submitted_frames", K_FINAL.m_submitted_frames - K_BASELINE.m_submitted_frames },
+                  { "peak_owned_bytes", peak_owned_bytes },
+                  { "validation_errors", K_FINAL.m_validation_errors },
+                  { "interactive_device_idle_waits", K_IDLE_WAITS },
+                  { "resident_reuse_enabled", options.m_reuse_resident_chunks },
+                  { "host_copy_bytes", host_copy_bytes },
+                  { "resident_copy_bytes", resident_copy_bytes },
+                  { "would_block_retries", retries },
+                  { "draw_ms",
+                   { { "p50", percentile(draw_ms, 0.5) },
+                    { "p95", percentile(draw_ms, 0.95) },
+                    { "p99", percentile(draw_ms, 0.99) } } },
+                  { "enqueue_ms",
+                   { { "p50", percentile(enqueue_ms, 0.5) },
+                    { "p95", percentile(enqueue_ms, 0.95) },
+                    { "p99", percentile(enqueue_ms, 0.99) } } },
+                  { "prepare_ms",
+                   { { "p50", percentile(prepare_ms, 0.5) },
+                    { "p95", percentile(prepare_ms, 0.95) },
+                    { "p99", percentile(prepare_ms, 0.99) } } },
+                  { "schedule_lag_ms",
+                   { { "p50", percentile(schedule_lag_ms, 0.5) },
+                    { "p95", percentile(schedule_lag_ms, 0.95) },
+                    { "p99", percentile(schedule_lag_ms, 0.99) } } },
+                  { "gpu_upload_samples", upload_ms.size() },
+                  { "gpu_upload_ms_samples", upload_ms },
+                  { "gpu_timestamp_supported", renderer->capabilities().m_gpu_timestamps_supported },
+                  { "updates", std::move(updates) } };
+    if (!upload_ms.empty()) {
         summary["gpu_upload_ms"] = { { "p50", percentile(upload_ms, 0.5) },
                                     { "p95", percentile(upload_ms, 0.95) },
                                     { "p99", percentile(upload_ms, 0.99) },
                                     { "max", *std::ranges::max_element(upload_ms) } };
+    }
     summary["local_p6_thresholds_met"] =
         K_COMPLETE && summary["enqueue_ms"]["p95"].get<double>() <= 0.5 && !upload_ms.empty() &&
         *std::ranges::max_element(upload_ms) <= 2.0 && K_IDLE_WAITS == 0 &&

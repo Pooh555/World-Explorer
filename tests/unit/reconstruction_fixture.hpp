@@ -43,7 +43,7 @@ struct reconstruction_fixture {
         source_hash = sha256_file(job.m_video, 1024).value();
         std::ofstream(stage / "training/images/frame.png") << "diagnostic image bytes";
         image_hash = sha256_file(stage / "training/images/frame.png", 1024).value();
-        for (const auto* name : {"images.bin", "points3D.bin"})
+        for (const auto* name : { "images.bin", "points3D.bin" })
             std::ofstream(stage / "training/sparse" / name) << "diagnostic model bytes";
         test::write_training_camera(stage / "training/sparse/cameras.bin",
                                     test::training_camera_bytes());
@@ -58,15 +58,15 @@ struct reconstruction_fixture {
                "0 0 2 0 0 0 0 -2 -2 -2 1 0 0 0\n";
         save_reconstruction_json(
             job.m_fit_directory / "result.json",
-            {{"schema_version", 1},
-             {"status", "complete"},
-             {"recipe", "local_gsplat_v1"},
-             {"identity", identity},
-             {"source_sha256", source_hash},
-             {"steps", 7000},
-             {"splats", 1},
-             {"ply", "assets/fit.ply"},
-             {"ply_sha256", sha256_file(job.m_fit_directory / "assets/fit.ply", 65536).value()}});
+            { { "schema_version", 1 },
+             { "status", "complete" },
+             { "recipe", "local_gsplat_v1" },
+             { "identity", identity },
+             { "source_sha256", source_hash },
+             { "steps", 7000 },
+             { "splats", 1 },
+             { "ply", "assets/fit.ply" },
+             { "ply_sha256", sha256_file(job.m_fit_directory / "assets/fit.ply", 65536).value() } });
         const auto dataset = poses.load().value();
         nlohmann::json frames = nlohmann::json::array();
         std::filesystem::remove(stage / "training/images/frame.png");
@@ -76,31 +76,31 @@ struct reconstruction_fixture {
             const auto& transform = pose->m_submap_from_camera;
             const auto q = transform.m_rotation;
             const Quatd inverse { q.m_w, -q.m_x, -q.m_y, -q.m_z };
-            const auto x = rotate(inverse, {1, 0, 0});
-            const auto y = rotate(inverse, {0, -1, 0});
-            const auto z = rotate(inverse, {0, 0, -1});
+            const auto x = rotate(inverse, { 1, 0, 0 });
+            const auto y = rotate(inverse, { 0, -1, 0 });
+            const auto z = rotate(inverse, { 0, 0, -1 });
             const auto t = rotate(inverse, transform.m_translation) * -1;
-            frames.push_back({{"name", name},
-                              {"sha256", image_hash},
-                              {"height", 128},
-                              {"width", 128},
-                              {"original_height", 128},
-                              {"original_width", 128},
-                              {"view",
-                               {{x.m_x, y.m_x, z.m_x, t.m_x},
-                                {x.m_y, y.m_y, z.m_y, t.m_y},
-                                {x.m_z, y.m_z, z.m_z, t.m_z},
-                                {0, 0, 0, 1}}},
-                              {"intrinsic", {{200, 0, 64}, {0, 200, 64}, {0, 0, 1}}}});
+            frames.push_back({ { "name", name },
+                              { "sha256", image_hash },
+                              { "height", 128 },
+                              { "width", 128 },
+                              { "original_height", 128 },
+                              { "original_width", 128 },
+                              { "view",
+                               { { x.m_x, y.m_x, z.m_x, t.m_x },
+                                { x.m_y, y.m_y, z.m_y, t.m_y },
+                                { x.m_z, y.m_z, z.m_z, t.m_z },
+                                { 0, 0, 0, 1 } } },
+                              { "intrinsic", { { 200, 0, 64 }, { 0, 200, 64 }, { 0, 0, 1 } } } });
         }
         poses.inventory(stage);
         save_reconstruction_json(job.m_fit_directory / "input_manifest.json",
-                                 {{"recipe", "local_gsplat_v1"},
-                                  {"source_sha256", source_hash},
-                                  {"steps", 7000},
-                                  {"max_image_dimension", 1280},
-                                  {"max_splats", 2000000},
-                                  {"dataset", {{"scene_scale", 2}, {"frames", frames}}}});
+                                 { { "recipe", "local_gsplat_v1" },
+                                  { "source_sha256", source_hash },
+                                  { "steps", 7000 },
+                                  { "max_image_dimension", 1280 },
+                                  { "max_splats", 2000000 },
+                                  { "dataset", { { "scene_scale", 2 }, { "frames", frames } } } });
     }
 
     ~reconstruction_fixture() {
@@ -113,28 +113,29 @@ struct reconstruction_fixture {
         std::filesystem::create_directory(directory);
         save_reconstruction_json(
             directory / "result.json",
-            {{"schema_version", 1},
-             {"source",
-              {{"sha256", source_hash}, {"bytes", std::filesystem::file_size(job.m_video)}}},
-             {"stream",
-              {{"codec_type", "video"},
-               {"codec_name", "synthetic_diagnostic"},
-               {"width", 2},
-               {"height", 1},
-               {"time_base", "1/30"},
-               {"color_transfer", "bt709"}}},
-             {"duration_seconds", 1.},
-             {"rotation_degrees", -90},
-             {"audio", "ignored"},
-             {"scale_status", "ARBITRARY"},
-             {"color_domain", "srgb"}});
+            { { "schema_version", 1 },
+             { "source",
+              { { "sha256", source_hash }, { "bytes", std::filesystem::file_size(job.m_video) } } },
+             { "stream",
+              { { "codec_type", "video" },
+               { "codec_name", "synthetic_diagnostic" },
+               { "width", 2 },
+               { "height", 1 },
+               { "time_base", "1/30" },
+               { "color_transfer", "bt709" } } },
+             { "duration_seconds", 1. },
+             { "rotation_degrees", -90 },
+             { "audio", "ignored" },
+             { "scale_status", "ARBITRARY" },
+             { "color_domain", "srgb" } });
         poses.inventory(directory);
         job.m_inspection = RetainedVideoInspection {
-            directory, sha256_file(directory / "completion.json", 65536).value(), 1};
+            directory, sha256_file(directory / "completion.json", 65536).value(), 1 };
     }
 
     RetainedVideoInspection& inspection() {
-        if (!job.m_inspection) throw std::logic_error("Fixture inspection has not been prepared");
+        if (!job.m_inspection)
+            throw std::logic_error("Fixture inspection has not been prepared");
         return *job.m_inspection;
     }
 
@@ -142,23 +143,23 @@ struct reconstruction_fixture {
         const auto request = root / "request.json";
         const auto& selected = inspection();
         save_reconstruction_json(request,
-                                 {{"schema_version", 2},
-                                  {"recipe", "local_gsplat_v1"},
-                                  {"action", "reuse_completed"},
-                                  {"pose_action", "adopt_completed"},
-                                  {"video", path_utf8(job.m_video)},
-                                  {"pose_job", path_utf8(job.m_pose_job)},
-                                  {"fit_directory", path_utf8(job.m_fit_directory)},
-                                  {"scene_output", path_utf8(job.m_scene_output)},
-                                  {"steps", job.m_steps},
-                                  {"max_image_dimension", job.m_max_image_dimension},
-                                  {"max_splats", job.m_max_splats},
-                                  {"completed_fit_identity", job.m_completed_fit_identity},
-                                  {"inspection",
-                                   {{"action", "adopt_completed"},
-                                    {"stage", path_utf8(selected.m_stage)},
-                                    {"completion_sha256", selected.m_completion_sha256},
-                                    {"minimum_free_bytes", selected.m_minimum_free_bytes}}}});
+                                 { { "schema_version", 2 },
+                                  { "recipe", "local_gsplat_v1" },
+                                  { "action", "reuse_completed" },
+                                  { "pose_action", "adopt_completed" },
+                                  { "video", path_utf8(job.m_video) },
+                                  { "pose_job", path_utf8(job.m_pose_job) },
+                                  { "fit_directory", path_utf8(job.m_fit_directory) },
+                                  { "scene_output", path_utf8(job.m_scene_output) },
+                                  { "steps", job.m_steps },
+                                  { "max_image_dimension", job.m_max_image_dimension },
+                                  { "max_splats", job.m_max_splats },
+                                  { "completed_fit_identity", job.m_completed_fit_identity },
+                                  { "inspection",
+                                   { { "action", "adopt_completed" },
+                                    { "stage", path_utf8(selected.m_stage) },
+                                    { "completion_sha256", selected.m_completion_sha256 },
+                                    { "minimum_free_bytes", selected.m_minimum_free_bytes } } } });
         return request;
     }
 
@@ -172,15 +173,15 @@ struct reconstruction_fixture {
             sha256_file(inspection().m_stage / "completion.json", 65536).value();
         job.m_pose_job = root / "fresh poses";
         job.m_fresh_poses =
-            FreshPoseConfiguration {{root / "pose worker.py", WE_TEST_PYTHON}, WE_TEST_PYTHON};
+            FreshPoseConfiguration { { root / "pose worker.py", WE_TEST_PYTHON }, WE_TEST_PYTHON };
         test::stage_worker(root / "pose worker.py", poses, mode);
         if (automatic) {
             test::stage_worker(root / "decode worker.py", poses);
             job.m_automatic_decode = AutomaticVideoDecode {
-                root / "decoded video", {root / "decode worker.py", WE_TEST_PYTHON}};
+                root / "decoded video", { root / "decode worker.py", WE_TEST_PYTHON } };
         } else
             job.m_selected_decode = RetainedVideoDecode {
-                poses.decoded, sha256_file(poses.decoded / "completion.json", 65536).value()};
+                poses.decoded, sha256_file(poses.decoded / "completion.json", 65536).value() };
     }
 };
 

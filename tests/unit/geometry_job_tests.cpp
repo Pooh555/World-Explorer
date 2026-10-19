@@ -2,6 +2,9 @@
 #include "world_explorer/core/asset_files.hpp"
 #include "world_explorer/core/hash.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+
 #include <chrono>
 #include <cstddef>
 #include <filesystem>
@@ -9,9 +12,6 @@
 #include <span>
 #include <stop_token>
 #include <string>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
 
 using namespace world_explorer;
 
@@ -21,11 +21,15 @@ struct GeometryDirectory {
     std::filesystem::path m_path {
         std::filesystem::temp_directory_path() /
         ("we-geometry-" +
-         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))};
+         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())) };
 
-    GeometryDirectory() { std::filesystem::create_directories(m_path); }
+    GeometryDirectory() {
+        std::filesystem::create_directories(m_path);
+    }
 
-    ~GeometryDirectory() { std::filesystem::remove_all(m_path); }
+    ~GeometryDirectory() {
+        std::filesystem::remove_all(m_path);
+    }
 };
 
 std::string save_request(const std::filesystem::path& path, const std::string& text) {

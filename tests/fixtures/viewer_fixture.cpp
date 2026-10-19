@@ -3,19 +3,21 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
-
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
 namespace {
 
 void require(bool condition, const std::string& message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
 }
 
 }  // namespace
@@ -36,38 +38,40 @@ int main(int argc, char** argv) try {
     // Include the license and every normal bundle asset; no machine-local paths.
     for (const auto& entry : std::filesystem::recursive_directory_iterator(K_OUTPUT)) {
         require(!entry.is_symlink(), "unexpected link in generated fixture");
-        if (!entry.is_regular_file()) continue;
+        if (!entry.is_regular_file()) {
+            continue;
+        }
         const auto K_HASH = sha256_file(entry.path(), 128uz * 1024 * 1024);
         require(K_HASH.has_value(), K_HASH ? "" : K_HASH.error().m_message);
-        assets.push_back({{"path", entry.path().lexically_relative(K_OUTPUT).generic_string()},
-                          {"bytes", entry.file_size()},
-                          {"sha256", *K_HASH}});
+        assets.push_back({ { "path", entry.path().lexically_relative(K_OUTPUT).generic_string() },
+                          { "bytes", entry.file_size() },
+                          { "sha256", *K_HASH } });
     }
     std::sort(assets.begin(), assets.end(), [](const auto& a, const auto& b) {
         return a.at("path").template get<std::string>() < b.at("path").template get<std::string>();
     });
     const auto K_CAMERA = portable_viewer_camera();
-    nlohmann::json profile {{"schema", 1},
-                            {"label", "synthetic portable viewer fixture; not a reconstruction"},
-                            {"fixture", K_SCENE->m_provenance.at("fixture")},
-                            {"asset_license", "MIT"},
-                            {"scene_content_sha256", K_CONTENT_HASH},
-                            {"splat_count", K_VIEWER_FIXTURE_SPLATS},
-                            {"chunks", 4},
-                            {"sh_degree", 3},
-                            {"width", K_VIEWER_FIXTURE_WIDTH},
-                            {"height", K_VIEWER_FIXTURE_HEIGHT},
-                            {"camera",
-                             {{"position", {0, 0, 12}},
-                              {"right", {1, 0, 0}},
-                              {"down", {0, -1, 0}},
-                              {"forward", {0, 0, -1}},
-                              {"intrinsics", {900, 900, 639.5, 359.5}},
-                              {"near", K_CAMERA.m_near_plane},
-                              {"far", K_CAMERA.m_far_plane}}},
-                            {"scale", "ARBITRARY"},
-                            {"collision", "UNAVAILABLE"},
-                            {"assets", assets}};
+    nlohmann::json profile { { "schema", 1 },
+                            { "label", "synthetic portable viewer fixture; not a reconstruction" },
+                            { "fixture", K_SCENE->m_provenance.at("fixture") },
+                            { "asset_license", "MIT" },
+                            { "scene_content_sha256", K_CONTENT_HASH },
+                            { "splat_count", K_VIEWER_FIXTURE_SPLATS },
+                            { "chunks", 4 },
+                            { "sh_degree", 3 },
+                            { "width", K_VIEWER_FIXTURE_WIDTH },
+                            { "height", K_VIEWER_FIXTURE_HEIGHT },
+                            { "camera",
+                             { { "position", { 0, 0, 12 } },
+                              { "right", { 1, 0, 0 } },
+                              { "down", { 0, -1, 0 } },
+                              { "forward", { 0, 0, -1 } },
+                              { "intrinsics", { 900, 900, 639.5, 359.5 } },
+                              { "near", K_CAMERA.m_near_plane },
+                              { "far", K_CAMERA.m_far_plane } } },
+                            { "scale", "ARBITRARY" },
+                            { "collision", "UNAVAILABLE" },
+                            { "assets", assets } };
     std::ofstream stream(K_OUTPUT / "fixture.json.partial", std::ios::binary);
     stream << profile.dump(2) << '\n';
     stream.close();

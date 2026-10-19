@@ -1,13 +1,13 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/render_core/update_sink.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+
 #include <array>
 #include <barrier>
 #include <optional>
 #include <thread>
 #include <utility>
-
-#include <catch2/catch_test_macros.hpp>
 
 using namespace world_explorer;
 
@@ -18,7 +18,7 @@ constexpr std::size_t K_PRODUCERS { 4uz };
 SceneDeltaBatch batch(std::uint64_t revision, std::uint64_t operation = 0) {
     auto scene = std::make_shared<SceneState>(*make_diagnostic_scene());
     scene->m_revision = { revision };
-    auto result = make_snapshot_batch(scene, {operation ? operation : revision}).value();
+    auto result = make_snapshot_batch(scene, { operation ? operation : revision }).value();
     result.m_base_revision = { revision - 1 };
     result.m_full_snapshot = revision == 1;
     return result;
@@ -31,7 +31,9 @@ void publish(RendererUpdateSink& sink, const AdmittedUpdate& active) {
 }
 
 AdmittedUpdate require_next(RendererUpdateSink& sink) {
-    if (auto active = sink.take_next()) return std::move(*active);
+    if (auto active = sink.take_next()) {
+        return std::move(*active);
+    }
     FAIL("expected a queued renderer update");
     return {};
 }
@@ -51,14 +53,17 @@ auto race_admission(RendererUpdateSink& sink,
     std::array<Result<UpdateTicket>, K_PRODUCERS> receipts;
     std::barrier start(static_cast<std::ptrdiff_t>(K_PRODUCERS + 1));
     std::array<std::jthread, K_PRODUCERS> producers;
-    for (std::size_t index { 0uz }; index < K_PRODUCERS; ++index)
+    for (std::size_t index { 0uz }; index < K_PRODUCERS; ++index) {
         producers[index] = std::jthread([&, index] {
             start.arrive_and_wait();
             receipts[index] = sink.enqueue(candidates[index]);
         });
+    }
     start.arrive_and_wait();
     consume();
-    for (auto& producer : producers) producer.join();
+    for (auto& producer : producers) {
+        producer.join();
+    }
     return receipts;
 }
 
@@ -84,7 +89,7 @@ void check_preserved(const SceneDeltaBatch& candidate, const SceneDeltaBatch& or
 TEST_CASE("concurrent renderer producers share one receipt while the render owner consumes",
           "[render_threads]") {
     const auto K_BYTES = validate_scene(*make_diagnostic_scene()).value();
-    RendererUpdateSink sink({K_BYTES * 3, 250000, 1});
+    RendererUpdateSink sink({ K_BYTES * 3, 250000, 1 });
     initialize(sink);
     const auto K_ORIGINAL_VISIBLE = sink.visible_snapshot();
     const auto K_ORIGINAL_HASH = scene_content_hash(*K_ORIGINAL_VISIBLE);
@@ -98,23 +103,29 @@ TEST_CASE("concurrent renderer producers share one receipt while the render owne
             sink.retire_completed(revision - 1);
             const auto K_VISIBLE = sink.visible_snapshot();
             CHECK(K_VISIBLE);
-            if (K_VISIBLE) CHECK(K_VISIBLE->m_revision.m_value == revision - 1);
+            if (K_VISIBLE) {
+                CHECK(K_VISIBLE->m_revision.m_value == revision - 1);
+            }
         });
         const auto K_ADMITTED = active ? std::move(*active) : require_next(sink);
         std::size_t moved {};
         for (std::size_t index { 0uz }; index < K_PRODUCERS; ++index) {
             REQUIRE(K_RECEIPTS[index]);
             CHECK(*K_RECEIPTS[index] == K_ADMITTED.m_ticket);
-            if (!candidates[index].m_snapshot) ++moved;
-            else check_preserved(candidates[index], K_ORIGINAL);
+            if (!candidates[index].m_snapshot) {
+                ++moved;
+            } else {
+                check_preserved(candidates[index], K_ORIGINAL);
+            }
         }
         CHECK(moved == 1);
         CHECK_FALSE(sink.take_next());
         CHECK(sink.queued_bytes() == K_BYTES);
         CHECK(K_ADMITTED.m_batch.m_snapshot == K_ORIGINAL.m_snapshot);
         auto retry_candidates = copies(K_ORIGINAL);
-        const auto K_RETRIES =
-            race_admission(sink, retry_candidates, [&] { publish(sink, K_ADMITTED); });
+        const auto K_RETRIES = race_admission(sink, retry_candidates, [&] {
+            publish(sink, K_ADMITTED);
+        });
         for (std::size_t index { 0uz }; index < K_PRODUCERS; ++index) {
             REQUIRE(K_RETRIES[index]);
             CHECK(*K_RETRIES[index] == K_ADMITTED.m_ticket);
@@ -126,7 +137,7 @@ TEST_CASE("concurrent renderer producers share one receipt while the render owne
         CHECK(scene_content_hash(*K_ORIGINAL_VISIBLE) == K_ORIGINAL_HASH);
     }
     sink.retire_completed(33);
-    CHECK(sink.set_residency_budget({K_BYTES, 250000, 1}));
+    CHECK(sink.set_residency_budget({ K_BYTES, 250000, 1 }));
 }
 
 TEST_CASE("concurrent renderer cancellation preserves admitted or cancelled retry identity",
@@ -149,11 +160,16 @@ TEST_CASE("concurrent renderer cancellation preserves admitted or cancelled retr
         for (std::size_t index { 0uz }; index < K_PRODUCERS; ++index) {
             REQUIRE(K_RECEIPTS[index]);
             CHECK(*K_RECEIPTS[index] == *K_RECEIPTS[0]);
-            if (!candidates[index].m_snapshot) ++moved;
-            else check_preserved(candidates[index], K_ORIGINAL);
+            if (!candidates[index].m_snapshot) {
+                ++moved;
+            } else {
+                check_preserved(candidates[index], K_ORIGINAL);
+            }
         }
         CHECK(moved == 1);
-        if (!active) active = sink.take_next();
+        if (!active) {
+            active = sink.take_next();
+        }
         const auto K_PROGRESS = sink.query_progress(*K_RECEIPTS[0]);
         REQUIRE(K_PROGRESS);
         if (active) {
@@ -183,7 +199,7 @@ TEST_CASE("concurrent renderer backpressure preserves callers through pending ca
     const auto K_BYTES = validate_scene(*make_diagnostic_scene()).value();
     for (unsigned iteration { 0 }; iteration < 16; ++iteration) {
         CAPTURE(iteration);
-        RendererUpdateSink sink({K_BYTES * 3, 250000, 1});
+        RendererUpdateSink sink({ K_BYTES * 3, 250000, 1 });
         initialize(sink);
         const auto K_VISIBLE = sink.visible_snapshot();
         auto second = batch(2);
@@ -222,6 +238,6 @@ TEST_CASE("concurrent renderer backpressure preserves callers through pending ca
         CHECK(sink.visible_snapshot() == K_ACTIVE.m_batch.m_snapshot);
         CHECK(sink.queued_bytes() == 0);
         sink.retire_completed(2);
-        CHECK(sink.set_residency_budget({K_BYTES, 250000, 1}));
+        CHECK(sink.set_residency_budget({ K_BYTES, 250000, 1 }));
     }
 }

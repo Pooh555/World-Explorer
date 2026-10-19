@@ -25,6 +25,18 @@ from audit_worker_environment import (
 )
 
 
+__all__ = [
+    "checked_tensor_loading",
+    "load_cpu_metrics",
+    "main",
+    "offline_network",
+    "reject_constant",
+    "run_parity",
+    "unique_object",
+    "verify_manifest",
+]
+
+
 def unique_object(pairs):
     result = {}
     for key, value in pairs:
@@ -77,7 +89,7 @@ def verify_manifest(path, prefix, sites, requirements, ssim, weights):
 def offline_network():
     original = socket.socket
 
-    class offline_socket(original):
+    class OfflineSocket(original):
         def connect(self, address):
             if self.family in (socket.AF_INET, socket.AF_INET6):
                 raise RuntimeError(
@@ -90,7 +102,7 @@ def offline_network():
                 raise RuntimeError("Metric parity runs offline; no network fallback")
             return super().connect_ex(address)
 
-    socket.socket = offline_socket
+    socket.socket = OfflineSocket
     try:
         yield
     finally:

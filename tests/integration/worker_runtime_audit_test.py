@@ -424,7 +424,7 @@ class RuntimeAuditTests(unittest.TestCase):
     def test_command_runner_bounds_output_exit_status_and_retains_literal_arguments(
         self,
     ):
-        runner = audit.commands()
+        runner = audit.CommandRunner()
         value = "$() `literal`"
         result = runner.run(
             [sys.executable, "-c", "import sys; print(sys.argv[1])", value]

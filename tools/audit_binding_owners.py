@@ -13,7 +13,7 @@ from pathlib import Path, PurePosixPath
 import re
 import sys
 
-from audit_runtime_dependencies import commands
+from audit_runtime_dependencies import CommandRunner
 from audit_worker_environment import file_digest, publish_receipt
 import check_backend_bindings as mappings
 from check_dependency_manifest import (
@@ -22,6 +22,26 @@ from check_dependency_manifest import (
     receipt_packages,
     safe_relative,
 )
+
+__all__ = [
+    "FIELDS",
+    "GAPS",
+    "MAX_EVIDENCE",
+    "MAX_GROUPS",
+    "MAX_NODES",
+    "MAX_NOTICES",
+    "MAX_NOTICE_BYTES",
+    "SCOPE",
+    "SOURCES",
+    "capture",
+    "check_summary",
+    "main",
+    "package_fields",
+    "public_fields",
+    "reference",
+    "validate_file_binding",
+    "verify_reference",
+]
 
 SCOPE = "installed ownership/notices for baseline_unseen mapped ELF files; not archive, bundled-term or rights closure"
 MAX_NODES = 512
@@ -123,7 +143,7 @@ def package_fields(name, output):
 
 def capture(root, mapping_text, selection_text, runner=None):
     root = root.resolve(strict=True)
-    runner = runner or commands()
+    runner = runner or CommandRunner()
     watched = {}
 
     def snapshot(path):

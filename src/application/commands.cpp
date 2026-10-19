@@ -16,13 +16,16 @@ Result<int> run_worker(const WorkerConfiguration& configuration,
                        const std::stop_token& stop,
                        const LogCallback& log,
                        const WorkerEventCallback& observed) {
-    if (configuration.m_script.empty() || !std::filesystem::is_regular_file(configuration.m_script))
+    if (configuration.m_script.empty() ||
+        !std::filesystem::is_regular_file(configuration.m_script)) {
         return fail(ErrorCode::NOT_FOUND, "Worker script not found; configure --worker-script");
-    if (configuration.m_framed_protocol)
+    }
+    if (configuration.m_framed_protocol) {
         return execute_worker_protocol(
             configuration.m_python, configuration.m_script, arguments, stop, log, observed);
+    }
     std::vector<std::string> command {
-        configuration.m_python, "-u", configuration.m_script.string()};
+        configuration.m_python, "-u", configuration.m_script.string() };
     command.insert(command.end(), arguments.begin(), arguments.end());
     return run_process(command, stop, log);
 }

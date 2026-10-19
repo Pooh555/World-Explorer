@@ -9,22 +9,33 @@ using detail::check;
 using detail::structure;
 
 MeshTarget::~MeshTarget() {
-    if (m_framebuffer) vkDestroyFramebuffer(m_device, m_framebuffer, nullptr);
-    if (m_color_view) vkDestroyImageView(m_device, m_color_view, nullptr);
-    if (m_depth_view) vkDestroyImageView(m_device, m_depth_view, nullptr);
+    if (m_framebuffer) {
+        vkDestroyFramebuffer(m_device, m_framebuffer, nullptr);
+    }
+    if (m_color_view) {
+        vkDestroyImageView(m_device, m_color_view, nullptr);
+    }
+    if (m_depth_view) {
+        vkDestroyImageView(m_device, m_depth_view, nullptr);
+    }
 }
 
 std::size_t MeshTarget::allocation_bytes() const {
     return static_cast<std::size_t>(m_color.m_allocation_bytes + m_depth.m_allocation_bytes);
 }
 
-MeshPass::MeshPass(vulkan_device& device) : m_backend(device), m_device(device.device()) {
-}
+MeshPass::MeshPass(vulkan_device& device) : m_backend(device), m_device(device.device()) { }
 
 MeshPass::~MeshPass() {
-    if (m_pipeline) vkDestroyPipeline(m_device, m_pipeline, nullptr);
-    if (m_layout) vkDestroyPipelineLayout(m_device, m_layout, nullptr);
-    if (m_pass) vkDestroyRenderPass(m_device, m_pass, nullptr);
+    if (m_pipeline) {
+        vkDestroyPipeline(m_device, m_pipeline, nullptr);
+    }
+    if (m_layout) {
+        vkDestroyPipelineLayout(m_device, m_layout, nullptr);
+    }
+    if (m_pass) {
+        vkDestroyRenderPass(m_device, m_pass, nullptr);
+    }
 }
 
 void MeshPass::initialize(const std::filesystem::path& shaders,
@@ -36,12 +47,13 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
             K_FORMAT == VK_FORMAT_D32_SFLOAT
                 ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
                 : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_TRANSFER_SRC_BIT;
-        if ((properties.optimalTilingFeatures & K_REQUIRED) != K_REQUIRED)
+        if ((properties.optimalTilingFeatures & K_REQUIRED) != K_REQUIRED) {
             throw std::runtime_error(
                 "Mesh diagnostic requires FP32 color and D32 depth attachments");
+        }
     }
     const std::array<VkAttachmentDescription, 2> K_ATTACHMENTS {
-        {{0,
+        { { 0,
           VK_FORMAT_R32G32B32A32_SFLOAT,
           VK_SAMPLE_COUNT_1_BIT,
           VK_ATTACHMENT_LOAD_OP_CLEAR,
@@ -49,8 +61,8 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
           VK_ATTACHMENT_LOAD_OP_DONT_CARE,
           VK_ATTACHMENT_STORE_OP_DONT_CARE,
           VK_IMAGE_LAYOUT_UNDEFINED,
-          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL},
-         {0,
+          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL },
+         { 0,
           VK_FORMAT_D32_SFLOAT,
           VK_SAMPLE_COUNT_1_BIT,
           VK_ATTACHMENT_LOAD_OP_CLEAR,
@@ -58,7 +70,7 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
           VK_ATTACHMENT_LOAD_OP_DONT_CARE,
           VK_ATTACHMENT_STORE_OP_DONT_CARE,
           VK_IMAGE_LAYOUT_UNDEFINED,
-          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL}}};
+          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL } } };
     const VkAttachmentReference K_COLOR { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
     const VkAttachmentReference K_DEPTH { 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
     VkSubpassDescription subpass {};
@@ -67,7 +79,7 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
     subpass.pColorAttachments = &K_COLOR;
     subpass.pDepthStencilAttachment = &K_DEPTH;
     const std::array<VkSubpassDependency, 2> K_DEPENDENCIES {
-        {{VK_SUBPASS_EXTERNAL,
+        { { VK_SUBPASS_EXTERNAL,
           0,
           VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
           VkPipelineStageFlags { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT } |
@@ -75,14 +87,14 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
               VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
           VkAccessFlags { VK_ACCESS_MEMORY_READ_BIT } | VK_ACCESS_MEMORY_WRITE_BIT,
           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-          VK_DEPENDENCY_BY_REGION_BIT},
-         {0,
+          VK_DEPENDENCY_BY_REGION_BIT },
+         { 0,
           VK_SUBPASS_EXTERNAL,
           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
           VK_PIPELINE_STAGE_TRANSFER_BIT,
           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
           VK_ACCESS_TRANSFER_READ_BIT,
-          VK_DEPENDENCY_BY_REGION_BIT}}};
+          VK_DEPENDENCY_BY_REGION_BIT } } };
     auto pass = structure<VkRenderPassCreateInfo>(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
     pass.attachmentCount = 2;
     pass.pAttachments = K_ATTACHMENTS.data();
@@ -92,9 +104,9 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
     pass.pDependencies = K_DEPENDENCIES.data();
     check(vkCreateRenderPass(m_device, &pass, nullptr, &m_pass),
           "create mesh diagnostic render pass");
-    const VkPushConstantRange K_PUSH {VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+    const VkPushConstantRange K_PUSH { VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                       0,
-                                      sizeof(detail::push_parameters)};
+                                      sizeof(detail::push_parameters) };
     auto layout =
         structure<VkPipelineLayoutCreateInfo>(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
     layout.setLayoutCount = 1;
@@ -108,27 +120,27 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
     try {
         fragment = m_backend.load_shader_module(shaders, "mesh.frag");
         const std::array<VkPipelineShaderStageCreateInfo, 2> K_STAGES {
-            {{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            { { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
               nullptr,
               0,
               VK_SHADER_STAGE_VERTEX_BIT,
               K_VERTEX,
               "main",
-              nullptr},
-             {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+              nullptr },
+             { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
               nullptr,
               0,
               VK_SHADER_STAGE_FRAGMENT_BIT,
               fragment,
               "main",
-              nullptr}}};
+              nullptr } } };
         const VkVertexInputBindingDescription K_BINDING {
-            0, sizeof(MeshGpuVertex), VK_VERTEX_INPUT_RATE_VERTEX};
+            0, sizeof(MeshGpuVertex), VK_VERTEX_INPUT_RATE_VERTEX };
         const std::array<VkVertexInputAttributeDescription, 4> K_ATTRIBUTES {
-            {{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(MeshGpuVertex, m_position) },
+            { { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(MeshGpuVertex, m_position) },
              { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(MeshGpuVertex, m_normal) },
              { 2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(MeshGpuVertex, m_uv) },
-             { 3, 0, VK_FORMAT_R32G32B32_UINT, offsetof(MeshGpuVertex, m_texture) }}};
+             { 3, 0, VK_FORMAT_R32G32B32_UINT, offsetof(MeshGpuVertex, m_texture) } } };
         auto vertices = structure<VkPipelineVertexInputStateCreateInfo>(
             VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
         vertices.vertexBindingDescriptionCount = 1;
@@ -164,8 +176,8 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
             VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO);
         blending.attachmentCount = 1;
         blending.pAttachments = &blend;
-        const std::array<VkDynamicState, 2> K_DYNAMIC {VK_DYNAMIC_STATE_VIEWPORT,
-                                                       VK_DYNAMIC_STATE_SCISSOR};
+        const std::array<VkDynamicState, 2> K_DYNAMIC { VK_DYNAMIC_STATE_VIEWPORT,
+                                                       VK_DYNAMIC_STATE_SCISSOR };
         auto dynamic = structure<VkPipelineDynamicStateCreateInfo>(
             VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO);
         dynamic.dynamicStateCount = 2;
@@ -188,7 +200,9 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
               "create mesh diagnostic pipeline");
     } catch (...) {
         vkDestroyShaderModule(m_device, K_VERTEX, nullptr);
-        if (fragment) vkDestroyShaderModule(m_device, fragment, nullptr);
+        if (fragment) {
+            vkDestroyShaderModule(m_device, fragment, nullptr);
+        }
         throw;
     }
     vkDestroyShaderModule(m_device, K_VERTEX, nullptr);
@@ -254,8 +268,8 @@ void MeshPass::record(VkCommandBuffer command,
                       MeshDraw draw,
                       VkBuffer captured,
                       VkDescriptorSet scene_descriptor) {
-    const std::array<VkClearValue, 2> K_CLEAR {VkClearValue {.color = {{ .045F, .051F, .063F, 1 }}},
-                                               VkClearValue {.depthStencil = { 1, 0 }}};
+    const std::array<VkClearValue, 2> K_CLEAR { VkClearValue { .color = { { .045F, .051F, .063F, 1 } } },
+                                               VkClearValue { .depthStencil = { 1, 0 } } };
     auto pass = structure<VkRenderPassBeginInfo>(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
     pass.renderPass = m_pass;
     pass.framebuffer = target.m_framebuffer;
@@ -263,13 +277,13 @@ void MeshPass::record(VkCommandBuffer command,
     pass.clearValueCount = 2;
     pass.pClearValues = K_CLEAR.data();
     vkCmdBeginRenderPass(command, &pass, VK_SUBPASS_CONTENTS_INLINE);
-    const VkViewport K_VIEWPORT {0,
+    const VkViewport K_VIEWPORT { 0,
                                  0,
                                  static_cast<float>(target.m_extent.width),
                                  static_cast<float>(target.m_extent.height),
                                  0,
-                                 1};
-    const VkRect2D K_SCISSOR {{ 0, 0 }, target.m_extent};
+                                 1 };
+    const VkRect2D K_SCISSOR { { 0, 0 }, target.m_extent };
     vkCmdSetViewport(command, 0, 1, &K_VIEWPORT);
     vkCmdSetScissor(command, 0, 1, &K_SCISSOR);
     vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);

@@ -7,6 +7,11 @@ import re
 from fractions import Fraction
 
 
+__all__ = [
+    "run",
+]
+
+
 def run(worker, request, *, retained_sparse=None):
     def reject(message, code="BAD_INPUT"):
         raise worker.WorkerError(code, message, stage="journal")

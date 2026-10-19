@@ -2,11 +2,11 @@
 
 #include "vulkan_common.hpp"
 
-#include <optional>
-#include <vector>
-
 #include <SDL3/SDL.h>
 #include <vulkan/vulkan.h>
+
+#include <optional>
+#include <vector>
 
 namespace world_explorer {
 
@@ -32,23 +32,41 @@ class vulkan_swapchain {
     bool create(SDL_Window* window, std::optional<VkExtent2D> expected_extent = std::nullopt);
     void cleanup();
 
-    VkSwapchainKHR swapchain() const noexcept { return swapchain_; }
+    VkSwapchainKHR swapchain() const noexcept {
+        return swapchain_;
+    }
 
-    VkRenderPass render_pass() const noexcept { return render_pass_; }
+    VkRenderPass render_pass() const noexcept {
+        return render_pass_;
+    }
 
-    VkFormat format() const noexcept { return format_; }
+    VkFormat format() const noexcept {
+        return format_;
+    }
 
-    VkExtent2D extent() const noexcept { return extent_; }
+    VkExtent2D extent() const noexcept {
+        return extent_;
+    }
 
-    std::uint32_t minimum_images() const noexcept { return minimum_images_; }
+    std::uint32_t minimum_images() const noexcept {
+        return minimum_images_;
+    }
 
-    bool screenshot_supported() const noexcept { return screenshot_supported_; }
+    bool screenshot_supported() const noexcept {
+        return screenshot_supported_;
+    }
 
-    const std::vector<VkImage>& images() const noexcept { return images_; }
+    const std::vector<VkImage>& images() const noexcept {
+        return images_;
+    }
 
-    const std::vector<VkImageView>& image_views() const noexcept { return views_; }
+    const std::vector<VkImageView>& image_views() const noexcept {
+        return views_;
+    }
 
-    const std::vector<VkFramebuffer>& framebuffers() const noexcept { return framebuffers_; }
+    const std::vector<VkFramebuffer>& framebuffers() const noexcept {
+        return framebuffers_;
+    }
 
     const std::vector<VkSemaphore>& present_semaphores() const noexcept {
         return present_semaphores_;

@@ -21,6 +21,26 @@ import sysconfig
 import tempfile
 from urllib.parse import unquote, urlsplit
 
+__all__ = [
+    "MAX_DISTRIBUTIONS",
+    "MAX_FILES",
+    "MAX_FILE_BYTES",
+    "MAX_METADATA_BYTES",
+    "MAX_TOTAL_BYTES",
+    "audit_distribution",
+    "audit_environment",
+    "bounded_read",
+    "canonical_bytes",
+    "contained",
+    "file_digest",
+    "file_digests",
+    "main",
+    "normalize_name",
+    "publish_receipt",
+    "read_requirements",
+    "record_backbone",
+]
+
 MAX_METADATA_BYTES = 16 * 1024**2
 MAX_FILE_BYTES = 4 * 1024**3
 MAX_TOTAL_BYTES = 32 * 1024**3

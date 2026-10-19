@@ -17,6 +17,29 @@ import stat
 import sys
 import tarfile
 
+__all__ = [
+    "MAX_ARCHIVE",
+    "MAX_EXPANDED",
+    "MAX_JSON",
+    "MAX_MEMBERS",
+    "MAX_NOTICE",
+    "REQUIRED_PROFILES",
+    "archive_notice",
+    "canonical",
+    "check_manifest",
+    "check_runtime_summary",
+    "compare_notice",
+    "contained",
+    "digest",
+    "load_json",
+    "main",
+    "read_file",
+    "receipt_packages",
+    "runtime_file_digest",
+    "runtime_path",
+    "safe_relative",
+]
+
 MAX_JSON = 16 * 1024**2
 MAX_ARCHIVE = 32 * 1024**2
 MAX_NOTICE = 1024**2

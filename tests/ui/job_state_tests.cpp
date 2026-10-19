@@ -3,10 +3,10 @@
 #include "reconstruction_gate.hpp"
 #include "world_explorer/application/scenes.hpp"
 
-#include <stop_token>
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+
+#include <stop_token>
 
 using namespace world_explorer;
 
@@ -59,17 +59,21 @@ TEST_CASE("viewer processing status uses typed progress and clears it at termina
     state.busy = true;
     state.processing = true;
     state.reconstructing = true;
-    state.update_reconstruction_progress({ReconstructionStage::FITTING, 42.655, 1101, 7000});
+    state.update_reconstruction_progress({ ReconstructionStage::FITTING, 42.655, 1101, 7000 });
     CHECK(state.status.find("Fitting appearance: step 1101/7000") != std::string::npos);
     CHECK(state.status.find("ETA unknown") != std::string::npos);
     REQUIRE(state.progress);
-    if (!state.progress) return;
+    if (!state.progress) {
+        return;
+    }
     CHECK(state.progress.value().m_backend_elapsed_seconds == 42.655);
     CHECK(state.log.find("Backend elapsed 42.655") != std::string::npos);
     // A new native stage clears the fitter's previous step and backend timing.
-    state.update_reconstruction_progress({ReconstructionStage::COMPILING, {}, {}, 0});
+    state.update_reconstruction_progress({ ReconstructionStage::COMPILING, {}, {}, 0 });
     REQUIRE(state.progress);
-    if (!state.progress) return;
+    if (!state.progress) {
+        return;
+    }
     CHECK_FALSE(state.progress.value().m_fit_step);
     CHECK_FALSE(state.progress.value().m_backend_elapsed_seconds);
     SECTION("successful publication waits for renderer admission") {
@@ -93,7 +97,7 @@ TEST_CASE("viewer processing status uses typed progress and clears it at termina
         CHECK_FALSE(state.has_pending_work());
     }
     SECTION("published scene with failed viewer load keeps its location") {
-        state.update_reconstruction_progress({ReconstructionStage::LOADING_SCENE, {}, {}, 0});
+        state.update_reconstruction_progress({ ReconstructionStage::LOADING_SCENE, {}, {}, 0 });
         state.complete_reconstruction(fail(ErrorCode::INVALID_DATA, "Bad asset"),
                                       std::filesystem::path { "published.wexplore" });
         CHECK(state.status.find("published.wexplore") != std::string::npos);
@@ -105,7 +109,7 @@ TEST_CASE("viewer processing status uses typed progress and clears it at termina
     CHECK_FALSE(state.reconstructing);
     CHECK_FALSE(state.progress);
     const auto K_TERMINAL = state.status;
-    state.update_reconstruction_progress({ReconstructionStage::FITTING, 99, 1201, 7000});
+    state.update_reconstruction_progress({ ReconstructionStage::FITTING, 99, 1201, 7000 });
     CHECK(state.status == K_TERMINAL);
     CHECK_FALSE(state.progress);
 }
@@ -152,8 +156,9 @@ TEST_CASE("viewer owned job cancels at checked stages and reopens retained publi
     viewer::application_state state;
     state.reconstruction(K_REQUEST,
                          [&](const ReconstructionProgress& value, const std::stop_token& stop) {
-                             if (value.m_stage == K_STAGE && !observed_stop.stop_possible())
+                             if (value.m_stage == K_STAGE && !observed_stop.stop_possible()) {
                                  observed_stop = stop;
+                             }
                              gate.observe(value, stop);
                          });
     REQUIRE(gate.wait_until_reached());
@@ -167,7 +172,9 @@ TEST_CASE("viewer owned job cancels at checked stages and reopens retained publi
     {
         std::lock_guard lock(state.mutex);
         REQUIRE(state.progress);
-        if (state.progress) CHECK(state.progress->m_stage == K_STAGE);
+        if (state.progress) {
+            CHECK(state.progress->m_stage == K_STAGE);
+        }
         CHECK(state.busy);
         CHECK(state.processing);
         CHECK_FALSE(state.loaded);
@@ -239,7 +246,9 @@ TEST_CASE("viewer refuses new jobs until a completed snapshot is admitted", "[ow
     SECTION("reconstruction cannot replace pending status") {
         state.reconstruction(fixture.root / "missing-request");
     }
-    if (state.job.joinable()) state.job.join();
+    if (state.job.joinable()) {
+        state.job.join();
+    }
     CHECK(state.loaded == K_PENDING);
     CHECK(state.started == K_STARTED);
     CHECK(state.status == K_STATUS);

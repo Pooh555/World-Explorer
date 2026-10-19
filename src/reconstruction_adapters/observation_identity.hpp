@@ -25,7 +25,7 @@ inline std::string header_digest(const FramePacket& frame) {
         static_cast<std::uint64_t>(frame.m_pixels.m_row_stride),
         static_cast<std::uint64_t>(frame.m_pixels.m_format),
         static_cast<std::uint64_t>(frame.m_measured_depth.has_value()),
-        static_cast<std::uint64_t>(frame.m_imu_samples.size())};
+        static_cast<std::uint64_t>(frame.m_imu_samples.size()) };
     std::array<std::byte, values.size() * 8> bytes {};
     std::size_t offset {};
     for (auto value : values)

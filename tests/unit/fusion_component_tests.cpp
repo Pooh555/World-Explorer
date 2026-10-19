@@ -1,10 +1,10 @@
 #include "world_explorer/scene_store/fusion_components.hpp"
 
-#include <algorithm>
-#include <limits>
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+
+#include <algorithm>
+#include <limits>
 
 using namespace world_explorer;
 
@@ -13,20 +13,24 @@ namespace {
 ObservedFusionAsset components_fixture() {
     ObservedFusionAsset asset;
     asset.m_voxel_size = 1;
-    for (std::int32_t x { 0 }; x < 2; ++x)
-        for (std::int32_t y { 0 }; y < 2; ++y)
-            for (std::int32_t z { 0 }; z < 2; ++z)
-                asset.m_voxels.push_back({{ x, y, z }, 0, .5F, 2, 6, 1, .125, .25F});
-    for (const auto& position : std::array<std::array<float, 3>, 8> {{{ .25F, .25F, .25F },
+    for (std::int32_t x { 0 }; x < 2; ++x) {
+        for (std::int32_t y { 0 }; y < 2; ++y) {
+            for (std::int32_t z { 0 }; z < 2; ++z) {
+                asset.m_voxels.push_back({ { x, y, z }, 0, .5F, 2, 6, 1, .125, .25F });
+            }
+        }
+    }
+    for (const auto& position : std::array<std::array<float, 3>, 8> { { { .25F, .25F, .25F },
                                                                       { .75F, .25F, .25F },
                                                                       { .25F, .75F, .25F },
                                                                       { 2.25F, .25F, .25F },
                                                                       { 2.75F, .25F, .25F },
                                                                       { 2.25F, .75F, .25F },
                                                                       { .5F, .25F, .25F },
-                                                                      { 9, 9, 9 }}})
-        asset.m_vertices.push_back({position, { 0, 0, 1 }});
-    asset.m_triangles = {{ 0, 1, 2 }, { 3, 4, 5 }, { 0, 6, 1 }};
+                                                                      { 9, 9, 9 } } }) {
+        asset.m_vertices.push_back({ position, { 0, 0, 1 } });
+    }
+    asset.m_triangles = { { 0, 1, 2 }, { 3, 4, 5 }, { 0, 6, 1 } };
     return asset;
 }
 
@@ -74,8 +78,9 @@ TEST_CASE("fusion component audit preserves complete geometry and support denomi
 TEST_CASE("fusion components do not weld positions and do connect shared vertex indices",
           "[fusion-components]") {
     auto asset = components_fixture();
-    for (auto index = 0uz; index < 3uz; ++index)
+    for (auto index = 0uz; index < 3uz; ++index) {
         asset.m_vertices[index + 3uz] = asset.m_vertices[index];
+    }
     const auto K_SEPARATE = analyze_fusion_components(asset);
     REQUIRE(K_SEPARATE);
     REQUIRE(K_SEPARATE->m_components.size() == 2uz);
@@ -92,8 +97,12 @@ TEST_CASE("fusion support stencils retain partial unknown corners and negative f
     auto asset = components_fixture();
     const auto K_NEGATIVE = GENERATE(false, true);
     if (K_NEGATIVE) {
-        for (auto& vertex : asset.m_vertices) vertex.m_position[0] -= 1;
-        for (auto& voxel : asset.m_voxels) --voxel.m_lattice[0];
+        for (auto& vertex : asset.m_vertices) {
+            vertex.m_position[0] -= 1;
+        }
+        for (auto& voxel : asset.m_voxels) {
+            --voxel.m_lattice[0];
+        }
     }
     asset.m_voxels.pop_back();
     for (auto& voxel : asset.m_voxels) {
@@ -120,11 +129,21 @@ TEST_CASE("fusion component audit enforces exact working count and cancellation 
     limits.m_working_bytes = { 80uz + 2uz * sizeof(FusionMeshComponent) };
     REQUIRE(analyze_fusion_components(K_ASSET, limits));
     const auto K_LIMIT = GENERATE(0, 1, 2, 3, 4);
-    if (K_LIMIT == 0) --limits.m_asset.m_max_vertices;
-    if (K_LIMIT == 1) --limits.m_asset.m_max_triangles;
-    if (K_LIMIT == 2) --limits.m_asset.m_max_voxels;
-    if (K_LIMIT == 3) --limits.m_max_components;
-    if (K_LIMIT == 4) --limits.m_working_bytes.m_bytes;
+    if (K_LIMIT == 0) {
+        --limits.m_asset.m_max_vertices;
+    }
+    if (K_LIMIT == 1) {
+        --limits.m_asset.m_max_triangles;
+    }
+    if (K_LIMIT == 2) {
+        --limits.m_asset.m_max_voxels;
+    }
+    if (K_LIMIT == 3) {
+        --limits.m_max_components;
+    }
+    if (K_LIMIT == 4) {
+        --limits.m_working_bytes.m_bytes;
+    }
     const auto K_REJECTED = analyze_fusion_components(K_ASSET, limits);
     REQUIRE(K_REJECTED.has_value() == false);
     CHECK(K_REJECTED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);

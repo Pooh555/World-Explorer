@@ -2,17 +2,17 @@
 #include "events_generated.h"
 #include "world_explorer/reconstruction_adapters/worker_protocol.hpp"
 
-#include <array>
-#include <limits>
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+
+#include <array>
+#include <limits>
 
 using namespace world_explorer;
 
 namespace {
 
-constexpr char K_SESSION[] {"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
+constexpr char K_SESSION[] { "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" };
 
 struct EnvelopeFields {
     std::uint16_t m_major { 2 }, m_minor {};
@@ -52,8 +52,12 @@ std::vector<std::byte> handshake(const HandshakeFields& fields = {},
                                  const EnvelopeFields& header = {}) {
     flatbuffers::FlatBufferBuilder builder;
     std::vector<flatbuffers::Offset<flatbuffers::String>> sensors, devices;
-    for (const auto& sensor : fields.m_sensors) sensors.push_back(builder.CreateString(sensor));
-    for (const auto& device : fields.m_devices) devices.push_back(builder.CreateString(device));
+    for (const auto& sensor : fields.m_sensors) {
+        sensors.push_back(builder.CreateString(sensor));
+    }
+    for (const auto& device : fields.m_devices) {
+        devices.push_back(builder.CreateString(device));
+    }
     const auto K_BODY = wire::Createhandshake(builder,
                                               builder.CreateString(fields.m_backend),
                                               builder.CreateString(fields.m_version),
@@ -100,9 +104,9 @@ std::string path_text(const std::filesystem::path& path) {
 }
 
 struct ArtifactFields {
-    std::string m_path {path_text(std::filesystem::absolute(std::filesystem::temp_directory_path() /
+    std::string m_path { path_text(std::filesystem::absolute(std::filesystem::temp_directory_path() /
                                                             "synthetic-manifest.json")
-                                      .lexically_normal())};
+                                      .lexically_normal()) };
     std::string m_digest { std::string(64, 'a') };
     std::uint64_t m_bytes { 2 };
 };
@@ -112,11 +116,12 @@ std::vector<std::byte> completed(std::string_view stage = "capabilities",
                                  const EnvelopeFields& header = { 2, 0, 2, 1, K_SESSION }) {
     flatbuffers::FlatBufferBuilder builder;
     flatbuffers::Offset<wire::artifact_reference> reference;
-    if (artifact)
+    if (artifact) {
         reference = wire::Createartifact_reference(builder,
                                                    builder.CreateString(artifact->m_path),
                                                    builder.CreateString(artifact->m_digest),
                                                    artifact->m_bytes);
+    }
     const auto K_BODY = wire::Createcompleted(builder, builder.CreateString(stage), reference);
     return envelope(builder, wire::payload::completed, K_BODY.Union(), header);
 }
@@ -145,7 +150,9 @@ void reject(WorkerStreamDecoder& decoder,
             const std::vector<std::byte>& frame,
             ErrorCode expected = ErrorCode::INVALID_DATA) {
     std::size_t callbacks {};
-    const auto K_RESULT = decoder.feed(frame, [&](const WorkerEvent&) { ++callbacks; });
+    const auto K_RESULT = decoder.feed(frame, [&](const WorkerEvent&) {
+        ++callbacks;
+    });
     REQUIRE(!K_RESULT);
     CHECK(K_RESULT.error().m_code == expected);
     CHECK(callbacks == 0);
@@ -284,7 +291,7 @@ TEST_CASE("worker UTF-8 rejects malformed encodings and preserves valid Unicode"
     HandshakeFields fields;
     fields.m_backend = K_MALFORMED;
     reject(invalid, handshake(fields));
-    CHECK(!encode_worker_start(K_SESSION, {K_MALFORMED}));
+    CHECK(!encode_worker_start(K_SESSION, { K_MALFORMED }));
 
     fields.m_backend = "synthetic \xc2\xa9 \xe4\xbd\xa0 \xf0\x9f\x8c\x8d";
     fields.m_devices = std::vector<std::string>(16, "cpu");
@@ -297,8 +304,10 @@ TEST_CASE("worker UTF-8 rejects malformed encodings and preserves valid Unicode"
     if (observed) {
         CHECK(observed->m_backend == fields.m_backend);
         CHECK(observed->m_device_options.size() == 16);
-    } else FAIL("expected a verified handshake");
-    const auto K_ENCODED = encode_worker_start(K_SESSION, {fields.m_backend});
+    } else {
+        FAIL("expected a verified handshake");
+    }
+    const auto K_ENCODED = encode_worker_start(K_SESSION, { fields.m_backend });
     REQUIRE(K_ENCODED);
     const auto* command = control::GetSizePrefixedcommand_envelope(K_ENCODED->data());
     CHECK(command->body_as_start_command()->arguments()->Get(0)->str() == fields.m_backend);
@@ -341,10 +350,11 @@ TEST_CASE("worker acknowledgements bind kind sequence operation and expected lif
         FAIL("unknown acknowledgement mutation");
     }
     auto frame = acknowledgement(fields, header);
-    if (K_FIELD == 2)
+    if (K_FIELD == 2) {
         poison_tag(frame,
                    wire::GetSizePrefixedenvelope(frame.data())->body_as_command_acknowledged(),
                    wire::command_acknowledged::VT_KIND);
+    }
     reject(decoder, frame);
 }
 
@@ -355,7 +365,7 @@ TEST_CASE("worker progress rejects pre-START events nonfinite durations and exce
     CAPTURE(K_FIELD);
     if (K_FIELD == 0) {
         REQUIRE(decoder.feed(handshake(), {}));
-        reject(decoder, progress(0, "synthetic", "early", {2, 0, 1, 1, K_SESSION}));
+        reject(decoder, progress(0, "synthetic", "early", { 2, 0, 1, 1, K_SESSION }));
         return;
     }
     start(decoder);
@@ -447,11 +457,14 @@ TEST_CASE("worker failure may precede START but must have valid typed fields and
         REQUIRE(decoder.feed(failure(), [&](const WorkerEvent& event) {
             observed = std::get<WorkerFailure>(event);
         }));
-        if (observed) CHECK(observed->m_code == "SYNTHETIC_FAILURE");
-        else FAIL("expected the pre-START failure");
+        if (observed) {
+            CHECK(observed->m_code == "SYNTHETIC_FAILURE");
+        } else {
+            FAIL("expected the pre-START failure");
+        }
         CHECK(decoder.finish(2));
         CHECK(!decoder.finish(0));
-        reject(decoder, failure(code, stage, message, recovery, {2, 0, 2, 1, K_SESSION}));
+        reject(decoder, failure(code, stage, message, recovery, { 2, 0, 2, 1, K_SESSION }));
         return;
     }
     default:
@@ -463,13 +476,13 @@ TEST_CASE("worker failure may precede START but must have valid typed fields and
 TEST_CASE("worker verification rejects absent and unknown payloads without callbacks",
           "[worker_validation]") {
     const auto K_FIELD = GENERATE(0uz, 1uz, 2uz, 3uz, 4uz, 5uz, 6uz);
-    constexpr std::array K_KINDS {wire::payload::handshake,
+    constexpr std::array K_KINDS { wire::payload::handshake,
                                   wire::payload::progress,
                                   wire::payload::completed,
                                   wire::payload::failure,
                                   wire::payload::command_acknowledged,
                                   wire::payload::NONE,
-                                  wire::payload::NONE};
+                                  wire::payload::NONE };
     const auto K_KIND = K_KINDS[K_FIELD];
     WorkerStreamDecoder decoder(K_SESSION);
     EnvelopeFields header;
@@ -480,9 +493,10 @@ TEST_CASE("worker verification rejects absent and unknown payloads without callb
     }
     flatbuffers::FlatBufferBuilder builder;
     auto frame = envelope(builder, K_KIND, {}, header);
-    if (K_FIELD == 6)
+    if (K_FIELD == 6) {
         poison_tag(
             frame, wire::GetSizePrefixedenvelope(frame.data()), wire::envelope::VT_BODY_TYPE);
+    }
     reject(decoder, frame);
 }
 
@@ -491,7 +505,7 @@ TEST_CASE("worker duplicate handshake and premature progress fail at the current
     WorkerStreamDecoder decoder(K_SESSION);
     REQUIRE(decoder.feed(handshake(), {}));
     SECTION("second handshake") {
-        reject(decoder, handshake({}, {2, 0, 1, 1, K_SESSION}));
+        reject(decoder, handshake({}, { 2, 0, 1, 1, K_SESSION }));
     }
     SECTION("progress is not a handshake") {
         WorkerStreamDecoder empty(K_SESSION);
@@ -521,12 +535,15 @@ TEST_CASE("worker coalesced frames preserve ordering and exact progress text bou
     WorkerStreamDecoder decoder(K_SESSION);
     decoder.expect_start();
     auto stream = handshake();
-    for (const auto& frame : {acknowledgement(),
+    for (const auto& frame : { acknowledgement(),
                               progress(1.5, std::string(128, 'x'), std::string(65536, 'm')),
-                              completed("capabilities", {}, {2, 0, 3, 1, K_SESSION})})
+                              completed("capabilities", {}, { 2, 0, 3, 1, K_SESSION }) }) {
         stream.insert(stream.end(), frame.begin(), frame.end());
+    }
     std::vector<WorkerEvent> events;
-    REQUIRE(decoder.feed(stream, [&](const WorkerEvent& event) { events.push_back(event); }));
+    REQUIRE(decoder.feed(stream, [&](const WorkerEvent& event) {
+        events.push_back(event);
+    }));
     REQUIRE(events.size() == 4);
     CHECK(std::holds_alternative<WorkerHandshake>(events[0]));
     CHECK(std::holds_alternative<WorkerCommandAcknowledged>(events[1]));
@@ -541,16 +558,17 @@ TEST_CASE("worker event cap admits the last valid terminal and rejects one more 
     const bool K_TERMINAL_AT_LIMIT = GENERATE(true, false);
     WorkerStreamDecoder decoder(K_SESSION);
     start(decoder);
-    for (std::uint64_t sequence { 2 }; sequence < 9999; ++sequence)
+    for (std::uint64_t sequence { 2 }; sequence < 9999; ++sequence) {
         REQUIRE(decoder.feed(
-            progress(0, "synthetic", "bounded replay", {2, 0, sequence, 1, K_SESSION}), {}));
+            progress(0, "synthetic", "bounded replay", { 2, 0, sequence, 1, K_SESSION }), {}));
+    }
     if (K_TERMINAL_AT_LIMIT) {
-        REQUIRE(decoder.feed(completed("capabilities", {}, {2, 0, 9999, 1, K_SESSION}), {}));
+        REQUIRE(decoder.feed(completed("capabilities", {}, { 2, 0, 9999, 1, K_SESSION }), {}));
         CHECK(decoder.finish(0));
     } else {
-        REQUIRE(decoder.feed(progress(0, "synthetic", "bounded replay", {2, 0, 9999, 1, K_SESSION}),
+        REQUIRE(decoder.feed(progress(0, "synthetic", "bounded replay", { 2, 0, 9999, 1, K_SESSION }),
                              {}));
-        reject(decoder, completed("capabilities", {}, {2, 0, 10000, 1, K_SESSION}));
+        reject(decoder, completed("capabilities", {}, { 2, 0, 10000, 1, K_SESSION }));
     }
 }
 
@@ -561,7 +579,7 @@ TEST_CASE("worker command encoding accepts exact budgets and rejects empty or in
     REQUIRE(K_ENCODED);
     const auto* command = control::GetSizePrefixedcommand_envelope(K_ENCODED->data());
     CHECK(command->body_as_start_command()->arguments()->size() == 64);
-    CHECK(!encode_worker_start(K_SESSION, {""}));
+    CHECK(!encode_worker_start(K_SESSION, { "" }));
     CHECK(!encode_worker_cancel(""));
     CHECK(!encode_worker_cancel(std::string(64, 'z')));
     CHECK(!encode_worker_start(std::string(64, 'z'), K_ARGUMENTS));
@@ -586,7 +604,8 @@ TEST_CASE("worker completion preserves Unicode reference metadata at the wire by
             CHECK(result.m_artifact->m_sha256 == fields.m_digest);
             CHECK(result.m_artifact->m_bytes == K_WORKER_MESSAGE_LIMIT);
             received = true;
-        } else FAIL("expected a manifest reference");
+        } else
+            FAIL("expected a manifest reference");
     }));
     CHECK(received);
     CHECK(decoder.finish(0));

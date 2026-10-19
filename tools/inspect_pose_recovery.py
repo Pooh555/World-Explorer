@@ -17,6 +17,15 @@ from colmap.recovery_analysis import analyze_matches, read_matches
 import worker
 
 
+__all__ = [
+    "ROOT",
+    "inspect",
+    "main",
+    "publish",
+    "sha",
+]
+
+
 def sha(path):
     digest = hashlib.sha256()
     with path.open("rb") as stream:

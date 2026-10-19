@@ -19,7 +19,7 @@ from pilot import digest
 
 
 @unittest.skipUnless(importlib.util.find_spec("numpy"), "Requires isolated NumPy")
-class visibility_test(unittest.TestCase):
+class VisibilityTest(unittest.TestCase):
     def fixture(self):
         import numpy as np
 
@@ -194,7 +194,7 @@ class visibility_test(unittest.TestCase):
 @unittest.skipUnless(
     importlib.util.find_spec("pycolmap"), "Requires isolated COLMAP/Pillow"
 )
-class cached_sources_test(unittest.TestCase):
+class CachedSourcesTest(unittest.TestCase):
     def setUp(self):
         import pycolmap
 
@@ -211,7 +211,7 @@ class cached_sources_test(unittest.TestCase):
         workspace = root / "workspace"
         for folder in ("sparse", "images", "stereo/depth_maps"):
             (workspace / folder).mkdir(parents=True, exist_ok=True)
-        views, rows = visibility_test().fixture()
+        views, rows = VisibilityTest().fixture()
         (workspace / "sparse/cameras.bin").write_bytes(
             struct.pack("<QiiQQ4d", 1, 1, 1, 128, 96, 93, 117, 62.75, 44.25)
         )

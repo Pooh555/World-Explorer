@@ -3,14 +3,14 @@
 #include "world_explorer/scene_store/bundle.hpp"
 #include "world_explorer/scene_store/mesh_texture.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
+
 #include <bit>
 #include <chrono>
 #include <fstream>
 #include <limits>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
@@ -21,14 +21,14 @@ SceneChunk chunk_fixture(bool quad = false) {
     chunk.m_id = { 1 };
     chunk.m_pose_revision = { 1 };
     chunk.m_geometry_valid = true;
-    chunk.m_source_frames = {{ 3 }, { 4 }};
-    chunk.m_bounds = {{ -1, -1, 1 }, { 1, 1, 3 }};
+    chunk.m_source_frames = { { 3 }, { 4 } };
+    chunk.m_bounds = { { -1, -1, 1 }, { 1, 1, 3 } };
     chunk.m_mesh = SceneMesh {
-        {{{ -.5F, -.5F, 2 }, { 0, 0, -1 }}, {{ .5F, -.5F, 2 }, { 0, 0, -1 }}, {{ -.5F, .5F, 2 }, { 0, 0, -1 }}},
-        {{ 0, 1, 2 }},
-        {}};
+        { { { -.5F, -.5F, 2 }, { 0, 0, -1 } }, { { .5F, -.5F, 2 }, { 0, 0, -1 } }, { { -.5F, .5F, 2 }, { 0, 0, -1 } } },
+        { { 0, 1, 2 } },
+        {} };
     if (quad) {
-        chunk.m_mesh->m_vertices.push_back({{ .5F, .5F, 2 }, { 0, 0, -1 }});
+        chunk.m_mesh->m_vertices.push_back({ { .5F, .5F, 2 }, { 0, 0, -1 } });
         chunk.m_mesh->m_triangles.push_back({ 1, 3, 2 });
     }
     return chunk;
@@ -40,7 +40,7 @@ ColorProjectionView view_fixture(std::array<unsigned char, 3> color,
                                  FrameId frame = { 3 }) {
     DepthImageAsset depth;
     auto& metadata = depth.m_metadata;
-    metadata.m_dependency = {{ 1 }, { 1 }, { 3 }, { 2 }, std::string(64uz, 'a'), std::string(64uz, 'b')};
+    metadata.m_dependency = { { 1 }, { 1 }, { 3 }, { 2 }, std::string(64uz, 'a'), std::string(64uz, 'b') };
     metadata.m_dependency.m_frame = frame;
     metadata.m_width = metadata.m_height = 8;
     metadata.m_camera = { 4, 4, 3.5, 3.5 };
@@ -51,17 +51,22 @@ ColorProjectionView view_fixture(std::array<unsigned char, 3> color,
     depth.m_confidence.assign(64uz, unknown ? 0.0F : 1.0F);
     depth.m_support_count.assign(64uz, unknown ? 0 : 2);
     std::vector<std::byte> rgb;
-    for (std::size_t i { 0uz }; i < 64uz; ++i)
-        for (auto channel : color)
+    for (std::size_t i { 0uz }; i < 64uz; ++i) {
+        for (auto channel : color) {
             rgb.push_back(static_cast<std::byte>(gradient ? (i * 3uz + channel) % 256uz : channel));
+        }
+    }
     auto result = ColorProjectionView::create(std::move(depth), std::move(rgb), {}, .01);
-    if (!result) throw std::runtime_error(result.error().m_message);
+    if (!result) {
+        throw std::runtime_error(result.error().m_message);
+    }
     return std::move(*result);
 }
 
 template <class Chunk> decltype(auto) baked_of(Chunk& chunk) {
-    if (!chunk.m_mesh || !chunk.m_mesh->m_baked)
+    if (!chunk.m_mesh || !chunk.m_mesh->m_baked) {
         throw std::runtime_error("Missing texture fixture");
+    }
     return *chunk.m_mesh->m_baked;
 }
 
@@ -70,14 +75,20 @@ baked_chunk(bool quad = false, bool unknown = false, bool gradient = false, Chun
     auto chunk = chunk_fixture(quad);
     chunk.m_id = id;
     auto baker = MeshTextureBaker::create(chunk);
-    if (!baker) throw std::runtime_error(baker.error().m_message);
+    if (!baker) {
+        throw std::runtime_error(baker.error().m_message);
+    }
     const auto K_RED = view_fixture({ 255, 0, 0 }, unknown, gradient),
                K_BLUE = view_fixture({ 0, 0, 255 }, unknown, gradient, { 4 });
     REQUIRE((*baker)->add_view(K_RED, { 3 }));
     REQUIRE((*baker)->add_view(K_BLUE, { 4 }));
     auto result = (*baker)->finish();
-    if (!result) throw std::runtime_error(result.error().m_message);
-    if (!chunk.m_mesh) throw std::runtime_error("Missing mesh fixture");
+    if (!result) {
+        throw std::runtime_error(result.error().m_message);
+    }
+    if (!chunk.m_mesh) {
+        throw std::runtime_error("Missing mesh fixture");
+    }
     chunk.m_mesh->m_baked = std::move(*result);
     return chunk;
 }
@@ -87,7 +98,7 @@ SceneSnapshot scene_fixture(SceneChunk chunk) {
     scene->m_id = { 7 };
     scene->m_epoch = { 1 };
     scene->m_revision = { 1 };
-    scene->m_provenance = {{ "source_kind", "synthetic_diagnostic" }};
+    scene->m_provenance = { { "source_kind", "synthetic_diagnostic" } };
     const auto K_ID = chunk.m_id;
     scene->m_chunks[K_ID] = std::make_shared<SceneChunk>(std::move(chunk));
     return scene;
@@ -99,7 +110,9 @@ struct Directory {
         ("we_mesh_texture_" +
          std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
 
-    Directory() { REQUIRE(std::filesystem::create_directory(m_root)); }
+    Directory() {
+        REQUIRE(std::filesystem::create_directory(m_root));
+    }
 
     ~Directory() {
         std::error_code ignored;
@@ -109,7 +122,7 @@ struct Directory {
 
 std::string read_bytes(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
-    return {std::istreambuf_iterator<char>(file), {}};
+    return { std::istreambuf_iterator<char>(file), {} };
 }
 
 void write_bytes(const std::filesystem::path& path, const std::string& bytes) {
@@ -135,7 +148,7 @@ TEST_CASE("texture baking blends in linear light and preserves geometry and unkn
     CHECK(baked.m_height == 8);
     CHECK(scene_untextured_chunk_hash(chunk) == scene_chunk_content_hash(chunk_fixture()));
     CHECK(scene_chunk_content_hash(chunk) != scene_chunk_content_hash(chunk_fixture()));
-    for (std::size_t y { 0uz }; y < 8uz; ++y)
+    for (std::size_t y { 0uz }; y < 8uz; ++y) {
         for (std::size_t x { 0uz }; x < 8uz; ++x) {
             const auto K_I = y * 8uz + x;
             if (x + y < 8uz && !K_UNKNOWN) {
@@ -148,6 +161,7 @@ TEST_CASE("texture baking blends in linear light and preserves geometry and unkn
                 CHECK(baked.m_candidates[K_I] == 0);
             }
         }
+    }
 }
 
 TEST_CASE("texture border lattice shares exact observations on adjacent faces", "[mesh_texture]") {
@@ -178,7 +192,9 @@ TEST_CASE("texture bake refuses incomplete duplicate cancelled and excessive inp
     CHECK((*baker)->add_view(K_SECOND, { 4 }).has_value() == false);
     CHECK((*baker)->finish().has_value() == false);
     auto excessive = chunk_fixture();
-    if (!excessive.m_mesh) throw std::runtime_error("Missing mesh");
+    if (!excessive.m_mesh) {
+        throw std::runtime_error("Missing mesh");
+    }
     excessive.m_mesh->m_triangles.resize(100001uz, { 0, 1, 2 });
     const auto K_EXCESSIVE = MeshTextureBaker::create(std::move(excessive));
     CHECK(K_EXCESSIVE.has_value() == false);
@@ -188,20 +204,48 @@ TEST_CASE("texture admission rejects malformed planes masks UV and provenance", 
     auto chunk = baked_chunk();
     auto& baked = baked_of(chunk);
     const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
-    if (K_MUTATION == 0) baked.m_rgba[0][0] = std::numeric_limits<float>::quiet_NaN();
-    if (K_MUTATION == 1) baked.m_rgba[0][3] = .5F;
-    if (K_MUTATION == 2) baked.m_rgba[0][3] = 0;
-    if (K_MUTATION == 3) baked.m_rgba[63] = { 1, 0, 0, 1 };
-    if (K_MUTATION == 4) baked.m_owners[0] = { 9 };
-    if (K_MUTATION == 5) baked.m_candidates[0] = 4;
-    if (K_MUTATION == 6) baked.m_candidates[0] = 0;
-    if (K_MUTATION == 7) baked.m_width = 0;
-    if (K_MUTATION == 8) baked.m_rgba.pop_back();
-    if (K_MUTATION == 9) baked.m_corner_uv[0][0] = std::numeric_limits<float>::quiet_NaN();
-    if (K_MUTATION == 10) baked.m_source_chunk_sha256 = std::string(64uz, 'a');
-    if (K_MUTATION == 11) baked.m_manifest_sha256 = std::string(64uz, 'a');
-    if (K_MUTATION == 12) baked.m_frames[1] = { 3 };
-    if (K_MUTATION == 13) baked.m_owners[0] = {};
+    if (K_MUTATION == 0) {
+        baked.m_rgba[0][0] = std::numeric_limits<float>::quiet_NaN();
+    }
+    if (K_MUTATION == 1) {
+        baked.m_rgba[0][3] = .5F;
+    }
+    if (K_MUTATION == 2) {
+        baked.m_rgba[0][3] = 0;
+    }
+    if (K_MUTATION == 3) {
+        baked.m_rgba[63] = { 1, 0, 0, 1 };
+    }
+    if (K_MUTATION == 4) {
+        baked.m_owners[0] = { 9 };
+    }
+    if (K_MUTATION == 5) {
+        baked.m_candidates[0] = 4;
+    }
+    if (K_MUTATION == 6) {
+        baked.m_candidates[0] = 0;
+    }
+    if (K_MUTATION == 7) {
+        baked.m_width = 0;
+    }
+    if (K_MUTATION == 8) {
+        baked.m_rgba.pop_back();
+    }
+    if (K_MUTATION == 9) {
+        baked.m_corner_uv[0][0] = std::numeric_limits<float>::quiet_NaN();
+    }
+    if (K_MUTATION == 10) {
+        baked.m_source_chunk_sha256 = std::string(64uz, 'a');
+    }
+    if (K_MUTATION == 11) {
+        baked.m_manifest_sha256 = std::string(64uz, 'a');
+    }
+    if (K_MUTATION == 12) {
+        baked.m_frames[1] = { 3 };
+    }
+    if (K_MUTATION == 13) {
+        baked.m_owners[0] = {};
+    }
     const auto K_REJECTED = validate_scene(*scene_fixture(std::move(chunk)));
     CHECK(K_REJECTED.has_value() == false);
 }
@@ -258,20 +302,31 @@ TEST_CASE("rehashed baked payloads reject malformed counts and colors without mu
     const auto K_MATERIAL = bytes.find("WEXMAT01");
     REQUIRE(K_MATERIAL != bytes.npos);
     const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8);
-    if (K_MUTATION == 0) bytes[K_MATERIAL + 8uz] = 0;
-    if (K_MUTATION == 1)
-        for (std::size_t i { 0uz }; i < 4uz; ++i)
+    if (K_MUTATION == 0) {
+        bytes[K_MATERIAL + 8uz] = 0;
+    }
+    if (K_MUTATION == 1) {
+        for (std::size_t i { 0uz }; i < 4uz; ++i) {
             bytes[K_MATERIAL + 16uz + i] = static_cast<char>(255);
-    if (K_MUTATION == 2) bytes.pop_back();
-    if (K_MUTATION == 3) bytes.push_back('\0');
-    if (K_MUTATION == 4) bytes[K_MATERIAL] = 'X';
+        }
+    }
+    if (K_MUTATION == 2) {
+        bytes.pop_back();
+    }
+    if (K_MUTATION == 3) {
+        bytes.push_back('\0');
+    }
+    if (K_MUTATION == 4) {
+        bytes[K_MATERIAL] = 'X';
+    }
     if (K_MUTATION >= 5) {
         auto position = K_MATERIAL + 20uz + 16uz;
         for (std::size_t field { 0uz }; field < 3uz; ++field) {
             std::size_t length {};
-            for (std::size_t i { 0uz }; i < 4uz; ++i)
+            for (std::size_t i { 0uz }; i < 4uz; ++i) {
                 length |= static_cast<std::size_t>(static_cast<unsigned char>(bytes[position + i]))
                           << (i * 8uz);
+            }
             position += 4uz + length;
         }
         const auto K_UV = position, K_RGBA = K_UV + 24uz;
@@ -279,16 +334,18 @@ TEST_CASE("rehashed baked payloads reject malformed counts and colors without mu
                               : K_MUTATION == 6 ? K_RGBA
                               : K_MUTATION == 7 ? K_RGBA + 12uz
                                                 : K_RGBA + 64uz * 24uz;
-        const std::uint32_t K_VALUE {K_MUTATION <= 6   ? 0x7fc00000U
+        const std::uint32_t K_VALUE { K_MUTATION <= 6   ? 0x7fc00000U
                                      : K_MUTATION == 7 ? 0x3f000000U
-                                                       : 4U};
-        for (std::size_t i { 0uz }; i < 4uz; ++i)
+                                                       : 4U };
+        for (std::size_t i { 0uz }; i < 4uz; ++i) {
             bytes[K_TARGET + i] = static_cast<char>((K_VALUE >> (i * 8uz)) & 255U);
+        }
     }
     const auto K_HASH = digest(bytes), K_CHUNK = "chunk_" + K_HASH + ".bin";
     write_bytes(directory.m_root / K_CHUNK, bytes);
-    for (std::size_t i { 0uz }; i < 8uz; ++i)
+    for (std::size_t i { 0uz }; i < 8uz; ++i) {
         index[24uz + i] = static_cast<char>((bytes.size() >> (i * 8uz)) & 255U);
+    }
     index.replace(32uz, 64uz, K_HASH);
     index.replace(100uz, K_NAME.size(), K_CHUNK);
     const auto K_INDEX_HASH = digest(index), K_INDEX_NAME = "index_" + K_INDEX_HASH + ".bin";
@@ -308,12 +365,22 @@ TEST_CASE("rehashed appearance metadata cannot relabel observations or change co
     auto& baked = baked_of(chunk);
     auto document = nlohmann::json::parse(baked.m_manifest_json);
     const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4);
-    if (K_MUTATION == 0) document["lighting"] = "relightable_albedo";
-    if (K_MUTATION == 1) document["known_texels"] = 35;
-    if (K_MUTATION == 2) document["tile_size"] = 8.0;
-    if (K_MUTATION == 3) document["source_chunk_sha256"] = std::string(64uz, 'a');
+    if (K_MUTATION == 0) {
+        document["lighting"] = "relightable_albedo";
+    }
+    if (K_MUTATION == 1) {
+        document["known_texels"] = 35;
+    }
+    if (K_MUTATION == 2) {
+        document["tile_size"] = 8.0;
+    }
+    if (K_MUTATION == 3) {
+        document["source_chunk_sha256"] = std::string(64uz, 'a');
+    }
     baked.m_manifest_json = document.dump();
-    if (K_MUTATION == 4) baked.m_manifest_json.insert(1uz, "\"kind\":\"CAPTURED_UNLIT_ATLAS_V1\",");
+    if (K_MUTATION == 4) {
+        baked.m_manifest_json.insert(1uz, "\"kind\":\"CAPTURED_UNLIT_ATLAS_V1\",");
+    }
     baked.m_manifest_sha256 = digest(baked.m_manifest_json);
     CHECK(validate_scene(*scene_fixture(chunk)).has_value() == false);
     Directory directory;

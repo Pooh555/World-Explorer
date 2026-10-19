@@ -38,10 +38,11 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
             require(actual.dump() == expected.dump(),
                     "Unsupported or inconsistent GLB profile field");
         };
-        K_EQUAL(K_DOCUMENT.at("buffers"), Json::array({{{ "byteLength", K_BINARY.size() }}}));
-        for (const auto* key : { "meshes", "images", "textures", "materials" })
+        K_EQUAL(K_DOCUMENT.at("buffers"), Json::array({ { { "byteLength", K_BINARY.size() } } }));
+        for (const auto* key : { "meshes", "images", "textures", "materials" }) {
             require(K_DOCUMENT.at(key).is_array() && K_DOCUMENT.at(key).size() == K_N,
                     "GLB resource counts differ");
+        }
         require(K_DOCUMENT.at("accessors").is_array() &&
                     K_DOCUMENT.at("accessors").size() == K_N * 2uz &&
                     K_DOCUMENT.at("bufferViews").is_array() &&
@@ -54,7 +55,7 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
             const auto K_LENGTH = count(view.at("byteLength"), K_BINARY.size());
             require(offset <= K_BINARY.size() && K_LENGTH <= K_BINARY.size() - offset,
                     "GLB view outside buffer");
-            Json expected {{ "buffer", 0 }, { "byteOffset", offset }, { "byteLength", K_LENGTH }};
+            Json expected { { "buffer", 0 }, { "byteOffset", offset }, { "byteLength", K_LENGTH } };
             if (i % 5uz == 0uz) {
                 expected["byteStride"] = 20;
                 expected["target"] = 34962;
@@ -88,8 +89,9 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
                                                  ? "synthetic_diagnostic"
                                                  : "captured_baked_glb";
         const auto K_BASE = document_base(*scene);
-        for (const auto* key : { "asset", "samplers", "extensionsUsed", "extensionsRequired" })
+        for (const auto* key : { "asset", "samplers", "extensionsUsed", "extensionsRequired" }) {
             K_EQUAL(K_DOCUMENT.at(key), K_BASE.at(key));
+        }
         auto expected_extras = K_BASE.at("extras");
         const auto K_SOURCE_HASH =
             K_DOCUMENT.at("extras").at("source_scene_sha256").get<std::string>();
@@ -132,15 +134,20 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
             mesh.m_vertices.resize(K_V);
             mesh.m_triangles.resize(K_T);
             for (auto& vertex : mesh.m_vertices) {
-                for (auto& value : vertex.m_position) value = vertices.real();
-                for (auto& value : vertex.m_normal) value = vertices.real();
+                for (auto& value : vertex.m_position) {
+                    value = vertices.real();
+                }
+                for (auto& value : vertex.m_normal) {
+                    value = vertices.real();
+                }
             }
-            for (auto& triangle : mesh.m_triangles)
+            for (auto& triangle : mesh.m_triangles) {
                 for (auto& index : triangle) {
                     const auto K_INDEX = triangles.integer();
                     require(K_INDEX < K_V, "GLB source index outside vertices");
                     index = static_cast<std::uint32_t>(K_INDEX);
                 }
+            }
             const auto K_EXTENT = image_extent(baked);
             const auto K_IMAGE = decode_png(views[K_VIEW + 3uz], stop);
             require(K_IMAGE.m_width == K_EXTENT[0] && K_IMAGE.m_height == K_EXTENT[1],
@@ -153,9 +160,10 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
                 for (std::size_t x { 0uz }; x < K_IMAGE.m_width; ++x) {
                     const auto K_PIXEL = (y * K_IMAGE.m_width + x) * 4uz;
                     if (x >= baked.m_width || y >= baked.m_height) {
-                        for (std::size_t c { 0uz }; c < 4uz; ++c)
+                        for (std::size_t c { 0uz }; c < 4uz; ++c) {
                             require(K_IMAGE.m_rgba[K_PIXEL + c] == std::byte {},
                                     "GLB PNG padding is nonzero");
+                        }
                         continue;
                     }
                     auto& color = baked.m_rgba[y * baked.m_width + x];
@@ -190,7 +198,7 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
                 const auto K_ROW = face / K_COLUMNS;
                 const auto K_Y = static_cast<float>(K_ROW * 8uz) + .5F;
                 const std::array<std::array<float, 2>, 3> K_UV {
-                    std::array { K_X, K_Y }, { K_X + 7, K_Y }, { K_X, K_Y + 7 }};
+                    std::array { K_X, K_Y }, { K_X + 7, K_Y }, { K_X, K_Y + 7 } };
                 for (std::size_t c { 0uz }; c < 3uz; ++c) {
                     const auto& vertex = mesh.m_vertices[mesh.m_triangles[face][c]];
                     for (std::size_t axis { 0uz }; axis < 3uz; ++axis) {
@@ -207,53 +215,53 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
                 }
             }
             K_EQUAL(K_DOCUMENT.at("accessors")[K_ACCESSOR],
-                    Json {{ "bufferView", K_VIEW },
+                    Json { { "bufferView", K_VIEW },
                           { "byteOffset", 0 },
                           { "componentType", 5126 },
                           { "count", K_T * 3uz },
                           { "type", "VEC3" },
                           { "min", minimum },
-                          { "max", maximum }});
+                          { "max", maximum } });
             K_EQUAL(K_DOCUMENT.at("accessors")[K_ACCESSOR + 1uz],
-                    Json {{ "bufferView", K_VIEW },
+                    Json { { "bufferView", K_VIEW },
                           { "byteOffset", 12 },
                           { "componentType", 5126 },
                           { "count", K_T * 3uz },
-                          { "type", "VEC2" }});
+                          { "type", "VEC2" } });
             K_EQUAL(K_DOCUMENT.at("images")[n],
-                    Json {{ "bufferView", K_VIEW + 3uz }, { "mimeType", "image/png" }});
-            K_EQUAL(K_DOCUMENT.at("textures")[n], Json {{ "sampler", 0 }, { "source", n }});
+                    Json { { "bufferView", K_VIEW + 3uz }, { "mimeType", "image/png" } });
+            K_EQUAL(K_DOCUMENT.at("textures")[n], Json { { "sampler", 0 }, { "source", n } });
             K_EQUAL(K_DOCUMENT.at("materials")[n],
-                    Json {{ "name", "baked_appearance" },
-                          {"extensions", {{ "KHR_materials_unlit", Json::object() }}},
+                    Json { { "name", "baked_appearance" },
+                          { "extensions", { { "KHR_materials_unlit", Json::object() } } },
                           { "alphaMode", "MASK" },
                           { "alphaCutoff", 1.0 },
                           { "doubleSided", true },
-                          {"pbrMetallicRoughness",
-                           {{"baseColorTexture", {{ "index", n }}},
+                          { "pbrMetallicRoughness",
+                           { { "baseColorTexture", { { "index", n } } },
                             { "metallicFactor", 0 },
-                            { "roughnessFactor", 1 }}}});
+                            { "roughnessFactor", 1 } } } });
             K_EQUAL(
                 K_DOCUMENT.at("meshes")[n],
-                Json {{"primitives",
-                       Json::array({{{"attributes",
-                                      {{ "POSITION", K_ACCESSOR }, { "TEXCOORD_0", K_ACCESSOR + 1uz }}},
+                Json { { "primitives",
+                       Json::array({ { { "attributes",
+                                      { { "POSITION", K_ACCESSOR }, { "TEXCOORD_0", K_ACCESSOR + 1uz } } },
                                      { "material", n },
-                                     { "mode", 4 }}})}});
+                                     { "mode", 4 } } }) } });
             const auto& transform = chunk.m_world_from_chunk;
             K_EQUAL(node,
-                    Json {{ "mesh", n },
-                          {"translation",
-                           {transform.m_translation.m_x,
+                    Json { { "mesh", n },
+                          { "translation",
+                           { transform.m_translation.m_x,
                             transform.m_translation.m_y,
-                            transform.m_translation.m_z}},
-                          {"rotation",
-                           {transform.m_rotation.m_x,
+                            transform.m_translation.m_z } },
+                          { "rotation",
+                           { transform.m_rotation.m_x,
                             transform.m_rotation.m_y,
                             transform.m_rotation.m_z,
-                            transform.m_rotation.m_w}},
-                          {"scale", { transform.m_scale, transform.m_scale, transform.m_scale }},
-                          { "extras", header }});
+                            transform.m_rotation.m_w } },
+                          { "scale", { transform.m_scale, transform.m_scale, transform.m_scale } },
+                          { "extras", header } });
             require(sha256(std::as_bytes(std::span(baked.m_manifest_json))) ==
                         baked.m_manifest_sha256,
                     "GLB authoring metadata hash differs");
@@ -272,7 +280,9 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
             baked.m_manifest_json = appearance.dump(2);
             baked.m_manifest_sha256 = sha256(std::as_bytes(std::span(baked.m_manifest_json)));
             const auto K_VALID = validate_chunk(chunk);
-            if (!K_VALID) return std::unexpected(K_VALID.error());
+            if (!K_VALID) {
+                return std::unexpected(K_VALID.error());
+            }
             const auto K_IDENTITY = chunk.m_id;
             require(
                 scene->m_chunks.emplace(K_IDENTITY, std::make_shared<SceneChunk>(std::move(chunk)))
@@ -280,14 +290,17 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
                 "Duplicate GLB chunk ID");
             selected_nodes.push_back(n);
         }
-        K_EQUAL(K_DOCUMENT.at("scenes"), Json::array({{{ "nodes", selected_nodes }}}));
+        K_EQUAL(K_DOCUMENT.at("scenes"), Json::array({ { { "nodes", selected_nodes } } }));
         if (std::ranges::all_of(scene->m_chunks, [](const auto& entry) {
                 return entry.second->m_mesh && entry.second->m_mesh->m_observed &&
                        !entry.second->m_mesh->m_observed->m_cleanup_json.empty();
-            }))
+            })) {
             scene->m_provenance["geometry_processing"] = "retained source cleanup certificates";
+        }
         const auto K_VALID = validate_scene(*scene);
-        if (!K_VALID) return std::unexpected(K_VALID.error());
+        if (!K_VALID) {
+            return std::unexpected(K_VALID.error());
+        }
         cancelled(stop);
         return scene;
     } catch (const Cancelled& error) {

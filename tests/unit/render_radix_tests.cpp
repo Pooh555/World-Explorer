@@ -1,8 +1,8 @@
 #include "world_explorer/render_core/radix.hpp"
 
-#include <limits>
-
 #include <catch2/catch_test_macros.hpp>
+
+#include <limits>
 
 using namespace world_explorer;
 

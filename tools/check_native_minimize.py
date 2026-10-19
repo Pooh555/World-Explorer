@@ -12,6 +12,13 @@ import subprocess
 import time
 
 
+__all__ = [
+    "main",
+    "run",
+    "sha256",
+]
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with path.open("rb") as stream:

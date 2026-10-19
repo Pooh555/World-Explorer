@@ -1,16 +1,16 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
+
 #include <array>
 #include <atomic>
 #include <fstream>
 #include <limits>
 #include <map>
 #include <thread>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
@@ -37,8 +37,11 @@ void create_link(const std::filesystem::path& target,
                  const std::filesystem::path& link,
                  bool directory = false) {
     std::error_code error;
-    if (directory) std::filesystem::create_directory_symlink(target, link, error);
-    else std::filesystem::create_symlink(target, link, error);
+    if (directory) {
+        std::filesystem::create_directory_symlink(target, link, error);
+    } else {
+        std::filesystem::create_symlink(target, link, error);
+    }
 #ifdef _WIN32
     if (error == std::errc::operation_not_permitted || error == std::errc::permission_denied)
         SKIP("Native symbolic-link creation is unavailable to this Windows account");
@@ -54,16 +57,17 @@ FileTree snapshot(const std::filesystem::path& root) {
     for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
         const auto K_NAME = entry.path().lexically_relative(root).generic_string();
         const auto K_STATUS = entry.symlink_status();
-        if (std::filesystem::is_symlink(K_STATUS))
+        if (std::filesystem::is_symlink(K_STATUS)) {
             result.emplace(K_NAME,
                            "link:" + std::filesystem::read_symlink(entry.path()).generic_string());
-        else if (std::filesystem::is_directory(K_STATUS)) result.emplace(K_NAME, "directory");
-        else {
+        } else if (std::filesystem::is_directory(K_STATUS)) {
+            result.emplace(K_NAME, "directory");
+        } else {
             REQUIRE(std::filesystem::is_regular_file(K_STATUS));
             REQUIRE(entry.file_size() <= 2uz * 1024 * 1024);
             std::ifstream input(entry.path(), std::ios::binary);
             REQUIRE(input);
-            std::string bytes {std::istreambuf_iterator<char>(input), {}};
+            std::string bytes { std::istreambuf_iterator<char>(input), {} };
             REQUIRE(!input.bad());
             result.emplace(K_NAME, "file:" + bytes);
         }
@@ -87,25 +91,27 @@ struct AdmissionFixture {
             137, 80,  78,  71,  13,  10,  26,  10, 0,  0,  0,  13,  73, 72,  68,  82, 0,  0,
             0,   2,   0,   0,   0,   1,   8,   2,  0,  0,  0,  123, 64, 232, 221, 0,  0,  0,
             15,  73,  68,  65,  84,  120, 156, 99, 16, 84, 50, 118, 9,  77,  3,   0,  3,  191,
-            1,   102, 125, 140, 226, 99,  0,   0,  0,  0,  73, 69,  78, 68,  174, 66, 96, 130};
+            1,   102, 125, 140, 226, 99,  0,   0,  0,  0,  73, 69,  78, 68,  174, 66, 96, 130 };
         const std::string K_PNG_CONTENT(reinterpret_cast<const char*>(K_PNG.data()), K_PNG.size());
-        for (const auto* name : {"first.png", "second.png"})
+        for (const auto* name : { "first.png", "second.png" }) {
             write_bytes(m_stage / "images" / name, K_PNG_CONTENT);
+        }
         m_metadata = { { "selection", "timestamp_sampling_v1" },
                       { "crop", "none" },
                       { "resize", "none" },
                       { "source_frame_count", 11 },
                       { "frames", nlohmann::json::array() } };
-        for (const auto K_INDEX : {0, 10})
+        for (const auto K_INDEX : { 0, 10 }) {
             m_metadata["frames"].push_back(
-                {{"source_index", K_INDEX},
-                 {"frame_id", m_source.substr(0, 16) + "-" + std::to_string(K_INDEX)},
-                 {"calibration_id", m_source.substr(0, 16) + "-lens-0"},
-                 {"pts", K_INDEX},
-                 {"time_base", "1/30"},
-                 {"capture_time_ns", K_INDEX == 0 ? 0 : 333333333},
-                 {"file", K_INDEX == 0 ? "images/first.png" : "images/second.png"},
-                 {"sha256", sha256(std::as_bytes(std::span(K_PNG)))}});
+                { { "source_index", K_INDEX },
+                 { "frame_id", m_source.substr(0, 16) + "-" + std::to_string(K_INDEX) },
+                 { "calibration_id", m_source.substr(0, 16) + "-lens-0" },
+                 { "pts", K_INDEX },
+                 { "time_base", "1/30" },
+                 { "capture_time_ns", K_INDEX == 0 ? 0 : 333333333 },
+                 { "file", K_INDEX == 0 ? "images/first.png" : "images/second.png" },
+                 { "sha256", sha256(std::as_bytes(std::span(K_PNG))) } });
+        }
         publish();
         good_decoder();
         write_bytes(m_root / "caller.txt", "caller-owned data outside the stage");
@@ -117,7 +123,7 @@ struct AdmissionFixture {
     }
 
     DecodedSourceConfig config() const {
-        return {m_stage, m_source, {WE_TEST_PYTHON, m_decoder.string()}, {6}};
+        return { m_stage, m_source, { WE_TEST_PYTHON, m_decoder.string() }, { 6 } };
     }
 
     void good_decoder() const {
@@ -129,16 +135,18 @@ struct AdmissionFixture {
         write_json(m_stage / "result.json", m_metadata);
         auto files = nlohmann::json::array();
         for (const auto& entry : std::filesystem::recursive_directory_iterator(m_stage)) {
-            if (!entry.is_regular_file() || entry.path().filename() == "completion.json") continue;
+            if (!entry.is_regular_file() || entry.path().filename() == "completion.json") {
+                continue;
+            }
             const auto K_DIGEST = sha256_file(entry.path(), 2uz * 1024 * 1024);
             REQUIRE(K_DIGEST);
-            files.push_back({{"path", entry.path().lexically_relative(m_stage).generic_string()},
-                             {"bytes", entry.file_size()},
-                             {"sha256", *K_DIGEST}});
+            files.push_back({ { "path", entry.path().lexically_relative(m_stage).generic_string() },
+                             { "bytes", entry.file_size() },
+                             { "sha256", *K_DIGEST } });
         }
         write_json(
             m_stage / "completion.json",
-            {{"schema_version", 1}, {"status", "complete"}, {"key", m_key}, {"files", files}});
+            { { "schema_version", 1 }, { "status", "complete" }, { "key", m_key }, { "files", files } });
     }
 
     template <class Mutation> void completion(Mutation mutate) const {
@@ -151,7 +159,7 @@ struct AdmissionFixture {
         const auto [K_WIDTH, K_HEIGHT] = size;
         const auto K_PATH = m_stage / "images" / name;
         std::ifstream input(K_PATH, std::ios::binary);
-        std::string bytes {std::istreambuf_iterator<char>(input), {}};
+        std::string bytes { std::istreambuf_iterator<char>(input), {} };
         REQUIRE(bytes.size() >= 24);
         for (unsigned index { 0 }; index < 4; ++index) {
             bytes[16 + index] = static_cast<char>((K_WIDTH >> (24 - index * 8)) & 255U);
@@ -159,8 +167,11 @@ struct AdmissionFixture {
         }
         write_bytes(K_PATH, bytes);
         const auto K_DIGEST = sha256(std::as_bytes(std::span(bytes)));
-        for (auto& frame : m_metadata["frames"])
-            if (frame["file"] == std::string("images/") + name) frame["sha256"] = K_DIGEST;
+        for (auto& frame : m_metadata["frames"]) {
+            if (frame["file"] == std::string("images/") + name) {
+                frame["sha256"] = K_DIGEST;
+            }
+        }
         publish();
     }
 
@@ -169,8 +180,9 @@ struct AdmissionFixture {
         std::filesystem::remove_all(m_root);
         std::filesystem::create_directories(m_root);
         for (const auto& [K_NAME, K_VALUE] : original) {
-            if (K_VALUE == "directory") std::filesystem::create_directories(m_root / K_NAME);
-            else {
+            if (K_VALUE == "directory") {
+                std::filesystem::create_directories(m_root / K_NAME);
+            } else {
                 REQUIRE(K_VALUE.starts_with("file:"));
                 std::filesystem::create_directories((m_root / K_NAME).parent_path());
                 write_bytes(m_root / K_NAME, std::string_view(K_VALUE).substr(5));
@@ -237,16 +249,30 @@ TEST_CASE("decoded source configuration and cancellation reject without caller w
     const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7);
     CAPTURE(K_FIELD);
     std::stop_source stop;
-    if (K_FIELD >= 6) stop.request_stop();
+    if (K_FIELD >= 6) {
+        stop.request_stop();
+    }
     reject_and_repair(
         K_FIELD >= 6 ? ErrorCode::CANCELLED : ErrorCode::INVALID_ARGUMENT,
         [K_FIELD](const AdmissionFixture&, DecodedSourceConfig& config) {
-            if (K_FIELD == 0 || K_FIELD == 7) config.m_source_sha256.clear();
-            if (K_FIELD == 1) config.m_source_sha256.pop_back();
-            if (K_FIELD == 2) config.m_source_sha256[0] = 'G';
-            if (K_FIELD == 3) config.m_decoder_arguments.clear();
-            if (K_FIELD == 4) config.m_max_image_bytes.m_bytes = 0;
-            if (K_FIELD == 5) config.m_max_image_bytes.m_bytes = 64uz * 1024 * 1024 + 1;
+            if (K_FIELD == 0 || K_FIELD == 7) {
+                config.m_source_sha256.clear();
+            }
+            if (K_FIELD == 1) {
+                config.m_source_sha256.pop_back();
+            }
+            if (K_FIELD == 2) {
+                config.m_source_sha256[0] = 'G';
+            }
+            if (K_FIELD == 3) {
+                config.m_decoder_arguments.clear();
+            }
+            if (K_FIELD == 4) {
+                config.m_max_image_bytes.m_bytes = 0;
+            }
+            if (K_FIELD == 5) {
+                config.m_max_image_bytes.m_bytes = 64uz * 1024 * 1024 + 1;
+            }
         },
         stop.get_token());
 }
@@ -260,28 +286,45 @@ TEST_CASE("decoded stage completion requires bounded regular committed metadata"
             const auto K_PATH = fixture.m_stage / "completion.json";
             if (K_FIELD < 4) {
                 fixture.completion([K_FIELD](auto& value) {
-                    if (K_FIELD == 0) value["schema_version"] = 2;
-                    if (K_FIELD == 1) value["status"] = "cancelled";
-                    if (K_FIELD == 2) value["key"] = std::string(64, 'X');
-                    if (K_FIELD == 3) value["key"] = std::string(64, 'c');
+                    if (K_FIELD == 0) {
+                        value["schema_version"] = 2;
+                    }
+                    if (K_FIELD == 1) {
+                        value["status"] = "cancelled";
+                    }
+                    if (K_FIELD == 2) {
+                        value["key"] = std::string(64, 'X');
+                    }
+                    if (K_FIELD == 3) {
+                        value["key"] = std::string(64, 'c');
+                    }
                 });
-            } else if (K_FIELD == 4) write_bytes(K_PATH, "{");
-            else if (K_FIELD == 5) write_bytes(K_PATH, std::string(1024 * 1024 + 1, ' '));
-            else if (K_FIELD == 6) {
+            } else if (K_FIELD == 4) {
+                write_bytes(K_PATH, "{");
+            } else if (K_FIELD == 5) {
+                write_bytes(K_PATH, std::string(1024 * 1024 + 1, ' '));
+            } else if (K_FIELD == 6) {
                 std::filesystem::remove(K_PATH);
                 std::filesystem::create_directory(K_PATH);
             } else if (K_FIELD == 7) {
                 auto nested = nlohmann::json::object();
-                for (int depth { 0 }; depth < 40; ++depth) nested = { { "nested", nested } };
+                for (int depth { 0 }; depth < 40; ++depth) {
+                    nested = { { "nested", nested } };
+                }
                 write_json(K_PATH, nested);
             } else if (K_FIELD == 8) {
-                fixture.completion([](auto& value) { value.erase("key"); });
-            } else if (K_FIELD == 9) config.m_stage_directory = fixture.m_root / "missing";
-            else if (K_FIELD == 10) {
+                fixture.completion([](auto& value) {
+                    value.erase("key");
+                });
+            } else if (K_FIELD == 9) {
+                config.m_stage_directory = fixture.m_root / "missing";
+            } else if (K_FIELD == 10) {
                 std::filesystem::copy_file(K_PATH, fixture.m_root / "linked-completion.json");
                 std::filesystem::remove(K_PATH);
                 create_link(fixture.m_root / "linked-completion.json", K_PATH);
-            } else std::filesystem::remove(K_PATH);
+            } else {
+                std::filesystem::remove(K_PATH);
+            }
         });
 }
 
@@ -293,24 +336,40 @@ TEST_CASE("decoded inventory count hashes types and metadata receipt are checked
                       [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig&) {
                           fixture.completion([K_FIELD](auto& value) {
                               auto& files = value["files"];
-                              if (K_FIELD == 0) files = nlohmann::json::object();
-                              else if (K_FIELD == 1) files.clear();
-                              else if (K_FIELD == 2) {
+                              if (K_FIELD == 0) {
+                                  files = nlohmann::json::object();
+                              } else if (K_FIELD == 1) {
+                                  files.clear();
+                              } else if (K_FIELD == 2) {
                                   const auto K_ENTRY = files[0];
                                   files = std::vector<nlohmann::json>(4097, K_ENTRY);
-                              } else if (K_FIELD == 3) files[0]["sha256"] = std::string(64, 'Z');
-                              else if (K_FIELD == 4) files.push_back(files[0]);
-                              else if (K_FIELD == 5) files[0]["bytes"] = -1;
-                              else if (K_FIELD == 6) files[0]["bytes"] = 1.5;
-                              else if (K_FIELD == 7) files[0]["path"] = false;
-                              else {
-                                  for (auto& file : files)
+                              } else if (K_FIELD == 3) {
+                                  files[0]["sha256"] = std::string(64, 'Z');
+                              } else if (K_FIELD == 4) {
+                                  files.push_back(files[0]);
+                              } else if (K_FIELD == 5) {
+                                  files[0]["bytes"] = -1;
+                              } else if (K_FIELD == 6) {
+                                  files[0]["bytes"] = 1.5;
+                              } else if (K_FIELD == 7) {
+                                  files[0]["path"] = false;
+                              } else {
+                                  for (auto& file : files) {
                                       if (file["path"] == "result.json") {
-                                          if (K_FIELD == 8) file["path"] = "missing.json";
-                                          if (K_FIELD == 9) file["bytes"] = 0;
-                                          if (K_FIELD == 10) file["sha256"] = std::string(64, '0');
-                                          if (K_FIELD == 11) file.erase("sha256");
+                                          if (K_FIELD == 8) {
+                                              file["path"] = "missing.json";
+                                          }
+                                          if (K_FIELD == 9) {
+                                              file["bytes"] = 0;
+                                          }
+                                          if (K_FIELD == 10) {
+                                              file["sha256"] = std::string(64, '0');
+                                          }
+                                          if (K_FIELD == 11) {
+                                              file.erase("sha256");
+                                          }
                                       }
+                                  }
                               }
                           });
                       });
@@ -322,17 +381,28 @@ TEST_CASE("decoded replay profile and native journal provenance are explicit",
     CAPTURE(K_FIELD);
     reject_and_repair(K_FIELD < 3 ? ErrorCode::UNSUPPORTED_OPERATION : ErrorCode::INVALID_DATA,
                       [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig&) {
-                          if (K_FIELD == 0) fixture.m_metadata["selection"] = "future-profile";
-                          if (K_FIELD == 1) fixture.m_metadata["crop"] = "center";
-                          if (K_FIELD == 2) fixture.m_metadata["resize"] = "half";
+                          if (K_FIELD == 0) {
+                              fixture.m_metadata["selection"] = "future-profile";
+                          }
+                          if (K_FIELD == 1) {
+                              fixture.m_metadata["crop"] = "center";
+                          }
+                          if (K_FIELD == 2) {
+                              fixture.m_metadata["resize"] = "half";
+                          }
                           if (K_FIELD >= 3) {
                               fixture.m_metadata["selection"] = "native_rgb_journal_v1";
                               fixture.m_metadata["source_sha256"] = fixture.m_source;
                               fixture.m_metadata["journal_sha256"] = std::string(64, 'c');
-                              if (K_FIELD == 3)
+                              if (K_FIELD == 3) {
                                   fixture.m_metadata["source_sha256"] = std::string(64, 'd');
-                              if (K_FIELD == 4) fixture.m_metadata["journal_sha256"] = "invalid";
-                              if (K_FIELD == 5) fixture.m_metadata.erase("journal_sha256");
+                              }
+                              if (K_FIELD == 4) {
+                                  fixture.m_metadata["journal_sha256"] = "invalid";
+                              }
+                              if (K_FIELD == 5) {
+                                  fixture.m_metadata.erase("journal_sha256");
+                              }
                           }
                           fixture.publish();
                       });
@@ -345,20 +415,43 @@ TEST_CASE("decoded source counts and rehashed observation identities are bounded
     reject_and_repair(K_FIELD < 5 ? ErrorCode::RESOURCE_EXHAUSTED : ErrorCode::INVALID_DATA,
                       [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig&) {
                           auto& frames = fixture.m_metadata["frames"];
-                          if (K_FIELD == 0) fixture.m_metadata["source_frame_count"] = 0;
-                          if (K_FIELD == 1) fixture.m_metadata["source_frame_count"] = 36001;
-                          if (K_FIELD == 2) frames = nlohmann::json::object();
-                          if (K_FIELD == 3) frames.clear();
-                          if (K_FIELD == 4) frames = std::vector<nlohmann::json>(121, frames[0]);
-                          if (K_FIELD == 5) frames[1]["source_index"] = 11;
-                          if (K_FIELD == 6) frames[1]["source_index"] = 0;
-                          if (K_FIELD == 7) frames[0]["frame_id"] = "different-frame";
-                          if (K_FIELD == 8)
+                          if (K_FIELD == 0) {
+                              fixture.m_metadata["source_frame_count"] = 0;
+                          }
+                          if (K_FIELD == 1) {
+                              fixture.m_metadata["source_frame_count"] = 36001;
+                          }
+                          if (K_FIELD == 2) {
+                              frames = nlohmann::json::object();
+                          }
+                          if (K_FIELD == 3) {
+                              frames.clear();
+                          }
+                          if (K_FIELD == 4) {
+                              frames = std::vector<nlohmann::json>(121, frames[0]);
+                          }
+                          if (K_FIELD == 5) {
+                              frames[1]["source_index"] = 11;
+                          }
+                          if (K_FIELD == 6) {
+                              frames[1]["source_index"] = 0;
+                          }
+                          if (K_FIELD == 7) {
+                              frames[0]["frame_id"] = "different-frame";
+                          }
+                          if (K_FIELD == 8) {
                               frames[0]["calibration_id"] =
                                   fixture.m_source.substr(0, 16) + "-lens-1";
-                          if (K_FIELD == 9) frames[0]["source_index"] = -1;
-                          if (K_FIELD == 10) frames[0].erase("frame_id");
-                          if (K_FIELD == 11) fixture.m_metadata["source_frame_count"] = "11";
+                          }
+                          if (K_FIELD == 9) {
+                              frames[0]["source_index"] = -1;
+                          }
+                          if (K_FIELD == 10) {
+                              frames[0].erase("frame_id");
+                          }
+                          if (K_FIELD == 11) {
+                              fixture.m_metadata["source_frame_count"] = "11";
+                          }
                           fixture.publish();
                       });
 }
@@ -370,7 +463,7 @@ TEST_CASE("decoded legacy timestamps reject malformed overflow and nonmonotonic 
     reject_and_repair(ErrorCode::INVALID_DATA,
                       [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig&) {
                           auto& frame = fixture.m_metadata["frames"][1];
-                          constexpr std::array K_BASES {"30",
+                          constexpr std::array K_BASES { "30",
                                                         "111111111111111111111111111111111/30",
                                                         "x/30",
                                                         "1x/30",
@@ -379,25 +472,36 @@ TEST_CASE("decoded legacy timestamps reject malformed overflow and nonmonotonic 
                                                         "0/30",
                                                         "1/0",
                                                         "-1/30",
-                                                        "1/-30"};
-                          if (K_FIELD < 10)
+                                                        "1/-30" };
+                          if (K_FIELD < 10) {
                               frame["time_base"] = K_BASES[static_cast<std::size_t>(K_FIELD)];
-                          if (K_FIELD == 10) frame["pts"] = -1;
-                          if (K_FIELD == 11)
+                          }
+                          if (K_FIELD == 10) {
+                              frame["pts"] = -1;
+                          }
+                          if (K_FIELD == 11) {
                               frame["pts"] = std::numeric_limits<std::uint64_t>::max();
-                          if (K_FIELD == 12)
+                          }
+                          if (K_FIELD == 12) {
                               frame["pts"] = std::numeric_limits<std::int64_t>::max();
+                          }
                           if (K_FIELD == 13) {
                               frame["pts"] = 1201;
                               frame["time_base"] = "1/1";
                           }
-                          if (K_FIELD == 14) frame["capture_time_ns"] = 333333334;
+                          if (K_FIELD == 14) {
+                              frame["capture_time_ns"] = 333333334;
+                          }
                           if (K_FIELD == 15) {
                               frame["pts"] = 0;
                               frame["capture_time_ns"] = 0;
                           }
-                          if (K_FIELD == 16) frame["capture_time_ns"] = -1;
-                          if (K_FIELD == 17) frame["time_base"] = "2147483648/1";
+                          if (K_FIELD == 16) {
+                              frame["capture_time_ns"] = -1;
+                          }
+                          if (K_FIELD == 17) {
+                              frame["time_base"] = "2147483648/1";
+                          }
                           fixture.publish();
                       });
 }
@@ -409,16 +513,36 @@ TEST_CASE("decoded image references reject unsafe and linked paths without touch
     reject_and_repair(
         ErrorCode::INVALID_DATA, [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig&) {
             auto& name = fixture.m_metadata["frames"][0]["file"];
-            if (K_FIELD == 0) name = "";
-            if (K_FIELD == 1) name = std::string(4097, 'x');
-            if (K_FIELD == 2) name = std::string("images/first.png\0suffix", 23);
-            if (K_FIELD == 3) name = "images\\first.png";
-            if (K_FIELD == 4) name = "C:first.png";
-            if (K_FIELD == 5) name = "/first.png";
-            if (K_FIELD == 6) name = "./images/first.png";
-            if (K_FIELD == 7) name = "images/../images/first.png";
-            if (K_FIELD == 8) name = "images/missing.png";
-            if (K_FIELD == 9) name = "images";
+            if (K_FIELD == 0) {
+                name = "";
+            }
+            if (K_FIELD == 1) {
+                name = std::string(4097, 'x');
+            }
+            if (K_FIELD == 2) {
+                name = std::string("images/first.png\0suffix", 23);
+            }
+            if (K_FIELD == 3) {
+                name = "images\\first.png";
+            }
+            if (K_FIELD == 4) {
+                name = "C:first.png";
+            }
+            if (K_FIELD == 5) {
+                name = "/first.png";
+            }
+            if (K_FIELD == 6) {
+                name = "./images/first.png";
+            }
+            if (K_FIELD == 7) {
+                name = "images/../images/first.png";
+            }
+            if (K_FIELD == 8) {
+                name = "images/missing.png";
+            }
+            if (K_FIELD == 9) {
+                name = "images";
+            }
             fixture.publish();
             if (K_FIELD == 10) {
                 const auto K_PATH = fixture.m_stage / "images/first.png";
@@ -440,30 +564,46 @@ TEST_CASE("decoded images require unique matching inventory entries and PNG head
     reject_and_repair(
         ErrorCode::INVALID_DATA, [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig&) {
             auto& frames = fixture.m_metadata["frames"];
-            if (K_FIELD == 0) frames[1]["file"] = frames[0]["file"];
+            if (K_FIELD == 0) {
+                frames[1]["file"] = frames[0]["file"];
+            }
             if (K_FIELD == 1) {
                 std::filesystem::rename(fixture.m_stage / "images/first.png",
                                         fixture.m_stage / "images/first.jpg");
                 frames[0]["file"] = "images/first.jpg";
             }
-            if (K_FIELD == 2) frames[0]["sha256"] = std::string(64, '0');
+            if (K_FIELD == 2) {
+                frames[0]["sha256"] = std::string(64, '0');
+            }
             if (K_FIELD == 3 || K_FIELD == 4) {
                 const std::string K_BYTES = K_FIELD == 3 ? "short" : std::string(24, 'x');
                 write_bytes(fixture.m_stage / "images/first.png", K_BYTES);
                 frames[0]["sha256"] = sha256(std::as_bytes(std::span(K_BYTES)));
             }
             fixture.publish();
-            if (K_FIELD >= 5)
+            if (K_FIELD >= 5) {
                 fixture.completion([K_FIELD](auto& value) {
-                    for (auto& entry : value["files"])
+                    for (auto& entry : value["files"]) {
                         if (entry["path"] == "images/first.png") {
-                            if (K_FIELD == 5) entry["path"] = "unused.png";
-                            if (K_FIELD == 6) entry["bytes"] = 0;
-                            if (K_FIELD == 7) entry["bytes"] = 64uz * 1024 * 1024 + 1;
-                            if (K_FIELD == 8) entry["bytes"] = 73;
+                            if (K_FIELD == 5) {
+                                entry["path"] = "unused.png";
+                            }
+                            if (K_FIELD == 6) {
+                                entry["bytes"] = 0;
+                            }
+                            if (K_FIELD == 7) {
+                                entry["bytes"] = 64uz * 1024 * 1024 + 1;
+                            }
+                            if (K_FIELD == 8) {
+                                entry["bytes"] = 73;
+                            }
                         }
+                    }
                 });
-            if (K_FIELD == 9) write_bytes(fixture.m_stage / "result.json", "{}");
+            }
+            if (K_FIELD == 9) {
+                write_bytes(fixture.m_stage / "result.json", "{}");
+            }
             if (K_FIELD == 10) {
                 const auto K_PATH = fixture.m_stage / "result.json";
                 std::filesystem::copy_file(K_PATH, fixture.m_root / "linked-result.json");
@@ -480,14 +620,16 @@ TEST_CASE("decoded RGB dimensions enforce exact budgets and one calibration size
     reject_and_repair(K_FIELD == 6 ? ErrorCode::INVALID_DATA : ErrorCode::RESOURCE_EXHAUSTED,
                       [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig& config) {
                           constexpr std::array<std::pair<std::uint32_t, std::uint32_t>, 6> K_SIZES {
-                              {{0, 1}, {2, 0}, {8193, 1}, {1, 8193}, {8192, 2049}, {2, 1}}};
+                              { { 0, 1 }, { 2, 0 }, { 8193, 1 }, { 1, 8193 }, { 8192, 2049 }, { 2, 1 } } };
                           if (K_FIELD < 6) {
                               const auto [K_WIDTH, K_HEIGHT] =
                                   K_SIZES[static_cast<std::size_t>(K_FIELD)];
-                              fixture.dimensions("first.png", {K_WIDTH, K_HEIGHT});
+                              fixture.dimensions("first.png", { K_WIDTH, K_HEIGHT });
                               config.m_max_image_bytes.m_bytes =
                                   K_FIELD == 5 ? 5 : 64uz * 1024 * 1024;
-                          } else fixture.dimensions("second.png", {1, 1});
+                          } else {
+                              fixture.dimensions("second.png", { 1, 1 });
+                          }
                       });
 }
 
@@ -542,13 +684,19 @@ TEST_CASE("decoded failed reads and seeks retain pending reset position and exis
     const auto K_INITIAL = next_reset(**source);
     const auto K_FIRST = next_frame(**source);
     const auto K_PIXELS = *K_FIRST.m_pixels.m_bytes;
-    REQUIRE((*source)->seek({0, 1, 1}));
+    REQUIRE((*source)->seek({ 0, 1, 1 }));
     const auto K_ORIGINAL = snapshot(fixture.m_root);
     auto code = ErrorCode::INVALID_DATA;
     std::stop_source cancellation;
-    if (K_FIELD == 0) cancellation.request_stop();
-    if (K_FIELD == 1) write_bytes(fixture.m_stage / "completion.json", "{}");
-    if (K_FIELD == 2) std::filesystem::remove(fixture.m_stage / "completion.json");
+    if (K_FIELD == 0) {
+        cancellation.request_stop();
+    }
+    if (K_FIELD == 1) {
+        write_bytes(fixture.m_stage / "completion.json", "{}");
+    }
+    if (K_FIELD == 2) {
+        std::filesystem::remove(fixture.m_stage / "completion.json");
+    }
     if (K_FIELD == 3) {
         std::filesystem::remove(fixture.m_stage / "completion.json");
         create_link(fixture.m_stage / "result.json", fixture.m_stage / "completion.json");
@@ -561,16 +709,18 @@ TEST_CASE("decoded failed reads and seeks retain pending reset position and exis
         const auto K_BEFORE = snapshot(fixture.m_root);
         expect_error((*source)->read_next(cancellation.get_token()),
                      K_FIELD == 0 ? ErrorCode::CANCELLED : code);
-        if (K_FIELD > 0) expect_error((*source)->seek({0, 1, 1}), code);
+        if (K_FIELD > 0) {
+            expect_error((*source)->seek({ 0, 1, 1 }), code);
+        }
         CHECK(snapshot(fixture.m_root) == K_BEFORE);
         fixture.repair(K_ORIGINAL);
     } else {
         constexpr std::array<SourceTimestamp, 5> K_BAD {
-            {{-1, 1, 1},
-             {1, 0, 1},
-             {1201, 1, 1},
-             {1, 1, 0},
-             {std::numeric_limits<std::int64_t>::max(), 1, 1}}};
+            { { -1, 1, 1 },
+             { 1, 0, 1 },
+             { 1201, 1, 1 },
+             { 1, 1, 0 },
+             { std::numeric_limits<std::int64_t>::max(), 1, 1 } } };
         expect_error((*source)->seek(K_BAD[static_cast<std::size_t>(K_FIELD - 5)]),
                      ErrorCode::INVALID_ARGUMENT);
     }
@@ -602,12 +752,16 @@ TEST_CASE("decoded image integrity and decoder failures allow retry of the same 
     const auto K_ORIGINAL = snapshot(fixture.m_root);
     const auto K_IMAGE = fixture.m_stage / "images/second.png";
     auto code = ErrorCode::INVALID_DATA;
-    if (K_FIELD == 0) write_bytes(K_IMAGE, std::string(72, 'x'));
+    if (K_FIELD == 0) {
+        write_bytes(K_IMAGE, std::string(72, 'x'));
+    }
     if (K_FIELD == 1) {
         write_bytes(K_IMAGE, std::string(73, 'x'));
         code = ErrorCode::RESOURCE_EXHAUSTED;
     }
-    if (K_FIELD == 2) std::filesystem::remove(K_IMAGE);
+    if (K_FIELD == 2) {
+        std::filesystem::remove(K_IMAGE);
+    }
     if (K_FIELD == 3) {
         write_bytes(fixture.m_decoder, "import sys\nsys.stdout.buffer.write(b'x')\n");
         code = ErrorCode::BACKEND_FAILURE;
@@ -636,13 +790,17 @@ TEST_CASE("decoded image integrity and decoder failures allow retry of the same 
     expect_error((*source)->read_next({}), code);
     // These three controlled decoders deliberately mutate only their selected input.
     // Every other failure must preserve the complete caller tree byte-for-byte.
-    if (K_FIELD < 6) CHECK(snapshot(fixture.m_root) == K_BEFORE);
-    else {
+    if (K_FIELD < 6) {
+        CHECK(snapshot(fixture.m_root) == K_BEFORE);
+    } else {
         auto after = snapshot(fixture.m_root);
         auto expected = K_BEFORE;
         const auto K_NAME = K_IMAGE.lexically_relative(fixture.m_root).generic_string();
-        if (K_FIELD == 8) expected.erase(K_NAME);
-        else expected[K_NAME] = "file:" + std::string(K_FIELD == 6 ? 72 : 73, 'x');
+        if (K_FIELD == 8) {
+            expected.erase(K_NAME);
+        } else {
+            expected[K_NAME] = "file:" + std::string(K_FIELD == 6 ? 72 : 73, 'x');
+        }
         CHECK(after == expected);
     }
     CHECK(*K_FIRST.m_pixels.m_bytes == K_PIXELS);
@@ -700,10 +858,11 @@ TEST_CASE("decoded inspection admits exact inventory and header dimension limits
     fixture.dimensions("second.png", K_SIZE);
     fixture.completion([](auto& value) {
         auto& files = value["files"];
-        while (files.size() < 4096)
-            files.push_back({{"path", "unused/" + std::to_string(files.size())},
-                             {"bytes", 0},
-                             {"sha256", std::string(64, '0')}});
+        while (files.size() < 4096) {
+            files.push_back({ { "path", "unused/" + std::to_string(files.size()) },
+                             { "bytes", 0 },
+                             { "sha256", std::string(64, '0') } });
+        }
     });
     auto config = fixture.config();
     config.m_max_image_bytes.m_bytes = static_cast<std::size_t>(K_SIZE.first) * K_SIZE.second * 3;
@@ -756,7 +915,7 @@ TEST_CASE("decoded in-flight cancellation retains the next frame and old RGB lea
     const auto K_SECOND = next_frame(**source);
     CHECK(K_SECOND.m_original_timestamp.m_pts == 10);
     CHECK(K_SECOND.m_id != K_FIRST.m_id);
-    REQUIRE((*source)->seek({0, 1, 1}));
+    REQUIRE((*source)->seek({ 0, 1, 1 }));
     CHECK(next_reset(**source).m_epoch.m_value == 1);
     CHECK(next_frame(**source).m_id == K_FIRST.m_id);
     source->reset();

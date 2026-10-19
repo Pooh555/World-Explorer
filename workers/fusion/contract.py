@@ -11,6 +11,15 @@ from pilot import digest, parse, read_pinned, publish
 from cached_sources import new_output
 
 
+__all__ = [
+    "DENSE",
+    "file_record",
+    "implementation_digest",
+    "load_request",
+    "selected_recipe",
+]
+
+
 def implementation_digest():
     root = Path(__file__).parent
     files = {

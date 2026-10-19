@@ -1,6 +1,11 @@
 """Select one reconstruction without dropping another model's frame coverage."""
 
 
+__all__ = [
+    "select_candidate",
+]
+
+
 def select_candidate(image_sets, selected_images):
     if not image_sets or any(
         not images or not images <= selected_images for images in image_sets

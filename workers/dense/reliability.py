@@ -14,6 +14,25 @@ from source_selection import report_digest
 from visibility import POLICY as SUPPORT_POLICY
 from visibility import pixel_evidence, validate_views
 
+__all__ = [
+    "FAILURES",
+    "MAX_REPORT_BYTES",
+    "POLICY",
+    "TEXTURES",
+    "evaluate",
+    "failures",
+    "graph_summary",
+    "grid",
+    "implementation_digest",
+    "inspect",
+    "main",
+    "pair_summary",
+    "run",
+    "strata",
+    "train",
+    "validate_rows",
+]
+
 POLICY = {
     "algorithm": "DENSE_GRID_GREEDY_STRATIFIED_DIAGNOSTIC_V1",
     "grid": [128, 96],

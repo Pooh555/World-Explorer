@@ -5,33 +5,35 @@
 #include "world_explorer/scene_store/bundle.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+
 #include <chrono>
 #include <iterator>
 #include <limits>
 #include <stdexcept>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
 
 using namespace world_explorer;
 
 namespace {
 
 template <class Chunk> decltype(auto) mesh_of(Chunk& chunk) {
-    if (!chunk.m_mesh) throw std::runtime_error("Expected mesh fixture payload");
+    if (!chunk.m_mesh) {
+        throw std::runtime_error("Expected mesh fixture payload");
+    }
     return *chunk.m_mesh;
 }
 
 std::shared_ptr<SceneChunk> mesh_chunk() {
     auto chunk = std::make_shared<SceneChunk>();
     chunk->m_id = { 1 };
-    chunk->m_bounds = {{ -1, -1, -1 }, { 1, 1, 1 }};
+    chunk->m_bounds = { { -1, -1, -1 }, { 1, 1, 1 } };
     chunk->m_geometry_valid = true;
     chunk->m_pose_revision = { 1 };
     chunk->m_mesh = SceneMesh {
-        {{{ -.5F, -.5F, 0 }, { 0, 0, 1 }}, {{ .5F, -.5F, 0 }, { 0, 0, 1 }}, {{ 0, .5F, 0 }, { 0, 0, 1 }}},
-        {{ 0, 1, 2 }},
-        {}};
+        { { { -.5F, -.5F, 0 }, { 0, 0, 1 } }, { { .5F, -.5F, 0 }, { 0, 0, 1 } }, { { 0, .5F, 0 }, { 0, 0, 1 } } },
+        { { 0, 1, 2 } },
+        {} };
     return chunk;
 }
 
@@ -39,7 +41,7 @@ SceneSnapshot snapshot(const std::shared_ptr<SceneChunk>& chunk) {
     auto scene = std::make_shared<SceneState>();
     scene->m_id = { 9 };
     scene->m_revision = { 1 };
-    scene->m_provenance = {{ "source_kind", "synthetic_diagnostic" }};
+    scene->m_provenance = { { "source_kind", "synthetic_diagnostic" } };
     scene->m_chunks.emplace(chunk->m_id, chunk);
     return scene;
 }
@@ -125,9 +127,15 @@ TEST_CASE("mesh scene count and byte limits include aggregate geometry", "[mesh]
     limits.m_max_payload_bytes = 168uz;
     REQUIRE(validate_scene(*scene, limits));
     const auto K_LIMIT = GENERATE(0, 1, 2);
-    if (K_LIMIT == 0) --limits.m_max_mesh_vertices;
-    if (K_LIMIT == 1) --limits.m_max_mesh_triangles;
-    if (K_LIMIT == 2) --limits.m_max_payload_bytes;
+    if (K_LIMIT == 0) {
+        --limits.m_max_mesh_vertices;
+    }
+    if (K_LIMIT == 1) {
+        --limits.m_max_mesh_triangles;
+    }
+    if (K_LIMIT == 2) {
+        --limits.m_max_payload_bytes;
+    }
     CHECK(validate_scene(*scene, limits).has_value() == false);
 }
 
@@ -136,11 +144,11 @@ TEST_CASE("mesh transactions deep copy inputs and fingerprint every vertex and i
     auto initial = std::make_shared<SceneState>();
     initial->m_id = { 9 };
     initial->m_epoch = { 1 };
-    initial->m_provenance = {{ "source_kind", "synthetic_diagnostic" }};
+    initial->m_provenance = { { "source_kind", "synthetic_diagnostic" } };
     REQUIRE(store.reset(initial));
     auto chunk = mesh_chunk();
     const SceneTransaction K_CREATE {
-        { 9 }, { 1 }, {}, { 1 }, { 1 }, {{SceneOperationKind::CREATE, { 1 }, chunk, {}, {}}}};
+        { 9 }, { 1 }, {}, { 1 }, { 1 }, { { SceneOperationKind::CREATE, { 1 }, chunk, {}, {} } } };
     REQUIRE(store.commit(K_CREATE));
     const auto K_ORIGINAL = store.acquire_snapshot();
     REQUIRE(K_ORIGINAL->m_chunks.at({ 1 })->m_mesh);
@@ -154,15 +162,15 @@ TEST_CASE("mesh transactions deep copy inputs and fingerprint every vertex and i
     replacement->m_generation = 2;
     mesh_of(*replacement).m_vertices[0].m_normal = { 0, 1, 0 };
     const SceneTransaction K_REPLACE {
-        { 9 }, { 1 }, { 1 }, { 2 }, { 2 }, {{SceneOperationKind::REPLACE, { 1 }, replacement, {}, {}}}};
+        { 9 }, { 1 }, { 1 }, { 2 }, { 2 }, { { SceneOperationKind::REPLACE, { 1 }, replacement, {}, {} } } };
     REQUIRE(store.commit(K_REPLACE));
     CHECK(scene_content_hash(*K_ORIGINAL) != scene_content_hash(*store.acquire_snapshot()));
     REQUIRE(store.commit(
-        {{ 9 }, { 1 }, { 2 }, { 3 }, { 3 }, {{SceneOperationKind::INVALIDATE_GEOMETRY, { 1 }, {}, {}, { 2 }}}}));
+        { { 9 }, { 1 }, { 2 }, { 3 }, { 3 }, { { SceneOperationKind::INVALIDATE_GEOMETRY, { 1 }, {}, {}, { 2 } } } }));
     CHECK(store.acquire_snapshot()->m_chunks.at({ 1 })->m_geometry_valid == false);
     CHECK(store.acquire_snapshot()->m_chunks.at({ 1 })->m_mesh.has_value());
     REQUIRE(
-        store.commit({{ 9 }, { 1 }, { 3 }, { 4 }, { 4 }, {{SceneOperationKind::ERASE, { 1 }, {}, {}, {}}}}));
+        store.commit({ { 9 }, { 1 }, { 3 }, { 4 }, { 4 }, { { SceneOperationKind::ERASE, { 1 }, {}, {}, {} } } }));
     CHECK(store.acquire_snapshot()->m_chunks.empty());
 }
 
@@ -179,7 +187,9 @@ TEST_CASE("mesh renderer admission accounts for geometry and preserves failed re
     REQUIRE(K_TICKET);
     auto next = sink.take_next();
     REQUIRE(next.has_value());
-    if (!next) throw std::runtime_error("Missing admitted mesh update");
+    if (!next) {
+        throw std::runtime_error("Missing admitted mesh update");
+    }
     sink.acknowledge_uploaded(*K_TICKET, 1);
     sink.acknowledge_visible(*K_TICKET, next.value().m_batch.m_snapshot, 1);
     CHECK(sink.visible_snapshot() == K_SCENE);

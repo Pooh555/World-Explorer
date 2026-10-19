@@ -259,11 +259,17 @@ Retained native-adoption fixtures/commands are in
 Then integrate fresh CUDA depth behind the same boundary after isolated
 worker-header reconciliation below. Keep metric alignment/collision/walking open.
 
-The committed `8829bfc` header policy is preserved. `#pragma once` conflicts with
-current portability lint: the ordinary gate fails; guarded-copy VFS analysis
-passes without disabling warnings, and does not qualify the actual header policy.
-Separately, all 24,457 protected files match their previously observed state;
-3,982 external package headers still differ from their original byte receipts.
+The style gate now enforces one first-line `#pragma once` in all headers, braces
+around every control-flow body, and the C++ template's non-empty brace-list
+spacing. `.clang-format` groups project, standard-library and platform includes;
+`.clang-tidy` retains the one conflicting portability-check exclusion. Python
+source now follows the template's export ordering and class naming conventions.
+Full Python formatting still needs the pinned Black dependency for verification.
+See [style conformance validation](validation/2026-10-19-style-conformance.md).
+The normal style command no longer needs guarded-copy VFS analysis for header
+policy. Separately,
+all 24,457 protected files match their previously observed state; 3,982 external
+package headers still differ from their original byte receipts.
 The libc++ check uses fresh extraction from retained archives, leaving the modified
 installation untouched. Reconcile worker-header drift against exact retained
 packages in an isolated profile before any future CUDA/worker rebuild; old receipts

@@ -12,6 +12,21 @@ import tempfile
 from pilot import digest, parse, publish, read_pinned
 from source_selection import report_digest
 
+__all__ = [
+    "KIND",
+    "MAX_CACHE_BYTES",
+    "MAX_FILE_BYTES",
+    "MODEL_FILES",
+    "checked_path",
+    "freeze",
+    "implementation_digest",
+    "load_cache",
+    "main",
+    "metadata",
+    "new_output",
+    "score",
+]
+
 MAX_FILE_BYTES = 256 * 1024**2
 MAX_CACHE_BYTES = 512 * 1024**2
 MODEL_FILES = ("cameras.bin", "images.bin", "points3D.bin", "rigs.bin", "frames.bin")

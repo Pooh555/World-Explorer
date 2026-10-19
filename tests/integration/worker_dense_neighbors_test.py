@@ -17,7 +17,7 @@ import neighbors
 import resized_model
 
 
-class dense_neighbors_test(unittest.TestCase):
+class DenseNeighborsTest(unittest.TestCase):
     def test_bounded_rows_are_symmetric_exclude_self_and_close_over_selected_views(
         self,
     ):

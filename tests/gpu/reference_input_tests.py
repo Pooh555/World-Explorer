@@ -25,7 +25,7 @@ from compare_reference import (
 )
 
 
-class real_reference_input_tests(unittest.TestCase):
+class RealReferenceInputTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -284,7 +284,7 @@ class real_reference_input_tests(unittest.TestCase):
                 parse_fit_indices("0", count)
 
 
-class clipping_boundary_tests(unittest.TestCase):
+class ClippingBoundaryTests(unittest.TestCase):
     def setUp(self):
         bits = np.array(
             [0x3F7FFFFF, 0x3F800000, 0x3F800001, 0x40FFFFFF, 0x41000000, 0x41000001],
@@ -446,7 +446,7 @@ class clipping_boundary_tests(unittest.TestCase):
                 clipping_regions(self.image(), background)
 
 
-class rebasing_input_tests(unittest.TestCase):
+class RebasingInputTests(unittest.TestCase):
     def fixture(self, case="zero"):
         return dict(rebasing_profile(case), scene_content_sha256="a" * 64)
 

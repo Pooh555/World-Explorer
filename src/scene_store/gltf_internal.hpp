@@ -2,11 +2,11 @@
 
 #include "world_explorer/scene_store/gltf.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <bit>
 #include <limits>
 #include <stdexcept>
-
-#include <nlohmann/json.hpp>
 
 namespace world_explorer::gltf_detail {
 
@@ -14,16 +14,20 @@ using Json = nlohmann::json;
 constexpr std::size_t K_MAX_BYTES { 256uz * 1024uz * 1024uz };
 
 inline void require(bool condition, const char* message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition)
+        throw std::runtime_error(message);
 }
 
 class Cancelled final : public std::exception {
   public:
-    const char* what() const noexcept override { return "GLB operation cancelled"; }
+    const char* what() const noexcept override {
+        return "GLB operation cancelled";
+    }
 };
 
 inline void cancelled(const std::stop_token& stop) {
-    if (stop.stop_requested()) throw Cancelled {};
+    if (stop.stop_requested())
+        throw Cancelled {};
 }
 
 struct Writer {
@@ -42,10 +46,13 @@ struct Writer {
             m_data.push_back(static_cast<std::byte>((value >> (i * 8uz)) & 255U));
     }
 
-    void real(float value) { integer(std::bit_cast<std::uint32_t>(value)); }
+    void real(float value) {
+        integer(std::bit_cast<std::uint32_t>(value));
+    }
 
     void align() {
-        while (m_data.size() % 4uz) integer(0, 1uz);
+        while (m_data.size() % 4uz)
+            integer(0, 1uz);
     }
 };
 
@@ -68,7 +75,9 @@ struct Reader {
         return value;
     }
 
-    float real() { return std::bit_cast<float>(static_cast<std::uint32_t>(integer())); }
+    float real() {
+        return std::bit_cast<float>(static_cast<std::uint32_t>(integer()));
+    }
 };
 
 struct Image {

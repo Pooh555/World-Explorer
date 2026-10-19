@@ -47,7 +47,7 @@ struct SourceReset {
     WorldEpoch m_epoch;
 };
 
-struct SourceEnd {   };
+struct SourceEnd { };
 
 using SourceEvent = std::variant<FramePacket, FrameGap, SourceReset, SourceEnd>;
 

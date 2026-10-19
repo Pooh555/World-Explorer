@@ -1,6 +1,9 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 
+#include <SDL3/SDL.h>
+#include <nlohmann/json.hpp>
+
 #include <array>
 #include <filesystem>
 #include <fstream>
@@ -9,15 +12,14 @@
 #include <stdexcept>
 #include <vector>
 
-#include <SDL3/SDL.h>
-#include <nlohmann/json.hpp>
-
 using namespace world_explorer;
 
 namespace {
 
 void require(bool valid, const std::string& message) {
-    if (!valid) throw std::runtime_error(message);
+    if (!valid) {
+        throw std::runtime_error(message);
+    }
 }
 
 std::shared_ptr<const SceneChunk> chunk(ChunkId id, std::size_t count) {
@@ -55,41 +57,43 @@ std::vector<Phase> phases() {
     std::vector<Phase> result;
     auto append = [&](std::shared_ptr<SceneState> scene, Vec3d camera, std::size_t reused) {
         scene->m_revision = { result.size() + 1 };
-        result.push_back({std::move(scene), camera, reused});
+        result.push_back({ std::move(scene), camera, reused });
     };
-    auto next = [&] { return std::make_shared<SceneState>(*result.back().m_snapshot); };
+    auto next = [&] {
+        return std::make_shared<SceneState>(*result.back().m_snapshot);
+    };
     const Vec3d K_NEAR { 0, 0, 4 };
     append(std::make_shared<SceneState>(*original), K_NEAR, 0);
     append(next(), K_NEAR, 66002);
     auto scene = next();
-    auto replacement = std::make_shared<SceneChunk>(*scene->m_chunks.at({4}));
+    auto replacement = std::make_shared<SceneChunk>(*scene->m_chunks.at({ 4 }));
     replacement->m_splats[0].m_sh[1] = -0.8F;
-    scene->m_chunks[{4}] = replacement;
+    scene->m_chunks[{ 4 }] = replacement;
     append(scene, K_NEAR, 2);
     scene = next();
-    scene->m_chunks.erase({2});
+    scene->m_chunks.erase({ 2 });
     append(scene, K_NEAR, 66001);
     scene = next();
-    scene->m_chunks.emplace(ChunkId { 1 }, chunk({1}, 3));
+    scene->m_chunks.emplace(ChunkId { 1 }, chunk({ 1 }, 3));
     append(scene, K_NEAR, 66001);
     scene = next();
-    replacement = std::make_shared<SceneChunk>(*chunk({6}, 2));
+    replacement = std::make_shared<SceneChunk>(*chunk({ 6 }, 2));
     replacement->m_world_from_chunk.m_translation.m_x = 0.25;
     replacement->m_world_from_chunk.m_scale = 0.8;
-    scene->m_chunks[{6}] = replacement;
+    scene->m_chunks[{ 6 }] = replacement;
     append(scene, K_NEAR, 66003);
     scene = next();
     scene->m_chunks.clear();
     append(scene, K_NEAR, 0);
     append(std::make_shared<SceneState>(*original), K_NEAR, 0);
-    append(next(), {1.25, 0.5, 4}, 66002);
-    append(next(), {20000, 0, 4}, 0);  // A new floating origin requires fresh CPU data.
-    append(next(), {20000.25, 0, 4}, 66002);
+    append(next(), { 1.25, 0.5, 4 }, 66002);
+    append(next(), { 20000, 0, 4 }, 0);  // A new floating origin requires fresh CPU data.
+    append(next(), { 20000.25, 0, 4 }, 66002);
     scene = next();
-    replacement = std::make_shared<SceneChunk>(*scene->m_chunks.at({4}));
+    replacement = std::make_shared<SceneChunk>(*scene->m_chunks.at({ 4 }));
     replacement->m_world_from_chunk.m_translation.m_x = 0.1;
-    scene->m_chunks[{4}] = replacement;
-    append(scene, {20000.25, 0, 4}, 2);
+    scene->m_chunks[{ 4 }] = replacement;
+    append(scene, { 20000.25, 0, 4 }, 2);
     return result;
 }
 
@@ -101,7 +105,9 @@ int main(int argc, char** argv) try {
     require(SDL_Init(SDL_INIT_VIDEO), "SDL initialization failed");
 
     struct SdlOwner {
-        ~SdlOwner() { SDL_Quit(); }
+        ~SdlOwner() {
+            SDL_Quit();
+        }
     } sdl;
 
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -113,13 +119,13 @@ int main(int argc, char** argv) try {
     require(window != nullptr, "cannot create SDL verification window");
     const auto K_CASES = phases();
     std::vector<std::string> references;
-    nlohmann::json report {{"scope", "synthetic resident-copy versus CPU-pack parity"},
-                           {"runs", nlohmann::json::array()}};
-    for (const auto K_PROFILE : {GpuSplatStorage::FP32, GpuSplatStorage::FP32_GEOMETRY_FP16_SH}) {
+    nlohmann::json report { { "scope", "synthetic resident-copy versus CPU-pack parity" },
+                           { "runs", nlohmann::json::array() } };
+    for (const auto K_PROFILE : { GpuSplatStorage::FP32, GpuSplatStorage::FP32_GEOMETRY_FP16_SH }) {
         references.clear();
         const bool K_PACKED = K_PROFILE == GpuSplatStorage::FP32_GEOMETRY_FP16_SH;
         const std::size_t K_STRIDE = K_PACKED ? 160 : 256;
-        for (const bool K_REUSE : {false, true}) {
+        for (const bool K_REUSE : { false, true }) {
             RendererOptions options;
             options.m_max_splats = 100000;
             options.m_splat_storage = K_PROFILE;
@@ -135,7 +141,7 @@ int main(int argc, char** argv) try {
                 const auto& test = K_CASES[index];
                 CameraView camera;
                 camera.m_position = test.m_camera;
-                auto batch = make_snapshot_batch(test.m_snapshot, {index + 1}).value();
+                auto batch = make_snapshot_batch(test.m_snapshot, { index + 1 }).value();
                 const auto K_TICKET = renderer->updates().enqueue(batch);
                 require(K_TICKET.has_value(), "synthetic scene admission failed");
                 const auto K_BEFORE = renderer->diagnostics().m_submitted_frames;
@@ -145,9 +151,11 @@ int main(int argc, char** argv) try {
                     require(K_STATS.m_validation_errors == 0 &&
                                 K_STATS.m_allocated_bytes <= options.m_residency_bytes,
                             "Vulkan validation or residency error");
-                    for (const auto& sample : K_STATS.m_completed_timings)
-                        if (sample.m_sequence > K_BEFORE)
+                    for (const auto& sample : K_STATS.m_completed_timings) {
+                        if (sample.m_sequence > K_BEFORE) {
                             samples.try_emplace(sample.m_sequence, sample);
+                        }
+                    }
                 };
                 bool visible = false;
                 for (int frame { 0 }; frame < 30 && !visible; ++frame) {
@@ -163,9 +171,10 @@ int main(int argc, char** argv) try {
                     require((K_SNAPSHOT ? K_SNAPSHOT->m_revision.m_value : 0) ==
                                 (visible ? index + 1 : index),
                             "partial upload advanced the visible revision");
-                    if (!visible)
+                    if (!visible) {
                         require(renderer->diagnostics().m_staging_bytes > 0,
                                 "active staging allocation was absent from diagnostics");
+                    }
                 }
                 require(visible, "synthetic revision did not become visible");
                 const auto K_PATH =
@@ -179,10 +188,12 @@ int main(int argc, char** argv) try {
                 collect();
                 const auto K_HASH = sha256_file(K_PATH, 4uz * 1024 * 1024);
                 require(K_HASH.has_value(), "cannot hash synthetic readback");
-                if (K_REUSE)
+                if (K_REUSE) {
                     require(*K_HASH == references[index],
                             "resident copy differs from CPU-packed pixels");
-                else references.push_back(*K_HASH);
+                } else {
+                    references.push_back(*K_HASH);
+                }
                 std::size_t host {}, resident {}, splats {};
                 for (const auto& [K_ID, K_CHUNK] : test.m_snapshot->m_chunks) {
                     static_cast<void>(K_ID);
@@ -201,21 +212,21 @@ int main(int argc, char** argv) try {
                             host ==
                                 std::max<std::size_t>(16, splats * K_STRIDE) - K_EXPECTED_RESIDENT,
                         "resident/host transfer bytes differ from the fixture contract");
-                report["runs"].push_back({{"reuse", K_REUSE},
-                                          {"stride", K_STRIDE},
-                                          {"revision", index + 1},
-                                          {"host_bytes", host},
-                                          {"resident_bytes", resident},
-                                          {"sha256", *K_HASH}});
+                report["runs"].push_back({ { "reuse", K_REUSE },
+                                          { "stride", K_STRIDE },
+                                          { "revision", index + 1 },
+                                          { "host_bytes", host },
+                                          { "resident_bytes", resident },
+                                          { "sha256", *K_HASH } });
             }
             if (K_PACKED && K_REUSE) {
                 auto invalid = std::make_shared<SceneState>(*K_CASES.back().m_snapshot);
                 invalid->m_revision = { 13 };
-                auto replacement = std::make_shared<SceneChunk>(*invalid->m_chunks.at({4}));
+                auto replacement = std::make_shared<SceneChunk>(*invalid->m_chunks.at({ 4 }));
                 replacement->m_splats.front().m_sh[47] = 65505.F;
-                invalid->m_chunks[{4}] = replacement;
+                invalid->m_chunks[{ 4 }] = replacement;
                 const auto K_ORIGINAL_HASH = scene_content_hash(*invalid);
-                auto batch = make_snapshot_batch(invalid, {13}).value();
+                auto batch = make_snapshot_batch(invalid, { 13 }).value();
                 const auto K_TICKET = renderer->updates().enqueue(batch);
                 require(K_TICKET.has_value(), "finite canonical scene should pass CPU admission");
                 CameraView camera;
@@ -239,7 +250,7 @@ int main(int argc, char** argv) try {
                         "packing rejection changed prior pixels");
                 auto repaired = std::make_shared<SceneState>(*K_CASES.back().m_snapshot);
                 repaired->m_revision = { 14 };
-                auto repair_batch = make_snapshot_batch(repaired, {14}).value();
+                auto repair_batch = make_snapshot_batch(repaired, { 14 }).value();
                 const auto K_REPAIR_TICKET = renderer->updates().enqueue(repair_batch);
                 require(K_REPAIR_TICKET.has_value(), "repair full snapshot was rejected");
                 bool visible = false;

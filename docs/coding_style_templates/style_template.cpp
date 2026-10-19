@@ -52,13 +52,9 @@
 //   truth, .clang-format must match):
 //   - 4 spaces, no tabs.
 //   - 100-column limit.
-//   - Attached (K&R) braces. Braces are required on every control-flow body,
-//     except when the whole statement (keyword, condition and body) fits on one
-//     line of at most 80 columns. An if / else chain is either fully braced or
-//     made entirely of such one-line statements. `if consteval` is always braced.
-//     Tooling: clang-format cannot add or remove braces selectively; enforce with
-//     clang-tidy readability-braces-around-statements (ShortStatementLines: 2)
-//     and review.
+//   - Attached (K&R) braces. Every control-flow body is braced, including
+//     one-line bodies, `if consteval`, and every arm of an if / else chain.
+//     Enforce with clang-tidy readability-braces-around-statements and review.
 //   - `T* p` / `T& r` (type-attached).
 //   - West const: `const T&`.
 //   - One declaration per line.
@@ -98,8 +94,7 @@
 //   - Section banners (`// ----`) have one blank line before and after the banner.
 //   - Preprocessor: one blank line around each include group and around an
 //     `#if` ... `#endif` block, unless the block sits inside a declaration.
-//   - One statement per line, except the unbraced one-line control statements
-//     allowed by the brace rule. A function or lambda body stays on one line
+//   - One statement per line. A function or lambda body stays on one line
 //     only when it is a single `return` and fits the column limit; every other
 //     body breaks after `{`.
 //   - When a call, template argument list or initializer list does not fit on
@@ -123,7 +118,7 @@
 // 1. FILE LAYOUT, INCLUDES, MODULES, PREPROCESSOR, MACROS
 // -----------------------------------------------------------------------------
 
-// Header guard: `#pragma once`.
+// Header guard: require exactly one `#pragma once` as the first line of headers.
 // (In a real header, this would be the first line.)
 // #pragma once
 

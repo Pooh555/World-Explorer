@@ -13,7 +13,7 @@ import source_selection as selection
 @unittest.skipUnless(
     importlib.util.find_spec("numpy"), "Array selection requires isolated NumPy"
 )
-class dense_selection_test(unittest.TestCase):
+class DenseSelectionTest(unittest.TestCase):
     def fixture(self):
         import numpy as np
 
@@ -152,7 +152,7 @@ class dense_selection_test(unittest.TestCase):
 @unittest.skipUnless(
     importlib.util.find_spec("pycolmap"), "Model selection requires isolated pycolmap"
 )
-class dense_selection_model_test(unittest.TestCase):
+class DenseSelectionModelTest(unittest.TestCase):
     def fixture(self):
         import numpy as np
         from types import SimpleNamespace as Obj

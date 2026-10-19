@@ -4,11 +4,11 @@
 #include "world_explorer/reconstruction_adapters/image_decoder.hpp"
 #include "world_explorer/scene_store/color_projection.hpp"
 
-#include <chrono>
-#include <limits>
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+
+#include <chrono>
+#include <limits>
 
 using namespace world_explorer;
 
@@ -17,7 +17,7 @@ namespace {
 DepthImageAsset depth_fixture() {
     DepthImageAsset depth;
     auto& metadata = depth.m_metadata;
-    metadata.m_dependency = {{ 1 }, { 2 }, { 3 }, { 4 }, std::string(64uz, 'a'), std::string(64uz, 'b')};
+    metadata.m_dependency = { { 1 }, { 2 }, { 3 }, { 4 }, std::string(64uz, 'a'), std::string(64uz, 'b') };
     metadata.m_width = metadata.m_height = 2;
     metadata.m_camera = { 2, 3, .5, .5 };
     metadata.m_calibrated_image_sha256 = std::string(64uz, 'c');
@@ -30,7 +30,7 @@ DepthImageAsset depth_fixture() {
 }
 
 std::vector<std::byte> rgb_fixture() {
-    return {std::byte { 255 },
+    return { std::byte { 255 },
             std::byte {},
             std::byte {},
             std::byte {},
@@ -41,7 +41,7 @@ std::vector<std::byte> rgb_fixture() {
             std::byte { 255 },
             std::byte { 255 },
             std::byte { 255 },
-            std::byte { 255 }};
+            std::byte { 255 } };
 }
 
 struct Directory {
@@ -50,7 +50,9 @@ struct Directory {
         ("we_color_projection_" +
          std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
 
-    Directory() { REQUIRE(std::filesystem::create_directory(m_root)); }
+    Directory() {
+        REQUIRE(std::filesystem::create_directory(m_root));
+    }
 
     ~Directory() {
         std::error_code ignored;
@@ -66,7 +68,9 @@ TEST_CASE("captured color uses integer centers optical axes and linear light int
     REQUIRE(K_VIEW);
     const auto K_CENTER = K_VIEW->project_color({ 0, 0, 2 }, { 0, 0, 1 });
     REQUIRE(K_CENTER.m_status == ColorProjectionStatus::ACCEPTED);
-    for (auto color : K_CENTER.m_linear_rgb) CHECK(color == .5F);
+    for (auto color : K_CENTER.m_linear_rgb) {
+        CHECK(color == .5F);
+    }
     CHECK(K_CENTER.m_score == 1);
     const auto K_RED = K_VIEW->project_color({ -.5, -1.0 / 3, 2 }, { 0, 0, -1 });
     REQUIRE(K_RED.m_status == ColorProjectionStatus::ACCEPTED);
@@ -80,7 +84,7 @@ TEST_CASE("captured color uses integer centers optical axes and linear light int
 
 TEST_CASE("color projection transforms similarity scale before testing camera axial depth",
           "[color_projection]") {
-    const SimilarityTransform K_CAMERA {{ 0, 0, 1, 0 }, { 7, -4, 8 }, 3};
+    const SimilarityTransform K_CAMERA { { 0, 0, 1, 0 }, { 7, -4, 8 }, 3 };
     const auto K_VIEW = ColorProjectionView::create(depth_fixture(), rgb_fixture(), K_CAMERA, .03);
     REQUIRE(K_VIEW);
     const auto K_COLOR = K_VIEW->project_color(transform_point(K_CAMERA, { 0, 0, 2 }), { 0, 0, -1 });
@@ -117,7 +121,7 @@ TEST_CASE("color projection never bridges invalid low support or inconsistent de
     const auto K_VIEW = ColorProjectionView::create(std::move(depth), rgb_fixture(), {}, .01);
     REQUIRE(K_VIEW);
     // Even a zero-weight corner must be known/supported: no edge exception.
-    for (auto point : {Vec3d { 0, 0, 2 }, Vec3d { -.5, -1.0 / 3, 2 }}) {
+    for (auto point : { Vec3d { 0, 0, 2 }, Vec3d { -.5, -1.0 / 3, 2 } }) {
         const auto K_COLOR = K_VIEW->project_color(point, { 0, 0, 1 });
         CHECK(K_COLOR.m_status == expected);
         CHECK(K_COLOR.m_linear_rgb == std::array<float, 3> {});
@@ -147,12 +151,22 @@ TEST_CASE("color projection validates byte sizes depth metadata and cancellation
     auto depth = depth_fixture();
     auto rgb = rgb_fixture();
     double voxel { .01 };
-    if (K_MUTATION == 0) rgb.pop_back();
-    if (K_MUTATION == 1) depth.m_valid[0] = 2;
-    if (K_MUTATION == 2) voxel = 0;
-    if (K_MUTATION == 3) voxel = std::numeric_limits<double>::infinity();
+    if (K_MUTATION == 0) {
+        rgb.pop_back();
+    }
+    if (K_MUTATION == 1) {
+        depth.m_valid[0] = 2;
+    }
+    if (K_MUTATION == 2) {
+        voxel = 0;
+    }
+    if (K_MUTATION == 3) {
+        voxel = std::numeric_limits<double>::infinity();
+    }
     std::stop_source cancellation;
-    if (K_MUTATION == 4) cancellation.request_stop();
+    if (K_MUTATION == 4) {
+        cancellation.request_stop();
+    }
     const auto K_REJECTED = ColorProjectionView::create(
         std::move(depth), std::move(rgb), {}, voxel, cancellation.get_token());
     CHECK(K_REJECTED.has_value() == false);
@@ -207,7 +221,9 @@ TEST_CASE("color projection preserves sRGB transfer and the fixed depth envelope
     REQUIRE(K_VIEW);
     const auto K_COLOR = K_VIEW->project_color({ 0, 0, 2 }, { 0, 0, 1 });
     REQUIRE(K_COLOR.m_status == ColorProjectionStatus::ACCEPTED);
-    for (auto color : K_COLOR.m_linear_rgb) CHECK(std::abs(color - .21586050011389926) < 1e-7);
+    for (auto color : K_COLOR.m_linear_rgb) {
+        CHECK(std::abs(color - .21586050011389926) < 1e-7);
+    }
     for (auto delta : { .039F, -.039F, .041F, -.041F }) {
         auto depth = depth_fixture();
         depth.m_axial_depth[0] += delta;

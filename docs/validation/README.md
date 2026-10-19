@@ -1,5 +1,9 @@
 # Validation index
 
+- [Coding-style template conformance](2026-10-19-style-conformance.md):
+  formatter/linter alignment, C++ braced-list spacing, and Python source naming
+  and exports; records build, test, formatter and static-analysis limits.
+
 - [Native geometry-job adoption](2026-10-19-native-geometry-job.md): owned conversion/admission/publication, populated-attempt resume, strict replay and two full native views; M3 remains open.
 
 - [Owned retained-cache geometry job](2026-10-19-geometry-job.md): real temporal/parallax partial stages, exact replay, cancellation and foreign-output preservation on Linux.

@@ -23,6 +23,14 @@ from audit_worker_environment import (
     read_requirements,
 )
 
+__all__ = [
+    "DEPENDENCIES",
+    "IMPLEMENTATION_FILES",
+    "POLICY",
+    "main",
+    "metric_manifest",
+]
+
 POLICY = {
     "specification": "technical_plan.md section 3.3; Q2/Q3/Q6",
     "color_domain": "display-encoded RGB [0,1]",

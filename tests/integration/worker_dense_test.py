@@ -17,7 +17,7 @@ import colmap_io
 import pilot
 
 
-class dense_test(unittest.TestCase):
+class DenseTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="we_dense_")
         self.addCleanup(self.temp.cleanup)

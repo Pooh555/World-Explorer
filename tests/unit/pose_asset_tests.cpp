@@ -2,14 +2,14 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/map_store/pose_asset.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
+
 #include <atomic>
 #include <fstream>
 #include <limits>
 #include <thread>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
@@ -57,11 +57,13 @@ CanonicalPoseAsset fixture() {
                             TrackingState::TRACKING,
                             {} } };
     auto& covariance = transaction.m_poses[0].m_covariance.emplace();
-    for (std::size_t i { 0uz }; i < 6uz; ++i) covariance[i * 6 + i] = double(i + 1) * .1;
+    for (std::size_t i { 0uz }; i < 6uz; ++i) {
+        covariance[i * 6 + i] = double(i + 1) * .1;
+    }
     REQUIRE(store.commit(transaction));
     return {
         store.acquire_snapshot(),
-        {std::string(64, '1'), std::string(64, '2'), std::string(64, '3'), std::string(64, '4')}};
+        { std::string(64, '1'), std::string(64, '2'), std::string(64, '3'), std::string(64, '4') } };
 }
 
 struct Directory {
@@ -102,10 +104,10 @@ TEST_CASE(
     CHECK(K_LOADED->m_provenance.m_journal_sha256 == asset.m_provenance.m_journal_sha256);
     const auto& map = *K_LOADED->m_snapshot;
     CHECK(map.m_scale == ScaleStatus::ARBITRARY);
-    CHECK(map.m_observations.at({9007199254740993ULL}).m_timestamp.m_pts == -7);
-    CHECK(map.m_observations.at({2}).m_timestamp.m_time_base_numerator == 1001);
-    CHECK(map.m_poses.at({9007199254740993ULL}).m_covariance ==
-          asset.m_snapshot->m_poses.at({9007199254740993ULL}).m_covariance);
+    CHECK(map.m_observations.at({ 9007199254740993ULL }).m_timestamp.m_pts == -7);
+    CHECK(map.m_observations.at({ 2 }).m_timestamp.m_time_base_numerator == 1001);
+    CHECK(map.m_poses.at({ 9007199254740993ULL }).m_covariance ==
+          asset.m_snapshot->m_poses.at({ 9007199254740993ULL }).m_covariance);
     const auto K_INSPECTED = inspect_pose_asset(*K_LOADED);
     REQUIRE(K_INSPECTED);
     const auto K_JSON = nlohmann::json::parse(*K_INSPECTED);
@@ -114,7 +116,7 @@ TEST_CASE(
     CHECK(K_JSON["calibrations"][0]["distortion_k1_k2_p1_p2"][2] == .003);
     CHECK(K_JSON["calibrations"][0]["image_transform_sx_sy_ox_oy"][2] == -3.25);
     const auto& world = K_JSON["poses"][1]["world_from_camera"];
-    CHECK(world["translation"] == nlohmann::json({12.5, -25., 22.5}));
+    CHECK(world["translation"] == nlohmann::json({ 12.5, -25., 22.5 }));
     CHECK(std::abs(world["rotation_wxyz"][1].get<double>() - std::sqrt(.5)) < 1e-12);
     CHECK(std::abs(world["rotation_wxyz"][3].get<double>() - std::sqrt(.5)) < 1e-12);
     CHECK(world["scale"] == 2.5);
@@ -214,28 +216,41 @@ TEST_CASE("canonical pose validation bounds covariance provenance and cancellati
         auto invalid = K_ASSET;
         auto map = std::make_shared<MapState>(*K_ASSET.m_snapshot);
         invalid.m_snapshot = map;
-        auto& optional_covariance = map->m_poses.at({9007199254740993ULL}).m_covariance;
+        auto& optional_covariance = map->m_poses.at({ 9007199254740993ULL }).m_covariance;
         if (!optional_covariance) {
             FAIL("Missing fixture covariance");
             return;
         }
         auto& covariance = *optional_covariance;
-        if (mode == 0) covariance[0] = -1;
-        if (mode == 1) covariance[1] = .01;
-        if (mode == 2)
+        if (mode == 0) {
+            covariance[0] = -1;
+        }
+        if (mode == 1) {
+            covariance[1] = .01;
+        }
+        if (mode == 2) {
             covariance[1] = covariance[6] = 1;  // symmetric, positive diagonal, indefinite
-        if (mode == 3) covariance[0] = std::numeric_limits<double>::infinity();
-        if (mode == 4) map->m_scale = ScaleStatus::METRIC_MEASURED;
-        if (mode == 5) invalid.m_provenance.m_journal_sha256 = "invented";
+        }
+        if (mode == 3) {
+            covariance[0] = std::numeric_limits<double>::infinity();
+        }
+        if (mode == 4) {
+            map->m_scale = ScaleStatus::METRIC_MEASURED;
+        }
+        if (mode == 5) {
+            invalid.m_provenance.m_journal_sha256 = "invented";
+        }
         CHECK_FALSE(encode_pose_asset(invalid));
     }
     auto map = std::make_shared<MapState>(*K_ASSET.m_snapshot);
     map->m_invalidated_frames = { { 2 }, { 999 } };
     map->m_revision = { 7 };
     map->m_epoch = { 8 };
-    if (auto& covariance = map->m_poses.at({9007199254740993ULL}).m_covariance; covariance)
+    if (auto& covariance = map->m_poses.at({ 9007199254740993ULL }).m_covariance; covariance) {
         covariance->fill(0);  // valid singular uncertainty
-    else FAIL("Missing fixture covariance");
+    } else {
+        FAIL("Missing fixture covariance");
+    }
     CanonicalPoseAsset corrected { map, K_ASSET.m_provenance };
     const auto K_REVISED = encode_pose_asset(corrected);
     REQUIRE(K_REVISED);
@@ -244,7 +259,7 @@ TEST_CASE("canonical pose validation bounds covariance provenance and cancellati
     CHECK(K_RESTORED->m_snapshot->m_invalidated_frames == map->m_invalidated_frames);
     CHECK(K_RESTORED->m_snapshot->m_epoch.m_value == 8);
     CHECK(K_RESTORED->m_snapshot->m_revision.m_value == 7);
-    CHECK(K_RESTORED->m_snapshot->m_poses.at({2}).m_revision.m_value == 1);
+    CHECK(K_RESTORED->m_snapshot->m_poses.at({ 2 }).m_revision.m_value == 1);
 }
 
 TEST_CASE("canonical pose file publication is immutable and concurrent writers preserve the winner",
@@ -274,7 +289,9 @@ TEST_CASE("canonical pose file publication is immutable and concurrent writers p
     const auto K_RACED = temporary.m_path / "race.weposes";
     std::atomic<unsigned> successes {};
     const auto K_WRITER = [&] {
-        if (write_pose_asset(K_RACED, K_ASSET)) ++successes;
+        if (write_pose_asset(K_RACED, K_ASSET)) {
+            ++successes;
+        }
     };
     { std::jthread first(K_WRITER), second(K_WRITER); }
     CHECK(successes == 1);
@@ -358,15 +375,15 @@ TEST_CASE("canonical record admission bounds each collection independently",
     const auto K_FIELD = GENERATE(0, 1, 2, 3, 4);
     CAPTURE(K_FIELD);
     if (K_FIELD == 2 || K_FIELD == 4) {
-        state->m_observations.erase({9007199254740993ULL});
-        state->m_poses.erase({9007199254740993ULL});
+        state->m_observations.erase({ 9007199254740993ULL });
+        state->m_poses.erase({ 9007199254740993ULL });
     }
     auto bytes = encode_pose_asset(asset);
     REQUIRE(bytes);
     if (K_FIELD == 2) {
         // Keep two poses but one observation so the independent pose budget is reached.
         state->m_poses.emplace(FrameId { 9007199254740993ULL },
-                               fixture().m_snapshot->m_poses.at({9007199254740993ULL}));
+                               fixture().m_snapshot->m_poses.at({ 9007199254740993ULL }));
         auto full = fixture();
         bytes = encode_pose_asset(full);
         REQUIRE(bytes);
@@ -374,9 +391,13 @@ TEST_CASE("canonical record admission bounds each collection independently",
         flatbuffers::WriteScalar(reinterpret_cast<std::uint8_t*>(observations), std::uint32_t { 1 });
     }
     PoseAssetLimits limits;
-    if (K_FIELD == 0) limits.m_records.m_max_calibrations = 1;
-    else if (K_FIELD == 3) limits.m_records.m_max_submaps = 1;
-    else limits.m_records.m_max_frames = 1;
+    if (K_FIELD == 0) {
+        limits.m_records.m_max_calibrations = 1;
+    } else if (K_FIELD == 3) {
+        limits.m_records.m_max_submaps = 1;
+    } else {
+        limits.m_records.m_max_frames = 1;
+    }
     const auto K_ENCODED = encode_pose_asset(asset, limits);
     REQUIRE(!K_ENCODED);
     CHECK(K_ENCODED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
@@ -404,11 +425,11 @@ TEST_CASE("canonical encoding has exact byte admission and rejects incomplete pu
     // Sweep output budgets without depending on FlatBuffers' internal record layout.
     for (std::size_t budget { 1uz }; budget < K_BYTES->size(); budget += 64uz) {
         CAPTURE(budget);
-        const auto K_REJECTED = encode_pose_asset(K_ASSET, {{budget}, {}});
+        const auto K_REJECTED = encode_pose_asset(K_ASSET, { { budget }, {} });
         REQUIRE(!K_REJECTED);
         CHECK(K_REJECTED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
     }
-    const PoseAssetLimits K_EXACT {{K_BYTES->size()}, {}};
+    const PoseAssetLimits K_EXACT { { K_BYTES->size() }, {} };
     const auto K_ENCODED = encode_pose_asset(K_ASSET, K_EXACT);
     REQUIRE(K_ENCODED);
     CHECK(*K_ENCODED == *K_BYTES);
@@ -416,7 +437,7 @@ TEST_CASE("canonical encoding has exact byte admission and rejects incomplete pu
     const auto K_EMPTY = decode_pose_asset({}, K_HASH);
     REQUIRE(!K_EMPTY);
     CHECK(K_EMPTY.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
-    const PoseAssetLimits K_SHORT_BUDGET {{K_BYTES->size() - 1}, {}};
+    const PoseAssetLimits K_SHORT_BUDGET { { K_BYTES->size() - 1 }, {} };
     const auto K_REJECTED = encode_pose_asset(K_ASSET, K_SHORT_BUDGET);
     REQUIRE(!K_REJECTED);
     CHECK(K_REJECTED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
@@ -446,15 +467,22 @@ TEST_CASE("rehashed canonical provenance rejects each short hash and invalid hex
     const auto K_FIELD = GENERATE(0, 1, 2, 3);
     const auto K_SHORT_HASH = GENERATE(false, true);
     flatbuffers::String* hash {};
-    if (K_FIELD == 0) hash = provenance->mutable_source_sha256();
-    else if (K_FIELD == 1) hash = provenance->mutable_decode_completion_sha256();
-    else if (K_FIELD == 2) hash = provenance->mutable_pose_completion_sha256();
-    else hash = provenance->mutable_journal_sha256();
+    if (K_FIELD == 0) {
+        hash = provenance->mutable_source_sha256();
+    } else if (K_FIELD == 1) {
+        hash = provenance->mutable_decode_completion_sha256();
+    } else if (K_FIELD == 2) {
+        hash = provenance->mutable_pose_completion_sha256();
+    } else {
+        hash = provenance->mutable_journal_sha256();
+    }
     REQUIRE(hash);
     if (K_SHORT_HASH) {
         hash->Mutate(63, '\0');
         flatbuffers::WriteScalar(reinterpret_cast<std::uint8_t*>(hash), std::uint32_t { 63 });
-    } else hash->Mutate(0, 'G');
+    } else {
+        hash->Mutate(0, 'G');
+    }
     const auto K_SUPPLIED = *bytes;
     const auto K_REJECTED = decode_pose_asset(*bytes, sha256(*bytes));
     REQUIRE(!K_REJECTED);
@@ -474,11 +502,11 @@ TEST_CASE("canonical inspection rejects invalid input and reports invalidations 
     REQUIRE(K_TEXT);
     const auto K_JSON = nlohmann::json::parse(*K_TEXT);
     CHECK(K_JSON["provenance"]["journal_sha256"].is_null());
-    CHECK(K_JSON["invalidated_frames"] == nlohmann::json::array({2}));
-    const auto K_REJECTED = inspect_pose_asset(asset, {{K_TEXT->size() - 1}, {}});
+    CHECK(K_JSON["invalidated_frames"] == nlohmann::json::array({ 2 }));
+    const auto K_REJECTED = inspect_pose_asset(asset, { { K_TEXT->size() - 1 }, {} });
     REQUIRE(!K_REJECTED);
     CHECK(K_REJECTED.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
-    const auto K_EXACT = inspect_pose_asset(asset, {{K_TEXT->size()}, {}});
+    const auto K_EXACT = inspect_pose_asset(asset, { { K_TEXT->size() }, {} });
     REQUIRE(K_EXACT);
     CHECK(*K_EXACT == *K_TEXT);
     asset.m_snapshot.reset();

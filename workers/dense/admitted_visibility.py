@@ -8,6 +8,11 @@ from cached_sources import checked_path
 from pilot import parse, read_pinned
 
 
+__all__ = [
+    "load_admitted_cache",
+]
+
+
 def load_admitted_cache(root, receipt_sha256, cancelled=lambda: False):
     import numpy as np
     from PIL import Image

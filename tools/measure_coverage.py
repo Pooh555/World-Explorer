@@ -10,6 +10,14 @@ import re
 import subprocess
 import tempfile
 
+__all__ = [
+    "ROOT",
+    "SCOPE",
+    "main",
+    "source_files",
+    "summarize",
+]
+
 ROOT = Path(__file__).resolve().parents[1]
 SCOPE = ROOT / "tools/coverage_scope.json"
 

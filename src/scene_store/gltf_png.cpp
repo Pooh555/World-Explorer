@@ -10,15 +10,17 @@ std::uint32_t crc(std::span<const std::byte> bytes) {
         std::array<std::uint32_t, 256> table {};
         for (std::size_t i { 0uz }; i < table.size(); ++i) {
             auto value = static_cast<std::uint32_t>(i);
-            for (unsigned bit { 0 }; bit < 8; ++bit)
+            for (unsigned bit { 0 }; bit < 8; ++bit) {
                 value = (value >> 1U) ^ ((value & 1U) ? 0xedb88320U : 0U);
+            }
             table[i] = value;
         }
         return table;
     }();
     std::uint32_t value { 0xffffffffU };
-    for (auto byte : bytes)
+    for (auto byte : bytes) {
         value = K_TABLE[(value ^ std::to_integer<std::uint32_t>(byte)) & 255U] ^ (value >> 8U);
+    }
     return value ^ 0xffffffffU;
 }
 
@@ -36,13 +38,16 @@ std::uint32_t adler(std::span<const std::byte> bytes) {
 }
 
 void big(Writer& out, std::uint32_t value) {
-    for (unsigned i { 4 }; i > 0; --i) out.integer((value >> ((i - 1U) * 8U)) & 255U, 1uz);
+    for (unsigned i { 4 }; i > 0; --i) {
+        out.integer((value >> ((i - 1U) * 8U)) & 255U, 1uz);
+    }
 }
 
 std::uint32_t big(Reader& input) {
     std::uint32_t result {};
-    for (auto byte : input.take(4uz))
+    for (auto byte : input.take(4uz)) {
         result = (result << 8U) | std::to_integer<std::uint32_t>(byte);
+    }
     return result;
 }
 
@@ -88,7 +93,9 @@ std::vector<std::byte> encode_png(const Image& image, const std::stop_token& sto
     Writer header;
     big(header, image.m_width);
     big(header, image.m_height);
-    for (auto value : { 8U, 6U, 0U, 0U, 0U }) header.integer(value, 1uz);
+    for (auto value : { 8U, 6U, 0U, 0U, 0U }) {
+        header.integer(value, 1uz);
+    }
     chunk(out, "IHDR", header.m_data);
     chunk(out, "IDAT", zlib.m_data);
     chunk(out, "IEND", {});
@@ -119,8 +126,9 @@ Image decode_png(std::span<const std::byte> bytes, const std::stop_token& stop) 
     image.m_height = big(header);
     require(image.m_width && image.m_height && image.m_width <= 4096 && image.m_height <= 4096,
             "PNG dimensions exceed budget");
-    for (auto value : { 8U, 6U, 0U, 0U, 0U })
+    for (auto value : { 8U, 6U, 0U, 0U, 0U }) {
         require(header.integer(1uz) == value, "Unsupported PNG format");
+    }
     const auto K_ROW = static_cast<std::size_t>(image.m_width) * 4uz;
     const auto K_SIZE = (K_ROW + 1uz) * image.m_height;
     Reader zlib { blocks[1] };

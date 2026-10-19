@@ -1,6 +1,7 @@
-Checks: '-*,clang-analyzer-*,bugprone-*,performance-*,portability-*,modernize-use-override,modernize-use-nullptr,readability-identifier-naming'
+Checks: '-*,clang-analyzer-*,bugprone-*,performance-*,portability-*,-portability-avoid-pragma-once,modernize-use-override,modernize-use-nullptr,readability-braces-around-statements,readability-identifier-naming'
 HeaderFilterRegex: 'include/world_explorer/.*'
 CheckOptions:
+  readability-braces-around-statements.ShortStatementLines: 0
   readability-identifier-naming.NamespaceCase: lower_case
   readability-identifier-naming.ClassCase: CamelCase
   readability-identifier-naming.StructCase: CamelCase

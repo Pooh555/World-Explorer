@@ -3,6 +3,18 @@
 import itertools
 
 
+__all__ = [
+    "ATTRIBUTES",
+    "check_cancel",
+    "consistent_masks",
+    "integrate",
+    "observed_arrays",
+    "project",
+    "robust_extent",
+    "world_points",
+]
+
+
 def check_cancel(cancelled):
     if cancelled():
         raise InterruptedError("Fusion cancelled")

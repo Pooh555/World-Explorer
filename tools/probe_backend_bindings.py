@@ -18,6 +18,24 @@ import stat
 import sys
 import tempfile
 
+__all__ = [
+    "MAX_FILES",
+    "MAX_FILE_BYTES",
+    "MAX_MAP_BYTES",
+    "MAX_REGIONS",
+    "MAX_TOTAL_BYTES",
+    "PROFILES",
+    "collect_mapped_elf",
+    "diagnostic_guard",
+    "file_identity",
+    "fingerprint_mapping",
+    "main",
+    "maps_snapshot",
+    "parse_maps",
+    "run_imports",
+    "stable_identity",
+]
+
 MAX_MAP_BYTES = 8 * 1024**2
 MAX_REGIONS = 16384
 MAX_FILES = 512

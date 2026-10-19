@@ -6,6 +6,9 @@
 #include "world_explorer/scene_store/mesh_texture.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
 
+#include <SDL3/SDL.h>
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -14,20 +17,21 @@
 #include <memory>
 #include <stdexcept>
 
-#include <SDL3/SDL.h>
-#include <nlohmann/json.hpp>
-
 using namespace world_explorer;
 
 namespace {
 
 template <class Chunk> decltype(auto) mesh_of(Chunk& chunk) {
-    if (!chunk.m_mesh) throw std::runtime_error("Expected mesh fixture payload");
+    if (!chunk.m_mesh) {
+        throw std::runtime_error("Expected mesh fixture payload");
+    }
     return *chunk.m_mesh;
 }
 
 void require(bool condition, const std::string& message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
 }
 
 std::shared_ptr<SceneChunk> fixture() {
@@ -35,15 +39,15 @@ std::shared_ptr<SceneChunk> fixture() {
     chunk->m_id = { 1 };
     chunk->m_pose_revision = { 1 };
     chunk->m_geometry_valid = true;
-    chunk->m_bounds = {{ -1, -1, 1 }, { 1, 1, 2 }};
-    chunk->m_mesh = SceneMesh {{{{ -.8F, -.7F, 2 }, { 1, 0, 0 }},
-                                {{ .8F, -.7F, 2 }, { 1, 0, 0 }},
-                                {{ 0, .8F, 2 }, { 1, 0, 0 }},
-                                {{ -.8F, -.7F, 1 }, { 0, 0, 1 }},
-                                {{ .8F, -.7F, 1 }, { 0, 0, 1 }},
-                                {{ 0, .8F, 1 }, { 0, 0, 1 }}},
-                               {{ 3, 4, 5 }, { 0, 1, 2 }},
-                               {}};
+    chunk->m_bounds = { { -1, -1, 1 }, { 1, 1, 2 } };
+    chunk->m_mesh = SceneMesh { { { { -.8F, -.7F, 2 }, { 1, 0, 0 } },
+                                { { .8F, -.7F, 2 }, { 1, 0, 0 } },
+                                { { 0, .8F, 2 }, { 1, 0, 0 } },
+                                { { -.8F, -.7F, 1 }, { 0, 0, 1 } },
+                                { { .8F, -.7F, 1 }, { 0, 0, 1 } },
+                                { { 0, .8F, 1 }, { 0, 0, 1 } } },
+                               { { 3, 4, 5 }, { 0, 1, 2 } },
+                               {} };
     return chunk;
 }
 
@@ -54,7 +58,7 @@ std::shared_ptr<SceneChunk> texture_fixture(std::uint64_t generation,
                                             bool subpixel = false) {
     auto chunk = fixture();
     chunk->m_generation = generation;
-    chunk->m_source_frames = {{ 7 }};
+    chunk->m_source_frames = { { 7 } };
     auto& mesh = mesh_of(*chunk);
     mesh.m_vertices.resize(3uz);
     if (subpixel) {
@@ -62,11 +66,13 @@ std::shared_ptr<SceneChunk> texture_fixture(std::uint64_t generation,
         mesh.m_vertices[1].m_position = { .007125F, -.007125F, 2 };
         mesh.m_vertices[2].m_position = { .003125F, .000875F, 2 };
     }
-    for (auto& vertex : mesh.m_vertices) vertex.m_normal = { 0, 0, 1 };
+    for (auto& vertex : mesh.m_vertices) {
+        vertex.m_normal = { 0, 0, 1 };
+    }
     mesh.m_triangles.assign(triangles, { 0, 1, 2 });
     DepthImageAsset depth;
     auto& metadata = depth.m_metadata;
-    metadata.m_dependency = {{ 1 }, { 1 }, { 7 }, { 2 }, std::string(64uz, 'a'), std::string(64uz, 'b')};
+    metadata.m_dependency = { { 1 }, { 1 }, { 7 }, { 2 }, std::string(64uz, 'a'), std::string(64uz, 'b') };
     metadata.m_width = metadata.m_height = 16;
     metadata.m_camera = { 8, 8, 7.5, 7.5 };
     metadata.m_calibrated_image_sha256 = std::string(64uz, 'c');
@@ -108,9 +114,10 @@ std::vector<unsigned char> pixels(const std::filesystem::path& path) {
 
 void expect_center(const std::vector<unsigned char>& data, std::array<int, 3> expected) {
     const auto K_OFFSET = (240uz * 640uz + 320uz) * 3uz;
-    for (std::size_t i { 0uz }; i < 3uz; ++i)
+    for (std::size_t i { 0uz }; i < 3uz; ++i) {
         require(std::abs(static_cast<int>(data.at(K_OFFSET + i)) - expected[i]) <= 1,
                 "Mesh depth/normal center oracle differs");
+    }
 }
 
 }  // namespace
@@ -124,7 +131,9 @@ int main(int argc, char** argv) {
         require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
 
         struct SdlOwner {
-            ~SdlOwner() { SDL_Quit(); }
+            ~SdlOwner() {
+                SDL_Quit();
+            }
         } sdl;
 
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -142,7 +151,7 @@ int main(int argc, char** argv) {
         auto renderer = std::move(*created);
         CameraView camera;
         camera.m_position = { 0, 0, 4 };
-        camera.m_calibration = CalibratedProjection {{ 320, 320, 319.5, 239.5 }, 640, 480};
+        camera.m_calibration = CalibratedProjection { { 320, 320, 319.5, 239.5 }, 640, 480 };
         auto representation = SceneRepresentation::OBSERVED_MESH;
         auto draw = [&] {
             SDL_PumpEvents();
@@ -162,9 +171,12 @@ int main(int argc, char** argv) {
                 draw();
                 const auto K_STATE = renderer->updates().query_progress(ticket);
                 require(K_STATE.has_value(), "Missing mesh update receipt");
-                if (K_STATE->m_state == UpdateState::FAILED)
+                if (K_STATE->m_state == UpdateState::FAILED) {
                     throw std::runtime_error(K_STATE->m_failure->m_message);
-                if (K_STATE->m_state == UpdateState::RENDER_VISIBLE) return;
+                }
+                if (K_STATE->m_state == UpdateState::RENDER_VISIBLE) {
+                    return;
+                }
             }
             throw std::runtime_error("Mesh upload failed to become visible");
         };
@@ -179,13 +191,13 @@ int main(int argc, char** argv) {
         auto initial = std::make_shared<SceneState>();
         initial->m_id = { 19 };
         initial->m_epoch = { 1 };
-        initial->m_provenance = {{ "source_kind", "synthetic_diagnostic" }};
+        initial->m_provenance = { { "source_kind", "synthetic_diagnostic" } };
         require(store.reset(initial).has_value(), "Synthetic mesh reset failed");
         auto chunk = fixture();
         require(
             store
                 .commit(
-                    {{ 19 }, { 1 }, {}, { 1 }, { 1 }, {{SceneOperationKind::CREATE, { 1 }, chunk, {}, {}}}})
+                    { { 19 }, { 1 }, {}, { 1 }, { 1 }, { { SceneOperationKind::CREATE, { 1 }, chunk, {}, {} } } })
                 .has_value(),
             "Mesh create failed");
         K_VISIBLE(K_ENQUEUE(store.acquire_snapshot()));
@@ -200,7 +212,7 @@ int main(int argc, char** argv) {
                 { revision },
                 { revision + 1 },
                 { revision + 1 },
-                {{SceneOperationKind::REPLACE, { 1 }, next, {}, {}}}};
+                { { SceneOperationKind::REPLACE, { 1 }, next, {}, {} } } };
             require(store.commit(K_TRANSACTION).has_value(), "Mesh replacement failed");
             ++revision;
             K_VISIBLE(K_ENQUEUE(store.acquire_snapshot()));
@@ -210,16 +222,18 @@ int main(int argc, char** argv) {
                      mesh_of(*reordered).m_triangles.end());
         K_REPLACE(reordered);
         require(K_CAPTURE("reordered.ppm") == K_BASELINE, "Mesh order changed depth-tested pixels");
-        camera.m_calibration = CalibratedProjection {{ 318.25, 271.75, 287.2, 213.7 }, 640, 480};
+        camera.m_calibration = CalibratedProjection { { 318.25, 271.75, 287.2, 213.7 }, 640, 480 };
         K_CAPTURE("asymmetric.ppm");
-        camera.m_calibration = CalibratedProjection {{ 320, 320, 319.5, 239.5 }, 640, 480};
+        camera.m_calibration = CalibratedProjection { { 320, 320, 319.5, 239.5 }, 640, 480 };
         camera.m_near_plane = 2.5F;
         expect_center(K_CAPTURE("near-clip.ppm"), { 128, 128, 255 });
         camera.m_near_plane = .01F;
         camera.m_far_plane = 2.5F;
         expect_center(K_CAPTURE("far-clip.ppm"), { 255, 128, 128 });
         camera.m_far_plane = 100000.F;
-        for (std::size_t i { 0uz }; i < 12uz; ++i) K_REPLACE(fixture());
+        for (std::size_t i { 0uz }; i < 12uz; ++i) {
+            K_REPLACE(fixture());
+        }
         require(K_CAPTURE("replacement.ppm") == K_BASELINE,
                 "Mesh replacement/retirement changed pixels");
         camera.m_calibration.reset();
@@ -227,8 +241,9 @@ int main(int argc, char** argv) {
         for (std::size_t i { 0uz }; i < 60uz; ++i) {
             draw();
             if (renderer->diagnostics().m_framebuffer_width == 800 &&
-                renderer->diagnostics().m_framebuffer_height == 600)
+                renderer->diagnostics().m_framebuffer_height == 600) {
                 break;
+            }
             SDL_Delay(5);
         }
         require(renderer->diagnostics().m_framebuffer_width == 800,
@@ -238,23 +253,24 @@ int main(int argc, char** argv) {
         for (std::size_t i { 0uz }; i < 60uz; ++i) {
             draw();
             if (renderer->diagnostics().m_framebuffer_width == 640 &&
-                renderer->diagnostics().m_framebuffer_height == 480)
+                renderer->diagnostics().m_framebuffer_height == 480) {
                 break;
+            }
             SDL_Delay(5);
         }
-        camera.m_calibration = CalibratedProjection {{ 320, 320, 319.5, 239.5 }, 640, 480};
+        camera.m_calibration = CalibratedProjection { { 320, 320, 319.5, 239.5 }, 640, 480 };
         require(K_CAPTURE("restored-size.ppm") == K_BASELINE,
                 "Mesh resize/restore changed fixed-camera pixels");
         auto large = fixture();
         large->m_generation = revision + 1;
         mesh_of(*large).m_vertices.resize(800000uz, mesh_of(*large).m_vertices.front());
         require(store
-                    .commit({{ 19 },
+                    .commit({ { 19 },
                              { 1 },
                              { revision },
                              { revision + 1 },
                              { revision + 1 },
-                             {{SceneOperationKind::REPLACE, { 1 }, large, {}, {}}}})
+                             { { SceneOperationKind::REPLACE, { 1 }, large, {}, {} } } })
                     .has_value(),
                 "Large mesh replace failed");
         ++revision;
@@ -272,12 +288,12 @@ int main(int argc, char** argv) {
         draw();
         require(K_CAPTURE("rebased.ppm") == K_BASELINE, "Mesh floating-origin parity failed");
         require(store
-                    .commit({{ 19 },
+                    .commit({ { 19 },
                              { 1 },
                              { revision },
                              { revision + 1 },
                              { revision + 1 },
-                             {{SceneOperationKind::INVALIDATE_GEOMETRY, { 1 }, {}, {}, { 2 }}}})
+                             { { SceneOperationKind::INVALIDATE_GEOMETRY, { 1 }, {}, {}, { 2 } } } })
                     .has_value(),
                 "Mesh invalidation failed");
         ++revision;
@@ -285,12 +301,12 @@ int main(int argc, char** argv) {
         const auto K_INVALIDATED = K_CAPTURE("invalidated.ppm");
         require(K_INVALIDATED != K_BASELINE, "Stale mesh remained visible");
         require(store
-                    .commit({{ 19 },
+                    .commit({ { 19 },
                              { 1 },
                              { revision },
                              { revision + 1 },
                              { revision + 1 },
-                             {{SceneOperationKind::ERASE, { 1 }, {}, {}, {}}}})
+                             { { SceneOperationKind::ERASE, { 1 }, {}, {}, {} } } })
                     .has_value(),
                 "Mesh erase failed");
         K_VISIBLE(K_ENQUEUE(store.acquire_snapshot()));
@@ -302,12 +318,12 @@ int main(int argc, char** argv) {
         representation = SceneRepresentation::BAKED_APPEARANCE;
         auto first_texture = texture_fixture(revision + 1);
         require(store
-                    .commit({{ 19 },
+                    .commit({ { 19 },
                              { 1 },
                              { revision },
                              { revision + 1 },
                              { revision + 1 },
-                             {{SceneOperationKind::CREATE, { 1 }, first_texture, {}, {}}}})
+                             { { SceneOperationKind::CREATE, { 1 }, first_texture, {}, {} } } })
                     .has_value(),
                 "Texture create failed");
         ++revision;
@@ -319,7 +335,7 @@ int main(int argc, char** argv) {
             source->m_id = { 19 };
             source->m_epoch = { 1 };
             source->m_revision = { 1 };
-            source->m_provenance = {{ "source_kind", "synthetic_diagnostic" }};
+            source->m_provenance = { { "source_kind", "synthetic_diagnostic" } };
             source->m_chunks[{ 1 }] = texture_fixture(revision + 1, unknown);
             const auto K_BYTES = encode_baked_glb(source);
             require(K_BYTES.has_value(), K_BYTES ? "" : K_BYTES.error().m_message);
@@ -340,14 +356,18 @@ int main(int argc, char** argv) {
                 ++portable_count;
                 require(K_GOLD(K_TEXTURE, i), "Portable filter filled an unknown native fragment");
             }
-            if (K_GOLD(K_TEXTURE, i)) ++native_count;
+            if (K_GOLD(K_TEXTURE, i)) {
+                ++native_count;
+            }
         }
         require(portable_count > 0uz && portable_count < native_count,
                 "Conservative bilinear coverage did not retain its declared loss");
         K_REPLACE(K_PORTABLE(true));
         require(K_CAPTURE("portable-unknown.ppm") == K_INVALIDATED,
                 "Portable unknown fragments were filled");
-        for (std::size_t i { 0uz }; i < 12uz; ++i) K_REPLACE(texture_fixture(revision + 1));
+        for (std::size_t i { 0uz }; i < 12uz; ++i) {
+            K_REPLACE(texture_fixture(revision + 1));
+        }
         require(K_CAPTURE("texture-replaced.ppm") == K_TEXTURE, "Texture replacement changed RGB");
         K_REPLACE(texture_fixture(revision + 1, false, false, 1uz, true));
         expect_center(K_CAPTURE("texture-subpixel.ppm"), { 255, 64, 0 });
@@ -365,12 +385,12 @@ int main(int argc, char** argv) {
                 "Unknown texture failed to discard");
         auto large_texture = texture_fixture(revision + 1, false, false, 40000uz);
         require(store
-                    .commit({{ 19 },
+                    .commit({ { 19 },
                              { 1 },
                              { revision },
                              { revision + 1 },
                              { revision + 1 },
-                             {{SceneOperationKind::REPLACE, { 1 }, large_texture, {}, {}}}})
+                             { { SceneOperationKind::REPLACE, { 1 }, large_texture, {}, {} } } })
                     .has_value(),
                 "Large texture replacement failed");
         ++revision;
@@ -382,12 +402,12 @@ int main(int argc, char** argv) {
         K_VISIBLE(K_TEXTURE_TICKET);
         require(K_CAPTURE("texture-staged.ppm") == K_TEXTURE, "Staged texture differs");
         require(store
-                    .commit({{ 19 },
+                    .commit({ { 19 },
                              { 1 },
                              { revision },
                              { revision + 1 },
                              { revision + 1 },
-                             {{SceneOperationKind::INVALIDATE_GEOMETRY, { 1 }, {}, {}, { 2 }}}})
+                             { { SceneOperationKind::INVALIDATE_GEOMETRY, { 1 }, {}, {}, { 2 } } } })
                     .has_value(),
                 "Texture invalidation failed");
         ++revision;
@@ -405,8 +425,9 @@ int main(int argc, char** argv) {
             camera = { fly.m_position, fly.right(), fly.down(), fly.forward() };
             if (std::ranges::any_of((*K_REAL)->m_chunks, [](const auto& entry) {
                     return entry.second->m_mesh && entry.second->m_mesh->m_baked;
-                }))
+                })) {
                 representation = SceneRepresentation::BAKED_APPEARANCE;
+            }
             K_VISIBLE(K_ENQUEUE(*K_REAL));
             K_CAPTURE("real.ppm");
             const auto& mesh = mesh_of(*(*K_REAL)->m_chunks.begin()->second);
@@ -418,16 +439,16 @@ int main(int argc, char** argv) {
         require(K_STATS.m_validation_errors == 0 &&
                     K_STATS.m_allocated_bytes <= options.m_residency_bytes,
                 "Mesh validation/residency check failed");
-        std::cout << nlohmann::json {{ "device", renderer->capabilities().m_device_name },
-                                     {"scope",
+        std::cout << nlohmann::json { { "device", renderer->capabilities().m_device_name },
+                                     { "scope",
                                       "synthetic texture RGB/UV/unknown/staging/invalidation and "
                                       "mesh depth/update/clip/rebase; "
-                                      "optional partial real geometry"},
+                                      "optional partial real geometry" },
                                      { "frames", K_STATS.m_submitted_frames },
                                      { "validation_errors", K_STATS.m_validation_errors },
                                      { "allocated_bytes", K_STATS.m_allocated_bytes },
                                      { "real_vertices", real_vertices },
-                                     { "real_triangles", real_triangles }}
+                                     { "real_triangles", real_triangles } }
                          .dump(2)
                   << '\n';
         return 0;

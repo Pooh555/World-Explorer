@@ -1,15 +1,15 @@
 #include "preferences.hpp"
 
-#include <chrono>
-#include <cmath>
-#include <fstream>
-#include <imgui.h>
-#include <limits>
-
 #include <SDL3/SDL_scancode.h>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <imgui.h>
 #include <nlohmann/json.hpp>
+
+#include <chrono>
+#include <cmath>
+#include <fstream>
+#include <limits>
 
 using namespace world_explorer::viewer;
 
@@ -27,7 +27,7 @@ TEST_CASE("window scaling separates physical font pixels from logical layout coo
     CHECK(K_RETINA->layout_scale == 1);
     CHECK(K_RETINA->font_scale == 0.5F);
     CHECK(K_RETINA->font_index == K_WINDOWS->font_index);
-    for (const auto K_SCALE : {1.25F, 1.5F, 1.75F, 2.F, 2.25F, 3.F, 4.F}) {
+    for (const auto K_SCALE : { 1.25F, 1.5F, 1.75F, 2.F, 2.25F, 3.F, 4.F }) {
         const auto K_METRICS = display_scaling(K_SCALE, K_SCALE);
         REQUIRE(K_METRICS);
         CHECK(K_METRICS->layout_scale == 1);
@@ -35,11 +35,11 @@ TEST_CASE("window scaling separates physical font pixels from logical layout coo
         const auto K_PHYSICAL_FONT = (1.F + static_cast<float>(K_METRICS->font_index) * 0.25F);
         CHECK(std::abs(K_PHYSICAL_FONT * K_METRICS->font_scale * K_SCALE - K_SCALE) < 0.0001F);
     }
-    for (const auto K_INVALID : {0.F,
+    for (const auto K_INVALID : { 0.F,
                                  -1.F,
                                  5.F,
                                  std::numeric_limits<float>::infinity(),
-                                 std::numeric_limits<float>::quiet_NaN()}) {
+                                 std::numeric_limits<float>::quiet_NaN() }) {
         CHECK_FALSE(display_scaling(K_INVALID, 1));
         CHECK_FALSE(display_scaling(1, K_INVALID));
     }
@@ -49,7 +49,9 @@ TEST_CASE("theme resize uses absolute scale without accumulating style multiplie
     ImGui::CreateContext();
 
     struct ContextOwner {
-        ~ContextOwner() { ImGui::DestroyContext(); }
+        ~ContextOwner() {
+            ImGui::DestroyContext();
+        }
     } owner;
 
     apply_theme(1);
@@ -89,8 +91,12 @@ TEST_CASE("viewer preferences preserve specification legacy and custom bindings 
                   SDL_SCANCODE_SPACE,
                   SDL_SCANCODE_LCTRL,
                   SDL_SCANCODE_LSHIFT };
-    if (K_CONFIGURATION == 1) std::swap(saved.keys[5], saved.keys[6]);
-    if (K_CONFIGURATION == 2) saved.keys[0] = SDL_SCANCODE_UP;
+    if (K_CONFIGURATION == 1) {
+        std::swap(saved.keys[5], saved.keys[6]);
+    }
+    if (K_CONFIGURATION == 2) {
+        saved.keys[0] = SDL_SCANCODE_UP;
+    }
     saved.left = false;
     saved.right = false;
     saved.controls = false;
@@ -109,7 +115,7 @@ TEST_CASE("invalid viewer preferences cannot partially replace caller settings")
     current.keys[0] = SDL_SCANCODE_UP;
     current.right = false;
     auto json =
-        nlohmann::json {{"schema_version", 1}, {"left_panel", false}, {"keys", current.keys}};
+        nlohmann::json { { "schema_version", 1 }, { "left_panel", false }, { "keys", current.keys } };
     SECTION("unknown schema") {
         json["schema_version"] = 2;
     }

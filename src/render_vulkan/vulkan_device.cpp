@@ -11,8 +11,9 @@ vulkan_device::debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
                               VkDebugUtilsMessageTypeFlagsEXT,
                               const VkDebugUtilsMessengerCallbackDataEXT* data,
                               void* context) {
-    if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+    if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         static_cast<vulkan_device*>(context)->validation_errors_.fetch_add(1);
+    }
     std::cerr << "Vulkan validation: " << data->pMessage << '\n';
     return VK_FALSE;
 }
@@ -22,32 +23,47 @@ vulkan_device::vulkan_device(SDL_Window* window,
                              RendererCapabilities& capabilities,
                              std::atomic<std::uint32_t>& validation_errors)
     : window_(window), options_(options), capabilities_(capabilities),
-      validation_errors_(validation_errors) {
-}
+      validation_errors_(validation_errors) { }
 
 vulkan_device::~vulkan_device() {
-    if (device_) vkDeviceWaitIdle(device_);
-    if (timeline_) vkDestroySemaphore(device_, timeline_, nullptr);
-    if (allocator_) vmaDestroyAllocator(allocator_);
-    if (device_) vkDestroyDevice(device_, nullptr);
-    if (surface_) vkDestroySurfaceKHR(instance_, surface_, nullptr);
+    if (device_) {
+        vkDeviceWaitIdle(device_);
+    }
+    if (timeline_) {
+        vkDestroySemaphore(device_, timeline_, nullptr);
+    }
+    if (allocator_) {
+        vmaDestroyAllocator(allocator_);
+    }
+    if (device_) {
+        vkDestroyDevice(device_, nullptr);
+    }
+    if (surface_) {
+        vkDestroySurfaceKHR(instance_, surface_, nullptr);
+    }
     if (debug_messenger_) {
         const auto K_DESTROY = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
             vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
-        if (K_DESTROY) K_DESTROY(instance_, debug_messenger_, nullptr);
+        if (K_DESTROY) {
+            K_DESTROY(instance_, debug_messenger_, nullptr);
+        }
     }
-    if (instance_) vkDestroyInstance(instance_, nullptr);
+    if (instance_) {
+        vkDestroyInstance(instance_, nullptr);
+    }
 }
 
 void vulkan_device::initialize() {
-    if (!window_ || !options_.m_max_splats || options_.m_max_splats > 10000000)
+    if (!window_ || !options_.m_max_splats || options_.m_max_splats > 10000000) {
         throw std::runtime_error("invalid renderer window or splat budget (maximum 10 million)");
+    }
 
     std::uint32_t loader_version = VK_API_VERSION_1_0;
     detail::check(vkEnumerateInstanceVersion(&loader_version), "query Vulkan loader version");
-    if (loader_version < VK_API_VERSION_1_3)
+    if (loader_version < VK_API_VERSION_1_3) {
         throw std::runtime_error(
             "Vulkan 1.3 with synchronization2 and timeline semaphores is required");
+    }
 
     capabilities_.m_instance_version = std::min(loader_version, VK_API_VERSION_1_4);
     std::uint32_t extension_count = 0;
@@ -66,7 +82,9 @@ void vulkan_device::initialize() {
 
     std::uint32_t sdl_extension_count = 0;
     const char* const* sdl_extensions = SDL_Vulkan_GetInstanceExtensions(&sdl_extension_count);
-    if (!sdl_extensions) throw std::runtime_error(SDL_GetError());
+    if (!sdl_extensions) {
+        throw std::runtime_error(SDL_GetError());
+    }
 
     std::vector<const char*> extensions(sdl_extensions, sdl_extensions + sdl_extension_count);
     VkInstanceCreateFlags instance_flags = 0;
@@ -140,8 +158,9 @@ void vulkan_device::initialize() {
                       "create validation messenger");
     }
 
-    if (!SDL_Vulkan_CreateSurface(window_, instance_, nullptr, &surface_))
+    if (!SDL_Vulkan_CreateSurface(window_, instance_, nullptr, &surface_)) {
         throw std::runtime_error(SDL_GetError());
+    }
 
     select_physical_device();
     create_logical_device();
@@ -168,8 +187,9 @@ void vulkan_device::select_physical_device() {
             candidate_properties.limits.maxPerStageDescriptorStorageBuffers < 10 ||
             candidate_properties.limits.maxDescriptorSetStorageBuffers < 10 ||
             candidate_properties.limits.maxComputeWorkGroupCount[0] <
-                (options_.m_max_splats + 255) / 256)
+                (options_.m_max_splats + 255) / 256) {
             continue;
+        }
 
         auto features13 = detail::structure<VkPhysicalDeviceVulkan13Features>(
             VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES);
@@ -180,7 +200,9 @@ void vulkan_device::select_physical_device() {
             VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2);
         features.pNext = &features12;
         vkGetPhysicalDeviceFeatures2(candidate, &features);
-        if (!features12.timelineSemaphore || !features13.synchronization2) continue;
+        if (!features12.timelineSemaphore || !features13.synchronization2) {
+            continue;
+        }
 
         std::uint32_t count_extensions = 0;
         detail::check(
@@ -192,8 +214,9 @@ void vulkan_device::select_physical_device() {
                       "query device extensions");
         if (!std::ranges::any_of(extensions, [](const auto& item) {
                 return std::strcmp(item.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
-            }))
+            })) {
             continue;
+        }
 
         std::uint32_t family_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &family_count, nullptr);
@@ -252,7 +275,9 @@ void vulkan_device::create_logical_device() {
     features12.pNext = &features13;
 
     std::vector<const char*> extensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-    if (capabilities_.m_portability_subset) extensions.push_back("VK_KHR_portability_subset");
+    if (capabilities_.m_portability_subset) {
+        extensions.push_back("VK_KHR_portability_subset");
+    }
 
     auto info = detail::structure<VkDeviceCreateInfo>(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
     info.pNext = &features12;
@@ -292,8 +317,9 @@ detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes,
     info.size = output.bytes;
     info.usage = usage;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    if (buffer_allocation_bytes({output.bytes, usage}) > budget)
+    if (buffer_allocation_bytes({ output.bytes, usage }) > budget) {
         throw std::runtime_error("GPU buffer exceeds remaining residency budget");
+    }
 
     VmaAllocationCreateInfo allocation {};
     allocation.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
@@ -301,7 +327,9 @@ detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes,
     allocation.requiredFlags =
         host_visible ? (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
                      : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    if (host_visible) allocation.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    if (host_visible) {
+        allocation.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    }
     VmaAllocationInfo allocated {};
     detail::check(
         vmaCreateBuffer(
@@ -310,10 +338,12 @@ detail::gpu_buffer vulkan_device::allocate(VkDeviceSize bytes,
     output.allocator = allocator_;
     output.allocation_bytes = allocated.size;
     output.mapped = allocated.pMappedData;
-    if (host_visible && !output.mapped)
+    if (host_visible && !output.mapped) {
         throw std::runtime_error("VMA did not map host-visible GPU buffer");
-    if (output.allocation_bytes > budget)
+    }
+    if (output.allocation_bytes > budget) {
         throw std::runtime_error("VMA allocation exceeds remaining residency budget");
+    }
     return output;
 }
 
@@ -323,7 +353,9 @@ detail::gpu_image vulkan_device::allocate_image(const VkImageCreateInfo& info, s
     VkMemoryRequirements requirements {};
     vkGetImageMemoryRequirements(device_, probe, &requirements);
     vkDestroyImage(device_, probe, nullptr);
-    if (requirements.size > budget) throw std::runtime_error("Mesh image exceeds residency budget");
+    if (requirements.size > budget) {
+        throw std::runtime_error("Mesh image exceeds residency budget");
+    }
     detail::gpu_image output;
     output.m_allocator = allocator_;
     VmaAllocationCreateInfo allocation {};
@@ -336,8 +368,9 @@ detail::gpu_image vulkan_device::allocate_image(const VkImageCreateInfo& info, s
             allocator_, &info, &allocation, &output.m_image, &output.m_allocation, &allocated),
         "allocate mesh target image");
     output.m_allocation_bytes = allocated.size;
-    if (allocated.size > budget)
+    if (allocated.size > budget) {
         throw std::runtime_error("Mesh image allocation exceeds residency budget");
+    }
     return output;
 }
 
@@ -358,14 +391,19 @@ VkShaderModule vulkan_device::load_shader_module(const std::filesystem::path& sh
                                                  const char* name) const {
     const auto K_PATH = shader_directory / (std::string(name) + ".spv");
     std::ifstream input(K_PATH, std::ios::binary | std::ios::ate);
-    if (!input) throw std::runtime_error("cannot open shader: " + K_PATH.string());
+    if (!input) {
+        throw std::runtime_error("cannot open shader: " + K_PATH.string());
+    }
     const auto K_SIZE = input.tellg();
-    if (K_SIZE <= 0 || K_SIZE % 4 != 0 || K_SIZE > std::streamoff { 16 } * 1024 * 1024)
+    if (K_SIZE <= 0 || K_SIZE % 4 != 0 || K_SIZE > std::streamoff { 16 } * 1024 * 1024) {
         throw std::runtime_error("invalid SPIR-V module size");
+    }
     std::vector<std::uint32_t> words(static_cast<std::size_t>(K_SIZE) / 4);
     input.seekg(0);
     input.read(reinterpret_cast<char*>(words.data()), K_SIZE);
-    if (!input) throw std::runtime_error("short SPIR-V read");
+    if (!input) {
+        throw std::runtime_error("short SPIR-V read");
+    }
 
     auto info =
         detail::structure<VkShaderModuleCreateInfo>(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
@@ -405,7 +443,9 @@ void vulkan_device::create_descriptor_layout(descriptor_resources& resources) {
         bindings[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[index].descriptorCount = 1;
         bindings[index].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-        if (index == 0 || index == 5) bindings[index].stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (index == 0 || index == 5) {
+            bindings[index].stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        }
     }
     auto layout = detail::structure<VkDescriptorSetLayoutCreateInfo>(
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
@@ -430,9 +470,9 @@ void vulkan_device::create_descriptor_layout(descriptor_resources& resources) {
     detail::check(vkCreateDescriptorPool(device_, &pool, nullptr, &resources.overlay_pool),
                   "create overlay descriptor pool");
 
-    VkPushConstantRange push {VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+    VkPushConstantRange push { VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                               0,
-                              sizeof(detail::push_parameters)};
+                              sizeof(detail::push_parameters) };
     auto pipeline = detail::structure<VkPipelineLayoutCreateInfo>(
         VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
     pipeline.setLayoutCount = 1;

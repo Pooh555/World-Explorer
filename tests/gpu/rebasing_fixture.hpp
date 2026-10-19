@@ -8,9 +8,12 @@
 namespace world_explorer {
 
 inline Result<Vec3d> rebasing_offset(std::string_view name) {
-    if (name == "zero") return Vec3d {};
-    if (name == "positive") return Vec3d { 1073741824., -536870912., 268435456. };
-    if (name == "negative") return Vec3d { -1073741824., 536870912., -268435456. };
+    if (name == "zero")
+        return Vec3d {};
+    if (name == "positive")
+        return Vec3d { 1073741824., -536870912., 268435456. };
+    if (name == "negative")
+        return Vec3d { -1073741824., 536870912., -268435456. };
     return fail(ErrorCode::INVALID_ARGUMENT, "unknown synthetic rebasing case");
 }
 
@@ -37,7 +40,8 @@ inline Result<SceneSnapshot> rebasing_fixture(Vec3d offset) {
         chunk->m_bounds = { { -2, -2, -2 }, { 2, 2, 2 } };
         const auto base_translation = group == 0 ? Vec3d {} : Vec3d { 0.5, -0.25, 1 };
         const auto translation = translated_diagnostic_position(base_translation, offset);
-        if (!translation) return std::unexpected(translation.error());
+        if (!translation)
+            return std::unexpected(translation.error());
         chunk->m_world_from_chunk.m_translation = *translation;
         if (group != 0) {
             chunk->m_world_from_chunk.m_rotation = { 0, 1, 0, 0 };
@@ -65,16 +69,18 @@ inline Result<SceneSnapshot> rebasing_fixture(Vec3d offset) {
             auto base_transform = chunk->m_world_from_chunk;
             base_transform.m_translation = base_translation;
             const auto local = transform_point(base_transform,
-                                               {splat.m_mean[0], splat.m_mean[1], splat.m_mean[2]});
+                                               { splat.m_mean[0], splat.m_mean[1], splat.m_mean[2] });
             const auto roundtrip = translated_diagnostic_position(local, offset);
-            if (!roundtrip) return std::unexpected(roundtrip.error());
+            if (!roundtrip)
+                return std::unexpected(roundtrip.error());
             chunk->m_splats.push_back(splat);
         }
         scene->m_chunks.emplace(chunk->m_id, chunk);
     }
     // Include a fractional camera displacement in the representability contract.
-    const auto camera = translated_diagnostic_position({-0.25, 0.125, 6.5}, offset);
-    if (!camera) return std::unexpected(camera.error());
+    const auto camera = translated_diagnostic_position({ -0.25, 0.125, 6.5 }, offset);
+    if (!camera)
+        return std::unexpected(camera.error());
     return SceneSnapshot { std::move(scene) };
 }
 

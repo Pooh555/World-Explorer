@@ -325,7 +325,7 @@ class MetricIdentityTests(unittest.TestCase):
     ):
         original = socket.socket
 
-        class synthetic_socket:
+        class SyntheticSocket:
             family = socket.AF_INET
 
             def connect(self, address):
@@ -338,13 +338,13 @@ class MetricIdentityTests(unittest.TestCase):
                     "Guard must reject before the underlying connection"
                 )
 
-        with patch.object(socket, "socket", synthetic_socket):
+        with patch.object(socket, "socket", SyntheticSocket):
             with parity.offline_network():
                 client = socket.socket()
                 for method in [client.connect, client.connect_ex]:
                     with self.assertRaisesRegex(RuntimeError, "offline"):
                         method(("127.0.0.1", 9))
-            self.assertIs(socket.socket, synthetic_socket)
+            self.assertIs(socket.socket, SyntheticSocket)
         self.assertIs(socket.socket, original)
 
     def test_checkpoint_guard_forces_tensor_only_loading_and_rejects_changed_or_unselected_bytes(

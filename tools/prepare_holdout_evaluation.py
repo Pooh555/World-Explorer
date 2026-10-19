@@ -21,6 +21,12 @@ from evaluate_image_pairs import (
 )
 
 
+__all__ = [
+    "main",
+    "prepare",
+]
+
+
 def prepare(fit, images, metric_manifest, scene, crop_margin):
     fit, images = fit.resolve(strict=True), images.resolve(strict=True)
     renders = (fit / "references").resolve(strict=True)

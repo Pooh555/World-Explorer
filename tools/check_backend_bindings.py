@@ -16,6 +16,22 @@ from probe_backend_bindings import (
     PROFILES,
 )
 
+__all__ = [
+    "MAX_PROFILES",
+    "SCOPE",
+    "binding",
+    "check_binding",
+    "check_summary",
+    "fingerprint",
+    "main",
+    "merge_nodes",
+    "node_path",
+    "project_receipt",
+    "read_json",
+    "relative_path",
+    "valid_fingerprint",
+]
+
 SCOPE = "selected imports and empty viewer mappings; backing ELF bytes, not relocated memory or all lazy paths"
 MAX_PROFILES = 8
 

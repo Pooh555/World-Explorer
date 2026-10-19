@@ -5,18 +5,20 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 
-#include <fstream>
-#include <iostream>
-
 #include <SDL3/SDL.h>
 #include <nlohmann/json.hpp>
+
+#include <fstream>
+#include <iostream>
 
 using namespace world_explorer;
 
 namespace {
 
 void require(bool condition, const std::string& message) {
-    if (!condition) throw std::runtime_error(message);
+    if (!condition) {
+        throw std::runtime_error(message);
+    }
 }
 
 std::size_t splat_count(const SceneSnapshot& scene) {
@@ -51,7 +53,9 @@ int main(int argc, char** argv) try {
     require(SDL_Init(SDL_INIT_VIDEO), SDL_GetError());
 
     struct SdlGuard {
-        ~SdlGuard() { SDL_Quit(); }
+        ~SdlGuard() {
+            SDL_Quit();
+        }
     } sdl;
 
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window(
@@ -68,11 +72,11 @@ int main(int argc, char** argv) try {
     require(created.has_value(), created ? "" : created.error().m_message);
     auto renderer = std::move(*created);
     require(renderer->capabilities().m_validation_enabled, "native validation required");
-    CameraView camera {K_SOURCE->m_camera.m_position,
+    CameraView camera { K_SOURCE->m_camera.m_position,
                        K_SOURCE->m_camera.right(),
                        K_SOURCE->m_camera.down(),
                        K_SOURCE->m_camera.forward(),
-                       K_SOURCE->m_vertical_fov_radians};
+                       K_SOURCE->m_vertical_fov_radians };
     const auto K_DRAW = [&](bool appearance = true) {
         SDL_PumpEvents();
         const auto K_RESULT = renderer->draw(camera, appearance);
@@ -81,7 +85,9 @@ int main(int argc, char** argv) try {
     const auto K_CAPTURE = [&](const char* name, bool appearance = true) {
         const auto K_REQUESTED = renderer->request_screenshot(K_OUTPUT / name);
         require(K_REQUESTED.has_value(), K_REQUESTED ? "" : K_REQUESTED.error().m_message);
-        for (int frame { 0 }; frame < 3; ++frame) K_DRAW(appearance);
+        for (int frame { 0 }; frame < 3; ++frame) {
+            K_DRAW(appearance);
+        }
         const auto K_IDLE = renderer->wait_for_idle();
         require(K_IDLE.has_value(), K_IDLE ? "" : K_IDLE.error().m_message);
     };
@@ -95,13 +101,15 @@ int main(int argc, char** argv) try {
             K_DRAW();
             const auto K_PROGRESS = renderer->updates().query_progress(*K_TICKET);
             require(K_PROGRESS.has_value(), K_PROGRESS ? "" : K_PROGRESS.error().m_message);
-            if (K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) break;
+            if (K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
+                break;
+            }
             require(std::chrono::steady_clock::now() < K_DEADLINE, "visibility deadline exceeded");
         }
         require(renderer->diagnostics().m_resident_splat_count == splat_count(scene),
                 "full scene must remain resident");
     };
-    K_ADMIT(*K_PRIOR, {1});
+    K_ADMIT(*K_PRIOR, { 1 });
     K_CAPTURE("prior.ppm");
     const auto K_PRIOR_HASH = sha256_file(K_OUTPUT / "prior.ppm", 16uz * 1024 * 1024);
     require(K_PRIOR_HASH.has_value(), K_PRIOR_HASH ? "" : K_PRIOR_HASH.error().m_message);
@@ -127,11 +135,11 @@ int main(int argc, char** argv) try {
         require(state.busy, "job ended before selected pose-verification boundary");
         require(std::chrono::steady_clock::now() < K_GATE_DEADLINE, "stage deadline exceeded");
     }
-    nlohmann::json report {{"scope", "native retained Cancel/reopen; not gate certification"},
-                           {"device", renderer->capabilities().m_device_name},
-                           {"resolution", {1280, 720}},
-                           {"prior_scene_content", scene_content_hash(**K_PRIOR)},
-                           {"prior_splats", splat_count(*K_PRIOR)}};
+    nlohmann::json report { { "scope", "native retained Cancel/reopen; not gate certification" },
+                           { "device", renderer->capabilities().m_device_name },
+                           { "resolution", { 1280, 720 } },
+                           { "prior_scene_content", scene_content_hash(**K_PRIOR) },
+                           { "prior_splats", splat_count(*K_PRIOR) } };
     {
         std::lock_guard lock(state.mutex);
         require(state.progress && state.progress->m_stage == ReconstructionStage::POSES,
@@ -189,7 +197,7 @@ int main(int argc, char** argv) try {
               K_REOPENED_SOURCE->m_camera.down(),
               K_REOPENED_SOURCE->m_camera.forward(),
               K_REOPENED_SOURCE->m_vertical_fov_radians };
-    K_ADMIT(published, {2});
+    K_ADMIT(published, { 2 });
     K_CAPTURE("reopened.ppm");
     report["reopened_scene_content"] = scene_content_hash(*published);
     report["reopened_splats"] = splat_count(published);

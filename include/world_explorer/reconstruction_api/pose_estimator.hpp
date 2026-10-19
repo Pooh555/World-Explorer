@@ -59,7 +59,7 @@ struct MapAlignment {
     SimilarityTransform m_world_from_submap;
 };
 
-struct EstimatorFinished {   };
+struct EstimatorFinished { };
 
 using PoseEvent = std::variant<PoseEstimate,
                                PoseRevision,

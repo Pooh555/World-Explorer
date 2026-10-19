@@ -7,15 +7,15 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/core/hash.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <limits>
 #include <stdexcept>
-
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace world_explorer;
 
@@ -34,8 +34,9 @@ TEST_CASE(
     "coordinator reuses an explicitly selected fit and preserves publication on changed inputs") {
     JobFixture fixture;
     std::string log;
-    const auto K_INITIAL =
-        reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; });
+    const auto K_INITIAL = reconstruct(fixture.job, {}, [&](const std::string& text) {
+        log += text;
+    });
     INFO((K_INITIAL ? "published" : K_INITIAL.error().m_message));
     REQUIRE(K_INITIAL);
     REQUIRE(log.find("optimization skipped") != std::string::npos);
@@ -105,7 +106,7 @@ TEST_CASE(
     }
     SECTION("escaping pose pointer") {
         save_json(fixture.job.m_pose_job / "poses.json",
-                  {{"key", std::string(64, 'a')}, {"output", fixture.root.string()}});
+                  { { "key", std::string(64, 'a') }, { "output", fixture.root.string() } });
     }
     SECTION("cancel before publication") {
         std::stop_source cancellation;
@@ -120,8 +121,9 @@ TEST_CASE(
         std::stop_source cancellation;
         const auto K_RESULT =
             reconstruct(fixture.job, cancellation.get_token(), [&](const std::string& text) {
-                if (text.find("Compiling checked fit") != std::string::npos)
+                if (text.find("Compiling checked fit") != std::string::npos) {
                     cancellation.request_stop();
+                }
             });
         REQUIRE_FALSE(K_RESULT);
         CHECK(K_RESULT.error().m_code == ErrorCode::CANCELLED);
@@ -136,19 +138,19 @@ TEST_CASE(
     "reconstruction request resolves relative paths and rejects implicit or malformed recipes") {
     JobFixture fixture;
     const auto K_REQUEST = fixture.root / "request.json";
-    nlohmann::json config {{"schema_version", 1},
-                           {"recipe", "local_gsplat_v1"},
-                           {"action", "reuse_completed"},
-                           {"video", "capture.mp4"},
-                           {"pose_job", "poses"},
-                           {"fit_directory", "fit"},
-                           {"scene_output", "scene.wexplore"},
-                           {"map_directory", "shared-map"},
-                           {"decode_stage", "poses/stages/decode-" + fixture.poses.decode_key},
-                           {"steps", 7000},
-                           {"max_image_dimension", 1280},
-                           {"max_splats", 2000000},
-                           {"completed_fit_identity", fixture.identity}};
+    nlohmann::json config { { "schema_version", 1 },
+                           { "recipe", "local_gsplat_v1" },
+                           { "action", "reuse_completed" },
+                           { "video", "capture.mp4" },
+                           { "pose_job", "poses" },
+                           { "fit_directory", "fit" },
+                           { "scene_output", "scene.wexplore" },
+                           { "map_directory", "shared-map" },
+                           { "decode_stage", "poses/stages/decode-" + fixture.poses.decode_key },
+                           { "steps", 7000 },
+                           { "max_image_dimension", 1280 },
+                           { "max_splats", 2000000 },
+                           { "completed_fit_identity", fixture.identity } };
     save_json(K_REQUEST, config);
     const auto K_PARSED = read_reconstruction_job(K_REQUEST);
     REQUIRE(K_PARSED);
@@ -221,8 +223,7 @@ TEST_CASE("coordinator worker failure and missing completion cannot replace an e
     fixture.job.m_gsplat_source = fixture.root / "backend source with spaces";
     fixture.job.m_fitting_worker = { fixture.root / "worker.py", WE_TEST_PYTHON, false };
     int exit_code = 7;
-    SECTION("backend nonzero exit") {
-    }
+    SECTION("backend nonzero exit") { }
     SECTION("zero exit without a fit result") {
         exit_code = 0;
     }
@@ -230,7 +231,9 @@ TEST_CASE("coordinator worker failure and missing completion cannot replace an e
         << "import sys\nprint('diagnostic backend output')\nsys.exit(" << exit_code << ")\n";
     const auto K_RESULT = reconstruct(fixture.job, {}, {});
     REQUIRE_FALSE(K_RESULT);
-    if (exit_code) CHECK(K_RESULT.error().m_code == ErrorCode::BACKEND_FAILURE);
+    if (exit_code) {
+        CHECK(K_RESULT.error().m_code == ErrorCode::BACKEND_FAILURE);
+    }
     CHECK(sha256_file(K_MANIFEST, 65536).value() == K_COMMITTED);
 }
 
@@ -247,8 +250,7 @@ TEST_CASE("coordinator forwards bounded start and resume arguments and rechecks 
     fixture.job.m_action = FitAction::START;
     fixture.job.m_completed_fit_identity.clear();
     bool change_source = false;
-    SECTION("start publishes a checked diagnostic result") {
-    }
+    SECTION("start publishes a checked diagnostic result") { }
     SECTION("resume forwards explicit checkpoint") {
         fixture.job.m_action = FitAction::RESUME;
         fixture.job.m_checkpoint = fixture.root / "checkpoint with spaces.pt";
@@ -277,12 +279,15 @@ TEST_CASE("coordinator forwards bounded start and resume arguments and rechecks 
                                              : K_LITERAL(fixture.job.m_checkpoint))
         << "\n"
         << "shutil.copytree(" << K_LITERAL(K_PREVIOUS_FIT) << ",a.output)\n";
-    if (change_source) script << "Path(a.video).write_text('changed capture')\n";
+    if (change_source) {
+        script << "Path(a.video).write_text('changed capture')\n";
+    }
     script << "print('synthetic subprocess contract fixture')\n";
     script.close();
     std::string worker_log;
-    const auto K_RESULT =
-        reconstruct(fixture.job, {}, [&](const std::string& text) { worker_log += text; });
+    const auto K_RESULT = reconstruct(fixture.job, {}, [&](const std::string& text) {
+        worker_log += text;
+    });
     INFO(worker_log);
     INFO((K_RESULT ? "published" : K_RESULT.error().m_message));
     REQUIRE(worker_log.find("synthetic subprocess contract fixture") != std::string::npos);
@@ -301,8 +306,8 @@ TEST_CASE("coordinator forwards bounded start and resume arguments and rechecks 
 TEST_CASE("pose preparation reopens identical dependencies and holds the writer through use",
           "[poses][persistence][application]") {
     JobFixture fixture;
-    const PosePreparationRequest K_REQUEST {{fixture.job.m_pose_job, fixture.job.m_video, {}},
-                                            fixture.root / "prepared-map"};
+    const PosePreparationRequest K_REQUEST { { fixture.job.m_pose_job, fixture.job.m_video, {} },
+                                            fixture.root / "prepared-map" };
     auto prepared = prepare_completed_pose_map(K_REQUEST, {});
     REQUIRE(prepared);
     const auto K_HASH = prepared->m_asset_sha256;
@@ -327,7 +332,7 @@ TEST_CASE("pose preparation reopens identical dependencies and holds the writer 
         fixture.poses.publish();
     }
     SECTION("corrections require explicit resync") {
-        auto store = MapStore::open_persistent({.m_directory = K_REQUEST.m_map_directory}).value();
+        auto store = MapStore::open_persistent({ .m_directory = K_REQUEST.m_map_directory }).value();
         MapTransaction transaction;
         transaction.m_operation = { 2 };
         transaction.m_base_revision = { 1 };
@@ -339,8 +344,8 @@ TEST_CASE("pose preparation reopens identical dependencies and holds the writer 
         REQUIRE(store->commit(transaction));
     }
     SECTION("new epoch requires explicit resync") {
-        auto store = MapStore::open_persistent({.m_directory = K_REQUEST.m_map_directory}).value();
-        REQUIRE(store->reset({1}));
+        auto store = MapStore::open_persistent({ .m_directory = K_REQUEST.m_map_directory }).value();
+        REQUIRE(store->reset({ 1 }));
     }
     SECTION("corrupt manifest is never reset") {
         std::ofstream(K_MANIFEST) << "broken";
@@ -355,14 +360,15 @@ TEST_CASE("coordinator cancellation retains durable preparation and restart reus
     JobFixture fixture;
     fixture.job.m_map_directory = fixture.root / "shared-map";
     const auto K_POINTER = fixture.job.m_pose_job / "decode.json";
-    save_json(K_POINTER, {{"key", std::string(64, 'd')}, {"output", "missing stale stage"}});
+    save_json(K_POINTER, { { "key", std::string(64, 'd') }, { "output", "missing stale stage" } });
     const auto K_POINTER_HASH = sha256_file(K_POINTER, 65536).value();
     fixture.job.m_decode_stage = fixture.poses.decoded;
     std::stop_source cancellation;
     const auto K_INTERRUPTED =
         reconstruct(fixture.job, cancellation.get_token(), [&](const std::string& text) {
-            if (text.find("Durable pose map ready") != std::string::npos)
+            if (text.find("Durable pose map ready") != std::string::npos) {
                 cancellation.request_stop();
+            }
         });
     REQUIRE_FALSE(K_INTERRUPTED);
     CHECK(K_INTERRUPTED.error().m_code == ErrorCode::CANCELLED);
@@ -373,7 +379,7 @@ TEST_CASE("coordinator cancellation retains durable preparation and restart reus
     CHECK(sha256_file(K_MANIFEST, 65536).value() == K_COMMITTED);
     CHECK(sha256_file(K_POINTER, 65536).value() == K_POINTER_HASH);
     const auto K_SCENE = load_bundle(fixture.job.m_scene_output).value();
-    auto map = MapStore::open_persistent({.m_directory = fixture.job.m_map_directory}).value();
+    auto map = MapStore::open_persistent({ .m_directory = fixture.job.m_map_directory }).value();
     CHECK(map->acquire_snapshot()->m_initial_pose_asset_sha256 ==
           K_SCENE->m_provenance.at("pose_asset_sha256"));
     map.reset();
@@ -396,30 +402,31 @@ TEST_CASE("schema 2 requires explicit checked inspection and retained pose adopt
     fixture.adopt_inspection();
     const auto K_REQUEST = fixture.root / "request.json";
     auto config = nlohmann::json {
-        {"schema_version", 2},
-        {"recipe", "local_gsplat_v1"},
-        {"action", "reuse_completed"},
-        {"pose_action", "adopt_completed"},
-        {"video", "capture.mp4"},
-        {"pose_job", "poses"},
-        {"fit_directory", "fit"},
-        {"scene_output", "scene.wexplore"},
-        {"steps", 7000},
-        {"max_image_dimension", 1280},
-        {"max_splats", 2000000},
-        {"completed_fit_identity", fixture.identity},
-        {"inspection",
-         {{"action", "adopt_completed"},
-          {"stage", test::path_utf8(fixture.inspection().m_stage.lexically_relative(fixture.root))},
-          {"completion_sha256", fixture.inspection().m_completion_sha256},
-          {"minimum_free_bytes", 1}}}};
+        { "schema_version", 2 },
+        { "recipe", "local_gsplat_v1" },
+        { "action", "reuse_completed" },
+        { "pose_action", "adopt_completed" },
+        { "video", "capture.mp4" },
+        { "pose_job", "poses" },
+        { "fit_directory", "fit" },
+        { "scene_output", "scene.wexplore" },
+        { "steps", 7000 },
+        { "max_image_dimension", 1280 },
+        { "max_splats", 2000000 },
+        { "completed_fit_identity", fixture.identity },
+        { "inspection",
+         { { "action", "adopt_completed" },
+          { "stage", test::path_utf8(fixture.inspection().m_stage.lexically_relative(fixture.root)) },
+          { "completion_sha256", fixture.inspection().m_completion_sha256 },
+          { "minimum_free_bytes", 1 } } } };
     save_json(K_REQUEST, config);
     auto parsed = read_reconstruction_job(K_REQUEST);
     REQUIRE(parsed);
     REQUIRE(parsed->m_inspection);
-    if (parsed->m_inspection)
+    if (parsed->m_inspection) {
         CHECK(std::filesystem::equivalent(parsed->m_inspection->m_stage,
                                           fixture.inspection().m_stage));
+    }
     REQUIRE(reconstruct(*parsed, {}, {}));
     SECTION("implicit pose choice") {
         config.erase("pose_action");
@@ -466,7 +473,7 @@ TEST_CASE("retained video preflight checks metadata identity bounds and read-onl
     JobFixture fixture;
     fixture.adopt_inspection();
     VideoPreflightRequest request {
-        fixture.job.m_video, fixture.inspection(), {fixture.root / "new-volume/future-map"}};
+        fixture.job.m_video, fixture.inspection(), { fixture.root / "new-volume/future-map" } };
     const auto K_INITIAL = preflight_video(request, {});
     REQUIRE(K_INITIAL);
     CHECK(K_INITIAL->m_source_sha256 == fixture.source_hash);
@@ -498,9 +505,10 @@ TEST_CASE("retained video preflight checks metadata identity bounds and read-onl
         request.m_inspection.m_completion_sha256 = sha256_file(K_PATH, 65536).value();
     }
     SECTION("inspection file count is bounded independently of pose stages") {
-        for (int index { 0 }; index < 16; ++index)
+        for (int index { 0 }; index < 16; ++index) {
             std::ofstream(request.m_inspection.m_stage / ("extra-" + std::to_string(index)))
                 << "diagnostic";
+        }
         fixture.poses.inventory(request.m_inspection.m_stage);
         request.m_inspection.m_completion_sha256 =
             sha256_file(request.m_inspection.m_stage / "completion.json", 65536).value();
@@ -639,24 +647,24 @@ TEST_CASE("automatic inspection request resolves local worker paths and rejects 
     JobFixture fixture;
     test::inspection_fixture inspector { fixture.root / "inspection-inputs", fixture.job.m_video };
     const auto K_REQUEST = fixture.root / "request.json";
-    auto config = nlohmann::json {{"schema_version", 2},
-                                  {"recipe", "local_gsplat_v1"},
-                                  {"action", "reuse_completed"},
-                                  {"pose_action", "adopt_completed"},
-                                  {"video", "capture.mp4"},
-                                  {"pose_job", "poses"},
-                                  {"fit_directory", "fit"},
-                                  {"scene_output", "scene.wexplore"},
-                                  {"steps", 7000},
-                                  {"max_image_dimension", 1280},
-                                  {"max_splats", 2000000},
-                                  {"completed_fit_identity", fixture.identity},
-                                  {"inspection",
-                                   {{"action", "inspect"},
-                                    {"job_directory", "inspection-inputs/metadata $ ; job"},
-                                    {"worker_script", "inspection-inputs/worker with spaces.py"},
-                                    {"python", WE_TEST_PYTHON},
-                                    {"minimum_free_bytes", 1}}}};
+    auto config = nlohmann::json { { "schema_version", 2 },
+                                  { "recipe", "local_gsplat_v1" },
+                                  { "action", "reuse_completed" },
+                                  { "pose_action", "adopt_completed" },
+                                  { "video", "capture.mp4" },
+                                  { "pose_job", "poses" },
+                                  { "fit_directory", "fit" },
+                                  { "scene_output", "scene.wexplore" },
+                                  { "steps", 7000 },
+                                  { "max_image_dimension", 1280 },
+                                  { "max_splats", 2000000 },
+                                  { "completed_fit_identity", fixture.identity },
+                                  { "inspection",
+                                   { { "action", "inspect" },
+                                    { "job_directory", "inspection-inputs/metadata $ ; job" },
+                                    { "worker_script", "inspection-inputs/worker with spaces.py" },
+                                    { "python", WE_TEST_PYTHON },
+                                    { "minimum_free_bytes", 1 } } } };
     save_json(K_REQUEST, config);
     const auto K_PARSED = read_reconstruction_job(K_REQUEST);
     REQUIRE(K_PARSED);
@@ -722,7 +730,7 @@ TEST_CASE(
     const auto K_ORIGINAL = sha256_file(K_MANIFEST, 65536).value();
     const auto K_MODE = GENERATE("valid", "failure", "escape", "no_video", "cancel_once");
     test::inspection_fixture inspector {
-        fixture.root / "inspection-inputs", fixture.job.m_video, K_MODE};
+        fixture.root / "inspection-inputs", fixture.job.m_video, K_MODE };
     fixture.job.m_automatic_inspection = inspector.request.m_configuration;
     fixture.job.m_map_directory = fixture.root / "automatic-map";
     std::stop_source cancellation;
@@ -731,8 +739,9 @@ TEST_CASE(
         reconstruct(fixture.job, cancellation.get_token(), [&](const std::string& text) {
             log += text;
             if (std::string_view(K_MODE) == "cancel_once" &&
-                text.find("Worker accepted START") != std::string::npos)
+                text.find("Worker accepted START") != std::string::npos) {
                 cancellation.request_stop();
+            }
         });
     INFO(log);
     if (std::string_view(K_MODE) == "valid") {
@@ -762,8 +771,9 @@ TEST_CASE("fresh coordinator chains decode RGB admission solve and publication w
     const auto K_AUTOMATIC = GENERATE(false, true);
     fixture.fresh("valid", K_AUTOMATIC);
     std::string log;
-    const auto K_COMPLETED =
-        reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; });
+    const auto K_COMPLETED = reconstruct(fixture.job, {}, [&](const std::string& text) {
+        log += text;
+    });
     INFO(log);
     INFO((K_COMPLETED ? "complete" : K_COMPLETED.error().m_message));
     REQUIRE(K_COMPLETED);
@@ -771,7 +781,9 @@ TEST_CASE("fresh coordinator chains decode RGB admission solve and publication w
     const auto K_PUBLISHED = sha256_file(K_MANIFEST, 65536).value();
     const auto K_COUNTER = sha256_file(fixture.job.m_pose_job / "capabilities.json", 65536).value();
     log.clear();
-    REQUIRE(reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; }));
+    REQUIRE(reconstruct(fixture.job, {}, [&](const std::string& text) {
+        log += text;
+    }));
     CHECK(log.find("solver skipped") != std::string::npos);
     CHECK(sha256_file(fixture.job.m_pose_job / "capabilities.json", 65536).value() == K_COUNTER);
     CHECK(sha256_file(K_MANIFEST, 65536).value() == K_PUBLISHED);
@@ -780,14 +792,17 @@ TEST_CASE("fresh coordinator chains decode RGB admission solve and publication w
     }
     SECTION("different decode dependency") {
         fixture.poses.inventory(fixture.poses.decoded);
-        if (fixture.job.m_selected_decode)
+        if (fixture.job.m_selected_decode) {
             fixture.job.m_selected_decode->m_completion_sha256 = std::string(64, 'd');
-        else if (fixture.job.m_automatic_decode) fixture.job.m_automatic_decode->m_sample_fps = 2.;
+        } else if (fixture.job.m_automatic_decode) {
+            fixture.job.m_automatic_decode->m_sample_fps = 2.;
+        }
     }
     SECTION("recipe change") {
         REQUIRE(fixture.job.m_fresh_poses);
-        if (fixture.job.m_fresh_poses)
+        if (fixture.job.m_fresh_poses) {
             fixture.job.m_fresh_poses->m_recipe = PoseRecipe::EXHAUSTIVE_GUIDED;
+        }
     }
     SECTION("pose worker change") {
         std::ofstream(fixture.root / "pose worker.py", std::ios::app) << "\n# changed\n";
@@ -810,8 +825,9 @@ TEST_CASE("fresh stage cancellation resumes checked journals and preserves exist
     const auto K_FAILED =
         reconstruct(fixture.job, cancellation.get_token(), [&](const std::string& text) {
             log += text;
-            if (text.find("Worker accepted START") != std::string::npos)
+            if (text.find("Worker accepted START") != std::string::npos) {
                 cancellation.request_stop();
+            }
         });
     INFO(log);
     REQUIRE_FALSE(K_FAILED);
@@ -836,8 +852,7 @@ TEST_CASE("fresh stage failure and unowned poses cannot publish or invoke fittin
     const auto K_ORIGINAL = sha256_file(K_MANIFEST, 65536).value();
     fixture.fresh("failure", true);
     fixture.job.m_map_directory = fixture.root / "fresh-map";
-    SECTION("pose backend fails") {
-    }
+    SECTION("pose backend fails") { }
     SECTION("decode corrupt") {
         test::stage_worker(fixture.root / "decode worker.py", fixture.poses, "corrupt");
     }
@@ -858,39 +873,39 @@ TEST_CASE("fresh reconstruction requests require explicit stages resources and d
     JobFixture fixture;
     fixture.fresh("valid", true);
     const auto K_REQUEST = fixture.root / "request.json";
-    auto config = nlohmann::json {{"schema_version", 2},
-                                  {"recipe", "local_gsplat_v1"},
-                                  {"action", "reuse_completed"},
-                                  {"pose_action", "solve"},
-                                  {"video", "capture.mp4"},
-                                  {"pose_job", "fresh poses"},
-                                  {"fit_directory", "fit"},
-                                  {"scene_output", "scene.wexplore"},
-                                  {"steps", 7000},
-                                  {"max_image_dimension", 1280},
-                                  {"max_splats", 2000000},
-                                  {"completed_fit_identity", fixture.identity},
-                                  {"inspection",
-                                   {{"action", "adopt_completed"},
-                                    {"stage", test::path_utf8(fixture.inspection().m_stage)},
-                                    {"completion_sha256", fixture.inspection().m_completion_sha256},
-                                    {"minimum_free_bytes", 1}}},
-                                  {"pose_worker",
-                                   {{"worker_script", "pose worker.py"},
-                                    {"worker_python", WE_TEST_PYTHON},
-                                    {"pose_python", WE_TEST_PYTHON},
-                                    {"recipe", "sequential"},
-                                    {"cpu_threads", 4},
-                                    {"journal_bytes", 2147483648ULL}}},
-                                  {"decode",
-                                   {{"action", "decode"},
-                                    {"job_directory", "decoded video"},
-                                    {"worker_script", "decode worker.py"},
-                                    {"python", WE_TEST_PYTHON},
-                                    {"sample_fps", 3.},
-                                    {"max_frames", 120},
-                                    {"cpu_threads", 4},
-                                    {"max_output_bytes", 34359738368ULL}}}};
+    auto config = nlohmann::json { { "schema_version", 2 },
+                                  { "recipe", "local_gsplat_v1" },
+                                  { "action", "reuse_completed" },
+                                  { "pose_action", "solve" },
+                                  { "video", "capture.mp4" },
+                                  { "pose_job", "fresh poses" },
+                                  { "fit_directory", "fit" },
+                                  { "scene_output", "scene.wexplore" },
+                                  { "steps", 7000 },
+                                  { "max_image_dimension", 1280 },
+                                  { "max_splats", 2000000 },
+                                  { "completed_fit_identity", fixture.identity },
+                                  { "inspection",
+                                   { { "action", "adopt_completed" },
+                                    { "stage", test::path_utf8(fixture.inspection().m_stage) },
+                                    { "completion_sha256", fixture.inspection().m_completion_sha256 },
+                                    { "minimum_free_bytes", 1 } } },
+                                  { "pose_worker",
+                                   { { "worker_script", "pose worker.py" },
+                                    { "worker_python", WE_TEST_PYTHON },
+                                    { "pose_python", WE_TEST_PYTHON },
+                                    { "recipe", "sequential" },
+                                    { "cpu_threads", 4 },
+                                    { "journal_bytes", 2147483648ULL } } },
+                                  { "decode",
+                                   { { "action", "decode" },
+                                    { "job_directory", "decoded video" },
+                                    { "worker_script", "decode worker.py" },
+                                    { "python", WE_TEST_PYTHON },
+                                    { "sample_fps", 3. },
+                                    { "max_frames", 120 },
+                                    { "cpu_threads", 4 },
+                                    { "max_output_bytes", 34359738368ULL } } } };
     save_json(K_REQUEST, config);
     const auto K_PARSED = read_reconstruction_job(K_REQUEST);
     INFO((K_PARSED ? "parsed" : K_PARSED.error().m_message));
@@ -956,8 +971,8 @@ TEST_CASE("fresh reconstruction requests require explicit stages resources and d
 TEST_CASE("pose preparation rejects unsafe destinations and cancelled admission",
           "[poses][persistence][application]") {
     JobFixture fixture;
-    PosePreparationRequest request {{fixture.job.m_pose_job, fixture.job.m_video, {}},
-                                    fixture.root / "prepared-map"};
+    PosePreparationRequest request { { fixture.job.m_pose_job, fixture.job.m_video, {} },
+                                    fixture.root / "prepared-map" };
     SECTION("input overlap") {
         request.m_map_directory = fixture.job.m_pose_job / "map";
     }
@@ -985,7 +1000,7 @@ TEST_CASE("fit admission preserves nearest-even resizing and independent intrins
     JobFixture fixture;
     fixture.job.m_max_image_dimension = 128;
     test::write_training_camera(fixture.stage / "training/sparse/cameras.bin",
-                                test::training_camera_bytes(1, 256, 241, {400, 420, 128, 120.5}));
+                                test::training_camera_bytes(1, 256, 241, { 400, 420, 128, 120.5 }));
     fixture.poses.inventory(fixture.stage);
     const auto K_PATH = fixture.job.m_fit_directory / "input_manifest.json";
     auto input = nlohmann::json::parse(std::ifstream(K_PATH));
@@ -1005,7 +1020,9 @@ TEST_CASE("fit admission preserves nearest-even resizing and independent intrins
     const auto K_COMMITTED =
         sha256_file(fixture.job.m_scene_output / "manifest.json", 65536).value();
     // 241 * .5 = 120.5 rounds to even 120 in the recorded Python recipe.
-    for (auto& frame : input["dataset"]["frames"]) frame["height"] = 121;
+    for (auto& frame : input["dataset"]["frames"]) {
+        frame["height"] = 121;
+    }
     save_json(K_PATH, input);
     CHECK_FALSE(reconstruct(fixture.job, {}, {}));
     CHECK(sha256_file(fixture.job.m_scene_output / "manifest.json", 65536).value() == K_COMMITTED);
@@ -1054,8 +1071,9 @@ TEST_CASE("fresh chaining resumes its own canonical fit checkpoint without repea
               "print('synthetic checkpoint forwarding; no optimizer')\n";
     script.close();
     std::string log;
-    const auto K_RESUMED =
-        reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; });
+    const auto K_RESUMED = reconstruct(fixture.job, {}, [&](const std::string& text) {
+        log += text;
+    });
     INFO(log);
     INFO((K_RESUMED ? "resumed" : K_RESUMED.error().m_message));
     REQUIRE(K_RESUMED);
@@ -1068,7 +1086,9 @@ TEST_CASE("fresh chaining resumes its own canonical fit checkpoint without repea
     fixture.job.m_checkpoint.clear();
     fixture.job.m_completed_fit_identity = fixture.identity;
     log.clear();
-    REQUIRE(reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; }));
+    REQUIRE(reconstruct(fixture.job, {}, [&](const std::string& text) {
+        log += text;
+    }));
     CHECK(log.find("solver skipped") != std::string::npos);
     CHECK(log.find("optimization skipped") != std::string::npos);
     CHECK(sha256_file(fixture.job.m_pose_job / "capabilities.json", 65536).value() ==
@@ -1109,9 +1129,10 @@ TEST_CASE("fresh checkpoint exception preserves other protected inputs and desti
     }
     SECTION("decoder stays protected") {
         REQUIRE(fixture.job.m_automatic_decode);
-        if (fixture.job.m_automatic_decode)
+        if (fixture.job.m_automatic_decode) {
             fixture.job.m_checkpoint =
                 fixture.job.m_automatic_decode->m_job_directory / "checkpoint.pt";
+        }
     }
     SECTION("request alias stays protected") {
         fixture.job.m_request_file = fixture.job.m_checkpoint;
@@ -1134,8 +1155,9 @@ TEST_CASE("fresh checkpoint exception preserves other protected inputs and desti
     }
     const auto K_CHECKPOINT_HASH = sha256_file(fixture.job.m_checkpoint, 65536).value();
     std::string log;
-    const auto K_REJECTED =
-        reconstruct(fixture.job, {}, [&](const std::string& text) { log += text; });
+    const auto K_REJECTED = reconstruct(fixture.job, {}, [&](const std::string& text) {
+        log += text;
+    });
     REQUIRE_FALSE(K_REJECTED);
     CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_ARGUMENT);
     CHECK(log.find("Worker accepted START") == std::string::npos);
@@ -1152,38 +1174,46 @@ TEST_CASE("reconstruction telemetry bounds backend metadata and keeps ETA unknow
     };
     const auto K_VALID = K_CHECKED(R"({"step":1101,"loss":0.4})");
     REQUIRE(K_VALID);
-    if (!K_VALID) return;
+    if (!K_VALID) {
+        return;
+    }
     CHECK(K_VALID.value().m_fit_step == 1101);
     CHECK(K_VALID.value().m_fit_steps == 7000);
     CHECK(K_VALID.value().m_backend_elapsed_seconds == 12.5);
-    for (const auto* message : {"not JSON",
+    for (const auto* message : { "not JSON",
                                 R"({"step":-1})",
                                 R"({"step":7001})",
                                 R"({"step":1.5})",
                                 R"({"step":true})",
                                 R"({"step":18446744073709551615})",
                                 "[]",
-                                R"({"step":1,"nested":[[[[[[[[[[0]]]]]]]]]]})"}) {
+                                R"({"step":1,"nested":[[[[[[[[[[0]]]]]]]]]]})" }) {
         INFO(message);
         const auto K_VALUE = K_CHECKED(message);
         REQUIRE(K_VALUE);
-        if (!K_VALUE) return;
+        if (!K_VALUE) {
+            return;
+        }
         CHECK_FALSE(K_VALUE.value().m_fit_step);
         CHECK(K_VALUE.value().m_fit_steps == 0);
         CHECK(K_VALUE.value().m_backend_elapsed_seconds == 12.5);
     }
     const auto K_OVERSIZED = K_CHECKED(std::string(65537, 'x'));
     REQUIRE(K_OVERSIZED);
-    if (K_OVERSIZED) CHECK_FALSE(K_OVERSIZED->m_fit_step);
+    if (K_OVERSIZED) {
+        CHECK_FALSE(K_OVERSIZED->m_fit_step);
+    }
     CHECK_FALSE(K_CHECKED("{}", -1));
     CHECK_FALSE(K_CHECKED("{}", std::numeric_limits<double>::infinity()));
     CHECK_FALSE(K_CHECKED("{}", std::numeric_limits<double>::quiet_NaN()));
     CHECK_FALSE(K_CHECKED("{}", 0, "arbitrary backend stage"));
     CHECK_FALSE(checked_reconstruction_progress(
-        WorkerCompleted {"appearance", {}}, ReconstructionStage::FITTING, 7000));
+        WorkerCompleted { "appearance", {} }, ReconstructionStage::FITTING, 7000));
     const auto K_ZERO = K_CHECKED(R"({"step":0})", 0);
     REQUIRE(K_ZERO);
-    if (!K_ZERO) return;
+    if (!K_ZERO) {
+        return;
+    }
     CHECK(K_ZERO.value().m_fit_step == 0);
     CHECK(K_ZERO.value().m_backend_elapsed_seconds == 0);
 }
@@ -1195,8 +1225,7 @@ TEST_CASE("coordinator reports retained stages and stops progress at failed or c
     std::vector<ReconstructionStage> stages;
     std::stop_source cancellation;
     bool cancel = false;
-    SECTION("checked completed reuse has no invented fitting progress") {
-    }
+    SECTION("checked completed reuse has no invented fitting progress") { }
     SECTION("cancel during map preparation") {
         cancel = true;
     }
@@ -1208,12 +1237,14 @@ TEST_CASE("coordinator reports retained stages and stops progress at failed or c
             stages.push_back(value.m_stage);
             CHECK_FALSE(value.m_fit_step);
             CHECK_FALSE(value.m_backend_elapsed_seconds);
-            if (cancel && value.m_stage == ReconstructionStage::MAP) cancellation.request_stop();
+            if (cancel && value.m_stage == ReconstructionStage::MAP) {
+                cancellation.request_stop();
+            }
         });
-    const std::vector<ReconstructionStage> K_PREFIX {ReconstructionStage::VALIDATING,
+    const std::vector<ReconstructionStage> K_PREFIX { ReconstructionStage::VALIDATING,
                                                      ReconstructionStage::INSPECTING,
                                                      ReconstructionStage::POSES,
-                                                     ReconstructionStage::MAP};
+                                                     ReconstructionStage::MAP };
     REQUIRE(stages.size() >= K_PREFIX.size());
     CHECK(std::equal(K_PREFIX.begin(), K_PREFIX.end(), stages.begin()));
     if (cancel) {
@@ -1225,12 +1256,12 @@ TEST_CASE("coordinator reports retained stages and stops progress at failed or c
         CHECK(stages.back() == ReconstructionStage::VERIFYING_FIT);
     } else {
         REQUIRE(K_RESULT);
-        CHECK(stages == std::vector<ReconstructionStage> {ReconstructionStage::VALIDATING,
+        CHECK(stages == std::vector<ReconstructionStage> { ReconstructionStage::VALIDATING,
                                                           ReconstructionStage::INSPECTING,
                                                           ReconstructionStage::POSES,
                                                           ReconstructionStage::MAP,
                                                           ReconstructionStage::VERIFYING_FIT,
-                                                          ReconstructionStage::COMPILING});
+                                                          ReconstructionStage::COMPILING });
     }
 }
 
@@ -1257,12 +1288,15 @@ TEST_CASE("coordinator forwards verified fit steps without parsing diagnostic pr
            << "p.completed('appearance',out/'result.json')\n";
     script.close();
     std::vector<ReconstructionProgress> events;
-    const auto K_RESULT = reconstruct(
-        fixture.job, {}, {}, [&](const ReconstructionProgress& value) { events.push_back(value); });
+    const auto K_RESULT =
+        reconstruct(fixture.job, {}, {}, [&](const ReconstructionProgress& value) {
+            events.push_back(value);
+        });
     INFO((K_RESULT ? "published" : K_RESULT.error().m_message));
     REQUIRE(K_RESULT);
-    const auto K_FIT = std::ranges::find_if(
-        events, [](const auto& value) { return value.m_fit_step.has_value(); });
+    const auto K_FIT = std::ranges::find_if(events, [](const auto& value) {
+        return value.m_fit_step.has_value();
+    });
     REQUIRE(K_FIT != events.end());
     CHECK(K_FIT->m_stage == ReconstructionStage::FITTING);
     CHECK(K_FIT->m_fit_step == 1101);
@@ -1279,21 +1313,25 @@ TEST_CASE("fresh coordinator forwards checked inspection decode and pose progres
     fixture.job.m_inspection.reset();
     fixture.job.m_automatic_inspection = inspector.request.m_configuration;
     std::vector<ReconstructionProgress> events;
-    const auto K_RESULT = reconstruct(
-        fixture.job, {}, {}, [&](const ReconstructionProgress& value) { events.push_back(value); });
+    const auto K_RESULT =
+        reconstruct(fixture.job, {}, {}, [&](const ReconstructionProgress& value) {
+            events.push_back(value);
+        });
     INFO((K_RESULT ? "published synthetic fixture" : K_RESULT.error().m_message));
     REQUIRE(K_RESULT);
     std::vector<ReconstructionStage> backend_stages;
     for (const auto& value : events) {
-        if (!value.m_backend_elapsed_seconds) continue;
+        if (!value.m_backend_elapsed_seconds) {
+            continue;
+        }
         backend_stages.push_back(value.m_stage);
         CHECK_FALSE(value.m_fit_step);
         CHECK(*value.m_backend_elapsed_seconds ==
               (value.m_stage == ReconstructionStage::INSPECTING ? .25 : 1.25));
     }
-    CHECK(backend_stages == std::vector<ReconstructionStage> {ReconstructionStage::INSPECTING,
+    CHECK(backend_stages == std::vector<ReconstructionStage> { ReconstructionStage::INSPECTING,
                                                               ReconstructionStage::DECODING,
-                                                              ReconstructionStage::POSES});
+                                                              ReconstructionStage::POSES });
 }
 
 TEST_CASE("reconstruction reader binds exact reviewed bytes before accepting a request",

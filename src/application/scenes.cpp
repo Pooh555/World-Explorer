@@ -33,16 +33,16 @@ SceneSnapshot make_diagnostic_scene() {
 
 Bounds3d world_bounds(const SceneState& scene) {
     const auto K_INFINITY = std::numeric_limits<double>::infinity();
-    Bounds3d result {{K_INFINITY, K_INFINITY, K_INFINITY}, {-K_INFINITY, -K_INFINITY, -K_INFINITY}};
+    Bounds3d result { { K_INFINITY, K_INFINITY, K_INFINITY }, { -K_INFINITY, -K_INFINITY, -K_INFINITY } };
     for (const auto& [K_ID, K_CHUNK] : scene.m_chunks) {
         (void)K_ID;
         for (unsigned corner { 0 }; corner < 8; ++corner) {
             const auto& bounds = K_CHUNK->m_bounds;
             const auto K_POINT = transform_point(
                 K_CHUNK->m_world_from_chunk,
-                {(corner & 1u) != 0u ? bounds.m_maximum.m_x : bounds.m_minimum.m_x,
+                { (corner & 1u) != 0u ? bounds.m_maximum.m_x : bounds.m_minimum.m_x,
                  (corner & 2u) != 0u ? bounds.m_maximum.m_y : bounds.m_minimum.m_y,
-                 (corner & 4u) != 0u ? bounds.m_maximum.m_z : bounds.m_minimum.m_z});
+                 (corner & 4u) != 0u ? bounds.m_maximum.m_z : bounds.m_minimum.m_z });
             result.m_minimum.m_x = std::min(result.m_minimum.m_x, K_POINT.m_x);
             result.m_minimum.m_y = std::min(result.m_minimum.m_y, K_POINT.m_y);
             result.m_minimum.m_z = std::min(result.m_minimum.m_z, K_POINT.m_z);
