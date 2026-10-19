@@ -136,6 +136,62 @@ python3 tools/check_boundaries.py
 python3 tools/check_docs.py
 ```
 
+## Architecture
+
+The diagram covers the proposed end-to-end system. Status labels reflect the
+current development handoff: **implemented** means present in the scoped Linux
+development profile, not that a product gate has passed. Geometry work is
+**in progress** under M3. The reusable asset-production stages and engine
+packaging are **not started**.
+
+```mermaid
+flowchart LR
+    subgraph App[Application — implemented]
+        UI[Native viewer] --> AppCore[Shared application commands and job coordinator]
+        CLI[CLI] --> AppCore
+    end
+
+    AppCore --> Capture[Capture and frame journal — implemented]
+    Capture --> Pose[Pose worker adapter: FFmpeg and COLMAP — implemented]
+    Pose --> Map[Map store: cameras, poses, observations — implemented]
+    Map --> Appearance[Appearance worker: gsplat — implemented]
+    Map --> Dense[Depth and observed geometry — in progress, M3]
+    Appearance --> Scene[Scene compiler and immutable scene store — implemented]
+    Dense --> Scene
+    Scene --> Updates[Bounded scene updates and residency — implemented]
+    Updates --> Renderer[Render core and Vulkan renderer — implemented]
+    Renderer --> UI
+
+    subgraph Assets[Reusable offline asset track — not started, A0–A5]
+        Observed[Observed geometry and masks] --> Structure[Object identity, structure, and layout]
+        Structure --> Completion[Labeled constrained or generated completion]
+        Completion --> Mesh[Mesh, UVs, baking, LODs, and collision assets]
+        Appearance --> Materials[Shared materials and scene lighting]
+        Mesh --> Catalog[Immutable asset catalog]
+        Materials --> Catalog
+        Layout[Scene layout and instances] --> Compiler[Asset scene compiler and portable export]
+        Catalog --> Compiler
+    end
+
+    Dense -. partial observed surfaces .-> Observed
+    Compiler --> ViewerImport[Viewer or selected engine import — A6 after M6, not started]
+    Scene --> Nav[Fly navigation — implemented]
+    Nav --> UI
+
+    classDef done fill:#d9ead3,stroke:#38761d,color:#111;
+    classDef progress fill:#fff2cc,stroke:#bf9000,color:#111;
+    classDef planned fill:#f4cccc,stroke:#990000,color:#111;
+    class UI,CLI,AppCore,Capture,Pose,Map,Appearance,Scene,Updates,Renderer,Nav done;
+    class Dense progress;
+    class Observed,Structure,Completion,Mesh,Materials,Catalog,Layout,Compiler,ViewerImport planned;
+```
+
+The M3 geometry path currently supports partial observed surfaces; it does not
+produce completed room geometry or measured collision. The dotted link indicates
+input to the proposed asset track, not a completed asset pipeline. See the
+[technical plan](docs/technical_plan.md) and [progress handoff](docs/progress.md)
+for module boundaries, milestone ordering, and evidence.
+
 ## Workflow
 
 The end-to-end video workflow below is for the Linux development profile.
