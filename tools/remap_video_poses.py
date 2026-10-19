@@ -8,7 +8,6 @@ import sqlite3
 import re
 import tempfile
 
-
 __all__ = [
     "main",
     "write_models",

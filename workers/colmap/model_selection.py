@@ -1,6 +1,5 @@
 """Select one reconstruction without dropping another model's frame coverage."""
 
-
 __all__ = [
     "select_candidate",
 ]

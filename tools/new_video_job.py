@@ -8,7 +8,6 @@ import math
 import re
 from pathlib import Path
 
-
 __all__ = [
     "main",
 ]

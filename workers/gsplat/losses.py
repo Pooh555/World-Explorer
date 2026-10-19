@@ -3,7 +3,6 @@
 import torch
 import torch.nn.functional as functional
 
-
 __all__ = [
     "gaussian_ssim",
 ]

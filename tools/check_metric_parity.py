@@ -24,7 +24,6 @@ from audit_worker_environment import (
     publish_receipt,
 )
 
-
 __all__ = [
     "checked_tensor_loading",
     "load_cpu_metrics",

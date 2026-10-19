@@ -5,7 +5,6 @@ import argparse
 import json
 from pathlib import Path
 
-
 __all__ = [
     "main",
 ]

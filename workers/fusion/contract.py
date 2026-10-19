@@ -10,7 +10,6 @@ sys.path.insert(0, str(DENSE))
 from pilot import digest, parse, read_pinned, publish
 from cached_sources import new_output
 
-
 __all__ = [
     "DENSE",
     "file_record",

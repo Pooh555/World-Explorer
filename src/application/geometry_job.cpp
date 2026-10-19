@@ -105,6 +105,7 @@ file_hash(const std::filesystem::path& path, std::size_t maximum, const std::sto
     return sha256_file(path, maximum, stop);
 }
 
+#if defined(__linux__)
 Result<std::filesystem::path> run_fresh_geometry(const std::filesystem::path& request,
                                                  const std::string& request_sha256,
                                                  const nlohmann::json& configuration,
@@ -468,17 +469,17 @@ Result<std::filesystem::path> run_fresh_geometry(const std::filesystem::path& re
         K_RETAINED_PATH, text_hash(retained->dump(2) + '\n'), K_STAGES / "geometry", stop, log);
 }
 
+#endif
+
 }  // namespace
 
+#if defined(__linux__)
 Result<std::filesystem::path> run_geometry_job(const std::filesystem::path& request,
                                                const std::string& expected_sha256,
                                                const std::filesystem::path& destination,
                                                const std::stop_token& stop,
                                                const LogCallback& log) {
     try {
-#if !defined(__linux__)
-        return fail(ErrorCode::BACKEND_FAILURE, "Retained geometry solving requires Linux");
-#endif
         const auto K_REQUEST = std::filesystem::absolute(request).lexically_normal();
         const auto K_CONFIG = read_document(K_REQUEST, expected_sha256, stop);
         if (!K_CONFIG) {
@@ -656,6 +657,16 @@ Result<std::filesystem::path> run_geometry_job(const std::filesystem::path& requ
                     std::string("Geometry pipeline failed: ") + exception.what());
     }
 }
+
+#else
+Result<std::filesystem::path> run_geometry_job(const std::filesystem::path&,
+                                               const std::string&,
+                                               const std::filesystem::path&,
+                                               const std::stop_token&,
+                                               const LogCallback&) {
+    return fail(ErrorCode::BACKEND_FAILURE, "Retained geometry solving requires Linux");
+}
+#endif
 
 Result<std::filesystem::path> adopt_geometry_job(const std::filesystem::path& request,
                                                  const std::string& expected_sha256,

@@ -11,7 +11,6 @@ import time
 import sys
 from pathlib import Path
 
-
 __all__ = [
     "main",
     "owned_job_directories",

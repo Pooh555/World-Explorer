@@ -1,6 +1,6 @@
 # Selected dependency source and notice gaps
 
-The current dated [inventory](../../third_party/dependency-audit-input-20261016.json) separates
+The current dated [inventory](../../third_party/dependency-audit-repair-20261020.json) separates
 native development archives, three installed worker profiles, observed Linux
 system/build packages, unresolved release-vcpkg declarations and metric models.
 Each component retains version, source evidence, archive availability, notice
@@ -8,12 +8,17 @@ identity and explicit gaps. `rights_qualified` remains false. This is a selected
 dependency inventory, not a complete SBOM, source build attestation or rights
 clearance. Sources and gaps must be re-audited when selected dependencies change.
 
+The checker now defaults to this refreshed inventory. The
+[20 October repair](../validation/2026-10-20-native-inventory-repair.md) recaptures
+the current loader, all five mapping contexts and owner associations; earlier
+dated receipts remain historical.
+
 Run from the repository root:
 
 ```sh
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-input-20261016.json
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-input-20261016.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-input-20261016.json --local-evidence --require-closure
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json --local-evidence --require-closure
 ```
 
 The default check needs only tracked inputs. It checks bound bytes, selected

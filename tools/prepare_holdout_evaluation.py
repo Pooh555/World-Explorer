@@ -20,7 +20,6 @@ from evaluate_image_pairs import (
     verify_images,
 )
 
-
 __all__ = [
     "main",
     "prepare",

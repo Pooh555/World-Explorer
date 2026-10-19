@@ -1,5 +1,7 @@
 # Validation index
 
+- [Native build, Python formatting and dependency inventory repair](2026-10-20-native-inventory-repair.md): non-Linux geometry fallback, 24 AST-equivalent Black fixes, fresh loader/import/viewer/owner receipts and restored default/local inventory checks; native Windows confirmation pending.
+
 - [Owned fresh CUDA depth and clean profile](2026-10-20-owned-dense.md): offline six-wheel reconciliation, active GPU cancellation/resume, native admission/fusion and shared GUI/CLI handoff; partial nine-view geometry only.
 
 - [Unified retained-cache geometry pipeline](2026-10-19-geometry-pipeline.md): shared GUI/CLI solver/reuse, native adoption, populated cancellation/resume and actual native scene preservation/handoff; M3 remains open.

@@ -10,7 +10,6 @@ import pycolmap
 
 from train import file_hash
 
-
 __all__ = [
     "CaptureDataset",
 ]

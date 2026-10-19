@@ -7,7 +7,6 @@ import math
 from pathlib import Path
 import sys
 
-
 __all__ = [
     "canonical_intrinsics",
     "canonical_pose",

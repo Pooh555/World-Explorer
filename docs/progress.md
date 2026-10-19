@@ -4,6 +4,13 @@ Updated 2026-10-20 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: IN_PROGRESS.** No full Q/P/N/E
 gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
+[Build/style/inventory repair](validation/2026-10-20-native-inventory-repair.md)
+separates the non-Linux geometry fallback from its solver body, removes all 24
+Black failures without AST changes, and refreshes loader/import/viewer/owner
+receipts. Default/local dependency checks now pass; 253 source/rights gaps remain.
+The supplied full Windows log confirms C4702/C2220 unreachable-code failures.
+Local non-Linux branch checks pass; native Windows rerun remains pending.
+
 [ADR 019](adr/019-assets-before-platforms.md) orders M3 → A0–A5 → M4 → M5 → M6,
 then A6 engine packaging. The [asset track](technical_plan.md#11-offline-asset-production-track)
 adds reusable objects/structure, labeled completion, PBR and shared glTF/GLB
@@ -214,11 +221,11 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   viewing are still pending; no geometry/material/quality gate is promoted.
 
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
-Relinking makes dated runtime receipt current-byte checks exit 2; fresh loader/
-mapping/owner observations remain due. Check with
-`python3 tools/check_dependency_manifest.py --local-evidence`. Earlier refreshes
-passed local consistency; strict closure remained exit 3 for 253 source/rights
-gaps. Dense redistribution rights remain open.
+The [current runtime refresh](validation/2026-10-20-native-inventory-repair.md)
+restores `python3 tools/check_dependency_manifest.py --local-evidence` to exit 0.
+Strict closure remains exit 3 for 253 source/rights gaps. Dense/fusion profiles
+remain separately evidenced; this selected seven-profile inventory does not
+qualify their redistribution rights or the drifted installed headers.
 
 - [Native captured-color atlases](validation/2026-10-19-mesh-textures.md) add bounded
   score-weighted linear RGB baking, canonical UV/validity/ownership planes,
@@ -278,16 +285,18 @@ batch recovery and unchanged byte/pixel budgets. Then process the full pinned
 information. Do not treat the nine-view result as a full-room result or retune on
 opened evaluation grids. Current commands/requests are in
 `artifacts/validation/m3-dense-owned-20261020/`; begin from `fresh-request-current.json`
-and its explicit clean profile. Keep M3, measured alignment/collision/walking and
-quality gates open.
+and its explicit clean profile. Formatting changes worker byte digests: create
+new recipes and requests pinned to the current sources before new execution;
+keep the old pinned requests and completed outputs immutable. Keep M3, measured
+alignment/collision/walking and quality gates open.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list
 spacing. `.clang-format` groups project, standard-library and platform includes;
 `.clang-tidy` retains the one conflicting portability-check exclusion. Python
 source now follows the template's export ordering and class naming conventions.
-Pinned Black 26.5.1 now checks the changed geometry coordinator successfully;
-the full required command fails on 24 unchanged baseline files, retained in the
+Pinned Black 26.5.1 now passes the full required command after formatting the
+24 baseline failures; all 24 ASTs are unchanged. Historical failures remain in the
 [geometry-pipeline evidence](validation/2026-10-19-geometry-pipeline.md).
 See [style conformance validation](validation/2026-10-19-style-conformance.md).
 The normal style command no longer needs guarded-copy VFS analysis for header

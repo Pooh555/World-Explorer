@@ -16,7 +16,6 @@ sys.path.insert(0, str(ROOT / "workers"))
 from colmap.recovery_analysis import analyze_matches, read_matches
 import worker
 
-
 __all__ = [
     "ROOT",
     "inspect",

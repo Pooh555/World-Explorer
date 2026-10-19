@@ -1,6 +1,6 @@
 # Observed Linux backend and viewer mappings
 
-The [current summary](../../third_party/backend-bindings-input-20261016.json) supplements the
+The [current summary](../../third_party/backend-bindings-repair-20261020.json) supplements the
 [loader audit](runtime_dependencies.md) with actual fixed backend imports and an
 empty native viewer. Its five observations preserve profile, native/sandbox
 context, module versions, CUDA availability, exclusions and mapped ELF hashes.
@@ -11,9 +11,9 @@ established by a mapped-file observation.
 From the repository root:
 
 ```sh
-python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-input-20261016.json
-python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-input-20261016.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-input-20261016.json --local-evidence
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-repair-20261020.json
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-repair-20261020.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json --local-evidence
 ```
 
 Default checks bind the observer/baseline source, complete profile/node inventories,
@@ -81,12 +81,12 @@ scene fidelity or reference performance. The tested viewer's generic
 
 The current [installed owner supplement](binding_owners.md) associates the
 137 ELF files beyond the current loader baseline with worker/system metadata and
-notice bytes. Its [fresh capture](../validation/2026-10-16-m2-input-latency.md)
-retains 208 mapped ELF files in five contexts, including 47 in the empty viewer.
-The node set matches the preceding acquisition-repair observation; only the
-viewer changes bytes. The earlier packing observation had 29 more files. These are actual startup mappings, not an exhaustive library
-or backend inventory. Four prior import receipts remain byte-checked; only the
-viewer is re-observed. The broader 160-target/237-file observation stays historical.
+notice bytes. Its [20 October capture](../validation/2026-10-20-native-inventory-repair.md)
+retains 208 mapped ELF files in five newly observed contexts, including 47 in the
+empty viewer, with zero changed overlap against the fresh loader baseline. The
+scope remains actual startup mappings. The earlier input-timing, acquisition and
+broader 237-file packing observations remain historical; no old receipt is
+replaced or reused as a current observation.
 
 The [fresh capture](../validation/2026-10-15-runtime-refresh.md) re-observes all
 five contexts with current zlib bytes. That historical comparison baseline intentionally

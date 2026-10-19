@@ -7,7 +7,6 @@ import struct
 from cached_sources import checked_path
 from pilot import parse, read_pinned
 
-
 __all__ = [
     "load_admitted_cache",
 ]

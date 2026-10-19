@@ -8,7 +8,6 @@ import shutil
 import signal
 import sys
 
-
 __all__ = [
     "main",
 ]

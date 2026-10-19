@@ -10,7 +10,6 @@ import tempfile
 from pilot import digest, parse, publish, read_pinned
 from source_selection import DEFAULT_POLICY, plan_sources, report_digest
 
-
 __all__ = [
     "main",
     "run",

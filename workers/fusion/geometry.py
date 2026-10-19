@@ -2,7 +2,6 @@
 
 import itertools
 
-
 __all__ = [
     "ATTRIBUTES",
     "check_cancel",

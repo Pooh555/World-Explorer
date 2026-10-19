@@ -7,7 +7,6 @@ from pathlib import Path
 
 from model_selection import select_candidate
 
-
 __all__ = [
     "main",
 ]

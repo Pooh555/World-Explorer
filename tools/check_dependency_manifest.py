@@ -610,7 +610,7 @@ def main():
     parser.add_argument(
         "--manifest",
         type=Path,
-        default=Path("third_party/dependency-audit-20261014.json"),
+        default=Path("third_party/dependency-audit-repair-20261020.json"),
     )
     parser.add_argument("--local-evidence", action="store_true")
     parser.add_argument("--require-closure", action="store_true")

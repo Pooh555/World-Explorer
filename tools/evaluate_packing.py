@@ -20,7 +20,6 @@ from evaluate_image_pairs import (
     relative_file,
 )
 
-
 __all__ = [
     "comparison_inputs",
     "main",

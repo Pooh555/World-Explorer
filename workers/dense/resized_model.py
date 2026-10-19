@@ -7,7 +7,6 @@ preserved; image-domain keypoints and camera intrinsics change explicitly.
 from pathlib import Path
 import math
 
-
 __all__ = [
     "adapt_model",
     "neighbor_rows",

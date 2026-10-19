@@ -219,4 +219,13 @@ TEST_CASE("geometry pipeline owns cancellation and preserves partial solver atte
         CHECK(sha256_file(K_ROOT / "poses.weposes", 1024uz * 1024uz).value() == *K_POSE);
     }
 }
+#else
+TEST_CASE("geometry solving reports unsupported before accessing caller files") {
+    const GeometryDirectory K_DIRECTORY;
+    const auto K_RESULT = run_geometry_job(
+        K_DIRECTORY.m_path / "missing.json", std::string(64uz, '0'), K_DIRECTORY.m_path / "output");
+    REQUIRE_FALSE(K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::BACKEND_FAILURE);
+    CHECK(std::filesystem::is_empty(K_DIRECTORY.m_path));
+}
 #endif

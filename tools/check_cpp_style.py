@@ -190,9 +190,7 @@ def check_header_policy(files: list[Path]) -> int:
             continue
         lines = path.read_text(encoding="utf-8").splitlines()
         if not lines or lines[0] != "#pragma once":
-            violations.append(
-                f"{path}:1: headers must start with '#pragma once'"
-            )
+            violations.append(f"{path}:1: headers must start with '#pragma once'")
         if sum(line.strip() == "#pragma once" for line in lines) != 1:
             violations.append(
                 f"{path}: headers must contain exactly one '#pragma once'"

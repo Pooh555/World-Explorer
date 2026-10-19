@@ -13,7 +13,6 @@ import time
 
 from contract import file_record, load_request, new_output, parse, publish
 
-
 __all__ = [
     "execute",
     "main",

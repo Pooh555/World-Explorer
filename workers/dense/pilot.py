@@ -18,7 +18,6 @@ import time
 
 from colmap_io import encode_depth, read_depth, read_support
 
-
 __all__ = [
     "digest",
     "main",
