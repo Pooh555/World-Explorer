@@ -1,5 +1,7 @@
 # Validation index
 
+- [Synthetic collision support](2026-10-20-collision-support.md): source-bound explicit cells/floors, conservative envelope probes and native labeled viewing; no measured collision or walking.
+
 - [Explicit world-frame alignment](2026-10-20-world-frame.md): source-bound declarations, epoch/resync and schema-5 native software contracts; native texture/splat parity and unchanged real mesh, no real metric alignment or walking.
 
 - [Owned mesh postprocessing](2026-10-20-mesh-job.md): shared cleanup/bake/export stages, real sequence cancellation/resume/replay, saved-bake reuse and native handoff; measured geometry/walking remain open.

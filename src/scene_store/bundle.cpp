@@ -699,10 +699,17 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
     }
 }
 
-Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, BundleLimits limits) {
+Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory,
+                                  BundleLimits limits,
+                                  std::string_view expected_manifest_sha256) {
     try {
         const auto K_BYTES =
             read_file(asset_path(directory, "manifest.json"), limits.m_max_manifest_bytes);
+        if (!expected_manifest_sha256.empty() && (!hash_valid(expected_manifest_sha256) ||
+                                                  sha256(K_BYTES) != expected_manifest_sha256)) {
+            return fail(ErrorCode::INVALID_DATA,
+                        "Externally pinned bundle manifest checksum differs");
+        }
         const auto K_MANIFEST = parse_json(K_BYTES);
         const auto K_ROOT_SCHEMA = unsigned_field(K_MANIFEST, "schema_version");
         if (K_ROOT_SCHEMA < 1 || K_ROOT_SCHEMA > 5) {

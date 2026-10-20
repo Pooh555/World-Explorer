@@ -1042,7 +1042,10 @@ int viewer_main(int argc, char** argv) {
             } else if (K_PROGRESS && K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
                 std::lock_guard lock(state.mutex);
                 state.status =
-                    current && current->m_world_frame
+                    current && is_synthetic_scene(current) &&
+                            current->m_provenance.contains("collision_support")
+                        ? current->m_provenance.at("collision_support")
+                    : current && current->m_world_frame
                         ? "World frame: " + std::string(world_frame_label(*current)) +
                               ". Walking unavailable."
                     : is_synthetic_scene(current) ? "Ready: synthetic diagnostic fixture."

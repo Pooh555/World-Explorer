@@ -358,3 +358,11 @@ portable-derived family; legacy GLB V1 bytes remain unchanged.
 identity, schema-5 wrapping of unchanged payloads, epoch publication and
 correction/resync behavior. Legacy metric flags remain unproven; independent
 declaration admission does not certify geometry or enable walking.
+
+## Diagnostic collision support
+
+The separate [synthetic support profile](collision_support.md) pins an immutable
+aligned scene and current floor triangles. Its diagnostic bundle is an
+independent synthetic scene, never an active collision cache. `load_bundle` can
+check an optional external SHA-256 pin against the exact manifest bytes decoded;
+legacy callers and bundle encodings remain unchanged.

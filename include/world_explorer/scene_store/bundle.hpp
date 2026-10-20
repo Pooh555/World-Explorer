@@ -3,6 +3,7 @@
 #include "world_explorer/scene_store/scene.hpp"
 
 #include <filesystem>
+#include <string_view>
 
 namespace world_explorer {
 
@@ -16,7 +17,10 @@ struct BundleLimits {
 // Immutable content-addressed chunks are flushed before manifest.json is replaced.
 // Existing readers continue using the old manifest/assets after failed publication.
 Result<void> write_bundle(const std::filesystem::path& directory, const SceneSnapshot& snapshot);
-Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, BundleLimits limits = {});
+// An optional external pin checks the same manifest bytes that are decoded.
+Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory,
+                                  BundleLimits limits = {},
+                                  std::string_view expected_manifest_sha256 = {});
 // Only the explicitly annotated gsplat-1.5.3 ASCII interchange profile is accepted.
 Result<SceneSnapshot>
 load_gsplat_ply(const std::filesystem::path& path, SceneId id, BundleLimits limits = {});

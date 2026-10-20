@@ -52,9 +52,10 @@ The aligned snapshot is immutable. Chunk changes, even a revision-only operation
 require resync. A pose correction uses the existing full-snapshot reset with a
 newer world epoch and corrected source assets, then a new source-bound declaration.
 It cannot keep stale proof, bake dependencies or collision context. Bookmarks in
-the previous epoch fail restoration. No collision producer is implemented:
+the previous epoch fail restoration. No measured collision producer is implemented:
 walking is blocked for missing proof, synthetic proof, or unavailable supported
 collision even after independent declaration admission.
+[Synthetic support diagnostics](collision_support.md) do not change that gate.
 
 A separate scene transform composes with each original chunk transform. Bounds,
 mesh positions/normals, Gaussian positions/scales/orientations and local SH view

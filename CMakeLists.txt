@@ -172,7 +172,7 @@ target_link_libraries(map_store PUBLIC reconstruction_api)
 target_link_libraries(map_store PRIVATE nlohmann_json::nlohmann_json)
 
 add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp
-  src/scene_store/world_frame.cpp src/scene_store/depth_asset.cpp src/scene_store/fusion_asset.cpp src/scene_store/fusion_components.cpp
+  src/scene_store/world_frame.cpp src/scene_store/collision_support.cpp src/scene_store/depth_asset.cpp src/scene_store/fusion_asset.cpp src/scene_store/fusion_components.cpp
   src/scene_store/fusion_cleanup.cpp src/scene_store/color_projection.cpp src/scene_store/baked_appearance.cpp src/scene_store/mesh_texture.cpp src/scene_store/gltf.cpp src/scene_store/gltf_import.cpp src/scene_store/gltf_png.cpp)
 we_target(scene_store)
 target_link_libraries(scene_store PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
@@ -204,7 +204,7 @@ add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/mesh_color_audit.cpp src/application/color_inputs.cpp src/application/mesh_texture.cpp src/application/gltf.cpp
   src/application/dense_inputs.cpp src/application/depth_visibility.cpp
   src/application/reconstruction_progress.cpp
-  src/application/scene_import.cpp src/application/source_view.cpp src/application/world_alignment.cpp
+  src/application/scene_import.cpp src/application/source_view.cpp src/application/world_alignment.cpp src/application/collision_inspection.cpp
   src/application/reconstruction_job.cpp src/application/job_validation.cpp src/application/pose_replay.cpp
   src/application/pose_pipeline.cpp src/application/pose_solve.cpp src/application/pose_export.cpp
   src/application/map_commands.cpp src/application/pose_preparation.cpp src/application/video_preflight.cpp
@@ -366,6 +366,9 @@ install(DIRECTORY workers/ DESTINATION share/world-explorer/workers PATTERN "__p
 install(DIRECTORY "${WE_WIRE_DIRECTORY}/python/" DESTINATION share/world-explorer/workers/wire_bindings PATTERN "__pycache__" EXCLUDE)
 
 if(BUILD_TESTING)
+  add_executable(we_collision_fixture tests/fixtures/collision_fixture.cpp)
+  we_target(we_collision_fixture)
+  target_link_libraries(we_collision_fixture PRIVATE scene_store nlohmann_json::nlohmann_json)
   add_executable(we_scale_fixture tests/fixtures/scale_fixture.cpp)
   we_target(we_scale_fixture)
   target_link_libraries(we_scale_fixture PRIVATE scene_store render_core nlohmann_json::nlohmann_json)

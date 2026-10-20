@@ -339,14 +339,26 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-Implement M3's supported-collision admission next. Re-read plan §§3 (Q5/N2),
-4.8 and 5.1 and the [world-frame contract](protocols/world_frame.md). Define
-bounded supported regions and explicit unknown/free/occupied semantics, pinning
-collision candidates to source mesh/pose revisions and an admitted world frame.
-Start with CPU synthetic support/unknown-boundary and correction invalidation
-checks, then an ordinary local viewer diagnostic. No collision producer, Jolt
-capsule or walk permission exists yet. Allocated TSDF voxels and generated floors
-cannot establish free space or certify supported floors.
+Implement M3's observation-backed free-space evidence next, before accepting
+real collision. Read plan §§3 (Q5/N2), 4.8 and 5.1, the
+[synthetic support contract](protocols/collision_support.md) and retained
+pose-admitted depth/cache contracts. Start with a separately versioned diagnostic
+producer using exact retained depth/RGB/pose/recipe identities, conservative whole
+cell visibility and explicit unknown/conflicting observations. Keep arbitrary
+pose units and uncertainty explicit. Compare against an independent CPU ray
+oracle, then inspect the full retained real coverage locally without a new solve.
+Do not let the synthetic declaration profile admit real observations or infer
+free space from allocated TSDF/front-band samples. Metric support and walking
+still require independent measurement and qualified geometry; Jolt/controller
+work and Q5/N2 remain open.
+
+[Synthetic support admission](validation/2026-10-20-collision-support.md) now pins
+scene/frame/mesh/pose dependencies, complete free/occupied/unknown cells and
+conservative flat-floor tiles. Continuous capsule-envelope probes block on
+unknown, thin barriers, unsupported seams and stale context. The shared CLI
+publishes a labeled ordinary viewer diagnostic; it never activates collision.
+The real retained mesh remains arbitrary, with walking disabled. All source
+assets and the repeated captured GLB remain unchanged.
 
 [World-frame admission](validation/2026-10-20-world-frame.md) now implements exact
 source/anchor-bound distance/up declarations, atomic epoch/revision changes,
