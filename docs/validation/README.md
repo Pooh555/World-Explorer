@@ -1,5 +1,7 @@
 # Validation index
 
+- [Fresh sequence geometry adapter](2026-10-20-fresh-sequence.md): strict complete depth-graph admission, real 63-frame reuse, preserved cache cancellation/resume, exact replay, shared native handoff and sanitizers; raw partial geometry only.
+
 - [Bounded full-sequence fusion](2026-10-20-sequence-fusion.md): one grid over all 63 real frames, retained cancellation/resume/replay, exact native admission, visible handoff and explicit unknown coverage; partial geometry only.
 
 - [Bounded full-sequence depth](2026-10-20-depth-sequence.md): all 63 real reference frames, seven owned CUDA batches, four bounded native caches, exact replay, complete unknown accounting and full-volume sanitizer checks; no geometry-quality gate.

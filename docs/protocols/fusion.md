@@ -143,8 +143,8 @@ The retained geometry coordinator exhausts the same union reader before owning
 or reusing a job, including all later child dependencies. Complete stages keep
 their existing four-file inventory; cancelled stages retain their scratch and
 restart in a new attempt. The retained shared GUI/CLI pipeline consumes these
-jobs through the native admission below. The fresh-depth pipeline's terminal
-adapter remains limited to the earlier single-cache depth result.
+jobs through the native admission below. The fresh-depth pipeline also admits
+the complete sequence terminal through the adapter below.
 
 ## Owned retained-cache geometry job (Linux development slice)
 
@@ -437,8 +437,9 @@ whole-surface error certificate and derived native requests.
 `run_geometry_job`, `we_process run-geometry` and the viewer's **Import video →
 Build observed geometry** now also accept `FRESH_GEOMETRY_PIPELINE_V1`. This Linux
 entry connects the [owned CUDA depth job](dense_inputs.md#owned-cuda-depth-production)
-to the existing retained-cache path. It is locally verified on the nine-view
-resized profile, with raw partial normal-color geometry only.
+to the retained-cache path. The earlier nine-view fresh solve and complete
+63-frame retained-depth reuse have separate local evidence; both produce raw
+partial normal-color geometry only.
 
 The pinned flat request has exactly these fields (paths resolve against it):
 
@@ -469,6 +470,25 @@ internal request publication. Native resized input admission runs before ownersh
 or CUDA launch. Inputs, scripts and indirect source directories cannot overlap
 outputs; Python executable aliases are explicitly resolved and pinned.
 
+The pinned depth recipe selects the adapter: legacy selections require a
+schema-1 visibility template and pilot fusion recipe; the bounded temporal
+sequence requires schema 2 and the sequence fusion recipe. These combinations
+are checked before ownership or child launch. Templates must select the same
+canonical pose path as well as the same checksum.
+
+`job_detail::depth_job_outputs` rechecks the pinned request/recipe, terminal owner,
+bounded attempt names and every result/prepared document against independently
+prepared native frame identities. For a sequence it requires all 19–120 input
+indices, disjoint nine-reference batches, radius-three support halos and the
+exact ordered result inventory. Every solved asset is hashed, including support
+views that are absent from final outputs. Only references enter `visibility.json`,
+each once in manifest order. Float/boolean indices, stale or duplicated batches,
+changed prepared bytes, unsafe/linked paths and late support corruption reject.
+The legacy adapter retains its ordered noncontiguous selections and 18-view cap.
+This admission reads without changing caller files; it does not certify depth
+quality. This read-only helper publishes nothing; cancellation and failures
+preserve caller files and previously selected results.
+
 A top-level immutable owner/writer lock protects the entire job. The dense owner
 runs/reuses under `stages/depth`. The application pins its terminal/owner/result
 graph, checks the bounded attempt/asset paths and builds `visibility.json` from
@@ -496,8 +516,12 @@ build/dev/we_viewer --geometry-request FRESH_REQUEST.json --geometry-request-sha
 ```
 
 The visible product still has arbitrary scale, unknown gaps and walking disabled.
-The current nine-view slice does not complete a room or the M3 milestone. Full
-sequence fresh-job orchestration, measured alignment/collision, cleanup/baking job
-stages and full quality/platform/rights gates remain separate.
+Neither slice completes a room or the M3 milestone. Sequence captured-color
+processing, measured alignment/collision, cleanup/baking job stages and full
+quality/platform/rights gates remain separate. Completed-depth reuse does not
+claim a repeated CUDA solve through the fresh entry.
 [Native/real evidence](../validation/2026-10-20-owned-dense.md) records cancellation,
 retained attempts, the complete fresh-depth chain and strict replay.
+[Sequence adapter evidence](../validation/2026-10-20-fresh-sequence.md) records
+complete retained-depth reuse, cache cancellation/resume, native handoff and
+sanitizers without another CUDA solve.

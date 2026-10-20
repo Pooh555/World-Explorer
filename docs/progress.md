@@ -292,27 +292,38 @@ qualify their redistribution rights or the drifted installed headers.
   errors, but remain visibly fragmented. Complete unknown/support/sigma accounting
   survives native conversion; scale remains arbitrary and walking unavailable.
 
+- [Fresh sequence geometry adapter](validation/2026-10-20-fresh-sequence.md):
+  shared GUI/CLI validates the complete owned depth graph and all support halos,
+  exports each reference once, then reuses the sequence fusion/native path.
+  Real 63-frame depth reuse, populated cache cancellation/resume, exact replay,
+  native prior-pixel preservation and full-volume sanitizers pass. All 49,833
+  triangles render with zero Vulkan errors; 388 dev / 364 C++23 checks pass.
+  No repeated CUDA solve or geometry-quality promotion is claimed.
+
 ## Next executable step and protection rules
 
-Extend the fresh-depth terminal adapter in `src/application/geometry_job.cpp`
-to consume `OWNED_RESIZED_DEPTH_SEQUENCE_TERMINAL_V1`: validate each pinned
-batch/result/prepared graph, select its disjoint references, construct schema-2
-native visibility admission for the complete frame inventory, then pass that
-union into the now-verified retained geometry path. Add CPU failure/cancellation/
-replay contracts before a real GUI/CLI chain. Validate reuse against the completed
-63-frame depth job under `artifacts/validation/m3-depth-sequence-20261020/` without
-an unchanged CUDA solve; inspect its `gpu-commands.json`, `coverage.json` and
-`post-commands.json` first. Reserve new outputs and current implementation pins.
+Extend native captured-color input admission and projection audits to complete
+cache unions, starting with `src/application/color_inputs.{cpp,hpp}` and
+`mesh_color_audit.cpp`. Preserve the legacy 18-view / 48M-pixel contract. Add an
+explicit versioned sequence contract, validate every child/pose/calibration pin,
+and retain global view scoring, deterministic ties and unknown denominators.
+The current `WECLR001` ledger has a **32-bit candidate mask** and 44-byte records:
+raising the frame cap alone loses evidence and risks invalid shifts. Version the
+wire representation for all 120 candidates; add 19/63/120-view CPU admission,
+late-corruption, cancellation and replay checks before the real read-only audit.
 
-[Full-sequence fusion](validation/2026-10-20-sequence-fusion.md) now validates the
-pinned native union (`3362938dda673311e36739c3eed5c3ece8b303cd8c29cd0f1343c28300b2cf26`),
-one global extent/grid, retained-job cancellation/resume/replay, native admission
-and visible handoff. Inspect `artifacts/validation/m3-sequence-fusion-20261020/`
-`owned-commands.json`, `native-commands.json` and the saved bundle before further
-work. Preserve all completed/partial CPU attempts, their scratch/recipes, all
-admitted caches, the completed depth job and prior scenes. The fresh adapter is
-still the nine-view slice. Sequence cleanup/baking/export, measured alignment/
-collision/walking and quality remain open; A0–A6 remain NOT_STARTED.
+Use the completed [fresh adapter](validation/2026-10-20-fresh-sequence.md), without
+another CUDA/fusion run. Under
+`artifacts/validation/m3-fresh-sequence-20261020/`, inspect `checks.json`,
+`native-commands.json`, `run/real-commands.json` and `comparison.json`. Inputs are
+`run/fresh/stages/cache-1/manifest.json` (SHA
+`a0b311978cfa7e934e3d029db61ca8e4e9dc37198b12f000d0729faae0d52599`)
+and `run/fresh/stages/geometry/stages/native/stages/attempt-0/observed.wefusion`;
+the sibling `scene.wexplore` is the saved native bundle. Construct a separately
+pinned native scene request for the audit; reserve new outputs. Preserve the
+916-file copied/original depth jobs, 48-file cancelled `cache-0`, every prior
+CPU attempt/scratch/cache, bake and scene. Sequence cleanup/baking/export,
+measured alignment/collision/walking and quality remain open; A0–A6 unstarted.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list
@@ -344,7 +355,7 @@ Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Complete room
-surface coverage, fresh sequence orchestration, broader owned mesh processing, compressed storage,
+surface coverage, fresh sequence processing beyond raw fusion, broader owned mesh processing, compressed storage,
 measured scale, collision/walking and general interchange remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 

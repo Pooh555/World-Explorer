@@ -1,5 +1,6 @@
 #include "world_explorer/application/geometry_job.hpp"
 
+#include "depth_job_outputs.hpp"
 #include "job_validation.hpp"
 #include "owned_job.hpp"
 #include "world_explorer/application/dense_inputs.hpp"
@@ -104,6 +105,228 @@ file_hash(const std::filesystem::path& path, std::size_t maximum, const std::sto
     }
     return sha256_file(path, maximum, stop);
 }
+
+}  // namespace
+
+namespace job_detail {
+
+Result<nlohmann::json> depth_job_outputs(const std::filesystem::path& job,
+                                         const std::string& request_sha256,
+                                         const std::filesystem::path& request,
+                                         std::span<const PreparedDenseFrame> frames,
+                                         const std::stop_token& stop) {
+    using Json = nlohmann::json;
+    try {
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Depth terminal admission cancelled");
+        }
+        if (frames.empty() || frames.size() > 120uz || std::filesystem::canonical(job) != job ||
+            std::filesystem::canonical(job / "stages") != job / "stages") {
+            return fail(ErrorCode::INVALID_DATA, "Invalid depth job inventory or path");
+        }
+        const auto K_REQUEST = read_document(request, request_sha256, stop);
+        if (!K_REQUEST) {
+            return std::unexpected(K_REQUEST.error());
+        }
+        const auto K_RECIPE_PATH = local_path(request.parent_path(), K_REQUEST->at("recipe"));
+        if (!K_RECIPE_PATH) {
+            return std::unexpected(K_RECIPE_PATH.error());
+        }
+        const auto K_RECIPE =
+            read_document(*K_RECIPE_PATH, K_REQUEST->at("recipe_sha256").get<std::string>(), stop);
+        if (!K_RECIPE) {
+            return std::unexpected(K_RECIPE.error());
+        }
+        const bool K_SEQUENCE { K_RECIPE->at("scope") == "BOUNDED_TEMPORAL_DEPTH_SEQUENCE_V1" };
+        if (!valid_digest(K_RECIPE->at("worker_sha256").get<std::string>())) {
+            return fail(ErrorCode::INVALID_DATA, "Invalid depth worker identity");
+        }
+        const auto K_INDICES = K_RECIPE->at("selection_indices");
+        if (!K_INDICES.is_array() || K_INDICES.empty() ||
+            K_INDICES.size() > (K_SEQUENCE ? 120uz : 18uz)) {
+            return fail(ErrorCode::INVALID_DATA, "Invalid selected depth inventory");
+        }
+        std::vector<std::size_t> selection;
+        std::set<std::size_t> seen;
+        for (const auto& index : K_INDICES) {
+            if (!index.is_number_unsigned() || index >= frames.size() ||
+                !seen.insert(index.get<std::size_t>()).second) {
+                return fail(ErrorCode::INVALID_DATA, "Invalid selected depth index");
+            }
+            selection.push_back(index.get<std::size_t>());
+        }
+        if (K_SEQUENCE && (frames.size() < 19uz || selection.size() != frames.size() ||
+                           !std::ranges::is_sorted(selection) ||
+                           !K_RECIPE->at("neighbor_radius").is_number_unsigned() ||
+                           K_RECIPE->at("neighbor_radius") != 3U)) {
+            return fail(ErrorCode::INVALID_DATA, "Invalid complete depth sequence policy");
+        }
+        const auto K_TERMINAL_SHA = file_hash(job / "manifest.json", K_DOCUMENT_BYTES, stop);
+        if (!K_TERMINAL_SHA) {
+            return std::unexpected(K_TERMINAL_SHA.error());
+        }
+        const auto K_TERMINAL = read_document(job / "manifest.json", *K_TERMINAL_SHA, stop);
+        if (!K_TERMINAL) {
+            return std::unexpected(K_TERMINAL.error());
+        }
+        const auto K_SCHEMA_ONE = [](const Json& value) {
+            return value.at("schema_version").is_number_unsigned() &&
+                   value.at("schema_version") == 1U;
+        };
+        if (K_TERMINAL->size() != 6uz || !K_SCHEMA_ONE(*K_TERMINAL) ||
+            K_TERMINAL->at("kind") != (K_SEQUENCE ? "OWNED_RESIZED_DEPTH_SEQUENCE_TERMINAL_V1"
+                                                  : "OWNED_RESIZED_DEPTH_TERMINAL_V1") ||
+            K_TERMINAL->at("scope") != "PARTIAL_DEPTH_NO_Q5_N2_OR_WALK") {
+            return fail(ErrorCode::INVALID_DATA, "Invalid owned depth terminal");
+        }
+        const auto K_OWNER_SHA = K_TERMINAL->at("owner_sha256").get<std::string>();
+        const auto K_OWNER = read_document(job / "owner.json", K_OWNER_SHA, stop);
+        if (!K_OWNER) {
+            return std::unexpected(K_OWNER.error());
+        }
+        if (!K_SCHEMA_ONE(*K_OWNER) || K_OWNER->at("kind") != "OWNED_RESIZED_DEPTH_JOB_V1" ||
+            K_OWNER->at("request_sha256") != request_sha256 ||
+            K_OWNER->at("request") != request.string() ||
+            K_OWNER->at("worker_sha256") != K_RECIPE->at("worker_sha256")) {
+            return fail(ErrorCode::INVALID_DATA, "Depth terminal owner differs");
+        }
+        Json batches = Json::array();
+        if (K_SEQUENCE) {
+            if (!K_TERMINAL->at("frame_count").is_number_unsigned() ||
+                K_TERMINAL->at("frame_count") != frames.size() ||
+                !K_TERMINAL->at("batches").is_array() ||
+                K_TERMINAL->at("batches").size() != (frames.size() + 8uz) / 9uz) {
+                return fail(ErrorCode::INVALID_DATA, "Incomplete depth sequence batches");
+            }
+            batches = K_TERMINAL->at("batches");
+        } else {
+            batches.push_back({ { "stage", K_TERMINAL->at("stage") },
+                               { "result_sha256", K_TERMINAL->at("result_sha256") } });
+        }
+        Json outputs = Json::array();
+        for (std::size_t batch_index { 0uz }; batch_index < batches.size(); ++batch_index) {
+            const auto& batch = batches[batch_index];
+            if (batch.size() != (K_SEQUENCE ? 3uz : 2uz)) {
+                return fail(ErrorCode::INVALID_DATA, "Invalid depth batch record");
+            }
+            const auto K_NAME = batch.at("stage").get<std::string>();
+            const auto K_PREFIX = "depth-" + K_OWNER_SHA +
+                                  (K_SEQUENCE ? "-batch-" + std::to_string(batch_index) : "") +
+                                  "-attempt-";
+            bool selected {};
+            for (std::size_t attempt { 0uz }; attempt < 128uz; ++attempt) {
+                selected = selected || K_NAME == K_PREFIX + std::to_string(attempt);
+            }
+            const auto K_STAGE = job / "stages" / K_NAME;
+            if (!selected || std::filesystem::canonical(K_STAGE) != K_STAGE) {
+                return fail(ErrorCode::INVALID_DATA, "Invalid selected depth attempt");
+            }
+            const auto K_RESULT = read_document(
+                K_STAGE / "result.json", batch.at("result_sha256").get<std::string>(), stop);
+            if (!K_RESULT) {
+                return std::unexpected(K_RESULT.error());
+            }
+            const auto K_PREPARED =
+                read_document(K_STAGE / "prepared.json",
+                              K_RESULT->at("prepared_sha256").get<std::string>(),
+                              stop);
+            if (!K_PREPARED) {
+                return std::unexpected(K_PREPARED.error());
+            }
+            for (const auto& document : { *K_RESULT, *K_PREPARED }) {
+                if (!K_SCHEMA_ONE(document) ||
+                    document.at("manifest_sha256") != K_REQUEST->at("manifest_sha256") ||
+                    document.at("recipe_sha256") != K_REQUEST->at("recipe_sha256") ||
+                    document.at("worker_sha256") != K_RECIPE->at("worker_sha256")) {
+                    return fail(ErrorCode::INVALID_DATA, "Depth stage dependencies differ");
+                }
+            }
+            const auto K_FIRST = K_SEQUENCE ? batch_index * 9uz : 0uz;
+            const auto K_END =
+                K_SEQUENCE ? std::min(K_FIRST + 9uz, frames.size()) : selection.size();
+            const auto K_BEGIN = K_SEQUENCE && K_FIRST >= 3uz ? K_FIRST - 3uz : 0uz;
+            const auto K_SOLVED_END =
+                K_SEQUENCE ? std::min(K_END + 3uz, frames.size()) : selection.size();
+            Json references = Json::array(), solved = Json::array();
+            for (auto index = K_FIRST; index < K_END; ++index) {
+                references.push_back(index);
+            }
+            for (auto index = K_BEGIN; index < K_SOLVED_END; ++index) {
+                solved.push_back(selection[index]);
+            }
+            if (K_RESULT->at("status") != "PARTIAL_NEIGHBOR_PILOT_COMPLETE" ||
+                K_PREPARED->at("status") != "PARTIAL_NEIGHBOR_INPUTS_PREPARED" ||
+                !K_RESULT->at("frames").is_array() ||
+                K_RESULT->at("frames").size() != solved.size()) {
+                return fail(ErrorCode::INVALID_DATA, "Depth result inventory differs");
+            }
+            if (K_SEQUENCE && (!std::ranges::all_of(batch.at("reference_indices"),
+                                                    [](const Json& value) {
+                                                        return value.is_number_unsigned();
+                                                    }) ||
+                               !std::ranges::all_of(K_RESULT->at("reference_indices"),
+                                                    [](const Json& value) {
+                                                        return value.is_number_unsigned();
+                                                    }) ||
+                               !std::ranges::all_of(K_PREPARED->at("reference_indices"),
+                                                    [](const Json& value) {
+                                                        return value.is_number_unsigned();
+                                                    }) ||
+                               !std::ranges::all_of(K_PREPARED->at("selection_indices"),
+                                                    [](const Json& value) {
+                                                        return value.is_number_unsigned();
+                                                    }) ||
+                               batch.at("reference_indices") != references ||
+                               K_RESULT->at("reference_indices") != references ||
+                               K_PREPARED->at("reference_indices") != references ||
+                               K_PREPARED->at("selection_indices") != solved ||
+                               !K_PREPARED->at("batch_index").is_number_unsigned() ||
+                               K_PREPARED->at("batch_index") != batch_index)) {
+                return fail(ErrorCode::INVALID_DATA,
+                            "Depth batch reference/support selection differs");
+            }
+            for (std::size_t index { 0uz }; index < solved.size(); ++index) {
+                const auto K_FRAME_INDEX = solved[index].get<std::size_t>();
+                const auto& expected = frames[K_FRAME_INDEX];
+                const auto& record = K_RESULT->at("frames")[index];
+                const auto K_ASSET = "assets/" + expected.m_image_name + ".wedepth";
+                if (expected.m_image_name.empty() ||
+                    expected.m_image_name.find_first_of("/\\") != std::string::npos ||
+                    !record.at("frame").is_number_unsigned() ||
+                    record.at("frame") != expected.m_expected_depth.m_dependency.m_frame.m_value ||
+                    record.at("asset") != K_ASSET) {
+                    return fail(ErrorCode::INVALID_DATA, "Depth result frame order/path differs");
+                }
+                const auto K_PATH = K_STAGE / K_ASSET;
+                if (std::filesystem::canonical(K_PATH) != K_PATH) {
+                    return fail(ErrorCode::INVALID_DATA, "Linked depth result asset");
+                }
+                const auto K_HASH = file_hash(K_PATH, K_ASSET_BYTES, stop);
+                if (!K_HASH) {
+                    return std::unexpected(K_HASH.error());
+                }
+                if (*K_HASH != record.at("sha256").get<std::string>()) {
+                    return fail(ErrorCode::INVALID_DATA, "Depth result asset checksum differs");
+                }
+                if (!K_SEQUENCE || (K_FRAME_INDEX >= K_FIRST && K_FRAME_INDEX < K_END)) {
+                    outputs.push_back({ { "frame", record.at("frame") },
+                                       { "path", K_PATH.string() },
+                                       { "sha256", *K_HASH } });
+                }
+            }
+        }
+        return Json { { "schema_version", K_SEQUENCE ? 2 : 1 }, { "outputs", outputs } };
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Depth terminal admission allocation failed");
+    } catch (const std::exception& error) {
+        return fail(ErrorCode::INVALID_DATA,
+                    std::string("Depth terminal admission failed: ") + error.what());
+    }
+}
+
+}  // namespace job_detail
+
+namespace {
 
 #if defined(__linux__)
 Result<std::filesystem::path> run_fresh_geometry(const std::filesystem::path& request,
@@ -229,6 +452,18 @@ Result<std::filesystem::path> run_fresh_geometry(const std::filesystem::path& re
     const auto K_VIS_PATH = [&](const char* key) {
         return std::filesystem::path { visibility->at(key).get<std::string>() };
     };
+    const auto K_DEPTH_RECIPE = read_document(
+        K_VIS_PATH("recipe"), visibility->at("recipe_sha256").get<std::string>(), stop);
+    if (!K_DEPTH_RECIPE) {
+        return std::unexpected(K_DEPTH_RECIPE.error());
+    }
+    const bool K_SEQUENCE { K_DEPTH_RECIPE->at("scope") == "BOUNDED_TEMPORAL_DEPTH_SEQUENCE_V1" };
+    if (!visibility->at("schema_version").is_number_unsigned() ||
+        visibility->at("schema_version") != (K_SEQUENCE ? 2U : 1U) ||
+        K_RECIPE->at("kind") !=
+            (K_SEQUENCE ? "OBSERVED_TSDF_CPU_SEQUENCE_V1" : "OBSERVED_TSDF_CPU_PILOT_V1")) {
+        return fail(ErrorCode::INVALID_DATA, "Depth, visibility and fusion policies differ");
+    }
     const DenseInputRequest K_NATIVE { { K_VIS_PATH("pose_job"),
                                        visibility->at("source_sha256").get<std::string>(),
                                        K_VIS_PATH("decode_stage") },
@@ -324,62 +559,18 @@ Result<std::filesystem::path> run_fresh_geometry(const std::filesystem::path& re
             K_OWNER.at("python_resolved").get<std::string>()) {
         return fail(ErrorCode::INVALID_DATA, "Depth execution identity changed");
     }
-    const auto K_TERMINAL_SHA = file_hash(K_DEPTH_ROOT / "manifest.json", K_DOCUMENT_BYTES, stop);
-    if (!K_TERMINAL_SHA) {
-        return std::unexpected(K_TERMINAL_SHA.error());
+    const auto K_OUTPUTS = job_detail::depth_job_outputs(K_DEPTH_ROOT,
+                                                         K_PIN("dense_request_sha256"),
+                                                         paths.at("dense_request"),
+                                                         K_INPUTS->m_frames,
+                                                         stop);
+    if (!K_OUTPUTS) {
+        return std::unexpected(K_OUTPUTS.error());
     }
-    const auto K_TERMINAL = read_document(K_DEPTH_ROOT / "manifest.json", *K_TERMINAL_SHA, stop);
-    if (!K_TERMINAL) {
-        return std::unexpected(K_TERMINAL.error());
+    if (K_OUTPUTS->at("schema_version") != visibility->at("schema_version")) {
+        return fail(ErrorCode::INVALID_DATA, "Depth terminal and visibility schemas differ");
     }
-    if (K_TERMINAL->size() != 6uz || K_TERMINAL->at("kind") != "OWNED_RESIZED_DEPTH_TERMINAL_V1" ||
-        K_TERMINAL->at("schema_version") != 1 ||
-        K_TERMINAL->at("scope") != "PARTIAL_DEPTH_NO_Q5_N2_OR_WALK") {
-        return fail(ErrorCode::INVALID_DATA, "Invalid owned depth terminal");
-    }
-    const auto K_STAGE_NAME = K_TERMINAL->at("stage").get<std::string>();
-    const auto K_OWNER_SHA = K_TERMINAL->at("owner_sha256").get<std::string>();
-    const auto K_DEPTH_OWNER = read_document(K_DEPTH_ROOT / "owner.json", K_OWNER_SHA, stop);
-    if (!K_DEPTH_OWNER) {
-        return std::unexpected(K_DEPTH_OWNER.error());
-    }
-    if (K_DEPTH_OWNER->at("request_sha256") != K_PIN("dense_request_sha256")) {
-        return fail(ErrorCode::INVALID_DATA, "Depth terminal owner differs");
-    }
-    bool selected {};
-    for (std::size_t index { 0uz }; index < 128uz; ++index) {
-        selected = selected ||
-                   K_STAGE_NAME == "depth-" + K_OWNER_SHA + "-attempt-" + std::to_string(index);
-    }
-    if (!selected) {
-        return fail(ErrorCode::INVALID_DATA, "Invalid selected depth attempt");
-    }
-    const auto K_DEPTH_STAGE = K_DEPTH_ROOT / "stages" / K_STAGE_NAME;
-    if (std::filesystem::canonical(K_DEPTH_STAGE) != K_DEPTH_STAGE) {
-        return fail(ErrorCode::INVALID_DATA, "Linked selected depth attempt");
-    }
-    const auto K_RESULT = read_document(
-        K_DEPTH_STAGE / "result.json", K_TERMINAL->at("result_sha256").get<std::string>(), stop);
-    if (!K_RESULT) {
-        return std::unexpected(K_RESULT.error());
-    }
-    if (K_RESULT->at("manifest_sha256") != visibility->at("manifest_sha256") ||
-        K_RESULT->at("recipe_sha256") != visibility->at("recipe_sha256") ||
-        !K_RESULT->at("frames").is_array() || K_RESULT->at("frames").empty() ||
-        K_RESULT->at("frames").size() > 18uz) {
-        return fail(ErrorCode::INVALID_DATA, "Depth result dependencies differ");
-    }
-    for (const auto& frame : K_RESULT->at("frames")) {
-        const auto K_NAME = frame.at("asset").get<std::string>();
-        if (!K_NAME.starts_with("assets/") ||
-            std::filesystem::path(K_NAME).parent_path() != "assets" ||
-            !K_NAME.ends_with(".wedepth")) {
-            return fail(ErrorCode::INVALID_DATA, "Unsafe depth result asset path");
-        }
-        (*visibility)["outputs"].push_back({ { "frame", frame.at("frame") },
-                                            { "path", (K_DEPTH_STAGE / K_NAME).string() },
-                                            { "sha256", frame.at("sha256") } });
-    }
+    (*visibility)["outputs"] = K_OUTPUTS->at("outputs");
     const auto K_VISIBILITY_PATH = K_ROOT / "visibility.json";
     const auto K_VISIBILITY_SHA = text_hash(visibility->dump(2) + '\n');
     auto published = job_detail::publish_owned_json(K_VISIBILITY_PATH, *visibility, stop);
