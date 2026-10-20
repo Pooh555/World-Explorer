@@ -208,3 +208,8 @@ Per-cache bounds do not promise a process-peak budget or permit accumulating all
 decoded views in a list. Valid zero-weight pixels and optional sigma preserve
 their original meanings. Complete frame accounting is distinct from recovered
 surface coverage, measured geometry, scale and walking.
+
+[Observed-depth space diagnostics](depth_space.md) consume this complete retained
+input graph through shared native admission. Whole-cell relations preserve
+unknown, occluded and conflicting observations; allocated TSDF cells and drawable
+surfaces do not imply observed free space.

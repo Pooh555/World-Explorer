@@ -339,18 +339,27 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-Implement M3's observation-backed free-space evidence next, before accepting
-real collision. Read plan §§3 (Q5/N2), 4.8 and 5.1, the
-[synthetic support contract](protocols/collision_support.md) and retained
-pose-admitted depth/cache contracts. Start with a separately versioned diagnostic
-producer using exact retained depth/RGB/pose/recipe identities, conservative whole
-cell visibility and explicit unknown/conflicting observations. Keep arbitrary
-pose units and uncertainty explicit. Compare against an independent CPU ray
-oracle, then inspect the full retained real coverage locally without a new solve.
-Do not let the synthetic declaration profile admit real observations or infer
-free space from allocated TSDF/front-band samples. Metric support and walking
-still require independent measurement and qualified geometry; Jolt/controller
-work and Q5/N2 remain open.
+Implement typed, immutable admission/reload for the new
+[observed-depth space diagnostic](protocols/depth_space.md) before any downstream
+collision consumer. Pin the exact terminal report/ledger/native bundle, validate
+all relation codes, dimensions, per-view totals and source/pose/recipe identities,
+and reject corruption, stale epochs/revisions and foreign sources without
+changing caller state. Keep this separate from synthetic support admission and
+from measured clearance. Exercise malformed/rehashed inputs and full retained
+real reload under sanitizers, then inspect the complete native view again without
+a new solve. All **5,184** real cells currently remain unknown at the frozen V1
+grid; zero even have a fully supported tight projected rectangle. Do not shrink
+bounds, accept center rays or tune grid resolution to manufacture free space.
+Metric alignment, complete geometry and collision/walking remain open; the user
+has no independent sample_1 distance/up reference.
+
+[Observed-depth space evidence](validation/2026-10-20-depth-space.md) now streams
+all **63** retained depth/RGB/pose-bound views into a versioned whole-cell ledger.
+The independent CPU oracle reproduces all **326,592** relations and identifies
+**2,217** center-only front tests lacking complete-cell support. All 5,184 unknown
+cells and all raw mesh geometry render natively with zero Vulkan errors. Exact
+repeat and full-volume sanitizer parity preserve every output byte. This closes
+the diagnostic-production slice, not real free-space, Q5/N2 or M3.
 
 [Synthetic support admission](validation/2026-10-20-collision-support.md) now pins
 scene/frame/mesh/pose dependencies, complete free/occupied/unknown cells and

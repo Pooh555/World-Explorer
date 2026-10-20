@@ -2,6 +2,7 @@
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/dense_inputs.hpp"
 #include "world_explorer/application/depth_assets.hpp"
+#include "world_explorer/application/depth_space.hpp"
 #include "world_explorer/application/depth_visibility.hpp"
 #include "world_explorer/application/fusion_assets.hpp"
 #include "world_explorer/application/fusion_cleanup.hpp"
@@ -77,6 +78,7 @@ int main(int argc, char** argv) {
                    "  we_process align-world SOURCE.wexplore MEASUREMENT.json SHA256 "
                    "NEW_SCENE.wexplore\n"
                    "  we_process inspect-collision REQUEST.json SHA256 NEW_DIRECTORY\n"
+                   "  we_process inspect-depth-space REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process inspect-baked SCENE.wexplore\n"
                    "  we_process export-glb SCENE.wexplore NEW_DIRECTORY\n"
                    "  we_process import-glb FILE.glb SHA256 NEW_SCENE.wexplore\n"
@@ -197,6 +199,21 @@ int main(int argc, char** argv) {
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
             }
+            return 0;
+        }
+        if (K_COMMAND == "inspect-depth-space") {
+            if (argc != 5) {
+                std::cerr << "Usage: inspect-depth-space REQUEST.json SHA256 NEW_DIRECTORY\n";
+                return 2;
+            }
+            const auto K_RESULT =
+                inspect_depth_space(argv[2], argv[3], argv[4], cancellation.get_token());
+            if (!K_RESULT) {
+                std::cerr << K_RESULT.error().m_message << '\n';
+                return K_RESULT.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
+            }
+            std::cout << "Published observed-depth space diagnostic; scale arbitrary, walking "
+                         "unavailable\n";
             return 0;
         }
         if (K_COMMAND == "inspect-collision") {

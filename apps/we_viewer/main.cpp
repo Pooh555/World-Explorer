@@ -1042,7 +1042,9 @@ int viewer_main(int argc, char** argv) {
             } else if (K_PROGRESS && K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
                 std::lock_guard lock(state.mutex);
                 state.status =
-                    current && is_synthetic_scene(current) &&
+                    current && current->m_provenance.contains("depth_space")
+                        ? current->m_provenance.at("depth_space")
+                    : current && is_synthetic_scene(current) &&
                             current->m_provenance.contains("collision_support")
                         ? current->m_provenance.at("collision_support")
                     : current && current->m_world_frame

@@ -37,6 +37,14 @@ class ColorProjectionView {
         return m_depth.m_metadata;
     }
 
+    const DepthImageAsset& depth() const noexcept {
+        return m_depth;
+    }
+
+    const SimilarityTransform& world_from_camera() const noexcept {
+        return m_world_from_camera;
+    }
+
   private:
     ColorProjectionView() = default;
     DepthImageAsset m_depth;
