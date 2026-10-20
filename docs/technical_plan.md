@@ -721,7 +721,7 @@ must not hard-code Linux/CUDA types into unrelated public contracts.
 |---|---|---|---|---|---|
 | **M1 — minimal vertical slice** | One 20–30 s consented textured-room video → COLMAP poses → gsplat fit → validated scene bundle → native Vulkan fly viewer. Instanced-quad splats, camera controls, CLI job log. Include a synthetic replace/delete update. Pin versions and audit selected licenses | Real end-to-end run and ≤250k-splat fixture opening succeed on the available native Linux/NVIDIA development host; zero Vulkan validation errors; fly controls, frame/pose/map/scene/update contracts and replace/delete replay checked; hosted Linux/Windows/macOS CPU builds/tests pass. Record versions/license audit and local Q1/P1/P2 observations without full-gate certification; detailed checklist in §8.1 | Consent/fixture; available Linux development GPU/build/worker environment; hosted CPU CI | 6–9 person-weeks; weeks 1–3 with focused team | Camera conventions and splat rendering mismatch; licensing of packaged binary dependencies |
 | **M2 — renderer and update foundation** | GPU tiled renderer, correct sorting/compositing, budgeted upload, immutable snapshots, diagnostics, replay/resync and device-loss behavior | Linux/NVIDIA development checklist in §8.2: real/synthetic parity, bounded updates/memory, recovery, local packing/input/timing observations and accepted lifetime evidence. Reference-device P2/P4/P6, full N1/Q6 and other native-machine qualification move to M4 or later | M1 and fixed renderer fixtures | 9–12 person-weeks; roughly weeks 4–7 | Overdraw/sort scratch exceeds budget; numerical mismatch with training renderer |
-| **M3 — robust offline reconstruction and geometry** | Keyframe/preflight workflow, one recovery path, resume/cache, dense MVS/TSDF proxy, metric alignment, collision/walk, textured-mesh export | Q1 on development/validation corpus; Q3/Q5, P1 and N2 on qualified fixtures; stage failure preserves valid partial results | M1 worker contracts; M2 scene integration | 12–15 person-weeks; roughly weeks 4–10, partly parallel | Low-texture/reflective rooms; weak scale and geometry; dense processing time |
+| **M3 — robust offline reconstruction and geometry** | Keyframe/preflight workflow, one recovery path, resume/cache, dense MVS/TSDF proxy, metric alignment, collision/walk, textured-mesh export | Local development exit under §8.3; full Q1/Q3/Q5/P1/N2 qualification remains tied to its prescribed corpus and qualified fixtures; stage failure preserves valid partial results | M1 worker contracts; M2 scene integration | 12–15 person-weeks; roughly weeks 4–10, partly parallel | Low-texture/reflective rooms; weak scale and geometry; dense processing time |
 | **A0–A5 — local asset-production track** | Required editable objects/structure, completion, PBR and reusable exports; first native visual result in A1, bounded local rooms through A5 | §11.6 AP gates with the explicit local-development/reference qualification split in §11.8; no generalization on a synthetic or manually repaired pilot | M3 calibrated original views, observed geometry and scene/update contracts; local resources/rights | §11.7 owns detailed milestones and estimates | Completion/material ambiguity; unavailable local inference resources/rights |
 | **M4 — platform qualification** | Native Windows and macOS packages; MoltenVK profile; AMD viewer qualification; Brush adapter and bounded local Mac recipe if it passes; qualify the existing local PBR asset viewer and portable imports | Inherited M2 reference-device P2/P4/P6, physical N1, per-device Q6 and recovery qualification (§8.2); physical Windows/macOS viewer, GPU/display/input/HiDPI qualification; the former M1 ≤250k fixture opens on Arch/Windows/macOS and reaches ≥30 FPS at 720p on H_V/H_M. P3/P4/P5/E2 and identical scene/camera semantics remain required. Brush promoted only after Q3/Q6 and checkpoint/cancel tests; otherwise experimental. Add AP7 native asset/import parity and unchanged H_V AP8 engine runtime qualification | A5 scoped local exit; M2/M3 canonical outputs; access to physical platform/reference devices | 8–11 person-weeks after A5; former weeks 8–13 no longer operative | Platform-specific shader/compiler behavior and training memory; native worker packaging |
 | **M5 — larger scenes and operation** | Spatial chunks, measured LOD hierarchy, prefetch/eviction, collision residency, W3/W4 handling, coarse-first loading; crash-safe publish | P4/P5/P6 under memory pressure; W3 fly path stays within P2/P3 budgets through declared LOD; Q6 per supported packing mode; unknown/collision boundaries remain safe | M4; M2/M3 and A0–A5 products/profiling traces | 8–11 person-weeks after M4; former weeks 12–17 no longer operative | Chunk overlap/opacity errors, global ordering and LOD quality, bad large-scene poses |
@@ -758,6 +758,43 @@ H_R P1 reconstruction measurements remain in M3/M6; reference renderer measureme
 M2 closure requires a dated checklist review linking actual evidence and unresolved qualification work; this scheduling decision alone does not mark M2 VERIFIED. Existing valid evidence may satisfy these items without rerunning reconstruction, long stress or unchanged checks. Missing physical machines, photodiode/high-speed-camera equipment, a prescribed reference device or full qualification corpus do not block this local development exit.
 
 **M4 or later:** M4 owns the deferred renderer qualification on other native machines: H_V P2/P4/P6, AMD/H_A and Apple Silicon/H_M/MoltenVK, Windows/macOS native GPU/display/input/HiDPI, physical recovery and N1 input-to-display measurements, plus per-device packing/Q6 checks. Use §3 workloads, frame/presentation definitions and Appendix B procedures, including P2's 30-second warmup, 120-second measurement and five runs. Missing access remains an explicit M4 blocker. Corpus-wide Q6, metric-scale and full Q/P/N/E release certification remain required by M6; no claimed release profile may bypass its prescribed evidence. M3's reconstruction/geometry requirements and H_R P1 schedule are unchanged. No external native-machine M2 task is a prerequisite before M4.
+
+### 8.3 M3 local development exit and deferred reconstruction qualification
+
+[ADR 020](adr/020-m3-development-exit.md) defines a local development exit for
+M3. It permits the implementation phase to finish and A0–A5 to start without an
+independent distance/up reference for the internet video `sample_1`. Close the
+local development exit only after a dated review confirms:
+
+1. The planned M3 software workflow is implemented and locally exercised on
+   retained development inputs, with source identities, partial results and
+   output limitations recorded.
+2. Stage failure, cancellation, resume/replay and publication preserve valid
+   prior results and reject stale or foreign inputs under their defined
+   contracts.
+3. Native scene handoff/viewing works for the retained real output, and the
+   collision module's synthetic floor, barrier and unknown fixtures verify
+   source binding, unknown-space blocking and failure preservation.
+4. Relevant local build, contract, integration, style and sanitizer checks have
+   actual command/result evidence for the tested profile; synthetic evidence is
+   labeled synthetic.
+5. The exit review maps Q/P/N/E items to current evidence and explicitly lists
+   every unqualified target; no full Q/P/N/E gate is inferred from this exit.
+
+This development exit does not certify Q1, Q3, Q5, P1 or N2, and does not mark
+real geometry measured, enable measured walking, or let synthetic floors satisfy
+real reconstruction requirements. Q5 retains its independent measured-surface
+and scale criteria; N2 retains its certified walk-region and 100-path criteria.
+Those gates remain open until their prescribed evidence is available, including
+at M6 for any claimed release profile. `sample_1` remains arbitrary-scale, and
+its absent measurement is recorded as unavailable rather than inferred. A1's
+own real pilot and scale evidence requirements in §11 remain unchanged.
+
+The purpose is to avoid making a software-development handoff depend on
+measurements unavailable for an internet video, while preserving every product
+and release gate. No numerical target, corpus, benchmark scope, or qualification
+requirement is changed. M3 remains IN_PROGRESS until its local checklist is
+actually reviewed; this policy decision alone does not close the milestone.
 
 The original M1–M6 person-week range is rounded; those milestone estimates total 50–68 before small contingency. Calendar windows overlap only where engineers and interfaces allow it. Approved offline completion/material recovery now runs between M3 and M4 (§11), adding effort to the release critical path. The former absolute week windows do not schedule the combined product. Ray-traced Gaussian effects, custom foundation-model training and unrestricted city-scale reconstruction remain separate proposals, not hidden critical-path work.
 
@@ -1149,7 +1186,8 @@ project costs but cannot be counted as automatic inference success.
 ### 11.8 Local product exit before native platform qualification
 
 The new order follows actual data dependencies. M3 supplies calibrated original
-views, valid observed geometry/scale and mesh export; M2 supplies update/residency
+views, valid observed geometry with explicit scale provenance and mesh export;
+metric scale is not required for the M3 development exit. M2 supplies update/residency
 and local viewer integration. A0–A5 need those contracts, not completed Windows/
 macOS packages, a portable optimizer, M5 multi-room streaming or release signing.
 Per-asset LOD and a bounded-room catalog in A4 do not require M5's larger-scene

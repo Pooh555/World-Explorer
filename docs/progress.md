@@ -1,8 +1,15 @@
 # Current handoff
 
-Updated 2026-10-20 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-21 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: IN_PROGRESS.** No full Q/P/N/E
 gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
+
+[ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
+exit that does not require an independent measurement for internet-sourced
+`sample_1`. This enables the M3→A0–A5 sequence after the software checklist is
+reviewed; it does not certify Q5/N2, establish real metric scale, or change A1's
+own independent-scale pilot requirements. M3 remains IN_PROGRESS until evidence
+supports that review.
 
 [Build/style/inventory repair](validation/2026-10-20-native-inventory-repair.md)
 separates the non-Linux geometry fallback from its solver body, removes all 24
@@ -349,8 +356,9 @@ sources, block unknowns, and preserve existing scene/evidence on cook failure.
 Keep Jolt and cooked-cache details inside the collision target; do not expose
 backend types in navigation/application contracts. Real `FRONT_DIAGNOSTIC` labels
 are not clearance, and all **5,184** retained real cells remain unknown. These diagnostics grant no real
-collision or metric-walking eligibility; independent
-sample_1 distance/up measurements and qualified geometry remain unavailable.
+collision or metric-walking eligibility. No independent distance/up reference is
+available for internet-sourced `sample_1`; its absence no longer blocks the M3
+software-development exit, while Q5/N2 and A1's separate scale evidence remain open.
 
 [Typed depth-space admission](validation/2026-10-20-depth-space-admission.md) now
 reloads the exact terminal/ledger/native bundle into an immutable owner, checks
@@ -385,10 +393,12 @@ opens with zero Vulkan errors and its GLB reproduces exactly. Synthetic alignmen
 stays arbitrary; a legacy metric flag is unproven. Aligned sources are immutable:
 pose corrections require newer full-snapshot resync and new declarations.
 
-The user has **no independent sample_1 distance/up reference**. Keep that scene
-arbitrary and walking disabled. Continue software contracts with labeled
-synthetic evidence; real measured validation additionally needs independently
-measured identifiable points, up reference and observed-surface ground truth.
+The user has **no independent sample_1 distance/up reference**. This does not
+block the local M3 development exit under [ADR 020](adr/020-m3-development-exit.md).
+Keep that scene arbitrary and walking disabled. Continue software contracts with
+labeled synthetic evidence; real measured validation additionally needs
+independently measured identifiable points, an up reference and observed-surface
+ground truth.
 Do not infer scale/gravity/support from reconstructed floors or promote this
 fragmented mesh to walkable. Keep the captured GLB profiles restricted until a
 separate metric profile is implemented and validated. Platform qualification

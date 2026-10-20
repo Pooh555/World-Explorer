@@ -7,6 +7,7 @@ Read by task; do not load the entire directory for routine work.
 | Resume development | [Progress](progress.md) → [requirements](requirements.md) → relevant code/evidence |
 | Agent execution rules | [Runbook](execution_prompt.md), repository [AGENTS.md](../AGENTS.md) |
 | Product, thresholds, architecture, roadmap | [Technical plan](technical_plan.md); controlling specification |
+| M3 development exit and deferred Q5/N2 evidence | [Plan §8.3](technical_plan.md#83-m3-local-development-exit-and-deferred-reconstruction-qualification), [ADR 020](adr/020-m3-development-exit.md); no measurement required for internet-sourced `sample_1`, measured geometry/walking gates remain open |
 | Planned reusable objects, completed environments and PBR assets | [Plan §11](technical_plan.md#11-offline-asset-production-track), [assets-before-platforms decision](adr/019-assets-before-platforms.md); A0–A5 after M3/before M4, all new capabilities NOT_STARTED |
 | Asset-pipeline candidate evidence, licenses and connection experiments | [Dated research assessment](research/offline_asset_pipeline.md); external facts only, no installed recipe or qualification |
 | Write/update documentation | [Documentation protocol](protocols/documentation.md) |
