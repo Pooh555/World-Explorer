@@ -2,6 +2,7 @@
 
 #include "depth_job_outputs.hpp"
 #include "job_validation.hpp"
+#include "mesh_job.hpp"
 #include "owned_job.hpp"
 #include "world_explorer/application/dense_inputs.hpp"
 #include "world_explorer/application/depth_visibility.hpp"
@@ -664,12 +665,14 @@ Result<std::filesystem::path> run_fresh_geometry(const std::filesystem::path& re
 
 }  // namespace
 
+namespace {
+
 #if defined(__linux__)
-Result<std::filesystem::path> run_geometry_job(const std::filesystem::path& request,
-                                               const std::string& expected_sha256,
-                                               const std::filesystem::path& destination,
-                                               const std::stop_token& stop,
-                                               const LogCallback& log) {
+Result<std::filesystem::path> run_solver_geometry_job(const std::filesystem::path& request,
+                                                      const std::string& expected_sha256,
+                                                      const std::filesystem::path& destination,
+                                                      const std::stop_token& stop,
+                                                      const LogCallback& log) {
     try {
         const auto K_REQUEST = std::filesystem::absolute(request).lexically_normal();
         const auto K_CONFIG = read_document(K_REQUEST, expected_sha256, stop);
@@ -850,14 +853,43 @@ Result<std::filesystem::path> run_geometry_job(const std::filesystem::path& requ
 }
 
 #else
-Result<std::filesystem::path> run_geometry_job(const std::filesystem::path&,
-                                               const std::string&,
-                                               const std::filesystem::path&,
-                                               const std::stop_token&,
-                                               const LogCallback&) {
+Result<std::filesystem::path> run_solver_geometry_job(const std::filesystem::path&,
+                                                      const std::string&,
+                                                      const std::filesystem::path&,
+                                                      const std::stop_token&,
+                                                      const LogCallback&) {
     return fail(ErrorCode::BACKEND_FAILURE, "Retained geometry solving requires Linux");
 }
 #endif
+
+}  // namespace
+
+Result<std::filesystem::path> run_geometry_job(const std::filesystem::path& request,
+                                               const std::string& expected_sha256,
+                                               const std::filesystem::path& destination,
+                                               const std::stop_token& stop,
+                                               const LogCallback& log) {
+    try {
+#if !defined(__linux__)
+        // Preserve the solver's missing-input refusal while admitting the CPU-only profile.
+        if (!std::filesystem::is_regular_file(request)) {
+            return run_solver_geometry_job(request, expected_sha256, destination, stop, log);
+        }
+#endif
+        const auto K_CONFIG = read_document(request, expected_sha256, stop);
+        if (!K_CONFIG) {
+            return std::unexpected(K_CONFIG.error());
+        }
+        if (K_CONFIG->contains("kind") && K_CONFIG->at("kind") == "MESH_POSTPROCESS_PIPELINE_V1") {
+            return job_detail::run_mesh_job(request, expected_sha256, destination, stop, log);
+        }
+        return run_solver_geometry_job(request, expected_sha256, destination, stop, log);
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Geometry dispatch allocation failed");
+    } catch (const std::exception& exception) {
+        return fail(ErrorCode::INVALID_DATA, exception.what());
+    }
+}
 
 Result<std::filesystem::path> adopt_geometry_job(const std::filesystem::path& request,
                                                  const std::string& expected_sha256,

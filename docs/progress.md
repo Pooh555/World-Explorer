@@ -328,38 +328,49 @@ qualify their redistribution rights or the drifted installed headers.
   remain fragmented. 403 dev / 379 C++23 checks and 58 focused sanitizer cases /
   109,177 assertions pass. This completes the narrow sequence interchange slice.
 
+- [Owned mesh postprocessing](validation/2026-10-20-mesh-job.md): the shared
+  geometry entry now owns versioned cleanup/native/bake/GLB stages, exact saved-bake
+  reuse and immutable retries. Real 63-view cancellation/resume/replay preserves
+  completed stages and all source data. The native viewer hands off from raw to
+  cleaned/baked geometry with zero Vulkan errors; 1,625 fragments remain. Independent
+  portable checks, sanitizer replay/reuse parity, 409 dev / 385 C++23 checks and
+  43 sanitizer cases / 96,352 assertions pass. This closes the narrow owned-stage
+  integration slice, not M3's measured geometry/walking or quality requirements.
+
 ## Next executable step and protection rules
 
-Integrate owned cleanup/bake/export stages into the shared geometry workflow,
-starting with `src/application/geometry_job.cpp`, `owned_job.*`,
-`fusion_cleanup.cpp`, `mesh_texture.cpp`, `gltf.cpp` and
-`tests/unit/geometry_job_tests.cpp`. Inspect existing request/terminal ownership
-and the source/cache admission contracts before adding an explicit versioned
-postprocessing request. Keep raw defaults compatible. Pin each stage's input
-scene/poses/cache/parameters; publish separate immutable attempts and validated
-terminal results. Reuse completed stages only on exact input/output identity;
-cancellation/failure must preserve the prior usable scene, completed products and
-partial attempts. GUI and CLI must share this job path. Begin with contract tests
-for replay, changed inputs, failed/cancelled stages and final scene handoff, then
-validate the saved full sequence locally; do not start platform qualification.
+Implement M3's explicit measured scale/gravity alignment and collision-eligibility
+contracts next. Re-read plan §§3 (Q5/N2), 4.4, 4.8 and 5.1 before designing the
+versioned input/proof and scene-update path; inspect `ScaleStatus`, bundle scale
+handling, map pose provenance, navigation and current geometry invalidation tests.
+A `METRIC_MEASURED` flag alone is not a measurement or permission to walk.
+Keep original arbitrary-scale assets immutable, bind measurements and alignment to
+source/pose revisions, and update or invalidate affected appearance, geometry and
+collision through revisioned scene updates on corrections. Start with CPU
+admission/transform/revision tests and a clearly labeled synthetic measured fixture, then determine the independent real
+measurement/ground-truth input needed for local measured validation. Do not infer
+scale or gravity from reconstructed floors, nor certify this fragmented mesh as
+walkable. Preserve the restricted captured GLB contract unless a new explicit
+metric profile is implemented and validated. Platform qualification remains after
+local M3 and A0–A5 work.
 
-Use the existing raw/native sequence and the saved full bake as inputs:
-`artifacts/validation/m3-texture-sequence-20261020/sequence.wexplore` (manifest
-SHA `bc49f7d9f5adba0941d1cae8aaffb37fe6fbeae02947ed36e72d17b08fddedf6`).
-The portable result is
-`artifacts/validation/m3-glb-sequence-20261020/sequence-import.wexplore` (manifest
-SHA `c081c55b30ab1683429b7fec466d61dd06186419d01a822741f426613f1537a1`).
-Inspect that slice's `real.json`, `oracle.json`, `native-commands.json`,
-`sanitizer-parity.json` and final preservation/identity receipts first. Retain the
-original bake for exports; lossy imported previews cannot be re-exported. Reserve
-new outputs. No unchanged CUDA, fusion, bake or completed refit is needed; this is
-partial captured geometry, not an asset/PBR or measured-geometry gate.
+Use the saved raw sequence and original bake for arbitrary-scale regressions.
+The owned processed result is
+`artifacts/validation/m3-mesh-job-20261020/full-job/stages/bake-1/output` (manifest
+SHA `0b873804a3d5aa2a02c95245a43c550ed4d2ba2240d3af1e4325e23c198c6ee2`).
+Inspect that slice's `real.json`, `real-products.json`, `native.json`, `oracle.json`,
+`sanitizer-parity.json`, `finish.json` and final preservation/source identities.
+The full request SHA is
+`66d331dd4b217b3f7284046650804f2d750fbb36d7f41aa442b53a900ebc4e2c`;
+`run-geometry` replays completed stages without another solve or bake. Retain the
+original bake for exports; lossy portable imports cannot be re-exported. Reserve
+new outputs. No unchanged CUDA, fusion, completed bake or refit is needed.
 
 Preserve the 916-file copied/original depth jobs, 48-file cancelled fresh cache,
 152 source input files, native raw/baked/sanitizer scenes, all prior attempts,
-scratch, caches, bakes and audits. Owned cleanup/bake/export integration,
-measured alignment/collision/walking and quality remain open; A0–A6 remain
-NOT_STARTED and M4 has not begun.
+scratch, caches, bakes, audits and owned postprocessing jobs.
+Measured alignment/collision/walking, crash qualification and quality remain open;
+A0–A6 remain NOT_STARTED and M4 has not begun.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list

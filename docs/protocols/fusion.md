@@ -525,3 +525,11 @@ retained attempts, the complete fresh-depth chain and strict replay.
 [Sequence adapter evidence](../validation/2026-10-20-fresh-sequence.md) records
 complete retained-depth reuse, cache cancellation/resume, native handoff and
 sanitizers without another CUDA solve.
+
+## Owned mesh postprocessing
+
+[The explicit postprocessing profile](mesh_jobs.md) extends the shared geometry
+entry point with immutable cleanup/native/bake/GLB stages and pinned saved-bake
+reuse. Retained/fresh raw defaults remain unchanged. Actual local sequence checks
+are [recorded separately](../validation/2026-10-20-mesh-job.md); measured scale,
+collision/walking and complete-room/quality gates remain open.
