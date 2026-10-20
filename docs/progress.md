@@ -275,21 +275,36 @@ qualify their redistribution rights or the drifted installed headers.
   CUDA solve. The full 47,559-triangle partial mesh renders with zero Vulkan errors.
   Validity remains 3.34–9.89%; no geometry/scale/walking gate is promoted.
 
+- [Bounded full-sequence depth](validation/2026-10-20-depth-sequence.md): all
+  **63** pinned sample_1 reference grids pass seven owned CUDA batches and four
+  independently bounded native caches. Cancellation/reuse, complete coverage
+  accounting, streaming and full-volume ASan/UBSan/LSan checks pass; the normal
+  and instrumented receipts match exactly. Valid observations total **15.9265%**
+  of the grids, with all unknowns retained. No full-sequence fusion, measured
+  geometry/scale/walking or quality gate is promoted.
+
 ## Next executable step and protection rules
 
-Bounded full-sequence depth/cache contracts are implemented and CPU-checked;
-the new real 63-frame sample_1 CUDA job is **IN_PROGRESS** under
-`artifacts/validation/m3-depth-sequence-20261020/`. The first completed batch
-survives active cancellation; `gpu.py` owns resume/replay and `post.py` waits for
-successful completion before native admission and per-frame coverage checks.
-Do not start another solve. Inspect `gpu-driver.log`, `gpu-commands.json` and
-`post-driver.log`, then finish the full native receipt/unknown-support accounting
-and record its actual outcome. The selected source/recipe/request hashes are in
-`production-identity.json`; all work uses the existing clean profile and calibrated
-2048×1102 grid with unchanged backend filters. Preserve old/new attempts and
-prior pinned recipes. The current shared geometry GUI entry still handles the
-single-batch terminal; sequence fusion/handoff, measured alignment, collision,
-walking and quality gates remain open.
+Implement bounded full-sequence fusion over the pinned native union at
+`artifacts/validation/m3-depth-sequence-20261020/admitted/manifest.json`, SHA-256
+`3362938dda673311e36739c3eed5c3ece8b303cd8c29cd0f1343c28300b2cf26`.
+Begin with CPU contracts in `workers/fusion/geometry.py` / `run.py`: global
+positive-weight extent/percentiles, consistency and known-occlusion checks across
+cache boundaries, then one bounded TSDF grid at the existing extent/512 policy.
+Do not average batch percentiles or merge independently scaled batch meshes.
+Keep the current RSS/block/output/time limits and complete unknown/support/sigma
+accounting. Extend `tools/geometry_job.py` and `src/application/geometry_job.cpp`
+for owned union consumption, cancellation/reuse and native scene handoff only
+after those contracts pass. Create current implementation/recipe pins, then use
+new output directories; the existing geometry entry still accepts a single cache.
+
+The full 63-frame depth job, exact replay and native export are complete under
+`artifacts/validation/m3-depth-sequence-20261020/`; inspect `gpu-commands.json`,
+`coverage.json` and `post-commands.json` before further processing. No unchanged
+CUDA rerun is needed. Preserve every completed/partial attempt, admitted cache,
+old pinned recipe and saved scene. Measured alignment/collision/walking and
+quality gates remain open; A0–A6 remain NOT_STARTED. Full-sequence depth is not
+complete room geometry.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list
