@@ -1,5 +1,7 @@
 # Validation index
 
+- [Sequence captured-color audit](2026-10-20-color-sequence.md): complete pinned cache admission, versioned 120-view candidate evidence, independent full 63-view oracle, cancellation, exact repeated/legacy products and native sanitizers; sequence baking remains open.
+
 - [Fresh sequence geometry adapter](2026-10-20-fresh-sequence.md): strict complete depth-graph admission, real 63-frame reuse, preserved cache cancellation/resume, exact replay, shared native handoff and sanitizers; raw partial geometry only.
 
 - [Bounded full-sequence fusion](2026-10-20-sequence-fusion.md): one grid over all 63 real frames, retained cancellation/resume/replay, exact native admission, visible handoff and explicit unknown coverage; partial geometry only.

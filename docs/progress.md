@@ -300,30 +300,43 @@ qualify their redistribution rights or the drifted installed headers.
   triangles render with zero Vulkan errors; 388 dev / 364 C++23 checks pass.
   No repeated CUDA solve or geometry-quality promotion is claimed.
 
+- [Sequence captured-color audit](validation/2026-10-20-color-sequence.md): complete
+  63-view cache admission and versioned 120-candidate evidence retain all original
+  geometry. Independent checks reproduce every one of 448,497 samples / 28,255,311
+  view attempts, with exact masks, owners and RGB. Real cancellation, repeat,
+  legacy byte preservation and full sanitizers pass; 393 dev / 369 C++23 checks
+  pass. Conditional color support is 97.321% on the partial mesh; large seam jumps
+  remain. The sequence baker explicitly rejects until its format is extended.
+
 ## Next executable step and protection rules
 
-Extend native captured-color input admission and projection audits to complete
-cache unions, starting with `src/application/color_inputs.{cpp,hpp}` and
-`mesh_color_audit.cpp`. Preserve the legacy 18-view / 48M-pixel contract. Add an
-explicit versioned sequence contract, validate every child/pose/calibration pin,
-and retain global view scoring, deterministic ties and unknown denominators.
-The current `WECLR001` ledger has a **32-bit candidate mask** and 44-byte records:
-raising the frame cap alone loses evidence and risks invalid shifts. Version the
-wire representation for all 120 candidates; add 19/63/120-view CPU admission,
-late-corruption, cancellation and replay checks before the real read-only audit.
+Extend bounded native captured-color baking/persistence to sequence inputs.
+Start with `src/scene_store/mesh_texture.cpp`,
+`include/world_explorer/scene_store/mesh_texture.hpp`, `baked_appearance.cpp`, the
+bundle reader/writer and `src/application/mesh_texture.cpp`. Inspect their uint32 mask,
+18-frame and schema-3 assumptions before raising any cap. Preserve legacy
+appearance/bundle bytes and the 100k-triangle / 8M-texel limits. Add an explicit
+versioned appearance/bundle representation for all 120 candidate bits, exact
+owner/frame membership, padding/unknown rules, checked aggregate budgets and
+current pose dependencies. Keep captured radiance unlit; do not relabel it PBR.
+Add 19/63/120-view CPU accumulation, malformed persistence, cancellation and
+legacy round-trip contracts before the real bake and native textured view.
 
-Use the completed [fresh adapter](validation/2026-10-20-fresh-sequence.md), without
-another CUDA/fusion run. Under
-`artifacts/validation/m3-fresh-sequence-20261020/`, inspect `checks.json`,
-`native-commands.json`, `run/real-commands.json` and `comparison.json`. Inputs are
-`run/fresh/stages/cache-1/manifest.json` (SHA
-`a0b311978cfa7e934e3d029db61ca8e4e9dc37198b12f000d0729faae0d52599`)
-and `run/fresh/stages/geometry/stages/native/stages/attempt-0/observed.wefusion`;
-the sibling `scene.wexplore` is the saved native bundle. Construct a separately
-pinned native scene request for the audit; reserve new outputs. Preserve the
-916-file copied/original depth jobs, 48-file cancelled `cache-0`, every prior
-CPU attempt/scratch/cache, bake and scene. Sequence cleanup/baking/export,
-measured alignment/collision/walking and quality remain open; A0–A6 unstarted.
+Use the completed read-only audit under
+`artifacts/validation/m3-color-sequence-20261020/`: inspect `checks.json`,
+`native-commands.json`, `run/real-commands.json`, `run/oracle.json` and
+`run/sequence-audit/report.json`. `run/sequence-request.json` pins the same
+63-view cache/native source used by the fresh geometry job (request SHA
+`825c893f46a4db2246690d6010fa96fca98ed5e0ab3107b4f56364e4684edfd5`).
+The diagnostic contact sheet is not a usable atlas. Reserve new outputs; do not
+rerun CUDA, fusion or a completed refit. The existing restricted GLB producer
+also assumes legacy appearance: keep sequence export explicitly unsupported
+until its representation and actual interchange checks are extended.
+
+Preserve the 916-file copied/original depth jobs, 48-file cancelled fresh cache,
+all 152 current audit input files, prior attempts/scratch/caches, bakes, audits
+and scenes. Sequence cleanup/baking/export, measured alignment/collision/walking
+and quality remain open; A0–A6 remain NOT_STARTED and M4 has not begun.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list

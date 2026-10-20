@@ -16,7 +16,7 @@ Read by task; do not load the entire directory for routine work.
 | Export checked depth for visibility/fusion preparation | [Pose-admitted visibility receipt](protocols/depth.md#pose-admitted-visibility-export); immutable depth/RGB cache, no fused geometry |
 | Inspect partial observed geometry | [Native mesh runtime and request](protocols/scene.md#observed-mesh-runtime); normal-color Vulkan view, unknown gaps, no measured scale/collision |
 | Save/reopen native mesh snapshots | [Schema-2 bundle persistence](protocols/scene.md#native-mesh-bundle-persistence); exact raw/proxy geometry and provenance, compatible splat-only bytes |
-| Audit color support before texturing | [Captured-color projection audit](protocols/mesh_color.md); pinned depth/RGB, full sample/rejection/owner/seam ledgers, diagnostic atlas only |
+| Audit color support before texturing | [Captured-color projection audit](protocols/mesh_color.md); pinned single-cache or complete sequence depth/RGB, full candidate/rejection/owner/seam ledgers, diagnostic atlas only |
 | Bake and view captured mesh color | [Bounded native atlas](protocols/mesh_color.md#bounded-native-baked-appearance); checked linear RGB/UV/validity, schema-3 bundles, unlit native viewing |
 | Export/import captured appearance | [Restricted unlit GLB](protocols/gltf.md); full geometry/pins, declared filtering/quantization losses, bounded owned-resource import |
 | Audit components before mesh cleanup | [Read-only component/support analysis](protocols/fusion.md#read-only-component-and-support-analysis); complete areas and directional TSDF stencils, no automatic removal |

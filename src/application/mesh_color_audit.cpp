@@ -1,5 +1,6 @@
 #include "world_explorer/application/mesh_color_audit.hpp"
 
+#include "color_candidates.hpp"
 #include "color_inputs.hpp"
 #include "world_explorer/application/depth_assets.hpp"
 #include "world_explorer/application/fusion_scene.hpp"
@@ -39,7 +40,7 @@ struct Sample {
     Vec3d m_position, m_normal;
     FrameId m_owner {};
     double m_score {};
-    std::uint32_t m_mask {};
+    color_inputs::CandidateViews m_mask {};
     std::array<float, 3> m_rgb {}, m_minimum { 1, 1, 1 }, m_maximum {};
 };
 
@@ -138,7 +139,7 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
                 if (K_COLOR.m_status != ColorProjectionStatus::ACCEPTED) {
                     continue;
                 }
-                sample.m_mask |= std::uint32_t { 1 } << view_index;
+                sample.m_mask.add(view_index);
                 for (std::size_t channel { 0uz }; channel < 3uz; ++channel) {
                     sample.m_minimum[channel] =
                         std::min(sample.m_minimum[channel], K_COLOR.m_linear_rgb[channel]);
@@ -160,7 +161,8 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
             ledgers.push_back(std::move(ledger));
         }
         std::array<std::size_t, 3> face_counts {};
-        std::array<std::size_t, 19> coverage_histogram {};
+        std::vector<std::size_t> coverage_histogram(K_INPUT->m_sequence ? frames.size() + 1uz
+                                                                        : 19uz);
         std::size_t known {}, boundary {}, nonmanifold {}, shared {}, compared {},
             different_owner {};
         double maximum_seam {}, sum_seam {}, maximum_spread {};
@@ -172,7 +174,7 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
             std::size_t face_known {};
             for (std::size_t i { 0uz }; i < K_INTERIOR_SAMPLES; ++i) {
                 const auto& sample = samples[face * K_SAMPLES_PER_FACE + i];
-                const auto K_VIEWS = static_cast<std::size_t>(std::popcount(sample.m_mask));
+                const auto K_VIEWS = sample.m_mask.count();
                 ++coverage_histogram[K_VIEWS];
                 if (!sample.m_owner.m_value) {
                     continue;
@@ -225,8 +227,9 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
                                      std::as_bytes(std::span(K_HEADER)).end());
         atlas.resize(atlas.size() + K_WIDTH * K_HEIGHT * 3uz, std::byte { 32 });
         std::vector<std::byte> encoded;
-        encoded.reserve(32uz + samples.size() * 44uz);
-        for (char character : std::string_view("WECLR001")) {
+        const auto K_RECORD_BYTES = K_INPUT->m_sequence ? 56uz : 44uz;
+        encoded.reserve(32uz + samples.size() * K_RECORD_BYTES);
+        for (char character : std::string_view(K_INPUT->m_sequence ? "WECLR002" : "WECLR001")) {
             encoded.push_back(static_cast<std::byte>(character));
         }
         integer<std::uint64_t>(encoded, mesh.m_triangles.size());
@@ -234,7 +237,9 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
         integer<std::uint64_t>(encoded, samples.size());
         for (const auto& sample : samples) {
             integer<std::uint64_t>(encoded, sample.m_owner.m_value);
-            integer<std::uint32_t>(encoded, sample.m_mask);
+            for (std::size_t word { 0uz }; word < (K_INPUT->m_sequence ? 4uz : 1uz); ++word) {
+                integer<std::uint32_t>(encoded, sample.m_mask.words()[word]);
+            }
             for (auto color : sample.m_rgb) {
                 integer<std::uint32_t>(encoded, std::bit_cast<std::uint32_t>(color));
             }
@@ -262,8 +267,10 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
             }
         }
         const Json K_REPORT {
-            { "schema_version", 1 },
-            { "kind", "CAPTURE_COLOR_PROJECTION_AUDIT_V1" },
+            { "schema_version", K_INPUT->m_sequence ? 2 : 1 },
+            { "kind",
+             K_INPUT->m_sequence ? "CAPTURE_COLOR_PROJECTION_AUDIT_V2"
+                                 : "CAPTURE_COLOR_PROJECTION_AUDIT_V1" },
             { "scope",
              "diagnostic sampled atlas/edge audit; no texture export or continuous coverage "
              "certification" },
@@ -351,8 +358,10 @@ Result<std::string> audit_mesh_colors(const std::filesystem::path& request,
             return std::unexpected(K_WRITTEN_REPORT.error());
         }
         const Json K_MANIFEST {
-            { "schema_version", 1 },
-            { "kind", "CAPTURE_COLOR_PROJECTION_AUDIT_V1" },
+            { "schema_version", K_INPUT->m_sequence ? 2 : 1 },
+            { "kind",
+             K_INPUT->m_sequence ? "CAPTURE_COLOR_PROJECTION_AUDIT_V2"
+                                 : "CAPTURE_COLOR_PROJECTION_AUDIT_V1" },
             { "request_sha256", expected_sha256 },
             { "scene_sha256", scene_content_hash(*scene) },
             { "files", files },

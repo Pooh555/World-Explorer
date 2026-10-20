@@ -3,7 +3,8 @@
 M3 provides a read-only sampled audit and a separate bounded captured-color atlas
 baker. Both share the pinned input admission below. Native baked viewing preserves
 unknowns; neither path certifies continuous surface coverage, PBR albedo, measured
-geometry or walking readiness. Portable textured interchange remains pending.
+geometry or walking readiness. Restricted captured-unlit interchange is separate
+from the diagnostic audit.
 
 ```sh
 build/dev/we_process audit-mesh-colors AUDIT.json AUDIT_SHA256 NEW_DIRECTORY
@@ -31,6 +32,21 @@ and the canonical pose/observation dependencies. RGB files retain their encoded
 checksums and sizes. Cache image/asset paths accept one filename under `images/`
 or `assets/`, rejecting linked files/directories. Outputs must be new and outside
 the immutable cache.
+
+Request schema **2** uses the same five fields and explicitly selects a
+`POSE_ADMITTED_DEPTH_SEQUENCE_V1` receipt. Schema 1 retains the single-cache
+contract and cannot silently admit a sequence. The union retains up to 120
+ordered frames; every pinned child is a `POSE_ADMITTED_DEPTH_VISIBILITY_V1`
+cache with its original 18-view / 48M-pixel limits. Batches must form a complete
+ordered partition with exact frame rows, pose/recipe/input-manifest identities
+and valid/unknown totals. Each child's frame metadata is checked against its
+hashed original dense manifest, including intrinsics and camera transforms.
+Every encoded file is size/hash checked before projection, including poses,
+both recipes, the dense manifest, depth and RGB; children retain their 768-MiB
+encoded aggregate cap. Canonical file paths reject symlinked parents or files.
+Views are then decoded one at a time from the selected child, rechecking depth,
+RGB and pose pins and native depth admission. Actual depth validity and sigma
+availability must match the receipt. No union of decoded source planes is held.
 
 `decode_calibrated_rgb` runs installed FFmpeg with argument arrays, one frame,
 no rotation/resize, bounded allocation/output/diagnostics and explicit cancellation
@@ -76,8 +92,9 @@ remain auditable. Rejection ledgers use exclusive priority: invalid sample,
 behind camera, outside image, unknown depth, unsupported depth, grazing, depth
 mismatch, otherwise accepted. Every view's counts sum to all nine samples/face.
 
-At most 18 views, 48M total source pixels and 1.8M samples (200k triangles) are
-accepted; excess rejects without trimming. Existing fusion/scene/depth byte/count
+Schema 1 accepts at most 18 views / 48M source pixels; schema 2 accepts at most
+120 views with those same per-child limits. Both retain 1.8M samples (200k
+triangles); excess rejects without trimming. Existing fusion/scene/depth byte/count
 limits also apply. Depth/RGB are streamed one view at a time. Cancellation is
 checked during admission and every 4,096 projection samples.
 
@@ -91,6 +108,17 @@ Immutable files publish before terminal `manifest.json`:
 | `atlas.ppm` | P6 RGB8 contact sheet, one 4×4 tile/face, `ceil(sqrt(triangles))` columns; only the six interior locations are drawn. Unknown is magenta, unsampled padding dark gray. It is not a usable texture |
 | `report.json` | Source/scene/pose/cache/cleanup pins, frozen policy, exclusive view ledgers, all sample/face denominators and selected-owner/view-count histograms; candidate color spread and shared-edge midpoint seam measurements |
 | `manifest.json` | Request/scene pins and exact sidecar byte sizes/SHA-256; terminal diagnostic completion only |
+
+Schema-2 audits publish `CAPTURE_COLOR_PROJECTION_AUDIT_V2` report/manifest
+objects and `WECLR002` samples. The 32-byte header is unchanged; each **56-byte**
+record replaces the uint32 mask with **four little-endian uint32 words** in
+ascending view order (view `i` is word `i/32`, bit `i%32`). Remaining fields keep
+their order/types. Bits 120–127, and bits beyond the actual frame inventory,
+remain zero. Histograms include every count from zero through the sequence view
+count. Global score selection and lower-uint64-ID tie breaking span all children;
+no per-child winner substitutes for the union. The legacy `WECLR001` 44-byte
+layout and 19-entry histogram remain unchanged. Unsupported consumers must reject
+the new version rather than truncate its masks.
 
 An unknown sample has owner/mask/color/score/spread all zero. Candidate masks use
 receipt view order. Edge reports retain boundary/nonmanifold/two-face counts;
@@ -106,6 +134,9 @@ Late publication failure/cancellation can leave an uncommitted new directory;
 consume nothing without its terminal manifest. Production job resume, kill/crash
 fault injection, texture export and native textured rendering remain separate.
 See [full retained-source checks](../validation/2026-10-19-color-projection.md).
+[Sequence checks](../validation/2026-10-20-color-sequence.md) cover complete
+63-view projection, preserved legacy bytes, independent candidate/owner/coverage
+oracles, active decoder cancellation and full sanitizer parity.
 
 ## Bounded native baked appearance
 
@@ -124,6 +155,9 @@ barycentrics `((7-x-y)/7,x/7,y/7)`. Original positions and interpolated original
 vertex normals supply the projector above. Shared source edges therefore use the
 same point/normal field. Geometry, topology, support and cleanup certificates are
 preserved exactly. The atlas is deliberately coarse; this is a bounded fallback.
+The baker explicitly rejects schema-2 sequence inputs before accumulation or
+publication: its persisted appearance still has uint32 masks and an 18-view cap.
+Sequence diagnostic success does not qualify sequence baking or textured export.
 
 For each independently projected lattice point, accepted source colors are
 averaged in linear sRGB with squared candidate scores as positive weights.
