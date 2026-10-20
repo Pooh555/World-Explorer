@@ -1,5 +1,6 @@
 # Validation index
 
+- [Canonical synthetic collision cook](2026-10-21-collision-cook.md): immutable source/support-bound floor triangles, portable digest, stale-context refusal and native diagnostic replay; no Jolt or measured walking.
 - [M3 local development exit policy](2026-10-21-m3-development-exit-policy.md): software-phase handoff can proceed without an independent measurement for internet-sourced `sample_1`; Q5/N2 and A1's separate scale requirements remain unchanged and open.
 
 - [Typed depth-space admission](2026-10-20-depth-space-admission.md): immutable source/pose-bound evidence, malformed/rehashed/stale-context rejection and shared CLI/native viewing; all real cells remain unknown and walking unavailable.

@@ -177,6 +177,10 @@ add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cp
 we_target(scene_store)
 target_link_libraries(scene_store PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 
+add_library(collision src/collision/triangle_cook.cpp)
+we_target(collision)
+target_link_libraries(collision PUBLIC scene_store)
+
 if(WE_FUZZING)
   add_executable(we_fuzz_ply tests/fuzz/ply_fuzzer.cpp)
   we_target(we_fuzz_ply)
@@ -382,7 +386,7 @@ if(BUILD_TESTING)
 
   add_executable(we_core_tests ${WE_CORE_TESTS})
   we_target(we_core_tests)
-  target_link_libraries(we_core_tests PRIVATE application map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
+  target_link_libraries(we_core_tests PRIVATE application collision map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
   target_include_directories(we_core_tests SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
   target_compile_definitions(we_core_tests PRIVATE WE_TEST_WIRE_BINDINGS="${WE_WIRE_DIRECTORY}/python")
   catch_discover_tests(we_core_tests PROPERTIES LABELS "cpu")
@@ -411,7 +415,7 @@ if(BUILD_TESTING)
 
   if(WE_COVERAGE)
     set(WE_COVERAGE_OBJECTS)
-    foreach(target core reconstruction_adapters map_store scene_store navigation application render_core)
+    foreach(target core reconstruction_adapters map_store scene_store collision navigation application render_core)
       list(APPEND WE_COVERAGE_OBJECTS --object $<TARGET_FILE:${target}>)
     endforeach()
     foreach(mode report check)

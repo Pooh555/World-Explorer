@@ -346,19 +346,25 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-Start M3's collision module with a canonical, immutable triangle-cook contract
-bound to source scene/epoch/revision, pose and synthetic support identities.
-Read plan §§4.6/4.8/5.1, the [synthetic support](protocols/collision_support.md)
-and [typed depth-space admission](protocols/depth_space.md#typed-evidence-admission)
-contracts and the dependency inventory before selecting a Jolt build. Begin with
-the explicit synthetic floor/barrier/unknown fixtures: reject foreign or corrected
-sources, block unknowns, and preserve existing scene/evidence on cook failure.
-Keep Jolt and cooked-cache details inside the collision target; do not expose
-backend types in navigation/application contracts. Real `FRONT_DIAGNOSTIC` labels
-are not clearance, and all **5,184** retained real cells remain unknown. These diagnostics grant no real
-collision or metric-walking eligibility. No independent distance/up reference is
-available for internet-sourced `sample_1`; its absence no longer blocks the M3
-software-development exit, while Q5/N2 and A1's separate scale evidence remain open.
+[Canonical synthetic collision cook](validation/2026-10-21-collision-cook.md) now
+binds immutable floor triangles and a portable digest to exact source, pose and
+support identities. Occupied/unknown cells remain blocked by the diagnostic
+ledger. Development/C++23 suites, focused sanitizers and 90-frame native
+synthetic viewing pass; no Jolt controller or real collision is enabled.
+
+Next, review official Jolt release/license/ABI sources against
+`cmake/dependencies.cmake`, pin a reproducible source archive and build it only
+inside `collision`. Extend the synthetic fixture with explicit barrier mesh
+triangles and source-bound selection, then create static shapes and a fixed
+120 Hz kinematic capsule with the plan's slope/step limits. Test wall/unknown
+blocking, corrected-source invalidation, cancellation and prior scene/evidence
+preservation; keep backend types out of navigation/application headers. Recheck
+plan §§4.6/4.8/5.1, the [synthetic support](protocols/collision_support.md) and
+[typed depth-space](protocols/depth_space.md#typed-evidence-admission) contracts
+before integration. All **5,184** retained real cells remain unknown;
+`FRONT_DIAGNOSTIC` is not clearance. No independent distance/up reference exists
+for internet-sourced `sample_1`; ADR 020 permits the M3 local software exit
+without it, while Q5/N2 and A1 independent-scale evidence stay open.
 
 [Typed depth-space admission](validation/2026-10-20-depth-space-admission.md) now
 reloads the exact terminal/ledger/native bundle into an immutable owner, checks

@@ -5,6 +5,8 @@ checks conservative capsule envelopes against it. This is a synthetic-only M3
 software profile. There is no observed-space producer, measured collision,
 character controller or walking permission. A metric flag, a drawn mesh and an
 allocated TSDF voxel cannot establish free space.
+The separate [canonical triangle cook](collision_cook.md) binds its selected
+floor triangles to this admitted support and the exact source scene.
 
 ## Pinned support document
 

@@ -19,8 +19,16 @@ struct CapsuleSweep {
 };
 
 struct ClearanceProbe {
-    ClearanceState m_state { ClearanceState::UNKNOWN };
+    ClearanceState m_state {ClearanceState::UNKNOWN};
     std::size_t m_checked_cells {};
+};
+
+struct CollisionFloorTriangleRef {
+    ChunkId m_chunk_id;
+    std::uint64_t m_generation {};
+    SceneRevisionId m_pose_revision;
+    std::string m_chunk_sha256;
+    std::uint64_t m_triangle_index {};
 };
 
 constexpr std::size_t K_COLLISION_SUPPORT_DOCUMENT_BYTES { 1024uz * 1024uz };
@@ -28,10 +36,10 @@ constexpr std::size_t K_COLLISION_SUPPORT_DOCUMENT_BYTES { 1024uz * 1024uz };
 // Immutable, admitted synthetic support. X varies fastest, then Y, then Z.
 // Floor flags use X then Z and require one source triangle to cover a full tile.
 class CollisionSupport {
-    struct AdmissionToken {};
+    struct AdmissionToken { };
 
   public:
-    explicit CollisionSupport(AdmissionToken) {}
+    explicit CollisionSupport(AdmissionToken) { }
 
     CollisionSupport(const CollisionSupport&) = delete;
     CollisionSupport& operator=(const CollisionSupport&) = delete;
@@ -56,6 +64,10 @@ class CollisionSupport {
         return m_floors;
     }
 
+    std::span<const CollisionFloorTriangleRef> floor_triangles() const {
+        return m_floor_triangles;
+    }
+
     const std::string& source_sha256() const {
         return m_source_sha256;
     }
@@ -63,6 +75,8 @@ class CollisionSupport {
     const std::string& document_sha256() const {
         return m_document_sha256;
     }
+
+    Result<void> validate_source(const SceneState& source, const std::stop_token& stop = {}) const;
 
   private:
     friend Result<std::shared_ptr<const CollisionSupport>> admit_collision_support(
@@ -80,6 +94,7 @@ class CollisionSupport {
     std::array<std::size_t, 3uz> m_dimensions {};
     std::vector<SpaceState> m_cells;
     std::vector<std::uint8_t> m_floors;
+    std::vector<CollisionFloorTriangleRef> m_floor_triangles;
     std::string m_source_sha256, m_document_sha256;
 };
 

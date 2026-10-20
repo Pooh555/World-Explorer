@@ -24,6 +24,7 @@ ALLOWED = {
     },
     "map_store": {"core", "capture", "reconstruction_api", "map_store"},
     "scene_store": {"core", "scene_store"},
+    "collision": {"core", "scene_store", "collision"},
     "render_core": {"core", "scene_store", "render_core"},
     "render_vulkan": {"core", "scene_store", "render_core", "render_vulkan"},
     "navigation": {"core", "navigation"},
@@ -59,9 +60,12 @@ for prefix in (ROOT / "include/world_explorer", ROOT / "src"):
                     "SDL3/",
                     "torch/",
                     "colmap/",
-                    "Jolt/",
                 )
             ):
+                errors.append(
+                    f"{path.relative_to(ROOT)}: forbidden external header {header}"
+                )
+            if module != "collision" and header.startswith("Jolt/"):
                 errors.append(
                     f"{path.relative_to(ROOT)}: forbidden external header {header}"
                 )

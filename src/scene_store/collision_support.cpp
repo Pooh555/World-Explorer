@@ -182,9 +182,10 @@ admit_collision_support(const SceneState& source,
             if (!chunk.m_mesh || !chunk.m_geometry_valid) {
                 throw std::runtime_error("Collision floor requires current mesh geometry");
             }
+            const auto K_CHUNK_HASH = scene_chunk_content_hash(chunk);
             if (integer(floor.at("generation")) != chunk.m_generation ||
                 integer(floor.at("pose_revision")) != chunk.m_pose_revision.m_value ||
-                floor.at("chunk_sha256").get<std::string>() != scene_chunk_content_hash(chunk)) {
+                floor.at("chunk_sha256").get<std::string>() != K_CHUNK_HASH) {
                 return fail(ErrorCode::WRONG_BASE, "Collision floor mesh/pose dependency differs");
             }
             const auto& indices = floor.at("triangles");
@@ -199,6 +200,8 @@ admit_collision_support(const SceneState& source,
                 if (K_INDEX >= mesh.m_triangles.size() || !seen.emplace(K_ID, K_INDEX).second) {
                     throw std::runtime_error("Invalid/duplicate collision floor triangle");
                 }
+                support->m_floor_triangles.push_back(
+                    { K_ID, chunk.m_generation, chunk.m_pose_revision, K_CHUNK_HASH, K_INDEX });
                 GridTriangle triangle;
                 for (std::size_t corner { 0uz }; corner < 3uz; ++corner) {
                     const auto& p =
@@ -258,25 +261,34 @@ admit_collision_support(const SceneState& source,
     }
 }
 
-Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
-                                               const SceneState& source,
-                                               const CapsuleSweep& sweep,
-                                               const std::stop_token& stop) {
+Result<void> CollisionSupport::validate_source(const SceneState& source,
+                                               const std::stop_token& stop) const {
     if (stop.stop_requested()) {
-        return fail(ErrorCode::CANCELLED, "Collision clearance probe cancelled");
+        return fail(ErrorCode::CANCELLED, "Collision source validation cancelled");
     }
-    if (source.m_id != support.m_scene || source.m_epoch != support.m_epoch) {
+    if (source.m_id != m_scene || source.m_epoch != m_epoch) {
         return fail(ErrorCode::WRONG_EPOCH, "Collision context changed; stop and resync");
     }
-    if (source.m_revision != support.m_revision) {
+    if (source.m_revision != m_revision) {
         return fail(ErrorCode::WRONG_BASE, "Collision scene revision changed; stop and resync");
     }
     const auto K_VALID = validate_scene(source);
     if (!K_VALID) {
         return std::unexpected(K_VALID.error());
     }
-    if (scene_content_hash(source) != support.m_source_sha256) {
+    if (scene_content_hash(source) != m_source_sha256) {
         return fail(ErrorCode::WRONG_BASE, "Collision source content changed; stop and resync");
+    }
+    return {};
+}
+
+Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
+                                               const SceneState& source,
+                                               const CapsuleSweep& sweep,
+                                               const std::stop_token& stop) {
+    const auto K_VALID = support.validate_source(source, stop);
+    if (!K_VALID) {
+        return std::unexpected(K_VALID.error());
     }
     if (!finite(sweep.m_start_feet) || !finite(sweep.m_end_feet) ||
         !std::isfinite(sweep.m_radius) || !std::isfinite(sweep.m_height) || sweep.m_radius <= 0 ||
