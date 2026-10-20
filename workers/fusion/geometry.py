@@ -6,6 +6,7 @@ __all__ = [
     "ATTRIBUTES",
     "check_cancel",
     "consistent_masks",
+    "source_consistency",
     "integrate",
     "observed_arrays",
     "project",
@@ -69,6 +70,31 @@ def robust_extent(views, cancelled=lambda: False):
     if not 1e-12 < extent < 1e12:
         raise ValueError("Degenerate or unsupported arbitrary-unit extent")
     return extent, bounds.tolist(), len(points)
+
+
+def source_consistency(view, x, y, points, source, recipe):
+    """Return agreement and known occlusion for one bounded reference chunk."""
+    import numpy as np
+
+    sx, sy, z, inside = project(source, points)
+    sd = source["depth"][sy, sx]
+    known = inside & (source["valid"][sy, sx] == 1) & (source["confidence"][sy, sx] > 0)
+    close = known & (
+        np.abs(sd - z) <= recipe["relative_depth_error"] * np.maximum(sd, z)
+    )
+    blocked = known & (z > sd * (1 + recipe["relative_depth_error"]))
+    # Only close samples can agree. Unknown samples never enter round-trip math.
+    candidates = np.flatnonzero(close)
+    back = world_points(source, sx[candidates], sy[candidates], sd[candidates])
+    camera = back @ view["cam_from_world"][:, :3].T + view["cam_from_world"][:, 3]
+    fx, fy, cx, cy = view["intrinsics"]
+    bz = np.where(camera[:, 2] > 0, camera[:, 2], 1)
+    distance = np.hypot(
+        camera[:, 0] * fx / bz + cx - x[candidates],
+        camera[:, 1] * fy / bz + cy - y[candidates],
+    )
+    close[candidates] = (camera[:, 2] > 0) & (distance <= recipe["roundtrip_pixels"])
+    return close, blocked
 
 
 def consistent_masks(views, recipe, cancelled=lambda: False):
@@ -157,7 +183,7 @@ ATTRIBUTES = (
 )
 
 
-def integrate(views, masks, voxel_size, recipe, cancelled=lambda: False):
+def integrate(views, masks, voxel_size, recipe, cancelled=lambda: False, *, pairs=None):
     import numpy as np
     import open3d as o3d
 
@@ -169,7 +195,10 @@ def integrate(views, masks, voxel_size, recipe, cancelled=lambda: False):
     # Allocation never marks a voxel as observed and is bounded before activation.
     keys = set()
     offsets = tuple(itertools.product((-1, 0, 1), repeat=3))
-    for view, mask in zip(views, masks):
+    # A repeatable factory keeps sequence planes bounded to one mapped view.
+    if pairs is None:
+        pairs = lambda: zip(views, masks)
+    for view, mask in pairs():
         y, x = np.nonzero(mask)
         for start in range(0, len(x), recipe["chunk_voxels"]):
             check_cancel(cancelled)
@@ -219,14 +248,15 @@ def integrate(views, masks, voxel_size, recipe, cancelled=lambda: False):
     for array in attributes.values():
         array.fill(0)
     block_chunk = max(1, recipe["chunk_voxels"] // resolution**3)
-    for start in range(0, len(keys), block_chunk):
-        check_cancel(cancelled)
-        coordinates, flat = grid.voxel_coordinates_and_flattened_indices(
-            indices[start : start + block_chunk]
-        )
-        points, flat = coordinates.numpy().astype(np.float64), flat.numpy().reshape(-1)
-        for view, mask in zip(views, masks):
+    for view, mask in pairs():
+        for start in range(0, len(keys), block_chunk):
             check_cancel(cancelled)
+            coordinates, flat = grid.voxel_coordinates_and_flattened_indices(
+                indices[start : start + block_chunk]
+            )
+            points, flat = coordinates.numpy().astype(np.float64), flat.numpy().reshape(
+                -1
+            )
             x, y, z, inside = project(view, points)
             sdf = view["depth"][y, x] - z
             keep = inside & mask[y, x] & (np.abs(sdf) <= trunc)

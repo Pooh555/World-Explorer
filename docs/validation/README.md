@@ -1,5 +1,7 @@
 # Validation index
 
+- [Bounded full-sequence fusion](2026-10-20-sequence-fusion.md): one grid over all 63 real frames, retained cancellation/resume/replay, exact native admission, visible handoff and explicit unknown coverage; partial geometry only.
+
 - [Bounded full-sequence depth](2026-10-20-depth-sequence.md): all 63 real reference frames, seven owned CUDA batches, four bounded native caches, exact replay, complete unknown accounting and full-volume sanitizer checks; no geometry-quality gate.
 
 - [Native build, Python formatting and dependency inventory repair](2026-10-20-native-inventory-repair.md): non-Linux geometry fallback, 24 AST-equivalent Black fixes, fresh loader/import/viewer/owner receipts and restored default/local inventory checks; native Windows confirmation pending.

@@ -23,7 +23,10 @@ def implementation_digest():
     root = Path(__file__).parent
     files = {
         str(path.relative_to(root.parent)): digest(path.read_bytes())
-        for path in [root / name for name in ("contract.py", "geometry.py", "run.py")]
+        for path in [
+            root / name
+            for name in ("contract.py", "geometry.py", "run.py", "sequence.py")
+        ]
         + [
             DENSE / name
             for name in (
@@ -39,8 +42,8 @@ def implementation_digest():
     return digest(json.dumps(files, sort_keys=True, separators=(",", ":")).encode())
 
 
-def selected_recipe():
-    return {
+def selected_recipe(*, sequence=False):
+    recipe = {
         "schema_version": 1,
         "kind": "OBSERVED_TSDF_CPU_PILOT_V1",
         "implementation_sha256": implementation_digest(),
@@ -67,6 +70,12 @@ def selected_recipe():
         "omp_threads": 4,
         "scope": "PARTIAL_OBSERVED_GEOMETRY_NO_Q5_N2_OR_WALK",
     }
+    if sequence:
+        recipe.update(
+            kind="OBSERVED_TSDF_CPU_SEQUENCE_V1",
+            max_scratch_bytes=4 * 1024**3,
+        )
+    return recipe
 
 
 def load_request(path, sha):
@@ -94,8 +103,11 @@ def load_request(path, sha):
     recipe_path = path.parent / request["recipe"]
     recipe = parse(read_pinned(recipe_path, request["recipe_sha256"], 1024**2))
     # Fixed experimental policy, including code/environment identities; no silent overrides.
-    if recipe != selected_recipe() or any(
-        type(recipe[k]) is not type(v) for k, v in selected_recipe().items()
+    selected = selected_recipe(
+        sequence=recipe.get("kind") == "OBSERVED_TSDF_CPU_SEQUENCE_V1"
+    )
+    if recipe != selected or any(
+        type(recipe[k]) is not type(v) for k, v in selected.items()
     ):
         raise ValueError(
             "Fusion recipe differs from fixed pilot policy/code/environment"

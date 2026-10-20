@@ -14,8 +14,13 @@ uv pip sync workers/fusion/environment-lock.txt --require-hashes --python artifa
 
 Provision only after checking the [selected component/resource plan](../../docs/research/observed_fusion.md).
 Existing environments/output directories must never be replaced. Generate and
-pin a new `contract.selected_recipe()` JSON and the exact request/receipt hashes;
-the [dated evidence](../../docs/validation/2026-10-18-observed-fusion.md) identifies
+pin a new `contract.selected_recipe()` JSON and the exact request/receipt hashes.
+For a complete native cache union, use `selected_recipe(sequence=True)`; it
+computes one pooled extent and one grid with bounded scratch and all-source
+consistency, preserving the existing fusion resource limits. The retained
+shared GUI/CLI geometry path owns cancellation/reuse and native scene admission;
+the fresh-depth terminal adapter remains a separate integration step. The
+[sequence evidence](../../docs/validation/2026-10-20-sequence-fusion.md) identifies
 the retained real requests and commands without a new MVS solve.
 
 ```sh

@@ -34,6 +34,8 @@ struct ObservedFusionAsset {
     std::string m_asset_sha256;
     double m_extent {}, m_voxel_size {}, m_truncation {};
     std::size_t m_unknown_allocated_voxels {};
+    // Zero for legacy caches; otherwise the checked complete sequence inventory.
+    std::size_t m_admitted_sequence_frames {};
     // Exact source documents, preserving coverage and uncertainty denominators.
     std::string m_manifest_json, m_receipt_json;
     std::vector<ObservedVoxel> m_voxels;

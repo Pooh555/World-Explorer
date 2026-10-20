@@ -75,6 +75,32 @@ TEST_CASE("fusion component audit preserves complete geometry and support denomi
     CHECK(K_ASSET.m_voxels.size() == 8uz);
 }
 
+TEST_CASE("fusion components retain complete sequence observations and original backend support",
+          "[fusion-components]") {
+    auto asset = components_fixture();
+    asset.m_admitted_sequence_frames = 63uz;
+    for (auto& voxel : asset.m_voxels) {
+        voxel.m_observation_count = 63;
+        voxel.m_support_sum = 63000000;
+    }
+    const auto K_RESULT = analyze_fusion_components(asset);
+    REQUIRE(K_RESULT);
+    CHECK(K_RESULT->m_total.m_support.m_observations == 32uz * 63uz);
+    CHECK(K_RESULT->m_total.m_support.m_support_sum == 32uz * 63000000uz);
+    SECTION("observations cannot exceed the admitted inventory") {
+        asset.m_voxels[0].m_observation_count = 64;
+    }
+    SECTION("backend support retains the native per-observation bound") {
+        asset.m_voxels[0].m_support_sum = 63000001;
+    }
+    SECTION("sequence inventory stays bounded") {
+        asset.m_admitted_sequence_frames = 121uz;
+    }
+    const auto K_REJECTED = analyze_fusion_components(asset);
+    REQUIRE(K_REJECTED.has_value() == false);
+    CHECK(K_REJECTED.error().m_code == ErrorCode::INVALID_DATA);
+}
+
 TEST_CASE("fusion components do not weld positions and do connect shared vertex indices",
           "[fusion-components]") {
     auto asset = components_fixture();

@@ -78,6 +78,14 @@ Result<FusionComponentAnalysis> analyze_fusion_components(const ObservedFusionAs
         }
         const auto K_VERTICES = asset.m_vertices.size();
         const auto K_TRIANGLES = asset.m_triangles.size();
+        const auto K_VIEWS =
+            asset.m_admitted_sequence_frames ? asset.m_admitted_sequence_frames : 18uz;
+        // Backend support counts are separate from the number of integrated
+        // reference views. Sequence admission retains the native 1M input cap.
+        const auto K_INPUT_SUPPORT = asset.m_admitted_sequence_frames ? 1000000U : 18U;
+        if (K_VIEWS > 120uz) {
+            return fail(ErrorCode::INVALID_DATA, "Invalid component sequence inventory");
+        }
         // Hard caps also bound indices, accumulator arithmetic and union rank.
         if (K_VERTICES > std::min(limits.m_asset.m_max_vertices, 4000000uz) ||
             K_TRIANGLES > std::min(limits.m_asset.m_max_triangles, 8000000uz) ||
@@ -100,9 +108,9 @@ Result<FusionComponentAnalysis> analyze_fusion_components(const ObservedFusionAs
             const auto& voxel = asset.m_voxels[index];
             if ((index > 0uz && asset.m_voxels[index - 1uz].m_lattice >= voxel.m_lattice) ||
                 !std::isfinite(voxel.m_weight) || voxel.m_weight <= 0 ||
-                voxel.m_observation_count == 0 || voxel.m_observation_count > 18 ||
+                voxel.m_observation_count == 0 || voxel.m_observation_count > K_VIEWS ||
                 voxel.m_weight > static_cast<float>(voxel.m_observation_count) ||
-                voxel.m_support_sum > 18U * voxel.m_observation_count ||
+                voxel.m_support_sum > K_INPUT_SUPPORT * voxel.m_observation_count ||
                 voxel.m_front_count > voxel.m_observation_count ||
                 !std::isfinite(voxel.m_sigma2_sum) || voxel.m_sigma2_sum < 0 ||
                 !std::isfinite(voxel.m_sigma_weight) || voxel.m_sigma_weight < 0 ||

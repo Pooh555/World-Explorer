@@ -7,7 +7,8 @@ gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 [Build/style/inventory repair](validation/2026-10-20-native-inventory-repair.md)
 separates the non-Linux geometry fallback from its solver body, removes all 24
 Black failures without AST changes, and refreshes loader/import/viewer/owner
-receipts. Default/local dependency checks now pass; 253 source/rights gaps remain.
+receipts. Those default/local checks passed for that build; current runtime receipts need
+recapture after subsequent native rebuilds. The 253 source/rights gaps remain.
 The supplied full Windows log confirms C4702/C2220 unreachable-code failures.
 Local non-Linux branch checks pass; native Windows rerun remains pending.
 
@@ -280,31 +281,38 @@ qualify their redistribution rights or the drifted installed headers.
   independently bounded native caches. Cancellation/reuse, complete coverage
   accounting, streaming and full-volume ASan/UBSan/LSan checks pass; the normal
   and instrumented receipts match exactly. Valid observations total **15.9265%**
-  of the grids, with all unknowns retained. No full-sequence fusion, measured
-  geometry/scale/walking or quality gate is promoted.
+  of the grids, with all unknowns retained. That depth-only slice promoted no measured
+  geometry/scale/walking or quality gate.
+
+- [Full-sequence fusion](validation/2026-10-20-sequence-fusion.md): all **63** real
+  frames feed one global extent and confidence-weighted TSDF, with all-source
+  cross-cache agreement/occlusion checks. The retained shared GUI/CLI path passes
+  stopped-child cancellation, preserved-attempt resume, exact replay and native
+  scene handoff. All **39,683 vertices / 49,833 triangles** render with zero Vulkan
+  errors, but remain visibly fragmented. Complete unknown/support/sigma accounting
+  survives native conversion; scale remains arbitrary and walking unavailable.
 
 ## Next executable step and protection rules
 
-Implement bounded full-sequence fusion over the pinned native union at
-`artifacts/validation/m3-depth-sequence-20261020/admitted/manifest.json`, SHA-256
-`3362938dda673311e36739c3eed5c3ece8b303cd8c29cd0f1343c28300b2cf26`.
-Begin with CPU contracts in `workers/fusion/geometry.py` / `run.py`: global
-positive-weight extent/percentiles, consistency and known-occlusion checks across
-cache boundaries, then one bounded TSDF grid at the existing extent/512 policy.
-Do not average batch percentiles or merge independently scaled batch meshes.
-Keep the current RSS/block/output/time limits and complete unknown/support/sigma
-accounting. Extend `tools/geometry_job.py` and `src/application/geometry_job.cpp`
-for owned union consumption, cancellation/reuse and native scene handoff only
-after those contracts pass. Create current implementation/recipe pins, then use
-new output directories; the existing geometry entry still accepts a single cache.
+Extend the fresh-depth terminal adapter in `src/application/geometry_job.cpp`
+to consume `OWNED_RESIZED_DEPTH_SEQUENCE_TERMINAL_V1`: validate each pinned
+batch/result/prepared graph, select its disjoint references, construct schema-2
+native visibility admission for the complete frame inventory, then pass that
+union into the now-verified retained geometry path. Add CPU failure/cancellation/
+replay contracts before a real GUI/CLI chain. Validate reuse against the completed
+63-frame depth job under `artifacts/validation/m3-depth-sequence-20261020/` without
+an unchanged CUDA solve; inspect its `gpu-commands.json`, `coverage.json` and
+`post-commands.json` first. Reserve new outputs and current implementation pins.
 
-The full 63-frame depth job, exact replay and native export are complete under
-`artifacts/validation/m3-depth-sequence-20261020/`; inspect `gpu-commands.json`,
-`coverage.json` and `post-commands.json` before further processing. No unchanged
-CUDA rerun is needed. Preserve every completed/partial attempt, admitted cache,
-old pinned recipe and saved scene. Measured alignment/collision/walking and
-quality gates remain open; A0–A6 remain NOT_STARTED. Full-sequence depth is not
-complete room geometry.
+[Full-sequence fusion](validation/2026-10-20-sequence-fusion.md) now validates the
+pinned native union (`3362938dda673311e36739c3eed5c3ece8b303cd8c29cd0f1343c28300b2cf26`),
+one global extent/grid, retained-job cancellation/resume/replay, native admission
+and visible handoff. Inspect `artifacts/validation/m3-sequence-fusion-20261020/`
+`owned-commands.json`, `native-commands.json` and the saved bundle before further
+work. Preserve all completed/partial CPU attempts, their scratch/recipes, all
+admitted caches, the completed depth job and prior scenes. The fresh adapter is
+still the nine-view slice. Sequence cleanup/baking/export, measured alignment/
+collision/walking and quality remain open; A0–A6 remain NOT_STARTED.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list
@@ -335,8 +343,8 @@ Do not retune on opened evaluation grids or alter existing environments.
 Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
-threshold reduction. Never trim full scenes to obtain a pass. Full-sequence
-depth/geometry coverage, broader owned mesh processing, compressed storage,
+threshold reduction. Never trim full scenes to obtain a pass. Complete room
+surface coverage, fresh sequence orchestration, broader owned mesh processing, compressed storage,
 measured scale, collision/walking and general interchange remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 

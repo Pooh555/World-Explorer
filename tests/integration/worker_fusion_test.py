@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "workers/fusion"))
@@ -17,6 +18,7 @@ from geometry import (
     observed_arrays,
     world_points,
 )
+from sequence import StagedSequence
 
 
 class FusionContractTest(unittest.TestCase):
@@ -62,6 +64,31 @@ class FusionContractTest(unittest.TestCase):
             load_request(path, digest(path.read_bytes()))
         request["schema_version"] = 1
         request["extra"] = 1
+        path.write_text(json.dumps(request))
+        with self.assertRaises(ValueError):
+            load_request(path, digest(path.read_bytes()))
+
+    def test_sequence_policy_is_explicit_and_keeps_fusion_limits(self):
+        root, pilot, request = self.fixture()
+        recipe = selected_recipe(sequence=True)
+        self.assertEqual(recipe["kind"], "OBSERVED_TSDF_CPU_SEQUENCE_V1")
+        for key in (
+            "max_blocks",
+            "max_rss_bytes",
+            "max_seconds",
+            "max_output_bytes",
+            "voxel_divisor",
+        ):
+            self.assertEqual(recipe[key], pilot[key])
+        self.assertEqual(recipe["max_scratch_bytes"], 4 * 1024**3)
+        (root / "recipe.json").write_text(json.dumps(recipe))
+        request["recipe_sha256"] = digest((root / "recipe.json").read_bytes())
+        path = root / "request.json"
+        path.write_text(json.dumps(request))
+        self.assertEqual(load_request(path, digest(path.read_bytes()))[1], recipe)
+        recipe["max_scratch_bytes"] += 1
+        (root / "recipe.json").write_text(json.dumps(recipe))
+        request["recipe_sha256"] = digest((root / "recipe.json").read_bytes())
         path.write_text(json.dumps(request))
         with self.assertRaises(ValueError):
             load_request(path, digest(path.read_bytes()))
@@ -138,6 +165,179 @@ class FusionGeometryTest(unittest.TestCase):
             view["confidence"][:] = 0
         with self.assertRaises(ValueError):
             robust_extent(views)
+
+    def staged(self, views, *, recipe=None):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        sequence = StagedSequence(
+            Path(temp.name) / "scratch", recipe or selected_recipe(sequence=True)
+        )
+        # Every view is a separate cache: support must cross all boundaries.
+        sequence.stage(([view], {}) for view in views)
+        return sequence
+
+    def test_sequence_exact_pooled_percentiles_not_batch_percentiles(self):
+        import numpy as np
+
+        views = self.fixture()
+        views[0]["confidence"][:] = 0
+        views[0]["valid"][:] = 0
+        views[0]["depth"][:] = 0
+        views[1]["confidence"][1:40, :] = 0
+        views[2]["cam_from_world"][0, 3] += 20
+        expected = robust_extent(views)
+        sequence = self.staged(views)
+        actual = sequence.extent()
+        self.assertEqual(actual[0], expected[0])
+        self.assertEqual(actual[2], expected[2])
+        np.testing.assert_array_equal(actual[1], expected[1])
+        averaged = np.mean([robust_extent([view])[1] for view in views[1:]], axis=0)
+        self.assertFalse(np.allclose(actual[1], averaged))
+
+    def test_sequence_matches_all_source_masks_and_late_occlusion(self):
+        import numpy as np
+
+        for occluder in (False, True):
+            with self.subTest(occluder=occluder):
+                views = self.fixture() + self.fixture()[:1]
+                views[1]["sigma"] = np.full(
+                    views[1]["depth"].shape, 0.2, dtype=np.float32
+                )
+                views[0]["confidence"][3, 3] = 0
+                # Earlier sources already provide the two required agreements;
+                # a last-cache occluder must still veto the reference sample.
+                if occluder:
+                    views[-1]["depth"][views[-1]["valid"] == 1] = 1
+                recipe = dict(selected_recipe(sequence=True), chunk_voxels=79)
+                expected, summary = consistent_masks(views, recipe)
+                sequence = self.staged(views, recipe=recipe)
+                self.assertEqual(sequence.filter(), summary)
+                for (_, mask), original in zip(sequence.pairs(), expected):
+                    np.testing.assert_array_equal(mask, original)
+                if occluder:
+                    self.assertGreater(summary[0]["known_occlusion"], 0)
+                    self.assertFalse(expected[0].any())
+                else:
+                    self.assertTrue(expected[0].any())
+
+    def test_sequence_closes_maps_preserves_inputs_and_rejects_scratch_overflow(self):
+        import numpy as np
+
+        views = self.fixture()
+        original = views[0]["depth"].copy()
+        sequence = self.staged(views)
+        with sequence.open_view(0) as view:
+            mapped = view["depth"]
+            self.assertFalse(mapped.flags.writeable)
+            self.assertFalse(mapped._mmap.closed)
+        self.assertTrue(mapped._mmap.closed)
+        sequence.extent()
+        sequence.filter()
+        np.testing.assert_array_equal(views[0]["depth"], original)
+        with self.assertRaisesRegex(ValueError, "scratch budget"):
+            self.staged(
+                views, recipe=dict(selected_recipe(sequence=True), max_scratch_bytes=1)
+            )
+
+    def test_sequence_late_failure_cancellation_and_occupied_scratch_preserve(self):
+        views = self.fixture()
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        sequence = StagedSequence(
+            Path(temp.name) / "scratch", selected_recipe(sequence=True)
+        )
+
+        def failed_batches():
+            yield views[:1], {}
+            raise ValueError("late child corruption")
+
+        with self.assertRaisesRegex(ValueError, "late child"):
+            sequence.stage(failed_batches())
+        retained = {p.name: p.read_bytes() for p in sequence.directory.iterdir()}
+        with self.assertRaises(FileExistsError):
+            sequence.stage(iter([]))
+        sequence.cancelled = lambda: True
+        for operation in (sequence.extent, sequence.filter):
+            with self.assertRaises(InterruptedError):
+                operation()
+        self.assertEqual(
+            retained,
+            {
+                p.name: p.read_bytes()
+                for p in sequence.directory.iterdir()
+                if not p.name.startswith("extent-")
+            },
+        )
+
+    @unittest.skipUnless(sys.platform == "linux", "Linux retained job owner")
+    @unittest.skipUnless(importlib.util.find_spec("PIL"), "Requires isolated Pillow")
+    def test_owned_sequence_rejects_late_child_corruption_before_ownership(self):
+        import worker_admitted_visibility_test
+
+        fixture = worker_admitted_visibility_test.AdmittedVisibilityTest()
+        self.addCleanup(fixture.doCleanups)
+        cache, receipt = fixture.sequence_fixture()
+        bad = cache / "batch-1" / receipt["frames"][-1]["depth_asset"]
+        bad.write_bytes(b"retained corrupt caller bytes")
+        root = cache.parent
+        recipe = root / "fusion-recipe.json"
+        recipe.write_text(json.dumps(selected_recipe(sequence=True)))
+        request = root / "fusion-request.json"
+        request.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "cache": str(cache),
+                    "receipt_sha256": digest((cache / "manifest.json").read_bytes()),
+                    "recipe": str(recipe),
+                    "recipe_sha256": digest(recipe.read_bytes()),
+                }
+            )
+        )
+        spec = importlib.util.spec_from_file_location(
+            "fusion_geometry_owner_test",
+            Path(__file__).resolve().parents[2] / "tools/geometry_job.py",
+        )
+        coordinator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(coordinator)
+        job = root / "owned-job"
+        args = SimpleNamespace(
+            request=str(request),
+            request_sha256=digest(request.read_bytes()),
+            pose=str(cache / "batch-0/poses.weposes"),
+            pose_sha256=receipt["pose_asset_sha256"],
+            job=str(job),
+            parent_supervised=False,
+        )
+        with self.assertRaises(ValueError):
+            coordinator.execute(args)
+        self.assertFalse(job.exists())
+        self.assertEqual(bad.read_bytes(), b"retained corrupt caller bytes")
+
+    @unittest.skipUnless(
+        importlib.util.find_spec("open3d"), "Requires isolated CPU Open3D"
+    )
+    def test_sequence_integrates_one_grid_with_support_sigma_and_unknowns(self):
+        import numpy as np
+
+        views = self.fixture()
+        views[1]["sigma"] = np.full(views[1]["depth"].shape, 0.1, dtype=np.float32)
+        recipe = selected_recipe(sequence=True)
+        masks, _ = consistent_masks(views, recipe)
+        grid, indices, blocks = integrate(views, masks, 0.04, recipe)
+        expected = observed_arrays(grid, indices, 0.04, recipe)
+        sequence = self.staged(views)
+        sequence.filter()
+        grid, indices, actual_blocks = integrate(
+            None, None, 0.04, recipe, pairs=sequence.pairs
+        )
+        actual = observed_arrays(grid, indices, 0.04, recipe)
+        self.assertEqual(actual_blocks, blocks)
+        for key in expected:
+            np.testing.assert_array_equal(actual[key], expected[key])
+        self.assertTrue((actual["support_sum"] == 9).all())
+        self.assertTrue(np.allclose(actual["sigma_weight"], 0.25))
+        self.assertLess(len(actual["weight"]), blocks * 8**3)
 
     @unittest.skipUnless(
         importlib.util.find_spec("open3d"), "Requires isolated CPU Open3D"

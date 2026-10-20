@@ -147,9 +147,49 @@ struct Fixture {
         }
     }
 
+    void sequence(std::size_t frames = 63uz) {
+        const auto K_FRAME = m_receipt["frames"][0];
+        const auto K_ROW = m_manifest["coverage"][0];
+        m_receipt["kind"] = "POSE_ADMITTED_DEPTH_SEQUENCE_V1";
+        m_receipt["frames"] = Json::array();
+        m_receipt["batches"] = Json::array();
+        m_receipt["input_manifest_sha256"] = std::string(64uz, 'c');
+        m_receipt["depth_recipe_sha256"] = std::string(64uz, 'd');
+        m_receipt["valid_pixels"] = frames * 3uz;
+        m_receipt["unknown_pixels"] = frames * (2048uz * 1102uz - 3uz);
+        m_manifest["coverage"] = Json::array();
+        m_manifest["extent_samples"] = frames * 3uz;
+        m_recipe["kind"] = "OBSERVED_TSDF_CPU_SEQUENCE_V1";
+        m_recipe["max_scratch_bytes"] = 4uz * 1024uz * 1024uz * 1024uz;
+        for (std::size_t i { 0uz }; i < frames; ++i) {
+            const auto K_NAME = std::to_string(i) + ".png";
+            auto frame = K_FRAME;
+            frame["frame"] = i + 1uz;
+            frame["manifest_index"] = i;
+            frame["image"] = "images/" + K_NAME;
+            frame["width"] = 2048U;
+            frame["height"] = 1102U;
+            frame["unknown_pixels"] = 2048uz * 1102uz - 3uz;
+            m_receipt["frames"].push_back(frame);
+            auto row = K_ROW;
+            row["name"] = K_NAME;
+            row["pixels"] = 2048uz * 1102uz;
+            row["unknown"] = 2048uz * 1102uz - 3uz;
+            m_manifest["coverage"].push_back(row);
+            if (i % 18uz == 0uz) {
+                m_receipt["batches"].push_back({ { "cache", "batch-" + std::to_string(i / 18uz) },
+                                                { "sha256", std::string(64uz, 'e') },
+                                                { "first_manifest_index", i },
+                                                { "frame_count", std::min(18uz, frames - i) } });
+            }
+        }
+    }
+
     std::vector<std::byte> encode() {
         m_receipt["pose_asset_sha256"] = m_context.m_pose_sha256;
-        m_receipt["files"]["poses.weposes"]["sha256"] = m_context.m_pose_sha256;
+        if (m_receipt["kind"] == "POSE_ADMITTED_DEPTH_VISIBILITY_V1") {
+            m_receipt["files"]["poses.weposes"]["sha256"] = m_context.m_pose_sha256;
+        }
         const auto K_RECEIPT = m_receipt.dump();
         const auto K_RECIPE = m_recipe.dump();
         m_context.m_receipt_sha256 = text_hash(K_RECEIPT);
@@ -187,6 +227,85 @@ struct Fixture {
 };
 
 }  // namespace
+
+TEST_CASE("fusion sequence retains every frame across bounded native children", "[fusion]") {
+    Fixture fixture;
+    const auto K_FRAMES = GENERATE(63uz, 120uz);
+    fixture.sequence(K_FRAMES);
+    const auto K_BYTES = fixture.encode();
+    const auto K_ASSET = decode_fusion_asset(K_BYTES, sha256(K_BYTES), fixture.m_context);
+    REQUIRE(K_ASSET);
+    CHECK(K_ASSET->m_admitted_sequence_frames == K_FRAMES);
+    const auto K_SUMMARY = inspect_fusion_asset(*K_ASSET);
+    REQUIRE(K_SUMMARY);
+    const auto K_JSON = Json::parse(*K_SUMMARY);
+    CHECK(K_JSON.at("coverage").size() == K_FRAMES);
+    CHECK(K_JSON.at("coverage")[62].at("unknown") == 2048uz * 1102uz - 3uz);
+    CHECK(K_ASSET->m_voxels[0].m_support_sum == 3);
+    CHECK(K_ASSET->m_unknown_allocated_voxels == 510uz);
+    CHECK(K_JSON.at("walking_enabled") == false);
+}
+
+TEST_CASE("fusion sequence rejects rehashed incomplete or oversized coverage", "[fusion]") {
+    Fixture fixture;
+    fixture.sequence();
+    const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
+    switch (K_MUTATION) {
+    case 0:
+        fixture.m_recipe["kind"] = "OBSERVED_TSDF_CPU_PILOT_V1";
+        break;
+    case 1:
+        fixture.m_receipt["batches"].erase(3uz);
+        break;
+    case 2:
+        fixture.m_receipt["batches"][1]["first_manifest_index"] = 17U;
+        break;
+    case 3:
+        fixture.m_receipt["batches"][0]["cache"] = "../caller";
+        break;
+    case 4:
+        fixture.m_receipt["batches"][0]["frame_count"] = 19U;
+        break;
+    case 5:
+        fixture.m_receipt["frames"][18]["manifest_index"] = 17U;
+        break;
+    case 6:
+        fixture.m_receipt["frames"][18]["frame"] = 1U;
+        break;
+    case 7:
+        fixture.m_receipt["unknown_pixels"] = 1U;
+        break;
+    case 8:
+        fixture.m_receipt["batches"][3]["sha256"] = "invalid";
+        break;
+    case 9:
+        fixture.m_receipt["frames"][0]["width"] = 4096U;
+        fixture.m_receipt["frames"][0]["height"] = 4096U;
+        fixture.m_manifest["coverage"][0]["pixels"] = 4096uz * 4096uz;
+        fixture.m_receipt["frames"][0]["unknown_pixels"] = 4096uz * 4096uz - 3uz;
+        fixture.m_manifest["coverage"][0]["unknown"] = 4096uz * 4096uz - 3uz;
+        fixture.m_receipt["unknown_pixels"] =
+            62uz * (2048uz * 1102uz - 3uz) + 4096uz * 4096uz - 3uz;
+        break;
+    case 10:
+        fixture.sequence(121uz);
+        break;
+    case 11:
+        fixture.m_recipe["max_scratch_bytes"] = 1U;
+        break;
+    case 12:
+        fixture.m_receipt["frames"][18]["manifest_index"] = true;
+        break;
+    case 13:
+        fixture.m_receipt["kind"] = "POSE_ADMITTED_DEPTH_VISIBILITY_V1";
+        fixture.m_recipe["kind"] = "OBSERVED_TSDF_CPU_PILOT_V1";
+        break;
+    default:
+        FAIL("Unknown mutation");
+    }
+    const auto K_BYTES = fixture.encode();
+    CHECK(decode_fusion_asset(K_BYTES, sha256(K_BYTES), fixture.m_context).has_value() == false);
+}
 
 TEST_CASE("fusion preserves explicit sparse evidence and wide identities", "[fusion]") {
     Fixture fixture;

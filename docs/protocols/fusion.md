@@ -108,6 +108,44 @@ may remain; no overwrite/resume is provided. Direct `--child` invocation is an
 internal implementation detail and cannot publish a terminal receipt. Full
 application ownership, job kill/reap and resume qualification remain separate.
 
+## Bounded full-sequence CPU worker
+
+`contract.selected_recipe(sequence=True)` selects the separate fixed
+`OBSERVED_TSDF_CPU_SEQUENCE_V1` policy. The same request and supervisor syntax
+accept a pinned `POSE_ADMITTED_DEPTH_SEQUENCE_V1` union, with up to 120 frames;
+the legacy recipe still accepts only one bounded native cache. Each child keeps
+the existing 18-view, 48M-pixel and 768 MiB encoded-input limits.
+
+The sequence worker exhausts the checked native iterator before fusion. It
+copies only depth/validity/confidence/support/optional sigma planes into exclusive
+NPY scratch under the new output directory, releasing each decoded child before
+reading the next. At most one reference and one source view are mapped during
+consistency filtering; maps are explicitly closed. RGB is checked by native-cache
+consumption but contributes no fusion weight or color product.
+
+The scratch reservation is separately bounded to 4 GiB, including plane files,
+mask files, NPY header allowances and three float64 percentile axes. Exact pooled
+linear percentiles partition these owned on-disk axes; batch percentiles are
+never averaged. The worker checks every source across child boundaries for both
+agreement and known occlusion, even after sufficient agreement exists. Per-view
+denominators and optional uncertainty availability keep their original meaning.
+
+Accepted masks feed one sparse grid at global `extent/512`, with the original
+32,768-block, four-voxel truncation, 512 MiB product, 4 GiB sampled RSS and 300 s
+deadline limits. Integration scans views in order, mapping each once per pass;
+each voxel retains the same ordered confidence/support/sigma updates. There is
+no independent batch mesh or scale merge. Failed attempts retain scratch and
+partial products without a terminal receipt. A successful worker removes only
+its own newly created scratch before terminal publication. Scratch is internal
+work data and never accepted as a reusable stage.
+
+The retained geometry coordinator exhausts the same union reader before owning
+or reusing a job, including all later child dependencies. Complete stages keep
+their existing four-file inventory; cancelled stages retain their scratch and
+restart in a new attempt. The retained shared GUI/CLI pipeline consumes these
+jobs through the native admission below. The fresh-depth pipeline's terminal
+adapter remains limited to the earlier single-cache depth result.
+
 ## Owned retained-cache geometry job (Linux development slice)
 
 `tools/geometry_job.py` accepts the existing pinned fusion request, its exact
@@ -120,8 +158,9 @@ artifacts/environments/fusion-cpu/bin/python tools/geometry_job.py \
 ```
 
 It admits every byte and plane of the selected native depth/RGB cache through
-`load_admitted_cache`, checks its pose identity against the separately pinned
-current pose file, and requires the fixed fusion recipe/code/environment lock.
+`load_admitted_cache`, or exhausts `iter_admitted_sequence` for the explicit
+sequence recipe, and checks its pose identity against the separately pinned
+current pose file. It requires the fixed fusion recipe/code/environment lock.
 An immutable owner binds request/cache/pose, worker/coordinator bytes and Python
 path. A nonblocking Linux file lock excludes a second cooperative writer.
 Foreign occupied directories reject before a lock file is created.
@@ -307,8 +346,13 @@ externally SHA-pinned bytes it parses, all embedded document hashes and the
 request → receipt/recipe → pose graph. Duplicate JSON keys, raw NUL, nesting above
 32, nonfinite values, unsupported semantics, trailing/truncated bytes and count
 aliasing reject. Fixed maxima are **256 MiB encoded**, **4 MiB metadata**,
-**16,777,216 voxels**, **4M vertices**, **8M triangles**, **18 views / 48M pixels**;
-caller limits may tighten them. The exact encoded length is checked before any
+**16,777,216 voxels**, **4M vertices**, **8M triangles**. Legacy receipts keep
+**18 views / 48M pixels**; the explicit sequence receipt/recipe pair permits
+**120 views**, with each contiguous child still limited to **18 views / 48M pixels**.
+Sequence admission checks canonical child names, pinned child identities, the
+complete partition, unique frames, contiguous manifest indices and root valid/
+unknown totals. Caller limits may tighten encoded/geometry counts.
+The exact encoded length is checked before any
 count-based allocation. Reads/hashing/voxel/mesh loops check cancellation.
 
 Epoch/revision must match the caller's context. Coverage retains every ordered
@@ -369,7 +413,12 @@ simplification decision**, changes no mesh and computes no cleaned-surface error
 Original-to-cleaned distances and an explicit error bound are required for the
 subsequent cleanup/simplification product. Walking stays disabled.
 
-Input counts are capped at the native interchange limits. Analysis additionally
+Input counts are capped at the native interchange limits. The admitted asset
+retains a derived complete sequence frame count for downstream analysis. Sequence
+observation counts may reach that inventory; original backend support keeps the
+native per-observation maximum of 1,000,000, independently of reference-view
+count. Legacy diagnostics retain their existing 18-view/support bounds.
+Analysis additionally
 caps reports at 65,536 components and reserves at most 128 MiB for its algorithm
 arrays/component records (`10 × vertices + reserved_components × sizeof(record)`;
 input arrays and JSON serialization are separate bounded allocations). Caller
@@ -448,7 +497,7 @@ build/dev/we_viewer --geometry-request FRESH_REQUEST.json --geometry-request-sha
 
 The visible product still has arbitrary scale, unknown gaps and walking disabled.
 The current nine-view slice does not complete a room or the M3 milestone. Full
-sequence scheduling/coverage, measured alignment/collision, cleanup/baking job
+sequence fresh-job orchestration, measured alignment/collision, cleanup/baking job
 stages and full quality/platform/rights gates remain separate.
 [Native/real evidence](../validation/2026-10-20-owned-dense.md) records cancellation,
 retained attempts, the complete fresh-depth chain and strict replay.

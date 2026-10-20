@@ -107,7 +107,8 @@ bool text_is(const Json& value, std::string_view expected) {
     return value.is_string() && value.get_ref<const Json::string_t&>() == expected;
 }
 
-void check_policy(const Json& manifest, const Json& recipe, const Json& receipt) {
+bool check_policy(const Json& manifest, const Json& recipe, const Json& receipt) {
+    const bool K_SEQUENCE { receipt.at("kind") == "POSE_ADMITTED_DEPTH_SEQUENCE_V1" };
     require(count(manifest, "schema_version", 1) == 1 &&
                 manifest.at("kind") == "PARTIAL_OBSERVED_TSDF_V1" &&
                 text_is(manifest.at("scope"), K_SCOPE) && text_is(manifest.at("units"), K_UNITS) &&
@@ -125,7 +126,8 @@ void check_policy(const Json& manifest, const Json& recipe, const Json& receipt)
                 manifest.at("radiance") == "NO_COLOR_OR_RELIGHTABLE_ALBEDO_PRODUCT",
             "Unsupported fusion semantics");
     require(count(recipe, "schema_version", 1) == 1 &&
-                recipe.at("kind") == "OBSERVED_TSDF_CPU_PILOT_V1" &&
+                recipe.at("kind") ==
+                    (K_SEQUENCE ? "OBSERVED_TSDF_CPU_SEQUENCE_V1" : "OBSERVED_TSDF_CPU_PILOT_V1") &&
                 text_is(recipe.at("units"), K_UNITS) && text_is(recipe.at("scope"), K_SCOPE) &&
                 text_is(recipe.at("free_space"), K_FREE) &&
                 recipe.at("weight") == "REFERENCE_CONFIDENCE_ONLY_NOT_PROBABILITY" &&
@@ -137,26 +139,63 @@ void check_policy(const Json& manifest, const Json& recipe, const Json& receipt)
                 recipe.at("reject_known_occlusion").is_boolean() &&
                 recipe.at("reject_known_occlusion") == true,
             "Unsupported fusion recipe");
-    require(count(receipt, "schema_version", 1) == 1 &&
-                receipt.at("kind") == "POSE_ADMITTED_DEPTH_VISIBILITY_V1" &&
+    require(count(receipt, "schema_version", 1) == 1, "Unsupported fusion input schema");
+    if (K_SEQUENCE) {
+        require(count(recipe, "max_scratch_bytes", 4uz * 1024uz * 1024uz * 1024uz) ==
+                        4uz * 1024uz * 1024uz * 1024uz &&
+                    digest_valid(receipt.at("input_manifest_sha256").get<std::string>()) &&
+                    digest_valid(receipt.at("depth_recipe_sha256").get<std::string>()),
+                "Unsupported fusion sequence scratch policy");
+        return true;
+    }
+    require(receipt.at("kind") == "POSE_ADMITTED_DEPTH_VISIBILITY_V1" &&
                 text_is(receipt.at("units"), K_UNITS) &&
                 receipt.at("depth_convention") == "AXIAL_CAMERA_Z" &&
                 receipt.at("pixel_centers") == "integer" &&
                 receipt.at("camera_axes") == "+x_right,+y_down,+z_forward" &&
                 receipt.at("confidence") == "RECIPE_DEFINED_RELATIVE_WEIGHT_NOT_PROBABILITY",
             "Unsupported fusion input receipt");
+    return false;
 }
 
-void check_coverage(const Json& manifest, const Json::array_t& frames) {
+void check_coverage(const Json& manifest, const Json& receipt, bool sequence) {
+    const auto& frames = receipt.at("frames").get_ref<const Json::array_t&>();
     const auto& coverage = manifest.at("coverage");
-    require(!frames.empty() && frames.size() <= 18uz && coverage.is_array() &&
+    require(!frames.empty() && frames.size() <= (sequence ? 120uz : 18uz) && coverage.is_array() &&
                 coverage.size() == frames.size(),
             "Incomplete fusion coverage inventory");
+    std::vector<std::size_t> batch_ends;
+    if (sequence) {
+        const auto& batches = receipt.at("batches");
+        require(batches.is_array() && !batches.empty() && batches.size() <= frames.size(),
+                "Invalid fusion sequence partition");
+        std::size_t start {};
+        for (std::size_t i { 0uz }; i < batches.size(); ++i) {
+            const auto& batch = batches[i];
+            const auto K_COUNT = count(batch, "frame_count", 18);
+            require(batch.size() == 4uz && K_COUNT > 0 &&
+                        count(batch, "first_manifest_index", frames.size()) == start &&
+                        K_COUNT <= frames.size() - start &&
+                        batch.at("cache") == "batch-" + std::to_string(i) &&
+                        digest_valid(batch.at("sha256").get<std::string>()),
+                    "Invalid fusion sequence child");
+            start += K_COUNT;
+            batch_ends.push_back(start);
+        }
+        require(start == frames.size(), "Incomplete fusion sequence partition");
+    } else {
+        batch_ends.push_back(frames.size());
+    }
     std::set<std::uint64_t> seen;
-    std::uint64_t total {}, positive_pixels {};
+    std::uint64_t total {}, positive_pixels {}, valid_pixels {}, batch_pixels {};
+    std::size_t batch_index {};
     for (std::size_t i { 0uz }; i < frames.size(); ++i) {
         const auto& frame = frames[i];
         const auto& row = coverage[i];
+        if (sequence) {
+            require(count(frame, "manifest_index", frames.size() - 1uz) == i,
+                    "Fusion sequence frame order differs");
+        }
         require(seen.insert(count(frame, "frame", UINT64_MAX)).second,
                 "Duplicate fusion input frame");
         const auto K_WIDTH = count(frame, "width", 4096);
@@ -164,7 +203,8 @@ void check_coverage(const Json& manifest, const Json::array_t& frames) {
         require(K_WIDTH && K_HEIGHT, "Empty fusion grid");
         const auto K_PIXELS = K_WIDTH * K_HEIGHT;
         total += K_PIXELS;
-        require(total <= 48000000 && count(row, "pixels", K_PIXELS) == K_PIXELS &&
+        batch_pixels += K_PIXELS;
+        require(batch_pixels <= 48000000 && count(row, "pixels", K_PIXELS) == K_PIXELS &&
                     frame.at("image") == "images/" + row.at("name").get<std::string>(),
                 "Fusion coverage grid or order differs");
         const auto K_VALID = count(row, "valid", K_PIXELS);
@@ -183,9 +223,19 @@ void check_coverage(const Json& manifest, const Json::array_t& frames) {
                      row.at("uncertainty") == "CAMERA_UNIT_STANDARD_DEVIATION"),
                 "Fusion coverage denominators differ");
         positive_pixels += K_VALID - K_ZERO;
+        valid_pixels += K_VALID;
+        if (i + 1uz == batch_ends[batch_index]) {
+            batch_pixels = 0;
+            ++batch_index;
+        }
     }
-    require(count(manifest, "extent_samples", 48000000) == positive_pixels,
+    require(count(manifest, "extent_samples", total) == positive_pixels,
             "Fusion extent denominator differs");
+    if (sequence) {
+        require(count(receipt, "valid_pixels", total) == valid_pixels &&
+                    count(receipt, "unknown_pixels", total) == total - valid_pixels,
+                "Fusion sequence coverage denominator differs");
+    }
 }
 
 }  // namespace
@@ -256,18 +306,17 @@ Result<ObservedFusionAsset> decode_fusion_asset(std::span<const std::byte> bytes
         const auto K_RECEIPT = document(asset.m_receipt_json);
         const auto K_RECIPE = document(K_RECIPE_TEXT);
         const auto K_REQUEST = document(K_REQUEST_TEXT);
-        require(
-            K_MANIFEST.at("request_sha256") == text_hash(K_REQUEST_TEXT) && K_REQUEST.is_object() &&
-                K_REQUEST.size() == 5uz && count(K_REQUEST, "schema_version", 1) == 1 &&
-                K_REQUEST.at("cache").is_string() && K_REQUEST.at("recipe").is_string() &&
-                K_REQUEST.at("receipt_sha256") == expected.m_receipt_sha256 &&
-                K_REQUEST.at("recipe_sha256") == expected.m_recipe_sha256 &&
-                K_MANIFEST.at("receipt_sha256") == expected.m_receipt_sha256 &&
-                K_MANIFEST.at("recipe_sha256") == expected.m_recipe_sha256 &&
-                K_MANIFEST.at("pose_asset_sha256") == expected.m_pose_sha256 &&
-                K_RECEIPT.at("pose_asset_sha256") == expected.m_pose_sha256 &&
-                K_RECEIPT.at("files").at("poses.weposes").at("sha256") == expected.m_pose_sha256,
-            "Fusion dependency graph differs");
+        require(K_MANIFEST.at("request_sha256") == text_hash(K_REQUEST_TEXT) &&
+                    K_REQUEST.is_object() && K_REQUEST.size() == 5uz &&
+                    count(K_REQUEST, "schema_version", 1) == 1 &&
+                    K_REQUEST.at("cache").is_string() && K_REQUEST.at("recipe").is_string() &&
+                    K_REQUEST.at("receipt_sha256") == expected.m_receipt_sha256 &&
+                    K_REQUEST.at("recipe_sha256") == expected.m_recipe_sha256 &&
+                    K_MANIFEST.at("receipt_sha256") == expected.m_receipt_sha256 &&
+                    K_MANIFEST.at("recipe_sha256") == expected.m_recipe_sha256 &&
+                    K_MANIFEST.at("pose_asset_sha256") == expected.m_pose_sha256 &&
+                    K_RECEIPT.at("pose_asset_sha256") == expected.m_pose_sha256,
+                "Fusion dependency graph differs");
         if (count(K_MANIFEST, "world_epoch", UINT64_MAX) != expected.m_epoch.m_value ||
             count(K_RECEIPT, "world_epoch", UINT64_MAX) != expected.m_epoch.m_value) {
             return fail(ErrorCode::WRONG_EPOCH, "Fusion pose epoch differs");
@@ -277,8 +326,16 @@ Result<ObservedFusionAsset> decode_fusion_asset(std::span<const std::byte> bytes
             count(K_RECEIPT, "pose_revision", UINT64_MAX) != expected.m_pose_revision.m_value) {
             return fail(ErrorCode::WRONG_BASE, "Fusion pose revision differs");
         }
-        check_policy(K_MANIFEST, K_RECIPE, K_RECEIPT);
-        check_coverage(K_MANIFEST, K_RECEIPT.at("frames").get_ref<const Json::array_t&>());
+        const bool K_SEQUENCE { check_policy(K_MANIFEST, K_RECIPE, K_RECEIPT) };
+        if (!K_SEQUENCE) {
+            require(K_RECEIPT.at("files").at("poses.weposes").at("sha256") ==
+                        expected.m_pose_sha256,
+                    "Fusion source pose file differs");
+        }
+        check_coverage(K_MANIFEST, K_RECEIPT, K_SEQUENCE);
+        if (K_SEQUENCE) {
+            asset.m_admitted_sequence_frames = K_RECEIPT.at("frames").size();
+        }
         asset.m_extent = positive(K_MANIFEST, "extent");
         asset.m_voxel_size = positive(K_MANIFEST, "voxel_size");
         asset.m_truncation = positive(K_MANIFEST, "truncation");

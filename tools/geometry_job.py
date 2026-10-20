@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "workers" / "fusion"))
 sys.path.insert(0, str(ROOT / "workers" / "dense"))
 
-from admitted_visibility import load_admitted_cache
+from admitted_visibility import iter_admitted_sequence, load_admitted_cache
 from cached_sources import checked_path
 from contract import load_request
 from pilot import digest, parse, publish, read_pinned
@@ -150,7 +150,7 @@ def execute(args):
     request = Path(args.request).resolve(strict=True)
     pose = Path(args.pose).resolve(strict=True)
     job = Path(args.job).absolute()
-    request_data, _, cache, _ = load_request(
+    request_data, recipe, cache, _ = load_request(
         request, checked_digest(args.request_sha256)
     )
     pose_sha = checked_digest(args.pose_sha256)
@@ -165,7 +165,20 @@ def execute(args):
     ]
     check_overlap(job, inputs)
     # The full admitted reader hashes and validates every retained source plane.
-    _, receipt = load_admitted_cache(cache, request_data["receipt_sha256"], cancelled)
+    if recipe["kind"] == "OBSERVED_TSDF_CPU_SEQUENCE_V1":
+        receipt = parse(
+            read_pinned(
+                cache / "manifest.json", request_data["receipt_sha256"], MAX_DOCUMENT
+            )
+        )
+        for views, _ in iter_admitted_sequence(
+            cache, request_data["receipt_sha256"], cancelled
+        ):
+            del views
+    else:
+        _, receipt = load_admitted_cache(
+            cache, request_data["receipt_sha256"], cancelled
+        )
     if receipt["pose_asset_sha256"] != pose_sha:
         raise ValueError("Current pose pin differs from retained visibility cache")
     read_pinned(pose, pose_sha, MAX_ASSET)

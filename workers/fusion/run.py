@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 import time
@@ -21,7 +22,7 @@ __all__ = [
 
 
 def execute(args, cancelled):
-    from admitted_visibility import load_admitted_cache
+    from admitted_visibility import iter_admitted_sequence, load_admitted_cache
     from geometry import (
         robust_extent,
         consistent_masks,
@@ -40,10 +41,52 @@ def execute(args, cancelled):
         if importlib.metadata.version(name) != version:
             raise ValueError("Fusion environment version differs: " + name)
     output = new_output(Path(args.output), inputs)
-    views, receipt = load_admitted_cache(cache, request["receipt_sha256"], cancelled)
-    extent, bounds, samples = robust_extent(views, cancelled)
+    sequence = None
+    if recipe["kind"] == "OBSERVED_TSDF_CPU_SEQUENCE_V1":
+        from contract import read_pinned
+        from sequence import StagedSequence
+
+        receipt = parse(
+            read_pinned(cache / "manifest.json", request["receipt_sha256"], 1024**2)
+        )
+        output.mkdir(parents=True, exist_ok=False)
+        sequence = StagedSequence(output / "scratch", recipe, cancelled)
+        sequence.stage(
+            iter_admitted_sequence(cache, request["receipt_sha256"], cancelled)
+        )
+        print(
+            json.dumps(
+                {
+                    "phase": "staged",
+                    "frames": len(sequence.records),
+                    "reserved_scratch_bytes": sequence.reserved_bytes,
+                }
+            ),
+            flush=True,
+        )
+        extent, bounds, samples = sequence.extent()
+        print(
+            json.dumps(
+                {
+                    "phase": "extent",
+                    "extent": extent,
+                    "bounds": bounds,
+                    "samples": samples,
+                }
+            ),
+            flush=True,
+        )
+        coverage = sequence.filter(
+            lambda row: print(json.dumps({"phase": "filtered_view", **row}), flush=True)
+        )
+        views, masks = None, None
+    else:
+        views, receipt = load_admitted_cache(
+            cache, request["receipt_sha256"], cancelled
+        )
+        extent, bounds, samples = robust_extent(views, cancelled)
+        masks, coverage = consistent_masks(views, recipe, cancelled)
     voxel_size = extent / recipe["voxel_divisor"]
-    masks, coverage = consistent_masks(views, recipe, cancelled)
     print(
         json.dumps(
             {
@@ -55,7 +98,14 @@ def execute(args, cancelled):
         ),
         flush=True,
     )
-    grid, indices, blocks = integrate(views, masks, voxel_size, recipe, cancelled)
+    grid, indices, blocks = integrate(
+        views,
+        masks,
+        voxel_size,
+        recipe,
+        cancelled,
+        pairs=sequence.pairs if sequence is not None else None,
+    )
     arrays = observed_arrays(grid, indices, voxel_size, recipe, cancelled)
     check_cancel(cancelled)
     mesh = grid.extract_triangle_mesh(weight_threshold=1e-6)
@@ -74,7 +124,8 @@ def execute(args, cancelled):
         raise ValueError("Invalid extracted mesh")
     # No hole filling, topology repair, connected-component removal or simplification.
     # Raw extraction is explicitly partial; later qualification owns those policies.
-    output.mkdir(parents=True, exist_ok=False)
+    if sequence is None:
+        output.mkdir(parents=True, exist_ok=False)
     artifacts = {}
     if (
         sum(array.nbytes for array in arrays.values())
@@ -114,7 +165,9 @@ def execute(args, cancelled):
         "pose_asset_sha256": receipt["pose_asset_sha256"],
         "world_epoch": receipt["world_epoch"],
         "pose_revision": receipt["pose_revision"],
-        "units": receipt["units"],
+        "units": (
+            "ARBITRARY_POSE_CAMERA_UNITS" if sequence is not None else receipt["units"]
+        ),
         "world_axes": "RIGHT_HANDED_Y_UP",
         "depth_convention": "AXIAL_CAMERA_Z",
         "extent_bounds_p01_p99": bounds,
@@ -140,6 +193,12 @@ def execute(args, cancelled):
         "radiance": "NO_COLOR_OR_RELIGHTABLE_ALBEDO_PRODUCT",
         "mesh_policy": "RAW_WEIGHT_SUPPORTED_EXTRACTION; NO_FILL_OR_SIMPLIFICATION",
     }
+    # Successful scratch has no published meaning. Remove only this new owned
+    # workspace before committing; failed/cancelled attempts keep their scratch.
+    if sequence is not None:
+        check_cancel(cancelled)
+        shutil.rmtree(sequence.directory)
+        check_cancel(cancelled)
     # Only the successful supervisor may publish the consumable terminal receipt.
     publish(
         output / "result.pending.json",
