@@ -79,6 +79,10 @@ std::string RendererUpdateSink::fingerprint(const SceneState& scene) const {
         const auto K_CHUNK_HASH = chunk_fingerprint(K_CHUNK);
         hash.update(std::as_bytes(std::span(K_CHUNK_HASH.data(), K_CHUNK_HASH.size())));
     }
+    if (scene.m_world_frame) {
+        add_u64(hash, 0x5745584652414d45ULL);
+        add_string(hash, scene.m_world_frame->m_document_json);
+    }
     return hash.finish();
 }
 

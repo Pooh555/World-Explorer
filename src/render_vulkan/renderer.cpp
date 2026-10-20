@@ -7,6 +7,7 @@
 #include "world_explorer/render_core/radix.hpp"
 #include "world_explorer/render_core/sh_packing.hpp"
 #include "world_explorer/render_core/tile_plan.hpp"
+#include "world_explorer/scene_store/world_frame.hpp"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -614,7 +615,11 @@ struct VulkanRenderer::Implementation {
                      false,
                      staging.allocation_bytes);
         std::map<ChunkId, std::size_t> resident_offsets;
-        if (m_options.m_reuse_resident_chunks && m_visible_scene && origin == m_scene_origin) {
+        if (m_options.m_reuse_resident_chunks && m_visible_scene && origin == m_scene_origin &&
+            snapshot->m_epoch == m_visible_scene->m_epoch &&
+            snapshot->m_world_frame.has_value() == m_visible_scene->m_world_frame.has_value() &&
+            (!snapshot->m_world_frame || snapshot->m_world_frame->m_document_sha256 ==
+                                             m_visible_scene->m_world_frame->m_document_sha256)) {
             std::size_t offset = 0;
             for (const auto& [K_ID, K_CHUNK] : m_visible_scene->m_chunks) {
                 resident_offsets.emplace(K_ID, offset);
@@ -637,11 +642,11 @@ struct VulkanRenderer::Implementation {
                 continue;
             }
             regions.push_back({ index * K_STRIDE, index * K_STRIDE, K_CHUNK_BYTES, false });
-            const auto& transform = K_CHUNK->m_world_from_chunk;
+            const auto K_TRANSFORM = scene_world_from_chunk(*snapshot, *K_CHUNK);
             for (const auto& source : K_CHUNK->m_splats) {
                 gpu_splat target {};
                 const auto K_POINT =
-                    transform_point(transform,
+                    transform_point(K_TRANSFORM,
                                     { source.m_mean[0], source.m_mean[1], source.m_mean[2] }) -
                     origin;
                 if (std::abs(K_POINT.m_x) > 1e7 || std::abs(K_POINT.m_y) > 1e7 ||
@@ -651,19 +656,19 @@ struct VulkanRenderer::Implementation {
                 }
                 target.mean_opacity = floats(K_POINT);
                 target.mean_opacity[3] = source.m_opacity;
-                target.scale_degree = { static_cast<float>(source.m_scale[0] * transform.m_scale),
-                                       static_cast<float>(source.m_scale[1] * transform.m_scale),
-                                       static_cast<float>(source.m_scale[2] * transform.m_scale),
+                target.scale_degree = { static_cast<float>(source.m_scale[0] * K_TRANSFORM.m_scale),
+                                       static_cast<float>(source.m_scale[1] * K_TRANSFORM.m_scale),
+                                       static_cast<float>(source.m_scale[2] * K_TRANSFORM.m_scale),
                                        static_cast<float>(source.m_sh_degree) };
-                target.rotation = floats(multiply(transform.m_rotation,
+                target.rotation = floats(multiply(K_TRANSFORM.m_rotation,
                                                   { source.m_rotation[0],
                                                    source.m_rotation[1],
                                                    source.m_rotation[2],
                                                    source.m_rotation[3] }));
-                target.world_to_sh = floats(Quatd { transform.m_rotation.m_w,
-                                                   -transform.m_rotation.m_x,
-                                                   -transform.m_rotation.m_y,
-                                                   -transform.m_rotation.m_z });
+                target.world_to_sh = floats(Quatd { K_TRANSFORM.m_rotation.m_w,
+                                                   -K_TRANSFORM.m_rotation.m_x,
+                                                   -K_TRANSFORM.m_rotation.m_y,
+                                                   -K_TRANSFORM.m_rotation.m_z });
                 target.sh = source.m_sh;
                 if (m_options.m_splat_storage == GpuSplatStorage::FP32) {
                     std::memcpy(destination + index * K_STRIDE, &target, sizeof(target));
@@ -690,11 +695,11 @@ struct VulkanRenderer::Implementation {
             }
             const auto& mesh = *K_CHUNK->m_mesh;
             const auto K_BASE_VERTEX = vertex_index;
-            const auto& transform = K_CHUNK->m_world_from_chunk;
+            const auto K_TRANSFORM = scene_world_from_chunk(*snapshot, *K_CHUNK);
             const auto K_WRITE_VERTEX = [&](const FusionVertex& source, std::array<float, 2> uv) {
                 const auto K_POSITION =
                     transform_point(
-                        transform,
+                        K_TRANSFORM,
                         { source.m_position[0], source.m_position[1], source.m_position[2] }) -
                     origin;
                 if (std::abs(K_POSITION.m_x) > 1e7 || std::abs(K_POSITION.m_y) > 1e7 ||
@@ -702,7 +707,7 @@ struct VulkanRenderer::Implementation {
                     throw std::runtime_error("Mesh exceeds camera-local float extent");
                 }
                 const auto K_NORMAL =
-                    rotate(transform.m_rotation,
+                    rotate(K_TRANSFORM.m_rotation,
                            { source.m_normal[0], source.m_normal[1], source.m_normal[2] });
                 MeshGpuVertex target { { static_cast<float>(K_POSITION.m_x),
                                        static_cast<float>(K_POSITION.m_y),

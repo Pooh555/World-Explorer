@@ -149,3 +149,7 @@ commands check cancellation before publication; publication failure/cancellation
 can leave an incomplete new directory. Consume exports only with a complete
 manifest. Old files/readers remain unchanged. Production job checkpoint/resume,
 kill/crash qualification and general engine import remain open.
+
+Scene-level [world-frame alignment](world_frame.md) is outside both captured GLB
+profiles. Aligned native bundles are rejected rather than losing their frame or
+synthetic/measurement declaration during export.

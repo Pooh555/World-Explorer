@@ -19,6 +19,17 @@ struct SceneImportRequest {
 
 Result<void> compile_splat_scene(const SceneImportRequest& request);
 
+// Explicit local measurement declaration; publishes a separate native bundle.
+// The bounded document pins source content/epoch/revision. No walking is enabled.
+struct WorldAlignmentRequest {
+    std::filesystem::path m_source, m_document;
+    std::string m_document_sha256;
+    std::filesystem::path m_destination;
+};
+
+Result<void> align_world_scene(const WorldAlignmentRequest& request,
+                               const std::stop_token& stop = {});
+
 // Validates a local fit completion manifest and binds the immutable PLY checksum
 // and reconstruction provenance to the resulting scene. It grants no quality certification.
 struct FitPoseDependency {

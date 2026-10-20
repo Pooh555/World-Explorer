@@ -153,7 +153,8 @@ bool baked(const SceneState& scene) {
             complete = false;
         }
     }
-    require(!scene.m_chunks.empty() && scene.m_scale == ScaleStatus::ARBITRARY,
+    require(!scene.m_world_frame && !scene.m_chunks.empty() &&
+                scene.m_scale == ScaleStatus::ARBITRARY,
             "Mesh job requires nonempty arbitrary-scale geometry");
     require(!any || complete, "Mesh job cannot implicitly replace partially baked scenes");
     return complete;

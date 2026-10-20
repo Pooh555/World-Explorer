@@ -1,10 +1,12 @@
 #include "world_explorer/application/fusion_scene.hpp"
 #include "world_explorer/application/scenes.hpp"
+#include "world_explorer/core/hash.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
 #include "world_explorer/scene_store/gltf.hpp"
 #include "world_explorer/scene_store/mesh_texture.hpp"
 #include "world_explorer/scene_store/scene_store.hpp"
+#include "world_explorer/scene_store/world_frame.hpp"
 
 #include <SDL3/SDL.h>
 #include <nlohmann/json.hpp>
@@ -414,6 +416,94 @@ int main(int argc, char** argv) {
         K_VISIBLE(K_ENQUEUE(store.acquire_snapshot()));
         require(K_CAPTURE("texture-invalidated.ppm") == K_INVALIDATED,
                 "Stale texture remained visible");
+        // A scene-level Sim(3) retains the exact native bake and Gaussian inputs.
+        // The camera follows the same transform; captured color and local SH must agree.
+        auto frame_source = std::make_shared<SceneState>();
+        frame_source->m_id = { 19 };
+        frame_source->m_epoch = { 3 };
+        frame_source->m_revision = { 1 };
+        frame_source->m_provenance = { { "source_kind", "synthetic_diagnostic" } };
+        frame_source->m_chunks[{ 1 }] = texture_fixture(1);
+        auto splat_chunk =
+            std::make_shared<SceneChunk>(*make_diagnostic_scene()->m_chunks.begin()->second);
+        splat_chunk->m_id = { 2 };
+        frame_source->m_chunks[{ 2 }] = splat_chunk;
+        const auto K_ANCHOR = [](std::array<double, 3uz> weights) {
+            return nlohmann::json { { "chunk_id", 1U }, { "triangle", 0U }, { "barycentric", weights } };
+        };
+        const auto& vertices = mesh_of(*frame_source->m_chunks.at({ 1 })).m_vertices;
+        const double K_DISTANCE { 2 * (static_cast<double>(vertices[1uz].m_position[0uz]) -
+                                      vertices[0uz].m_position[0uz]) };
+        const nlohmann::json K_DECLARATION { { "schema", "WORLD_FRAME_ALIGNMENT_V1" },
+                                            { "source_sha256", scene_content_hash(*frame_source) },
+                                            { "source_epoch", 3U },
+                                            { "source_revision", 1U },
+                                            { "evidence_kind", "SYNTHETIC_DIAGNOSTIC" },
+                                            { "distance",
+                                             { { "a", K_ANCHOR({ 1, 0, 0 }) },
+                                              { "b", K_ANCHOR({ 0, 1, 0 }) },
+                                              { "metres", K_DISTANCE },
+                                              { "uncertainty_metres", .01 },
+                                              { "method", "SYNTHETIC" },
+                                              { "record", "Synthetic analytic distance" } } },
+                                            { "up",
+                                             { { "direction", { 0, 0, 1 } },
+                                              { "uncertainty_degrees", .1 },
+                                              { "method", "SYNTHETIC" },
+                                              { "record", "Synthetic analytic up" } } },
+                                            { "origin", K_ANCHOR({ 1, 0, 0 }) } };
+        const auto K_DECLARATION_TEXT = K_DECLARATION.dump(2);
+        const auto K_FRAME =
+            admit_world_frame(*frame_source,
+                              K_DECLARATION_TEXT,
+                              sha256(std::as_bytes(std::span(K_DECLARATION_TEXT))));
+        require(K_FRAME.has_value(), K_FRAME ? "" : K_FRAME.error().m_message);
+        auto aligned = std::make_shared<SceneState>(*frame_source);
+        aligned->m_world_frame = *K_FRAME;
+        ++aligned->m_epoch.m_value;
+        ++aligned->m_revision.m_value;
+        require(write_bundle(K_OUTPUT / "world-frame-source", frame_source).has_value(),
+                "Frame source save failed");
+        require(write_bundle(K_OUTPUT / "world-frame-aligned", aligned).has_value(),
+                "Frame result save failed");
+        std::ofstream(K_OUTPUT / "world-frame-measurement.json") << K_DECLARATION_TEXT;
+        const CameraView K_SOURCE_CAMERA {
+            { 0, 0, 4 },
+            { 1, 0, 0 },
+            { 0, -1, 0 },
+            { 0, 0, -1 },
+            1.0471975511965976,
+            .01F,
+            100000.F,
+            CalibratedProjection { { 320, 320, 319.5, 239.5 }, 640, 480 } };
+        CameraView aligned_camera = K_SOURCE_CAMERA;
+        const auto& transform = K_FRAME->m_world_from_source;
+        aligned_camera.m_position = transform_point(transform, K_SOURCE_CAMERA.m_position);
+        aligned_camera.m_right = rotate(transform.m_rotation, K_SOURCE_CAMERA.m_right);
+        aligned_camera.m_down = rotate(transform.m_rotation, K_SOURCE_CAMERA.m_down);
+        aligned_camera.m_forward = rotate(transform.m_rotation, K_SOURCE_CAMERA.m_forward);
+        std::size_t frame_maximum_difference {};
+        for (auto mode :
+             { SceneRepresentation::BAKED_APPEARANCE, SceneRepresentation::CAPTURED_APPEARANCE }) {
+            representation = mode;
+            camera = K_SOURCE_CAMERA;
+            K_VISIBLE(K_ENQUEUE(frame_source));
+            const auto K_BEFORE = K_CAPTURE(mode == SceneRepresentation::BAKED_APPEARANCE
+                                                ? "frame-source-baked.ppm"
+                                                : "frame-source-splats.ppm");
+            camera = aligned_camera;
+            K_VISIBLE(K_ENQUEUE(aligned));
+            const auto K_AFTER = K_CAPTURE(mode == SceneRepresentation::BAKED_APPEARANCE
+                                               ? "frame-aligned-baked.ppm"
+                                               : "frame-aligned-splats.ppm");
+            for (std::size_t i { 0uz }; i < K_BEFORE.size(); ++i) {
+                frame_maximum_difference = std::max(
+                    frame_maximum_difference,
+                    static_cast<std::size_t>(std::abs(static_cast<int>(K_BEFORE[i]) - K_AFTER[i])));
+            }
+        }
+        require(frame_maximum_difference <= 1uz,
+                "World-frame texture/covariance/SH or resident reuse differs");
         representation = SceneRepresentation::OBSERVED_MESH;
         std::size_t real_vertices {}, real_triangles {};
         if (argc >= 3) {
@@ -447,6 +537,8 @@ int main(int argc, char** argv) {
                                      { "frames", K_STATS.m_submitted_frames },
                                      { "validation_errors", K_STATS.m_validation_errors },
                                      { "allocated_bytes", K_STATS.m_allocated_bytes },
+                                     { "world_frame_maximum_rgb8_difference",
+                                      frame_maximum_difference },
                                      { "real_vertices", real_vertices },
                                      { "real_triangles", real_triangles } }
                          .dump(2)

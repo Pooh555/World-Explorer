@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace world_explorer {
@@ -71,6 +72,16 @@ struct SceneChunk {
     std::vector<FrameId> m_source_frames;
 };
 
+// A checked declaration, not independent verification of physical measurements.
+// Original chunk/appearance bytes stay in their source coordinate frame.
+struct WorldFrameAlignment {
+    WorldEpoch m_source_epoch;
+    SceneRevisionId m_source_revision;
+    SimilarityTransform m_world_from_source;
+    bool m_synthetic {};
+    std::string m_document_json, m_document_sha256;
+};
+
 struct SceneState {
     SceneId m_id;
     WorldEpoch m_epoch;
@@ -78,6 +89,7 @@ struct SceneState {
     ScaleStatus m_scale { ScaleStatus::ARBITRARY };
     std::map<std::string, std::string> m_provenance;
     std::map<ChunkId, std::shared_ptr<const SceneChunk>> m_chunks;
+    std::optional<WorldFrameAlignment> m_world_frame {};
 };
 
 using SceneSnapshot = std::shared_ptr<const SceneState>;
@@ -103,6 +115,8 @@ struct SceneTransaction {
     SceneRevisionId m_base_revision, m_new_revision;
     OperationId m_operation;
     std::vector<SceneOperation> m_changes;
+    // Exclusive with chunk changes. Epoch and revision advance together.
+    std::optional<WorldFrameAlignment> m_world_frame {};
 };
 
 // A full resync is explicitly marked. Otherwise base_revision must match the

@@ -1,5 +1,7 @@
 #include "world_explorer/application/scenes.hpp"
 
+#include "world_explorer/scene_store/world_frame.hpp"
+
 #include <algorithm>
 #include <limits>
 
@@ -39,7 +41,7 @@ Bounds3d world_bounds(const SceneState& scene) {
         for (unsigned corner { 0 }; corner < 8; ++corner) {
             const auto& bounds = K_CHUNK->m_bounds;
             const auto K_POINT = transform_point(
-                K_CHUNK->m_world_from_chunk,
+                scene_world_from_chunk(scene, *K_CHUNK),
                 { (corner & 1u) != 0u ? bounds.m_maximum.m_x : bounds.m_minimum.m_x,
                  (corner & 2u) != 0u ? bounds.m_maximum.m_y : bounds.m_minimum.m_y,
                  (corner & 4u) != 0u ? bounds.m_maximum.m_z : bounds.m_minimum.m_z });

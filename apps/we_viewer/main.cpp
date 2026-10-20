@@ -5,6 +5,7 @@
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/navigation/fly_camera.hpp"
 #include "world_explorer/render_vulkan/renderer.hpp"
+#include "world_explorer/scene_store/world_frame.hpp"
 #if defined(WE_VULKAN_TEST_FAULTS)
 #include "renderer_faults.hpp"
 #endif
@@ -595,11 +596,12 @@ int viewer_main(int argc, char** argv) {
                         representation = SceneRepresentation::CAPTURED_APPEARANCE;
                     }
                     if (representation == SceneRepresentation::BAKED_APPEARANCE) {
-                        ImGui::TextWrapped("Captured unlit color. Unknown texels are masked. Not "
-                                           "albedo; no measured scale or collision.");
+                        ImGui::TextWrapped(
+                            "Captured unlit color. Unknown texels are masked. Not "
+                            "relightable albedo. Surface accuracy and collision unverified.");
                     } else {
                         ImGui::TextWrapped("Normals diagnostic. Partial surfaces; gaps are "
-                                           "unknown. No collision or measured scale.");
+                                           "unknown. Surface accuracy and collision unverified.");
                     }
                     if (has_portable && representation == SceneRepresentation::BAKED_APPEARANCE) {
                         ImGui::TextWrapped(
@@ -618,13 +620,13 @@ int viewer_main(int argc, char** argv) {
                 ImGui::Text("Revision %llu",
                             static_cast<unsigned long long>(current->m_revision.m_value));
                 ImGui::Text("Chunks: %zu", current->m_chunks.size());
-                ImGui::TextWrapped("Scale: %s",
-                                   current->m_scale == ScaleStatus::ARBITRARY
-                                       ? "arbitrary (not measured)"
-                                       : "measured metric");
-                ImGui::TextWrapped("View up: %s (gravity unmeasured)",
-                                   camera.m_up_axis == Vec3d { 0, 1, 0 } ? "world axis"
-                                                                       : "capture orientation");
+                const auto K_FRAME_LABEL = world_frame_label(*current);
+                ImGui::TextWrapped(
+                    "Scale/up: %.*s", static_cast<int>(K_FRAME_LABEL.size()), K_FRAME_LABEL.data());
+                ImGui::TextWrapped(
+                    current->m_world_frame
+                        ? "Alignment changes the world frame; collision remains unavailable."
+                        : "View up is a presentation reference; gravity unmeasured.");
                 ImGui::TextWrapped("Coverage outside captured surfaces is unknown.");
                 if (ImGui::Button("Save bookmark")) {
                     bookmark = SavedView { { current->m_id, current->m_epoch, camera }, camera_fov };
@@ -1040,7 +1042,10 @@ int viewer_main(int argc, char** argv) {
             } else if (K_PROGRESS && K_PROGRESS->m_state == UpdateState::RENDER_VISIBLE) {
                 std::lock_guard lock(state.mutex);
                 state.status =
-                    is_synthetic_scene(current) ? "Ready: synthetic diagnostic fixture."
+                    current && current->m_world_frame
+                        ? "World frame: " + std::string(world_frame_label(*current)) +
+                              ". Walking unavailable."
+                    : is_synthetic_scene(current) ? "Ready: synthetic diagnostic fixture."
                     : representation == SceneRepresentation::BAKED_APPEARANCE
                         ? "Baked captured color ready. Unknown texels masked; walking unavailable."
                     : representation == SceneRepresentation::OBSERVED_MESH

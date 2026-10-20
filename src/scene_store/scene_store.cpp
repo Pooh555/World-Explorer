@@ -1,5 +1,7 @@
 #include "world_explorer/scene_store/scene_store.hpp"
 
+#include "world_explorer/scene_store/world_frame.hpp"
+
 #include <bit>
 #include <limits>
 #include <set>
@@ -82,6 +84,17 @@ std::uint64_t fingerprint(const SceneTransaction& transaction) {
             }
         }
     }
+    if (transaction.m_world_frame) {
+        K_ADD(0x5745584652414d45ULL);
+        const auto& frame = *transaction.m_world_frame;
+        K_ADD(frame.m_source_epoch.m_value);
+        K_ADD(frame.m_source_revision.m_value);
+        K_ADD(frame.m_synthetic);
+        K_TRANSFORM(frame.m_world_from_source);
+        for (char value : frame.m_document_json + frame.m_document_sha256) {
+            K_ADD(static_cast<unsigned char>(value));
+        }
+    }
     return hash;
 }
 
@@ -117,6 +130,12 @@ Result<SceneRevisionId> SceneStore::commit(const SceneTransaction& transaction) 
             }
         }
     }
+    if (transaction.m_world_frame &&
+        (transaction.m_world_frame->m_document_json.size() > K_WORLD_FRAME_DOCUMENT_BYTES ||
+         transaction.m_world_frame->m_document_sha256.size() != 64uz ||
+         !transaction.m_changes.empty())) {
+        return fail(ErrorCode::INVALID_DATA, "Alignment must be a bounded exclusive operation");
+    }
     const auto K_DIGEST = fingerprint(transaction);
     for (const auto& prior : m_operations) {
         if (prior.m_operation == transaction.m_operation) {
@@ -140,7 +159,20 @@ Result<SceneRevisionId> SceneStore::commit(const SceneTransaction& transaction) 
         transaction.m_new_revision.m_value != transaction.m_base_revision.m_value + 1) {
         return fail(ErrorCode::INVALID_ARGUMENT, "transaction must advance exactly one revision");
     }
+    if (m_current->m_world_frame) {
+        return fail(ErrorCode::RESYNC_REQUIRED,
+                    "Aligned source is immutable; corrections require a newer full snapshot");
+    }
     auto next = std::make_shared<SceneState>(*m_current);
+    if (transaction.m_world_frame) {
+        if (next->m_epoch.m_value == std::numeric_limits<std::uint64_t>::max()) {
+            return fail(ErrorCode::RESOURCE_EXHAUSTED, "World epoch exhausted");
+        }
+        next->m_world_frame = transaction.m_world_frame;
+        next->m_scale = transaction.m_world_frame->m_synthetic ? ScaleStatus::ARBITRARY
+                                                               : ScaleStatus::METRIC_MEASURED;
+        ++next->m_epoch.m_value;
+    }
     std::set<ChunkId> changed;
     for (const auto& change : transaction.m_changes) {
         if (!changed.insert(change.m_id).second) {
@@ -202,6 +234,9 @@ Result<SceneRevisionId> SceneStore::commit(const SceneTransaction& transaction) 
     } catch (...) {
         m_operations.pop_back();
         throw;
+    }
+    if (transaction.m_world_frame) {
+        m_journal.clear();
     }
     m_current = std::move(next);
     while (m_operations.size() > m_limits.m_remembered_operations) {

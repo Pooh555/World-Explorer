@@ -1,6 +1,7 @@
 #include "world_explorer/scene_store/bundle.hpp"
 
 #include "world_explorer/core/hash.hpp"
+#include "world_explorer/scene_store/world_frame.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -679,6 +680,15 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
                 K_SEQUENCE ? "WEXCHK04/WEXMSH01/WEXMAT02" : "WEXCHK03/WEXMSH01/WEXMAT01";
             manifest["geometry"]["lighting"] = "captured_unlit";
         }
+        if (snapshot->m_world_frame) {
+            const auto& frame = *snapshot->m_world_frame;
+            const auto K_NAME = "world_frame_" + frame.m_document_sha256 + ".json";
+            write_atomic(asset_path(directory, K_NAME), as_bytes(frame.m_document_json));
+            manifest["payload_schema_version"] = manifest.at("schema_version");
+            manifest["schema_version"] = 5;
+            manifest["world_frame"] = K_NAME;
+            manifest["world_frame_sha256"] = frame.m_document_sha256;
+        }
         const auto K_TEXT = manifest.dump(2);
         write_atomic(asset_path(directory, "manifest.json"), as_bytes(K_TEXT));
         return {};
@@ -694,9 +704,18 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
         const auto K_BYTES =
             read_file(asset_path(directory, "manifest.json"), limits.m_max_manifest_bytes);
         const auto K_MANIFEST = parse_json(K_BYTES);
-        const auto K_SCHEMA = unsigned_field(K_MANIFEST, "schema_version");
-        if (K_SCHEMA != 1 && K_SCHEMA != 2 && K_SCHEMA != 3 && K_SCHEMA != 4) {
+        const auto K_ROOT_SCHEMA = unsigned_field(K_MANIFEST, "schema_version");
+        if (K_ROOT_SCHEMA < 1 || K_ROOT_SCHEMA > 5) {
             return fail(ErrorCode::UNSUPPORTED_OPERATION, "unsupported scene schema major version");
+        }
+        const auto K_SCHEMA = K_ROOT_SCHEMA == 5
+                                  ? unsigned_field(K_MANIFEST, "payload_schema_version")
+                                  : K_ROOT_SCHEMA;
+        if (K_SCHEMA < 1 || K_SCHEMA > 4 ||
+            (K_ROOT_SCHEMA != 5 &&
+             (K_MANIFEST.contains("world_frame") || K_MANIFEST.contains("world_frame_sha256") ||
+              K_MANIFEST.contains("payload_schema_version")))) {
+            throw std::runtime_error("Invalid world-frame/payload schema combination");
         }
         if (K_SCHEMA >= 2) {
             const auto& geometry = K_MANIFEST.at("geometry");
@@ -825,6 +844,25 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
         }
         if (index.m_position != index.m_bytes.size()) {
             throw std::runtime_error("trailing index bytes");
+        }
+        if (K_ROOT_SCHEMA == 5) {
+            const auto K_FRAME_BYTES =
+                read_file(asset_path(directory, K_MANIFEST.at("world_frame").get<std::string>()),
+                          K_WORLD_FRAME_DOCUMENT_BYTES);
+            const auto K_FRAME_JSON = parse_json(K_FRAME_BYTES);
+            auto source = *state;
+            source.m_epoch = { unsigned_field(K_FRAME_JSON, "source_epoch") };
+            source.m_revision = { unsigned_field(K_FRAME_JSON, "source_revision") };
+            source.m_scale = ScaleStatus::ARBITRARY;
+            const auto K_FRAME = admit_world_frame(
+                source,
+                std::string_view(reinterpret_cast<const char*>(K_FRAME_BYTES.data()),
+                                 K_FRAME_BYTES.size()),
+                K_MANIFEST.at("world_frame_sha256").get<std::string>());
+            if (!K_FRAME) {
+                return std::unexpected(K_FRAME.error());
+            }
+            state->m_world_frame = *K_FRAME;
         }
         auto checked = validate_scene(*state, limits.m_scene);
         if (!checked) {

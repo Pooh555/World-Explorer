@@ -73,6 +73,8 @@ int main(int argc, char** argv) {
                    "  we_process run-geometry REQUEST.json SHA256 NEW_PIPELINE_JOB\n"
                    "  we_process audit-mesh-colors REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process bake-mesh-colors REQUEST.json SHA256 NEW_SCENE.wexplore\n"
+                   "  we_process align-world SOURCE.wexplore MEASUREMENT.json SHA256 "
+                   "NEW_SCENE.wexplore\n"
                    "  we_process inspect-baked SCENE.wexplore\n"
                    "  we_process export-glb SCENE.wexplore NEW_DIRECTORY\n"
                    "  we_process import-glb FILE.glb SHA256 NEW_SCENE.wexplore\n"
@@ -193,6 +195,21 @@ int main(int argc, char** argv) {
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
             }
+            return 0;
+        }
+        if (K_COMMAND == "align-world") {
+            if (argc != 6) {
+                std::cerr << "Usage: align-world SOURCE MEASUREMENT.json SHA256 NEW_BUNDLE\n";
+                return 2;
+            }
+            const auto K_RESULT =
+                align_world_scene({ argv[2], argv[3], argv[4], argv[5] }, cancellation.get_token());
+            if (!K_RESULT) {
+                std::cerr << K_RESULT.error().m_message << '\n';
+                return 2;
+            }
+            std::cout
+                << "Published declared world alignment; geometry unverified; walking disabled\n";
             return 0;
         }
         if (K_COMMAND == "export-glb" || K_COMMAND == "import-glb") {

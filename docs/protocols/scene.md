@@ -351,3 +351,10 @@ ordinary immutable scene updates. This format adds candidate evidence, not PBR,
 scale, collision, geometry coverage or walking qualification. The restricted
 [GLB V2 profile](gltf.md) preserves the wider candidate plane and admits its
 portable-derived family; legacy GLB V1 bytes remain unchanged.
+
+## Explicit aligned world frame
+
+[World-frame alignment](world_frame.md) owns measurement declarations, source
+identity, schema-5 wrapping of unchanged payloads, epoch publication and
+correction/resync behavior. Legacy metric flags remain unproven; independent
+declaration admission does not certify geometry or enable walking.

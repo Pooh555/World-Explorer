@@ -1,5 +1,7 @@
 # Validation index
 
+- [Explicit world-frame alignment](2026-10-20-world-frame.md): source-bound declarations, epoch/resync and schema-5 native software contracts; native texture/splat parity and unchanged real mesh, no real metric alignment or walking.
+
 - [Owned mesh postprocessing](2026-10-20-mesh-job.md): shared cleanup/bake/export stages, real sequence cancellation/resume/replay, saved-bake reuse and native handoff; measured geometry/walking remain open.
 
 - [Sequence captured-unlit GLB](2026-10-20-glb-sequence.md): full 63-view portable ownership/interchange, independent fidelity checks and native imported viewing; legacy products preserved.

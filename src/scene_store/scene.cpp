@@ -1,6 +1,7 @@
 #include "world_explorer/scene_store/scene.hpp"
 
 #include "world_explorer/core/hash.hpp"
+#include "world_explorer/scene_store/world_frame.hpp"
 
 #include <bit>
 #include <limits>
@@ -310,6 +311,12 @@ std::string scene_content_hash(const SceneState& scene) {
     for (const auto& [K_ID, K_CHUNK] : scene.m_chunks) {
         append_chunk(hash, K_ID, *K_CHUNK);
     }
+    if (scene.m_world_frame) {
+        K_ADD(0x5745584652414d45ULL);
+        K_ADD(scene.m_world_frame->m_document_json.size());
+        hash.add_bytes(std::as_bytes(std::span(scene.m_world_frame->m_document_json.data(),
+                                               scene.m_world_frame->m_document_json.size())));
+    }
     return hash.finish();
 }
 
@@ -388,7 +395,15 @@ Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits) 
     if (scene.m_chunks.size() > limits.m_max_chunks) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "scene chunk budget exceeded");
     }
-    std::size_t bytes {}, splats {}, vertices {}, triangles {}, texels {};
+    const auto K_FRAME = validate_world_frame(scene);
+    if (!K_FRAME) {
+        return std::unexpected(K_FRAME.error());
+    }
+    std::size_t bytes { scene.m_world_frame ? scene.m_world_frame->m_document_json.size() : 0uz };
+    if (bytes > limits.m_max_payload_bytes) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "World-frame payload budget exceeded");
+    }
+    std::size_t splats {}, vertices {}, triangles {}, texels {};
     for (const auto& [K_ID, K_CHUNK] : scene.m_chunks) {
         if (!K_CHUNK || K_ID != K_CHUNK->m_id) {
             return fail(ErrorCode::INVALID_DATA, "chunk key differs from identity");
@@ -416,9 +431,11 @@ Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits) 
             vertices += mesh.m_vertices.size();
             triangles += mesh.m_triangles.size();
             if (mesh.m_observed) {
-                if (scene.m_scale != ScaleStatus::ARBITRARY ||
+                const auto K_SOURCE_EPOCH =
+                    scene.m_world_frame ? scene.m_world_frame->m_source_epoch : scene.m_epoch;
+                if ((!scene.m_world_frame && scene.m_scale != ScaleStatus::ARBITRARY) ||
                     (K_CHUNK->m_geometry_valid &&
-                     mesh.m_observed->m_context.m_epoch != scene.m_epoch)) {
+                     mesh.m_observed->m_context.m_epoch != K_SOURCE_EPOCH)) {
                     return fail(ErrorCode::WRONG_EPOCH, "Observed mesh world context differs");
                 }
             } else {

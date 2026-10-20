@@ -339,20 +339,31 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-Implement M3's explicit measured scale/gravity alignment and collision-eligibility
-contracts next. Re-read plan §§3 (Q5/N2), 4.4, 4.8 and 5.1 before designing the
-versioned input/proof and scene-update path; inspect `ScaleStatus`, bundle scale
-handling, map pose provenance, navigation and current geometry invalidation tests.
-A `METRIC_MEASURED` flag alone is not a measurement or permission to walk.
-Keep original arbitrary-scale assets immutable, bind measurements and alignment to
-source/pose revisions, and update or invalidate affected appearance, geometry and
-collision through revisioned scene updates on corrections. Start with CPU
-admission/transform/revision tests and a clearly labeled synthetic measured fixture, then determine the independent real
-measurement/ground-truth input needed for local measured validation. Do not infer
-scale or gravity from reconstructed floors, nor certify this fragmented mesh as
-walkable. Preserve the restricted captured GLB contract unless a new explicit
-metric profile is implemented and validated. Platform qualification remains after
-local M3 and A0–A5 work.
+Implement M3's supported-collision admission next. Re-read plan §§3 (Q5/N2),
+4.8 and 5.1 and the [world-frame contract](protocols/world_frame.md). Define
+bounded supported regions and explicit unknown/free/occupied semantics, pinning
+collision candidates to source mesh/pose revisions and an admitted world frame.
+Start with CPU synthetic support/unknown-boundary and correction invalidation
+checks, then an ordinary local viewer diagnostic. No collision producer, Jolt
+capsule or walk permission exists yet. Allocated TSDF voxels and generated floors
+cannot establish free space or certify supported floors.
+
+[World-frame admission](validation/2026-10-20-world-frame.md) now implements exact
+source/anchor-bound distance/up declarations, atomic epoch/revision changes,
+schema-5 persistence, consumer transforms and shared CLI publication. Native
+texture/splat parity passes within one RGB8 level; the full retained real mesh
+opens with zero Vulkan errors and its GLB reproduces exactly. Synthetic alignment
+stays arbitrary; a legacy metric flag is unproven. Aligned sources are immutable:
+pose corrections require newer full-snapshot resync and new declarations.
+
+The user has **no independent sample_1 distance/up reference**. Keep that scene
+arbitrary and walking disabled. Continue software contracts with labeled
+synthetic evidence; real measured validation additionally needs independently
+measured identifiable points, up reference and observed-surface ground truth.
+Do not infer scale/gravity/support from reconstructed floors or promote this
+fragmented mesh to walkable. Keep the captured GLB profiles restricted until a
+separate metric profile is implemented and validated. Platform qualification
+remains after local M3 and A0–A5 work.
 
 Use the saved raw sequence and original bake for arbitrary-scale regressions.
 The owned processed result is

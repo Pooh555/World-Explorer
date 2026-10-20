@@ -238,7 +238,7 @@ TEST_CASE("bundle manifests reject unsupported conventions and invalid typed ide
                                          "quaternion_order",
                                          "pixel_centers" };
             if (K_FIELD == 0) {
-                value["schema_version"] = 5;
+                value["schema_version"] = 6;
             }
             if (K_FIELD >= 1 && K_FIELD <= 6) {
                 value["coordinates"][K_KEYS[static_cast<std::size_t>(K_FIELD - 1)]] = "unsupported";

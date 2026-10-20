@@ -236,7 +236,8 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
         if (!K_VALID) {
             return std::unexpected(K_VALID.error());
         }
-        require(scene->m_scale == ScaleStatus::ARBITRARY && !scene->m_chunks.empty(),
+        require(!scene->m_world_frame && scene->m_scale == ScaleStatus::ARBITRARY &&
+                    !scene->m_chunks.empty(),
                 "GLB profile requires explicit arbitrary-scale captured meshes");
         const bool K_SEQUENCE_PROFILE = std::ranges::any_of(scene->m_chunks, [](const auto& entry) {
             return entry.second->m_mesh && entry.second->m_mesh->m_baked &&
