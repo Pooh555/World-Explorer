@@ -8,8 +8,102 @@ from cached_sources import checked_path
 from pilot import parse, read_pinned
 
 __all__ = [
+    "iter_admitted_sequence",
     "load_admitted_cache",
 ]
+
+
+def iter_admitted_sequence(root, receipt_sha256, cancelled=lambda: False):
+    """Yield one bounded native cache at a time; callers must release each batch.
+
+    Exhaust the iterator before publishing derived output. A later child may
+    reject even after earlier children were read successfully.
+    """
+    root = Path(root).resolve(strict=True)
+    receipt = parse(
+        read_pinned(checked_path(root, "manifest.json"), receipt_sha256, 1024**2)
+    )
+    frames, batches = receipt["frames"], receipt["batches"]
+    if (
+        type(receipt["schema_version"]) is not int
+        or receipt["schema_version"] != 1
+        or receipt["kind"] != "POSE_ADMITTED_DEPTH_SEQUENCE_V1"
+        or not isinstance(frames, list)
+        or not 1 <= len(frames) <= 120
+        or not isinstance(batches, list)
+        or not 1 <= len(batches) <= 120
+        or [f["manifest_index"] for f in frames] != list(range(len(frames)))
+        or len({f["frame"] for f in frames}) != len(frames)
+        or any(
+            type(f[key]) is not int or f[key] < 0
+            for f in frames
+            for key in ("manifest_index", "frame", "valid_pixels", "unknown_pixels")
+        )
+        or any(
+            type(receipt[key]) is not int or receipt[key] < 0
+            for key in (
+                "valid_pixels",
+                "unknown_pixels",
+                "world_epoch",
+                "pose_revision",
+            )
+        )
+        or sum(f["valid_pixels"] for f in frames) != receipt["valid_pixels"]
+        or sum(f["unknown_pixels"] for f in frames) != receipt["unknown_pixels"]
+    ):
+        raise ValueError("Invalid admitted sequence coverage")
+    start = 0
+    # Validate the entire metadata union before decoding any child planes.
+    for index, batch in enumerate(batches):
+        if (
+            set(batch) != {"cache", "sha256", "first_manifest_index", "frame_count"}
+            or batch["cache"] != f"batch-{index}"
+            or type(batch["first_manifest_index"]) is not int
+            or batch["first_manifest_index"] != start
+            or type(batch["frame_count"]) is not int
+            or not 1 <= batch["frame_count"] <= 18
+            or start + batch["frame_count"] > len(frames)
+        ):
+            raise ValueError("Invalid sequence batch partition")
+        child = parse(
+            read_pinned(
+                checked_path(root, batch["cache"] + "/manifest.json"),
+                batch["sha256"],
+                1024**2,
+            )
+        )
+        end = start + batch["frame_count"]
+        if child["frames"] != frames[start:end] or any(
+            child[key] != receipt[key]
+            for key in (
+                "input_manifest_sha256",
+                "depth_recipe_sha256",
+                "pose_asset_sha256",
+                "world_epoch",
+                "pose_revision",
+            )
+        ):
+            raise ValueError("Sequence child dependencies/coverage differ")
+        start = end
+    if start != len(frames):
+        raise ValueError("Incomplete sequence frame coverage")
+    for batch in batches:
+        if cancelled():
+            raise InterruptedError("Admitted sequence read cancelled")
+        views, child = load_admitted_cache(
+            root / batch["cache"], batch["sha256"], cancelled
+        )
+        manifest = parse(
+            read_pinned(
+                checked_path(root, batch["cache"] + "/dense-inputs.json"),
+                receipt["input_manifest_sha256"],
+                1024**2,
+            )
+        )
+        if len(manifest["frames"]) != len(frames):
+            raise ValueError("Sequence omits input manifest frames")
+        yield views, child
+        del views
 
 
 def load_admitted_cache(root, receipt_sha256, cancelled=lambda: False):

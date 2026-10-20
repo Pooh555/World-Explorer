@@ -8,8 +8,9 @@
 
 namespace world_explorer {
 
-// Pinned request describes independently checked resized inputs and 1-18 depth
-// assets. Copies admitted assets/RGB/dependencies into a new owned directory,
+// Schema 1 admits 1-18 depth assets. Schema 2 accounts for every input frame
+// (at most 120), publishing a union of independently bounded schema-1 caches.
+// Copies admitted assets/RGB/dependencies into a new owned directory,
 // publishing manifest.json last. Failure can leave uncommitted owned files;
 // callers must not consume them without the terminal receipt. No scene update,
 // metric scale, fusion or reconstruction-quality certification is performed.

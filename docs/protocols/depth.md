@@ -179,3 +179,32 @@ can compare fixed pairs while retaining unknown samples in every denominator.
 [Native/cache evidence](../validation/2026-10-18-depth-visibility.md) checks both
 retained runs without a solve. The separate [observed fusion pilot](fusion.md)
 now consumes these caches; native fused-geometry admission and Q5/N2 remain open.
+
+### Native sequence admission
+
+`export-depth-visibility` also accepts the same request fields with
+`schema_version: 2`. Its ordered `outputs` must account for **every** frame in
+the checked resized manifest, at most **120**. Duplicate, missing, foreign or
+reordered frames reject. Expected poses, calibration, image and recipe pins
+still come from independent native input admission.
+
+The exporter partitions references into child directories `batch-N`, each with
+the unchanged schema-1 bounds: **18 views**, **48 million decoded pixels** and
+**768 MiB** encoded dependencies/assets. A child request `batch-N.json` pins the
+absolute input paths. Each child runs the original pose-bound admission and
+publishes its own receipt last. The root `POSE_ADMITTED_DEPTH_SEQUENCE_V1`
+receipt pins the child hashes, disjoint manifest ranges, complete per-frame
+metadata and summed valid/unknown counts. Root request/receipt limits remain
+**1 MiB**. Only metadata accumulates across children. Failure may retain child
+receipts, but no root terminal certifies a partial sequence; retry uses a new
+destination. Caller assets remain read-only.
+
+`iter_admitted_sequence` validates the entire metadata/dependency partition,
+then reads one child through `load_admitted_cache` at a time. Each child still
+checks all asset/RGB bytes, depth planes and counts. Callers must release each
+batch before requesting another, and exhaust the iterator successfully before
+publishing derived output: later corruption can fail after an earlier yield.
+Per-cache bounds do not promise a process-peak budget or permit accumulating all
+decoded views in a list. Valid zero-weight pixels and optional sigma preserve
+their original meanings. Complete frame accounting is distinct from recovered
+surface coverage, measured geometry, scale and walking.

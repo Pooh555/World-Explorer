@@ -219,3 +219,36 @@ no new terminal receipt; complete but uncommitted output may be checked on resum
 Directory flushes and cooperative locks do not guarantee power-loss recovery.
 Unknown pixels, support/confidence meanings and unavailable sigma remain explicit;
 private photometric maps never enter the admitted depth/cache path.
+
+### Bounded full-sequence depth
+
+The same owned request can select the separate
+`BOUNDED_TEMPORAL_DEPTH_SEQUENCE_V1` recipe scope. Its `selection_indices` must
+equal every manifest index, in order, for **19–120** frames; `neighbor_radius`
+remains exactly **3**. All other recipe fields, resize calibration and complete
+PatchMatch settings retain their existing checks. There is no source ranking,
+filter relaxation or evaluation-driven selection.
+
+References partition into consecutive groups of nine. Each worker additionally
+solves up to three temporal support frames on either side, for at most **15**
+views. Every reference has its complete radius-three source window, clipped only
+at the ends of the input sequence. Support-frame depth can differ between
+overlapping batches; it is not merged or counted twice as a reference. This is
+a bounded temporal recipe, not a globally coupled all-view solve.
+
+The owner remains immutable. Stages use
+`depth-OWNER_SHA-batch-B-attempt-N`, at most 128 attempts per batch. Recovery
+verifies every completed batch's result, prepared selection/reference inventory
+and full asset hashes; only an incomplete batch gets a new attempt. Corrupt
+completed stages reject without repair. Cancellation preserves all stages and
+does not publish a sequence terminal. The unchanged 900-second child budget
+applies separately to each batch; elapsed time is not a P1 qualification.
+
+`OWNED_RESIZED_DEPTH_SEQUENCE_TERMINAL_V1` lists each selected stage/result hash,
+disjoint `reference_indices` and total `frame_count`. It is published only after
+every reference has a checked result and source/environment admission repeats.
+The original single-batch terminal remains unchanged. The current shared fresh
+geometry GUI/CLI entry consumes the original terminal only; sequence depth is
+invoked directly through `tools/dense_job.py`, then independently admitted by
+the [native sequence exporter](depth.md#native-sequence-admission). Multi-batch
+fusion and its unified GUI ownership remain subsequent work.

@@ -26,6 +26,9 @@ not uploaded or sent to a remote reconstruction service.
   [geometry job](docs/protocols/fusion.md#fresh-depth-through-the-shared-geometry-job)
   runs fresh depth or reuses a checked cache, then opens its native partial mesh
   from GUI or CLI.
+  [Bounded full-sequence depth](docs/protocols/dense_inputs.md#bounded-full-sequence-depth)
+  adds separate CLI batch recovery and native coverage admission; full-sequence
+  fusion and GUI handoff remain in development.
 - **Offline-first operation:** reconstruction data stays local, with no implicit
   model installation or remote fallback.
 

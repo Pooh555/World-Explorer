@@ -82,9 +82,11 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
                 return fail(ErrorCode::INVALID_DATA, "Missing visibility request field");
             }
         }
+        const auto K_SEQUENCE = K_CONFIG.at("schema_version") == 2;
         if (!K_CONFIG.at("schema_version").is_number_unsigned() ||
-            K_CONFIG.at("schema_version") != 1 || !K_CONFIG.at("outputs").is_array() ||
-            K_CONFIG.at("outputs").empty() || K_CONFIG.at("outputs").size() > 18uz) {
+            (!K_SEQUENCE && K_CONFIG.at("schema_version") != 1) ||
+            !K_CONFIG.at("outputs").is_array() || K_CONFIG.at("outputs").empty() ||
+            K_CONFIG.at("outputs").size() > (K_SEQUENCE ? 120uz : 18uz)) {
             return fail(ErrorCode::INVALID_DATA, "Invalid visibility inventory/version");
         }
         const auto K_BASE = std::filesystem::canonical(request).parent_path();
@@ -163,11 +165,14 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
             indices.push_back(K_INDEX);
             const auto& metadata = K_FOUND->m_expected_depth;
             const auto K_PIXELS = static_cast<std::size_t>(metadata.m_width) * metadata.m_height;
-            if (K_PIXELS > K_MAX_PIXELS - pixels) {
+            if (!K_SEQUENCE && K_PIXELS > K_MAX_PIXELS - pixels) {
                 return fail(ErrorCode::RESOURCE_EXHAUSTED,
                             "Visibility decoded pixel budget exceeded");
             }
             pixels += K_PIXELS;
+        }
+        if (K_SEQUENCE && indices.size() != K_PREPARED->m_frames.size()) {
+            return fail(ErrorCode::INVALID_DATA, "Sequence must account for every input frame");
         }
         if (!std::filesystem::create_directory(K_OUTPUT)) {
             return fail(ErrorCode::IO_ERROR, "Cannot reserve visibility directory");
@@ -175,6 +180,94 @@ Result<std::string> export_depth_visibility_cache(const std::filesystem::path& r
         const auto K_DIRECTORY_FLUSH = asset_files::flush_directory_entry(K_OUTPUT.parent_path());
         if (!K_DIRECTORY_FLUSH) {
             return std::unexpected(K_DIRECTORY_FLUSH.error());
+        }
+        if (K_SEQUENCE) {
+            // Each child retains the original cache budgets. Only metadata for
+            // the complete sequence is accumulated here; no depth union is loaded.
+            auto config = K_CONFIG;
+            config["schema_version"] = 1;
+            for (const auto& key :
+                 { "pose_job", "poses", "native_recipe", "recipe", "manifest", "decode_stage" }) {
+                config[key] = K_PATH(key).string();
+            }
+            auto batches = nlohmann::json::array();
+            auto frames = nlohmann::json::array();
+            std::size_t start {};
+            std::uint64_t valid_pixels {};
+            std::uint64_t unknown_pixels {};
+            while (start < indices.size()) {
+                std::size_t end { start };
+                std::size_t batch_pixels {};
+                config["outputs"] = nlohmann::json::array();
+                while (end < indices.size() && end - start < 18uz) {
+                    const auto& metadata = K_PREPARED->m_frames[indices[end]].m_expected_depth;
+                    const auto K_COUNT =
+                        static_cast<std::size_t>(metadata.m_width) * metadata.m_height;
+                    if (K_COUNT > K_MAX_PIXELS - batch_pixels) {
+                        break;
+                    }
+                    auto record = K_CONFIG.at("outputs")[end];
+                    record["path"] = depth_paths[end].string();
+                    config["outputs"].push_back(std::move(record));
+                    batch_pixels += K_COUNT;
+                    ++end;
+                }
+                if (end == start) {
+                    return fail(ErrorCode::RESOURCE_EXHAUSTED,
+                                "Sequence frame exceeds child cache pixel budget");
+                }
+                const auto K_NAME = "batch-" + std::to_string(batches.size());
+                const auto K_REQUEST = K_OUTPUT / (K_NAME + ".json");
+                const auto K_TEXT = config.dump(2) + '\n';
+                const auto K_PIN =
+                    asset_files::publish_asset(K_REQUEST, std::as_bytes(std::span(K_TEXT)), stop);
+                if (!K_PIN) {
+                    return std::unexpected(K_PIN.error());
+                }
+                const auto K_CACHE = K_OUTPUT / K_NAME;
+                const auto K_HASH = export_depth_visibility_cache(K_REQUEST, *K_PIN, K_CACHE, stop);
+                if (!K_HASH) {
+                    return std::unexpected(K_HASH.error());
+                }
+                const auto K_BYTES =
+                    pinned(K_CACHE / "manifest.json", *K_HASH, 1024uz * 1024uz, stop);
+                if (!K_BYTES) {
+                    return std::unexpected(K_BYTES.error());
+                }
+                const std::string_view K_CHILD_TEXT { reinterpret_cast<const char*>(K_BYTES->data()),
+                                                     K_BYTES->size() };
+                const auto K_CHILD = nlohmann::json::parse(K_CHILD_TEXT);
+                for (const auto& frame : K_CHILD.at("frames")) {
+                    valid_pixels += frame.at("valid_pixels").get<std::uint64_t>();
+                    unknown_pixels += frame.at("unknown_pixels").get<std::uint64_t>();
+                    frames.push_back(frame);
+                }
+                batches.push_back({ { "cache", K_NAME },
+                                   { "sha256", *K_HASH },
+                                   { "first_manifest_index", start },
+                                   { "frame_count", end - start } });
+                start = end;
+            }
+            const nlohmann::json K_RECEIPT {
+                { "schema_version", 1 },
+                { "kind", "POSE_ADMITTED_DEPTH_SEQUENCE_V1" },
+                { "scope", "complete frame accounting; partial observed depth; no Q5/N2 or walking" },
+                { "request_sha256", request_sha256 },
+                { "input_manifest_sha256", K_CONFIG.at("manifest_sha256") },
+                { "depth_recipe_sha256", K_INPUT.m_depth_recipe_sha256 },
+                { "pose_asset_sha256", K_NATIVE.m_pose_sha256 },
+                { "world_epoch", K_DOCUMENT.at("world_epoch") },
+                { "pose_revision", K_DOCUMENT.at("pose_revision") },
+                { "valid_pixels", valid_pixels },
+                { "unknown_pixels", unknown_pixels },
+                { "frames", frames },
+                { "batches", batches } };
+            const auto K_TEXT = K_RECEIPT.dump(2) + '\n';
+            if (K_TEXT.size() > 1024uz * 1024uz) {
+                return fail(ErrorCode::RESOURCE_EXHAUSTED, "Sequence receipt exceeds byte budget");
+            }
+            return asset_files::publish_asset(
+                K_OUTPUT / "manifest.json", std::as_bytes(std::span(K_TEXT)), stop);
         }
         std::filesystem::create_directory(K_OUTPUT / "assets");
         std::filesystem::create_directory(K_OUTPUT / "images");

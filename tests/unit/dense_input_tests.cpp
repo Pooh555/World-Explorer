@@ -633,6 +633,59 @@ TEST_CASE("visibility export rejects wrong depth domain inventory dependencies a
     }
 }
 
+TEST_CASE("visibility sequence accounts for all frames without flattening cache budgets",
+          "[dense][visibility]") {
+    VisibilityFixture data;
+    data.m_json["schema_version"] = 2;
+    const auto K_RESULT = data.run();
+    INFO((K_RESULT ? *K_RESULT : K_RESULT.error().m_message));
+    REQUIRE(K_RESULT);
+    const auto K_RECEIPT =
+        nlohmann::json::parse(std::ifstream(data.m_destination / "manifest.json"));
+    CHECK(K_RECEIPT.at("kind") == "POSE_ADMITTED_DEPTH_SEQUENCE_V1");
+    CHECK(K_RECEIPT.at("valid_pixels") == 2);
+    CHECK(K_RECEIPT.at("unknown_pixels") == 361);
+    REQUIRE(K_RECEIPT.at("batches").size() == 1uz);
+    const auto& batch = K_RECEIPT.at("batches")[0uz];
+    CHECK(batch.at("first_manifest_index") == 0uz);
+    CHECK(batch.at("frame_count") == 3uz);
+    CHECK(*sha256_file(data.m_destination / "batch-0/manifest.json", 1024uz * 1024uz) ==
+          batch.at("sha256").get<std::string>());
+    const auto K_CHILD =
+        nlohmann::json::parse(std::ifstream(data.m_destination / "batch-0/manifest.json"));
+    CHECK(K_RECEIPT.at("frames") == K_CHILD.at("frames"));
+    CHECK(K_RECEIPT.at("pose_asset_sha256") == K_CHILD.at("pose_asset_sha256"));
+    CHECK(K_CHILD.at("frames")[1uz].at("uncertainty") == "CAMERA_UNIT_STANDARD_DEVIATION");
+    for (const auto& frame : K_CHILD.at("frames")) {
+        const auto K_ASSET =
+            data.m_destination / "batch-0" / frame.at("depth_asset").get<std::string>();
+        CHECK(*sha256_file(K_ASSET, 65536uz) == frame.at("depth_sha256").get<std::string>());
+    }
+    CHECK(data.run().has_value() == false);
+    CHECK(*sha256_file(data.m_destination / "manifest.json", 1024uz * 1024uz) == *K_RESULT);
+}
+
+TEST_CASE("visibility sequence rejects missing duplicate stale and corrupt input without terminal",
+          "[dense][visibility]") {
+    VisibilityFixture data;
+    data.m_json["schema_version"] = 2;
+    const auto K_MODE = GENERATE(0, 1, 2, 3);
+    if (K_MODE == 0) {
+        data.m_json["outputs"].erase(1uz);
+    }
+    if (K_MODE == 1) {
+        data.m_json["outputs"][1uz] = data.m_json["outputs"][0uz];
+    }
+    if (K_MODE == 2) {
+        data.m_json["pose_sha256"] = std::string(64uz, 'f');
+    }
+    if (K_MODE == 3) {
+        data.m_json["outputs"][2uz]["sha256"] = std::string(64uz, 'f');
+    }
+    CHECK(data.run().has_value() == false);
+    CHECK(std::filesystem::exists(data.m_destination / "manifest.json") == false);
+}
+
 TEST_CASE("visibility export cancellation does not publish a terminal receipt",
           "[dense][visibility]") {
     VisibilityFixture data;

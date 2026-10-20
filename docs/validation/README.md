@@ -1,5 +1,7 @@
 # Validation index
 
+- [Bounded full-sequence depth](2026-10-20-depth-sequence.md): CPU contracts, preserved-batch recovery and streaming native cache unions; real 63-frame production is in progress.
+
 - [Native build, Python formatting and dependency inventory repair](2026-10-20-native-inventory-repair.md): non-Linux geometry fallback, 24 AST-equivalent Black fixes, fresh loader/import/viewer/owner receipts and restored default/local inventory checks; native Windows confirmation pending.
 
 - [Owned fresh CUDA depth and clean profile](2026-10-20-owned-dense.md): offline six-wheel reconciliation, active GPU cancellation/resume, native admission/fusion and shared GUI/CLI handoff; partial nine-view geometry only.

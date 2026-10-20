@@ -10,9 +10,10 @@ import struct
 import sys
 import tempfile
 import unittest
+import weakref
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "workers/dense"))
-from admitted_visibility import load_admitted_cache
+from admitted_visibility import iter_admitted_sequence, load_admitted_cache
 from pilot import digest
 
 
@@ -150,6 +151,128 @@ class AdmittedVisibilityTest(unittest.TestCase):
 
     def load(self, root):
         return load_admitted_cache(root, digest((root / "manifest.json").read_bytes()))
+
+    def sequence_fixture(self):
+        root, original = self.fixture()
+        sequence = root / "sequence"
+        sequence.mkdir()
+        batches = []
+        for index, (start, end) in enumerate(((0, 1), (1, 3))):
+            child = copy.deepcopy(original)
+            child["frames"] = child["frames"][start:end]
+            names = {
+                "poses.weposes",
+                "dense-inputs.json",
+                "native-recipe.json",
+                "depth-recipe.json",
+            }
+            for frame in child["frames"]:
+                names.update((frame["image"], frame["depth_asset"]))
+            child["files"] = {k: v for k, v in child["files"].items() if k in names}
+            folder = sequence / f"batch-{index}"
+            folder.mkdir()
+            for name in names:
+                (folder / name).parent.mkdir(parents=True, exist_ok=True)
+                (folder / name).write_bytes((root / name).read_bytes())
+            data = json.dumps(child).encode()
+            (folder / "manifest.json").write_bytes(data)
+            batches.append(
+                dict(
+                    cache=folder.name,
+                    sha256=digest(data),
+                    first_manifest_index=start,
+                    frame_count=end - start,
+                )
+            )
+        receipt = {
+            key: original[key]
+            for key in (
+                "frames",
+                "input_manifest_sha256",
+                "depth_recipe_sha256",
+                "pose_asset_sha256",
+                "world_epoch",
+                "pose_revision",
+            )
+        }
+        receipt.update(
+            schema_version=1,
+            kind="POSE_ADMITTED_DEPTH_SEQUENCE_V1",
+            batches=batches,
+            valid_pixels=sum(f["valid_pixels"] for f in original["frames"]),
+            unknown_pixels=sum(f["unknown_pixels"] for f in original["frames"]),
+        )
+        (sequence / "manifest.json").write_text(json.dumps(receipt))
+        return sequence, receipt
+
+    def test_sequence_streams_disjoint_complete_batches_and_releases_previous_planes(
+        self,
+    ):
+        root, receipt = self.sequence_fixture()
+        stream = iter_admitted_sequence(
+            root, digest((root / "manifest.json").read_bytes())
+        )
+        views, child = next(stream)
+        prior = weakref.ref(views[0]["depth"])
+        self.assertEqual([f["manifest_index"] for f in child["frames"]], [0])
+        del views
+        views, child = next(stream)
+        self.assertIsNone(prior())
+        self.assertEqual([f["manifest_index"] for f in child["frames"]], [1, 2])
+        self.assertIsNotNone(views[0]["sigma"])
+        self.assertIsNone(views[1]["sigma"])
+        self.assertEqual(views[1]["confidence"][8, 8], 0)
+        self.assertEqual(views[1]["valid"][8, 8], 1)
+        with self.assertRaises(StopIteration):
+            next(stream)
+
+    def test_sequence_rejects_incomplete_duplicated_changed_and_unsafe_child_metadata(
+        self,
+    ):
+        for mode in (
+            "missing",
+            "duplicate",
+            "path",
+            "pose",
+            "summary",
+            "boolean",
+            "oversize",
+        ):
+            root, receipt = self.sequence_fixture()
+            if mode == "missing":
+                receipt["batches"].pop()
+            if mode == "duplicate":
+                receipt["batches"][1]["first_manifest_index"] = 0
+            if mode == "path":
+                receipt["batches"][1]["cache"] = "../batch-1"
+            if mode == "pose":
+                receipt["pose_revision"] += 1
+            if mode == "summary":
+                receipt["unknown_pixels"] -= 1
+            if mode == "boolean":
+                receipt["batches"][0]["frame_count"] = True
+            if mode == "oversize":
+                receipt["batches"][0]["frame_count"] = 19
+            (root / "manifest.json").write_text(json.dumps(receipt))
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                next(
+                    iter_admitted_sequence(
+                        root, digest((root / "manifest.json").read_bytes())
+                    )
+                )
+
+    def test_sequence_late_corruption_and_cancellation_never_repair_child_bytes(self):
+        root, _ = self.sequence_fixture()
+        pin = digest((root / "manifest.json").read_bytes())
+        stream = iter_admitted_sequence(root, pin)
+        next(stream)
+        asset = next((root / "batch-1/assets").iterdir())
+        asset.write_bytes(b"corrupt later batch")
+        with self.assertRaises(ValueError):
+            next(stream)
+        self.assertEqual(asset.read_bytes(), b"corrupt later batch")
+        with self.assertRaises(InterruptedError):
+            next(iter_admitted_sequence(root, pin, lambda: True))
 
     def test_owned_planes_unknowns_optional_sigma_and_asymmetric_pose_are_preserved(
         self,

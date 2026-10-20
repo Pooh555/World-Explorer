@@ -221,9 +221,11 @@ Use `--name VIDEO_retry_2` for a separate attempt. Full source SHA-256 stays in
   viewing are still pending; no geometry/material/quality gate is promoted.
 
 Saved runs/failures/frozen fixtures and prior dense/resize evidence remain unchanged.
-The [current runtime refresh](validation/2026-10-20-native-inventory-repair.md)
-restores `python3 tools/check_dependency_manifest.py --local-evidence` to exit 0.
-Strict closure remains exit 3 for 253 source/rights gaps. Dense/fusion profiles
+The [20 October runtime refresh](validation/2026-10-20-native-inventory-repair.md)
+passed the local inventory check for its selected build. The new depth-sequence
+rebuild changes native payload bytes: the current local check exits 2 until fresh
+runtime receipts are captured. The prior strict check retains 253 source/rights
+gaps; this rebuild qualifies no distribution closure. Dense/fusion profiles
 remain separately evidenced; this selected seven-profile inventory does not
 qualify their redistribution rights or the drifted installed headers.
 
@@ -275,20 +277,19 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-Extend owned production beyond the experimental ≤18-view slice with bounded
-multi-batch depth/cache admission and complete per-frame coverage accounting.
-Start with CPU contracts at `tools/dense_job.py`, `src/application/depth_visibility.cpp`
-and `workers/dense/admitted_visibility.py` for dependency/coverage unions, partial
-batch recovery and unchanged byte/pixel budgets. Then process the full pinned
-63-frame sample_1 sequence in new output directories using the same calibrated
-2048×1102 grid and existing backend filters; retain all unknown/support/sigma
-information. Do not treat the nine-view result as a full-room result or retune on
-opened evaluation grids. Current commands/requests are in
-`artifacts/validation/m3-dense-owned-20261020/`; begin from `fresh-request-current.json`
-and its explicit clean profile. Formatting changes worker byte digests: create
-new recipes and requests pinned to the current sources before new execution;
-keep the old pinned requests and completed outputs immutable. Keep M3, measured
-alignment/collision/walking and quality gates open.
+Bounded full-sequence depth/cache contracts are implemented and CPU-checked;
+the new real 63-frame sample_1 CUDA job is **IN_PROGRESS** under
+`artifacts/validation/m3-depth-sequence-20261020/`. The first completed batch
+survives active cancellation; `gpu.py` owns resume/replay and `post.py` waits for
+successful completion before native admission and per-frame coverage checks.
+Do not start another solve. Inspect `gpu-driver.log`, `gpu-commands.json` and
+`post-driver.log`, then finish the full native receipt/unknown-support accounting
+and record its actual outcome. The selected source/recipe/request hashes are in
+`production-identity.json`; all work uses the existing clean profile and calibrated
+2048×1102 grid with unchanged backend filters. Preserve old/new attempts and
+prior pinned recipes. The current shared geometry GUI entry still handles the
+single-batch terminal; sequence fusion/handoff, measured alignment, collision,
+walking and quality gates remain open.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list

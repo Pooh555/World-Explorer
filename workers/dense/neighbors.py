@@ -17,6 +17,8 @@ from source_selection import DEFAULT_POLICY, plan_sources, report_digest
 
 __all__ = [
     "CONFIDENCE",
+    "SEQUENCE_SCOPE",
+    "batch_selection",
     "main",
     "prepare",
     "run",
@@ -25,6 +27,31 @@ __all__ = [
 ]
 
 CONFIDENCE = "consistent_source_fraction; not probability; sigma unavailable"
+SEQUENCE_SCOPE = "BOUNDED_TEMPORAL_DEPTH_SEQUENCE_V1"
+
+
+def batch_selection(recipe, frame_count, batch_index=None):
+    """Partition references once; include three support views on either side."""
+    if recipe.get("scope") != SEQUENCE_SCOPE:
+        if batch_index is not None:
+            raise ValueError("Batch index requires a sequence recipe")
+        return recipe["selection_indices"], recipe["selection_indices"]
+    selection = recipe["selection_indices"]
+    if (
+        not isinstance(selection, list)
+        or not 19 <= frame_count <= 120
+        or any(type(i) is not int for i in selection)
+        or selection != list(range(frame_count))
+        or type(recipe["neighbor_radius"]) is not int
+        or recipe["neighbor_radius"] != 3
+        or type(batch_index) is not int
+        or not 0 <= batch_index < (frame_count + 8) // 9
+    ):
+        raise ValueError("Invalid bounded full-sequence batch")
+    start, end = 9 * batch_index, min(9 * (batch_index + 1), frame_count)
+    return list(range(max(0, start - 3), min(end + 3, frame_count))), list(
+        range(start, end)
+    )
 
 
 def worker_digest():
@@ -75,6 +102,7 @@ def validate_recipe(recipe):
         not in (
             "PARTIAL_NINE_VIEW_NEIGHBOR_QUALIFICATION",
             "PARTIAL_PARALLAX_NEIGHBOR_QUALIFICATION",
+            SEQUENCE_SCOPE,
         )
         or recipe["confidence"] != CONFIDENCE
     ):
@@ -112,7 +140,18 @@ def prepare(args):
         raise ValueError(
             "Resized manifest does not match native inputs/selected recipe"
         )
-    if recipe["scope"] == "PARTIAL_PARALLAX_NEIGHBOR_QUALIFICATION":
+    if recipe["scope"] == SEQUENCE_SCOPE:
+        selection, _ = batch_selection(
+            recipe, len(manifest["frames"]), getattr(args, "batch_index", None)
+        )
+        names = [Path(manifest["frames"][i]["image"]).name for i in selection]
+        if len(set(names)) != len(names):
+            raise ValueError("Duplicate sequence image names")
+        rows = {
+            name: names[max(0, i - 3) : i] + names[i + 1 : i + 4]
+            for i, name in enumerate(names)
+        }
+    elif recipe["scope"] == "PARTIAL_PARALLAX_NEIGHBOR_QUALIFICATION":
         selection = recipe["selection_indices"]
         if (
             not isinstance(selection, list)
@@ -283,7 +322,10 @@ def run(args):
             or not np.allclose(intrinsic, frame["intrinsics"], rtol=0, atol=1e-10)
         ):
             raise ValueError("Serialized resized camera differs")
-    selected = [manifest["frames"][i] for i in recipe["selection_indices"]]
+    selection, references = batch_selection(
+        recipe, len(manifest["frames"]), getattr(args, "batch_index", None)
+    )
+    selected = [manifest["frames"][i] for i in selection]
     for frame in selected:
         if token.is_cancelled:
             return 130
@@ -329,6 +371,10 @@ def run(args):
         "config_sha256": digest(config.encode()),
         "geometry_status": "UNAVAILABLE",
     }
+    if recipe["scope"] == SEQUENCE_SCOPE:
+        prepared["batch_index"] = args.batch_index
+        prepared["reference_indices"] = references
+        prepared["selection_indices"] = selection
     if selection_report is not None:
         publish(
             output / "selection.json",
@@ -391,7 +437,7 @@ def run(args):
         "status": "PARTIAL_NEIGHBOR_PILOT_COMPLETE",
         "scope": "bounded resized views; no fusion, measured scale, room geometry or Q5/N2",
         "reference_indices": recipe.get("selection_policy", {}).get(
-            "reference_indices", recipe["selection_indices"]
+            "reference_indices", references
         ),
         "manifest_sha256": args.manifest_sha256,
         "recipe_sha256": args.recipe_sha256,
@@ -416,6 +462,7 @@ def main():
     for name in ("manifest-sha256", "native-manifest-sha256", "recipe-sha256"):
         parser.add_argument("--" + name, required=True)
     parser.add_argument("--prepare-only", action="store_true")
+    parser.add_argument("--batch-index", type=int)
     try:
         return run(parser.parse_args())
     except Exception as error:

@@ -158,6 +158,132 @@ class DenseJobTest(unittest.TestCase):
         self.assertFalse((self.job / "manifest.json").exists())
         self.assertTrue(list((self.job / "stages").glob("*/assets/*.wedepth")))
 
+    def test_sequence_partition_has_complete_references_and_temporal_support(self):
+        for count in (19, 20, 63, 119, 120):
+            recipe = dict(
+                scope=dense_job.SEQUENCE_SCOPE,
+                selection_indices=list(range(count)),
+                neighbor_radius=3,
+            )
+            references = []
+            for batch in range((count + 8) // 9):
+                selected, refs = dense_job.batch_selection(recipe, count, batch)
+                self.assertLessEqual(len(selected), 15)
+                references.extend(refs)
+                for ref in refs:
+                    self.assertTrue(
+                        set(range(max(0, ref - 3), min(ref + 4, count)))
+                        <= set(selected)
+                    )
+            self.assertEqual(references, list(range(count)))
+        for indices, count, batch in (
+            (list(range(18)), 18, 0),
+            (list(range(121)), 121, 0),
+            (list(range(19)), 19, True),
+            (list(range(19)), 19, 3),
+            ([True] + list(range(1, 19)), 19, 0),
+            (list(range(18)) + [17], 19, 0),
+        ):
+            with self.assertRaises(ValueError):
+                dense_job.batch_selection(
+                    dict(
+                        scope=dense_job.SEQUENCE_SCOPE,
+                        selection_indices=indices,
+                        neighbor_radius=3,
+                    ),
+                    count,
+                    batch,
+                )
+
+    def test_sequence_resume_reuses_completed_batches_and_retains_partial_batch(self):
+        self.manifest = {
+            "frames": [
+                dict(frame=i + 1, image=f"training/images/{i}.png") for i in range(19)
+            ]
+        }
+        self.recipe.update(
+            scope=dense_job.SEQUENCE_SCOPE,
+            selection_indices=list(range(19)),
+            neighbor_radius=3,
+        )
+        calls = []
+        fail = True
+
+        def complete(arguments, stage, supervised):
+            index = arguments.batch_index
+            calls.append(index)
+            stage.mkdir()
+            if index == 1 and fail:
+                (stage / "partial").write_bytes(b"preserve cancelled batch")
+                raise InterruptedError("synthetic batch cancellation")
+            selected, refs = dense_job.batch_selection(self.recipe, 19, index)
+            prepared = dict(
+                batch_index=index, reference_indices=refs, selection_indices=selected
+            )
+            (stage / "prepared.json").write_text(json.dumps(prepared))
+            (stage / "assets").mkdir()
+            frames = []
+            for i in selected:
+                name = f"assets/{i}.png.wedepth"
+                (stage / name).write_bytes(f"synthetic {i}".encode())
+                frames.append(
+                    dict(
+                        frame=i + 1,
+                        asset=name,
+                        sha256=hashlib.sha256((stage / name).read_bytes()).hexdigest(),
+                    )
+                )
+            result = dict(
+                schema_version=1,
+                status="PARTIAL_NEIGHBOR_PILOT_COMPLETE",
+                **self.configuration,
+                worker_sha256=self.recipe["worker_sha256"],
+                prepared_sha256=hashlib.sha256(
+                    (stage / "prepared.json").read_bytes()
+                ).hexdigest(),
+                reference_indices=refs,
+                frames=frames,
+            )
+            (stage / "result.json").write_text(json.dumps(result))
+
+        def admit(*args):
+            return (
+                self.configuration,
+                argparse.Namespace(batch_index=0),
+                self.manifest,
+                self.recipe,
+                self.owner,
+            )
+
+        with (
+            patch.object(dense_job, "admit", side_effect=admit),
+            patch.object(dense_job, "run_child", side_effect=complete),
+        ):
+            with self.assertRaises(InterruptedError):
+                dense_job.execute(self.args)
+            self.assertFalse((self.job / "manifest.json").exists())
+            partial = next((self.job / "stages").glob("*/partial"))
+            fail = False
+            dense_job.execute(self.args)
+            terminal = (self.job / "manifest.json").read_bytes()
+            dense_job.execute(self.args)
+            self.assertEqual(calls, [0, 1, 1, 2])
+            self.assertEqual((self.job / "manifest.json").read_bytes(), terminal)
+            value = json.loads(terminal)
+            self.assertEqual(value["kind"], "OWNED_RESIZED_DEPTH_SEQUENCE_TERMINAL_V1")
+            self.assertEqual(
+                [i for b in value["batches"] for i in b["reference_indices"]],
+                list(range(19)),
+            )
+            self.assertEqual(partial.read_bytes(), b"preserve cancelled batch")
+            result = next((self.job / "stages").glob("*batch-2-*/result.json"))
+            value = json.loads(result.read_bytes())
+            value["reference_indices"] = [0]
+            result.write_text(json.dumps(value))
+            with self.assertRaises(ValueError):
+                dense_job.execute(self.args)
+            self.assertEqual(calls, [0, 1, 1, 2])
+
     @unittest.skipUnless(sys.platform == "linux", "Linux process-group ownership")
     def test_ignored_child_termination_is_killed_and_reaped(self):
         script = self.root / "workers/dense/neighbors.py"
