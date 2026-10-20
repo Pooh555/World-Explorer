@@ -339,19 +339,27 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-Implement typed, immutable admission/reload for the new
-[observed-depth space diagnostic](protocols/depth_space.md) before any downstream
-collision consumer. Pin the exact terminal report/ledger/native bundle, validate
-all relation codes, dimensions, per-view totals and source/pose/recipe identities,
-and reject corruption, stale epochs/revisions and foreign sources without
-changing caller state. Keep this separate from synthetic support admission and
-from measured clearance. Exercise malformed/rehashed inputs and full retained
-real reload under sanitizers, then inspect the complete native view again without
-a new solve. All **5,184** real cells currently remain unknown at the frozen V1
-grid; zero even have a fully supported tight projected rectangle. Do not shrink
-bounds, accept center rays or tune grid resolution to manufacture free space.
-Metric alignment, complete geometry and collision/walking remain open; the user
-has no independent sample_1 distance/up reference.
+Start M3's collision module with a canonical, immutable triangle-cook contract
+bound to source scene/epoch/revision, pose and synthetic support identities.
+Read plan §§4.6/4.8/5.1, the [synthetic support](protocols/collision_support.md)
+and [typed depth-space admission](protocols/depth_space.md#typed-evidence-admission)
+contracts and the dependency inventory before selecting a Jolt build. Begin with
+the explicit synthetic floor/barrier/unknown fixtures: reject foreign or corrected
+sources, block unknowns, and preserve existing scene/evidence on cook failure.
+Keep Jolt and cooked-cache details inside the collision target; do not expose
+backend types in navigation/application contracts. Real `FRONT_DIAGNOSTIC` labels
+are not clearance, and all **5,184** retained real cells remain unknown. These diagnostics grant no real
+collision or metric-walking eligibility; independent
+sample_1 distance/up measurements and qualified geometry remain unavailable.
+
+[Typed depth-space admission](validation/2026-10-20-depth-space-admission.md) now
+reloads the exact terminal/ledger/native bundle into an immutable owner, checks
+full source/pose/recipe/frame identities and all cell/count relationships, and
+rejects stale context or changed native evidence. Shared CLI and owned-thread
+viewer opens use this same admission. Complete retained real reload, rehashed
+false-front rejection, native viewing and sanitizer checks preserve every source
+and every original diagnostic byte. M3, Q5/N2 and the asset/platform sequence
+remain open.
 
 [Observed-depth space evidence](validation/2026-10-20-depth-space.md) now streams
 all **63** retained depth/RGB/pose-bound views into a versioned whole-cell ledger.

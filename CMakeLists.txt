@@ -172,7 +172,7 @@ target_link_libraries(map_store PUBLIC reconstruction_api)
 target_link_libraries(map_store PRIVATE nlohmann_json::nlohmann_json)
 
 add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp
-  src/scene_store/world_frame.cpp src/scene_store/collision_support.cpp src/scene_store/depth_space.cpp src/scene_store/depth_asset.cpp src/scene_store/fusion_asset.cpp src/scene_store/fusion_components.cpp
+  src/scene_store/world_frame.cpp src/scene_store/collision_support.cpp src/scene_store/depth_space.cpp src/scene_store/depth_space_grid.cpp src/scene_store/depth_space_evidence.cpp src/scene_store/depth_asset.cpp src/scene_store/fusion_asset.cpp src/scene_store/fusion_components.cpp
   src/scene_store/fusion_cleanup.cpp src/scene_store/color_projection.cpp src/scene_store/baked_appearance.cpp src/scene_store/mesh_texture.cpp src/scene_store/gltf.cpp src/scene_store/gltf_import.cpp src/scene_store/gltf_png.cpp)
 we_target(scene_store)
 target_link_libraries(scene_store PUBLIC core PRIVATE nlohmann_json::nlohmann_json)

@@ -77,3 +77,61 @@ produce no successful terminal report; an interrupted directory may contain
 immutable partial products. Retry uses a new destination. Independent bundle
 reload precedes terminal publication. Existing mesh, bake and GLB encodings and
 collision admission contracts are unchanged.
+
+## Typed evidence admission
+
+`load_depth_space_evidence(DepthSpaceLoad)` in `scene_store/depth_space.hpp`
+returns a shared immutable `DepthSpaceEvidence`. Inputs are an already admitted
+raw source snapshot, directory, independently supplied terminal SHA-256 and the
+original production-request SHA-256. The fixed V1 source profile is one valid,
+unmodified observed mesh chunk in original arbitrary-scale pose coordinates.
+Aligned, cleaned/baked and foreign snapshots require a separately defined
+profile; admission does not reinterpret their frames.
+
+The reader checks the exact report bytes (maximum 1 MiB), strict field sets,
+duplicate keys, raw NUL, nesting, numeric types, digest syntax and diagnostic-only
+policy. The complete source receipt must equal the receipt pinned in the source
+mesh. Pose epoch/revision/hash, complete ordered unique frame identities, recipe,
+uncertainty availability and exact full-source grid must agree. Ledger size is
+exactly views × cells, at most `120 × 32³` bytes. All codes, per-view counts,
+per-cell counts and aggregate categories are reconstructed and checked. A
+supported relation never erases another view's unknown or conflicting relation.
+
+The reader then reconstructs the expected native diagnostic from the source and
+ledger. It loads the actual bundle under the exact manifest pin and source-derived
+chunk/splat/mesh/frame/payload limits, and compares complete scene content hashes.
+This checks original geometry, every cell's position/color/opacity, provenance,
+epoch and revision. Rehashed cell permutations preserving totals still fail when
+the displayed cell evidence differs. Report and ledger are read from fixed file
+names; directories must be canonical and unlinked, and asset files must be regular
+and nonsymlink. No paths from the receipt are followed during reload.
+
+This is **consistency admission under a trusted external terminal pin**. It does
+not recompute depth classifications, authenticate an arbitrary producer or turn
+nominal depth into physical clearance. The original producer/cache admission and
+independent classifier evidence retain their separate scopes. No new collision
+or walking eligibility is granted.
+
+The admitted object owns its grid, typed relations, frame IDs, sigma-availability
+flags, per-cell counts and checked native snapshot. Before reusing evidence with
+a current source, call `validate_source`: a changed scene ID/content requires
+resync, a changed epoch returns `WRONG_EPOCH`, and a changed revision returns
+`WRONG_BASE`. Pose or chunk corrections invalidate the original content binding.
+Failed/cancelled admission publishes nothing and preserves existing owners.
+Synthetic test sources remain explicitly synthetic in the diagnostic provenance.
+
+The shared application `open_depth_space` first loads the source bundle using its
+independent manifest pin. GUI and CLI use this same read-only command:
+
+```sh
+build/dev/we_process check-depth-space SOURCE SOURCE_SHA DIRECTORY REPORT_SHA REQUEST_SHA
+build/dev/we_viewer --depth-space DIRECTORY --depth-space-report-sha REPORT_SHA \
+  --depth-space-source SOURCE --depth-space-source-sha SOURCE_SHA \
+  --depth-space-request-sha REQUEST_SHA
+```
+
+The viewer runs admission on its owned cancellable job thread and submits the
+checked snapshot through the ordinary initial/replacement update path. A pending
+handoff cannot be overwritten; failed opens retain the current visible scene.
+Opening `diagnostic.wexplore` as a generic scene remains a display operation and
+does not perform terminal/ledger admission.

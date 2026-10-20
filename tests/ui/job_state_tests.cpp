@@ -1,3 +1,4 @@
+#include "../fixtures/depth_space_fixture.hpp"
 #include "../unit/reconstruction_fixture.hpp"
 #include "job_state.hpp"
 #include "reconstruction_gate.hpp"
@@ -9,6 +10,54 @@
 #include <stop_token>
 
 using namespace world_explorer;
+
+TEST_CASE(
+    "viewer depth-space admission owns the full checked snapshot and preserves pending handoff",
+    "[depth-space-admission]") {
+    const auto K_PATH =
+        std::filesystem::temp_directory_path() /
+        ("we-ui-depth-space-" +
+         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+
+    struct Cleanup {
+        std::filesystem::path m_path;
+
+        ~Cleanup() {
+            std::error_code ignored;
+            std::filesystem::remove_all(m_path, ignored);
+        }
+    } cleanup { K_PATH };
+
+    testing::DepthSpaceFixture fixture(K_PATH);
+    REQUIRE(write_bundle(K_PATH / "source.wexplore", fixture.m_source));
+    const auto K_SOURCE_PIN =
+        sha256_file(K_PATH / "source.wexplore/manifest.json", 1024uz * 1024uz);
+    REQUIRE(K_SOURCE_PIN);
+    viewer::application_state state;
+    const DepthSpaceOpenRequest K_REQUEST { K_PATH / "source.wexplore",
+                                           fixture.m_path,
+                                           *K_SOURCE_PIN,
+                                           fixture.m_pin,
+                                           std::string(testing::DepthSpaceFixture::K_REQUEST) };
+    state.load_depth_space(K_REQUEST);
+    state.job.join();
+    REQUIRE(state.loaded);
+    CHECK_FALSE(state.busy);
+    CHECK(scene_content_hash(*state.loaded) == scene_content_hash(*fixture.m_diagnostic));
+    const auto K_PENDING = state.loaded;
+    const auto K_STATUS = state.status;
+    state.load_depth_space({});
+    CHECK(state.loaded == K_PENDING);
+    CHECK(state.status == K_STATUS);
+    state.loaded.reset();
+    auto invalid = K_REQUEST;
+    invalid.m_report_sha256 = std::string(64uz, '0');
+    state.load_depth_space(invalid);
+    state.job.join();
+    CHECK_FALSE(state.loaded);
+    CHECK_FALSE(state.busy);
+    CHECK(state.status.contains("Current scene retained"));
+}
 
 TEST_CASE("viewer completion waits for published snapshots after the loader clears busy") {
     viewer::application_state state;

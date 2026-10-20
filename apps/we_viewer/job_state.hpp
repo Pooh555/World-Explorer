@@ -2,6 +2,7 @@
 
 #include "request_summary.hpp"
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/depth_space.hpp"
 #include "world_explorer/application/reconstruction_progress.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
 
@@ -45,6 +46,7 @@ struct application_state {
     void append(std::string text);
     void load(std::filesystem::path path);
     void load_fusion(std::filesystem::path request, std::string sha256 = {});
+    void load_depth_space(DepthSpaceOpenRequest request);
     void worker(WorkerConfiguration configuration, std::vector<std::string> arguments);
     void review_request(std::filesystem::path request);
     void clear_request_review();

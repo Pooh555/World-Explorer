@@ -55,6 +55,7 @@ int viewer_main(int argc, char** argv) {
     std::filesystem::path geometry_request;
     std::filesystem::path geometry_output;
     std::string geometry_request_sha256;
+    DepthSpaceOpenRequest depth_space;
     SceneRepresentation representation { SceneRepresentation::CAPTURED_APPEARANCE };
     WorkerConfiguration worker { WE_WORKER_SCRIPT };
     std::size_t max_splats = 250000;
@@ -77,6 +78,9 @@ int viewer_main(int argc, char** argv) {
                    "          [--geometry-request FILE.json --geometry-request-sha SHA256\n"
                    "           --geometry-output NEW_JOB]\n"
                    "          [--max-splats N] [--residency-mib N]\n";
+            std::cout << "          [--depth-space DIRECTORY --depth-space-report-sha SHA256\n"
+                         "           --depth-space-source SOURCE --depth-space-source-sha SHA256\n"
+                         "           --depth-space-request-sha SHA256]\n";
             std::cout
                 << "          [--source-view] (explicit capture-orientation spectator reset)\n";
             std::cout
@@ -97,7 +101,17 @@ int viewer_main(int argc, char** argv) {
             inspect_source = true;
         } else if (argument + 1 < argc) {
             const std::string K_VALUE = argv[++argument];
-            if (K_OPTION == "--fusion-request") {
+            if (K_OPTION == "--depth-space") {
+                depth_space.m_directory = K_VALUE;
+            } else if (K_OPTION == "--depth-space-report-sha") {
+                depth_space.m_report_sha256 = K_VALUE;
+            } else if (K_OPTION == "--depth-space-source") {
+                depth_space.m_source_bundle = K_VALUE;
+            } else if (K_OPTION == "--depth-space-source-sha") {
+                depth_space.m_source_manifest_sha256 = K_VALUE;
+            } else if (K_OPTION == "--depth-space-request-sha") {
+                depth_space.m_request_sha256 = K_VALUE;
+            } else if (K_OPTION == "--fusion-request") {
                 fusion_request = K_VALUE;
             } else if (K_OPTION == "--geometry-request") {
                 geometry_request = K_VALUE;
@@ -143,6 +157,21 @@ int viewer_main(int argc, char** argv) {
         } else {
             throw std::runtime_error("Missing option value: " + K_OPTION);
         }
+    }
+    if (!depth_space.m_directory.empty() &&
+        (!scene_path.empty() || diagnostic_fixture || !fusion_request.empty() ||
+         !geometry_request.empty() || !reconstruction_request.empty() || !review_request.empty())) {
+        throw std::runtime_error("Choose one startup scene source");
+    }
+    const bool K_SPACE_PINS {
+        !depth_space.m_source_bundle.empty() && !depth_space.m_source_manifest_sha256.empty() &&
+        !depth_space.m_report_sha256.empty() && !depth_space.m_request_sha256.empty() };
+    const bool K_SPACE_OPTIONS {
+        !depth_space.m_source_bundle.empty() || !depth_space.m_source_manifest_sha256.empty() ||
+        !depth_space.m_report_sha256.empty() || !depth_space.m_request_sha256.empty() };
+    if ((!depth_space.m_directory.empty() && !K_SPACE_PINS) ||
+        (depth_space.m_directory.empty() && K_SPACE_OPTIONS)) {
+        throw std::runtime_error("Depth-space open requires source, terminal and request pins");
     }
     if (!fusion_request.empty() && (!scene_path.empty() || diagnostic_fixture ||
                                     !reconstruction_request.empty() || !review_request.empty())) {
@@ -330,7 +359,9 @@ int viewer_main(int argc, char** argv) {
     unsigned frames = 0;
     bool screenshot_requested = false;
     auto previous = std::chrono::steady_clock::now();
-    if (!fusion_request.empty()) {
+    if (!depth_space.m_directory.empty()) {
+        state.load_depth_space(depth_space);
+    } else if (!fusion_request.empty()) {
         representation = SceneRepresentation::OBSERVED_MESH;
         state.load_fusion(fusion_request, fusion_request_sha256);
     } else if (diagnostic_fixture) {
@@ -941,8 +972,8 @@ int viewer_main(int argc, char** argv) {
         if (!screenshot.empty() && !screenshot_requested && K_SCREENSHOT_AFTER_INJECTED_LOSS &&
             frames >= 8 && !state.has_pending_work() && reconstruction_request.empty() &&
             review_request.empty() && geometry_request.empty() &&
-            (!(K_REQUIRE_RECONSTRUCTION_SUCCESS || !scene_path.empty() ||
-               !fusion_request.empty()) ||
+            (!(K_REQUIRE_RECONSTRUCTION_SUCCESS || !depth_space.m_directory.empty() ||
+               !scene_path.empty() || !fusion_request.empty()) ||
              (current && !pending_ticket))) {
             if (K_REQUIRE_RECONSTRUCTION_SUCCESS) {
                 std::lock_guard lock(state.mutex);
@@ -1120,7 +1151,9 @@ int viewer_main(int argc, char** argv) {
                     throw std::runtime_error(state.review_error);
                 }
             }
-            if ((!scene_path.empty() || !fusion_request.empty()) && !current) {
+            if ((!scene_path.empty() || !fusion_request.empty() ||
+                 !depth_space.m_directory.empty()) &&
+                !current) {
                 std::lock_guard lock(state.mutex);
                 throw std::runtime_error(state.status);
             }

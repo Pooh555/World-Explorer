@@ -79,6 +79,8 @@ int main(int argc, char** argv) {
                    "NEW_SCENE.wexplore\n"
                    "  we_process inspect-collision REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process inspect-depth-space REQUEST.json SHA256 NEW_DIRECTORY\n"
+                   "  we_process check-depth-space SOURCE SOURCE_SHA DIRECTORY REPORT_SHA "
+                   "REQUEST_SHA\n"
                    "  we_process inspect-baked SCENE.wexplore\n"
                    "  we_process export-glb SCENE.wexplore NEW_DIRECTORY\n"
                    "  we_process import-glb FILE.glb SHA256 NEW_SCENE.wexplore\n"
@@ -199,6 +201,25 @@ int main(int argc, char** argv) {
                 std::cout << "Initial canonical pose asset SHA-256 "
                           << *(*K_SNAPSHOT)->m_initial_pose_asset_sha256 << '\n';
             }
+            return 0;
+        }
+        if (K_COMMAND == "check-depth-space") {
+            if (argc != 7) {
+                std::cerr << "Usage: check-depth-space SOURCE SOURCE_SHA DIRECTORY REPORT_SHA "
+                             "REQUEST_SHA\n";
+                return 2;
+            }
+            const auto K_EVIDENCE = open_depth_space({ argv[2], argv[4], argv[3], argv[5], argv[6] },
+                                                     cancellation.get_token());
+            if (!K_EVIDENCE) {
+                std::cerr << K_EVIDENCE.error().m_message << '\n';
+                return K_EVIDENCE.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
+            }
+            const auto K_COUNTS = (*K_EVIDENCE)->categories();
+            std::cout << "Admitted " << (*K_EVIDENCE)->frames().size() << " views, "
+                      << (*K_EVIDENCE)->cells().size() << " cells: unknown " << K_COUNTS[0uz]
+                      << ", front-only " << K_COUNTS[1uz] << ", surface/behind " << K_COUNTS[2uz]
+                      << ", conflict " << K_COUNTS[3uz] << "; walking unavailable\n";
             return 0;
         }
         if (K_COMMAND == "inspect-depth-space") {

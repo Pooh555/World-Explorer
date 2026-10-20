@@ -1,5 +1,7 @@
 # Validation index
 
+- [Typed depth-space admission](2026-10-20-depth-space-admission.md): immutable source/pose-bound evidence, malformed/rehashed/stale-context rejection and shared CLI/native viewing; all real cells remain unknown and walking unavailable.
+
 - [Observed-depth space diagnostics](2026-10-20-depth-space.md): complete 63-view input admission and whole-cell ledger, independent full-volume CPU oracle and native coverage view; all 5,184 real cells remain unknown, without measured collision or walking.
 
 - [Synthetic collision support](2026-10-20-collision-support.md): source-bound explicit cells/floors, conservative envelope probes and native labeled viewing; no measured collision or walking.

@@ -77,6 +77,32 @@ void application_state::load_fusion(std::filesystem::path request, std::string s
     });
 }
 
+void application_state::load_depth_space(DepthSpaceOpenRequest request) {
+    if (!begin_job()) {
+        return;
+    }
+    started = std::chrono::steady_clock::now();
+    {
+        std::lock_guard lock(mutex);
+        progress.reset();
+        status = "Checking pinned depth-space evidence...";
+    }
+    job = std::jthread([this, request = std::move(request)](const std::stop_token& stop) {
+        const auto K_EVIDENCE = open_depth_space(request, stop);
+        std::lock_guard lock(mutex);
+        if (stop.stop_requested()) {
+            status = "Cancelled. Current scene retained.";
+        } else if (K_EVIDENCE) {
+            loaded = (*K_EVIDENCE)->diagnostic();
+            status = "Depth-space evidence admitted; walking unavailable.";
+        } else {
+            status = "Depth-space open failed: " + K_EVIDENCE.error().m_message +
+                     ". Current scene retained.";
+        }
+        busy = false;
+    });
+}
+
 void application_state::load(std::filesystem::path path) {
     if (!begin_job()) {
         return;
