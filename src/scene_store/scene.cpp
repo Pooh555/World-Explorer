@@ -56,7 +56,7 @@ void append_chunk(SceneHashWriter& hash,
         K_ADD(0);
         K_ADD(include_baked && chunk.m_mesh->m_baked &&
                       chunk.m_mesh->m_baked->m_profile == MeshTextureProfile::DEPTH_SEQUENCE
-                  ? 5
+                  ? (chunk.m_mesh->m_baked->m_portable_parent_sha256.empty() ? 5 : 6)
               : include_baked && chunk.m_mesh->m_baked &&
                       !chunk.m_mesh->m_baked->m_portable_parent_sha256.empty()
                   ? 4

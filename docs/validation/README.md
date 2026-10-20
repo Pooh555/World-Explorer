@@ -1,5 +1,7 @@
 # Validation index
 
+- [Sequence captured-unlit GLB](2026-10-20-glb-sequence.md): full 63-view portable ownership/interchange, independent fidelity checks and native imported viewing; legacy products preserved.
+
 - [Sequence captured-color baking](2026-10-20-texture-sequence.md): explicit 120-view appearance, schema-4 persistence, real 63-view bake/oracle/native viewing, exact legacy preservation and full sanitizer parity; fragmented unmeasured geometry only.
 
 - [Sequence captured-color audit](2026-10-20-color-sequence.md): complete pinned cache admission, versioned 120-view candidate evidence, independent full 63-view oracle, cancellation, exact repeated/legacy products and native sanitizers; sequence baking remains open.

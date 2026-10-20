@@ -16,8 +16,7 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
     const auto& mesh = *chunk.m_mesh;
     const auto& baked = *mesh.m_baked;
     const bool K_SEQUENCE { baked.m_profile == MeshTextureProfile::DEPTH_SEQUENCE };
-    if ((baked.m_profile != MeshTextureProfile::SINGLE_CACHE && !K_SEQUENCE) ||
-        (K_SEQUENCE && !baked.m_portable_parent_sha256.empty())) {
+    if (baked.m_profile != MeshTextureProfile::SINGLE_CACHE && !K_SEQUENCE) {
         return fail(ErrorCode::INVALID_DATA, "Unsupported baked appearance profile");
     }
     const auto K_HASH_VALID = [](const std::string& hash) {
@@ -175,8 +174,9 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
             if (!K_HASH_VALID(baked.m_portable_parent_sha256)) {
                 return fail(ErrorCode::INVALID_DATA, "Invalid portable appearance parent pin");
             }
-            expected["schema_version"] = 2;
-            expected["kind"] = "CAPTURED_UNLIT_ATLAS_PNG_V1";
+            expected["schema_version"] = K_SEQUENCE ? 4 : 2;
+            expected["kind"] =
+                K_SEQUENCE ? "CAPTURED_UNLIT_ATLAS_SEQUENCE_PNG_V1" : "CAPTURED_UNLIT_ATLAS_PNG_V1";
             expected["blend"] = "score_squared_convex_linear_rgb_then_srgb8";
             expected["filter"] = "bilinear_valid_only";
             expected["parent_chunk_sha256"] = baked.m_portable_parent_sha256;

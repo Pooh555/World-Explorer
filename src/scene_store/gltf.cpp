@@ -37,7 +37,7 @@ std::array<std::uint32_t, 2> image_extent(const BakedMeshAppearance& baked) {
     return { std::bit_ceil(baked.m_width), std::bit_ceil(baked.m_height) };
 }
 
-Json chunk_header(const SceneChunk& chunk) {
+Json chunk_header(const SceneChunk& chunk, bool sequence_profile) {
     if (!chunk.m_mesh || !chunk.m_mesh->m_baked) {
         throw std::runtime_error("Missing captured appearance");
     }
@@ -64,7 +64,7 @@ Json chunk_header(const SceneChunk& chunk) {
                   { "pose_revision", std::to_string(context.m_pose_revision.m_value) } };
     }
     const auto& transform = chunk.m_world_from_chunk;
-    return {
+    Json header {
         { "id", std::to_string(chunk.m_id.m_value) },
         { "generation", std::to_string(chunk.m_generation) },
         { "pose_revision", std::to_string(chunk.m_pose_revision.m_value) },
@@ -93,9 +93,15 @@ Json chunk_header(const SceneChunk& chunk) {
         { "appearance_sha256", baked.m_manifest_sha256 },
         { "source_chunk_sha256", baked.m_source_chunk_sha256 },
         { "parent_chunk_sha256", scene_chunk_content_hash(chunk) } };
+    if (sequence_profile) {
+        header["ownership_layout"] = baked.m_profile == MeshTextureProfile::DEPTH_SEQUENCE
+                                         ? "OWNER_U64_CANDIDATES_U32X4_LE"
+                                         : "OWNER_U64_CANDIDATES_U32_LE";
+    }
+    return header;
 }
 
-SceneChunk read_header(const Json& document) {
+SceneChunk read_header(const Json& document, bool sequence_profile) {
     const auto K_ID = [](const Json& value) {
         const auto K_TEXT = value.get<std::string>();
         std::uint64_t result {};
@@ -106,7 +112,15 @@ SceneChunk read_header(const Json& document) {
                 "Invalid GLB identity");
         return result;
     };
-    require(document.is_object() && document.size() == 17uz, "Unsupported GLB chunk metadata");
+    require(document.is_object() && document.size() == (sequence_profile ? 18uz : 17uz),
+            "Unsupported GLB chunk metadata");
+    bool sequence {};
+    if (sequence_profile) {
+        const auto K_LAYOUT = document.at("ownership_layout").get<std::string>();
+        sequence = K_LAYOUT == "OWNER_U64_CANDIDATES_U32X4_LE";
+        require(sequence || K_LAYOUT == "OWNER_U64_CANDIDATES_U32_LE",
+                "Unsupported GLB ownership layout");
+    }
     const auto K_ARRAY_SIZE = [](const Json& value, std::size_t size) {
         require(value.is_array() && value.size() == size, "Invalid GLB metadata array length");
     };
@@ -118,7 +132,8 @@ SceneChunk read_header(const Json& document) {
     chunk.m_generation = K_ID(document.at("generation"));
     chunk.m_pose_revision = { K_ID(document.at("pose_revision")) };
     chunk.m_geometry_valid = true;
-    require(document.at("frames").is_array() && document.at("frames").size() <= 18uz,
+    require(document.at("frames").is_array() &&
+                document.at("frames").size() <= (sequence ? 120uz : 18uz),
             "Invalid GLB source frames");
     for (const auto& frame : document.at("frames")) {
         chunk.m_source_frames.push_back({ K_ID(frame) });
@@ -152,6 +167,8 @@ SceneChunk read_header(const Json& document) {
                                               K_TEXTS[2] };
     }
     auto& baked = mesh.m_baked.emplace();
+    baked.m_profile =
+        sequence ? MeshTextureProfile::DEPTH_SEQUENCE : MeshTextureProfile::SINGLE_CACHE;
     baked.m_width = static_cast<std::uint32_t>(count(document.at("width"), 4096uz));
     baked.m_height = static_cast<std::uint32_t>(count(document.at("height"), 4096uz));
     require(baked.m_width && baked.m_height && baked.m_height <= 8000000uz / baked.m_width,
@@ -163,10 +180,14 @@ SceneChunk read_header(const Json& document) {
     return chunk;
 }
 
-Json document_base(const SceneState& scene) {
+Json document_base(const SceneState& scene, bool sequence_profile) {
     const bool K_SYNTHETIC = scene.m_provenance.contains("source_kind") &&
                              scene.m_provenance.at("source_kind") == "synthetic_diagnostic";
-    return { { "asset", { { "version", "2.0" }, { "generator", "World Explorer captured unlit V1" } } },
+    return { { "asset",
+             { { "version", "2.0" },
+              { "generator",
+               sequence_profile ? "World Explorer captured unlit V2"
+                                : "World Explorer captured unlit V1" } } },
             { "scene", 0 },
             { "scenes", Json::array() },
             { "nodes", Json::array() },
@@ -183,7 +204,7 @@ Json document_base(const SceneState& scene) {
             { "extensionsUsed", { "KHR_materials_unlit" } },
             { "extensionsRequired", { "KHR_materials_unlit" } },
             { "extras",
-             { { "profile", "WE_CAPTURED_GLB_V1" },
+             { { "profile", sequence_profile ? "WE_CAPTURED_GLB_V2" : "WE_CAPTURED_GLB_V1" },
               { "source_scene_sha256", scene_content_hash(scene) },
               { "scene_identity",
                { std::to_string(scene.m_id.m_value),
@@ -217,7 +238,11 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
         }
         require(scene->m_scale == ScaleStatus::ARBITRARY && !scene->m_chunks.empty(),
                 "GLB profile requires explicit arbitrary-scale captured meshes");
-        auto document = document_base(*scene);
+        const bool K_SEQUENCE_PROFILE = std::ranges::any_of(scene->m_chunks, [](const auto& entry) {
+            return entry.second->m_mesh && entry.second->m_mesh->m_baked &&
+                   entry.second->m_mesh->m_baked->m_profile == MeshTextureProfile::DEPTH_SEQUENCE;
+        });
+        auto document = document_base(*scene, K_SEQUENCE_PROFILE);
         Writer binary;
         Json nodes = Json::array();
         for (const auto& [K_ID, K_CHUNK] : scene->m_chunks) {
@@ -230,12 +255,8 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
             }
             const auto& mesh = *K_CHUNK->m_mesh;
             const auto& baked = *mesh.m_baked;
-            if (baked.m_profile == MeshTextureProfile::DEPTH_SEQUENCE) {
-                return fail(ErrorCode::UNSUPPORTED_OPERATION,
-                            "GLB sequence appearance is not supported by this profile");
-            }
             require(baked.m_portable_parent_sha256.empty(),
-                    "GLB V1 exports original native bakes only");
+                    "GLB exports original native bakes only");
             const auto K_EXTENT = image_extent(baked);
             Image image {
                 K_EXTENT[0],
@@ -328,7 +349,13 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
             begin = binary.m_data.size();
             for (std::size_t i { 0uz }; i < baked.m_rgba.size(); ++i) {
                 binary.integer(baked.m_owners[i].m_value, 8uz);
-                binary.integer(baked.m_candidates[i]);
+                if (baked.m_profile == MeshTextureProfile::DEPTH_SEQUENCE) {
+                    for (auto word : baked.m_sequence_candidates[i]) {
+                        binary.integer(word);
+                    }
+                } else {
+                    binary.integer(baked.m_candidates[i]);
+                }
             }
             K_ADD_VIEW(begin, false);
             document["images"].push_back({ { "bufferView", K_VIEW + 3uz }, { "mimeType", "image/png" } });
@@ -362,7 +389,7 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
                    transform.m_rotation.m_z,
                    transform.m_rotation.m_w } },
                  { "scale", { transform.m_scale, transform.m_scale, transform.m_scale } },
-                 { "extras", chunk_header(*K_CHUNK) } });
+                 { "extras", chunk_header(*K_CHUNK, K_SEQUENCE_PROFILE) } });
             nodes.push_back(K_INDEX);
         }
         document["scenes"].push_back({ { "nodes", nodes } });

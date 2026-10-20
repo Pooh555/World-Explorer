@@ -342,8 +342,12 @@ Aggregate 8M-texel and decoded payload budgets include the wider candidate plane
 The [shared validator](mesh_color.md#bounded-native-baked-appearance) enforces
 exclusive legacy/sequence planes, frame/owner membership, canonical UVs,
 unknown/padding zeros and the sequence authoring metadata family. Sequence chunk
-content hashes use prefix **5**; untextured source hashes remain unchanged.
+content hashes use prefix **5** for original bakes and **6** for portable-derived
+sequence appearances. The latter retain schema-4 binary layout and use exact
+metadata schema 4 / `CAPTURED_UNLIT_ATLAS_SEQUENCE_PNG_V1`, sRGB8 RGB and a
+validated parent pin. Untextured source hashes remain unchanged.
 Native rendering consumes the same linear RGBA and UV representation through
 ordinary immutable scene updates. This format adds candidate evidence, not PBR,
-scale, collision, geometry coverage or walking qualification. The current GLB
-profile explicitly rejects sequence appearances.
+scale, collision, geometry coverage or walking qualification. The restricted
+[GLB V2 profile](gltf.md) preserves the wider candidate plane and admits its
+portable-derived family; legacy GLB V1 bytes remain unchanged.

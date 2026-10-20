@@ -15,12 +15,19 @@ using namespace world_explorer;
 
 namespace {
 
-SceneSnapshot fixture(bool unknown = false) {
+SceneSnapshot
+fixture(bool unknown = false, std::size_t sequence_count = 0uz, ChunkId chunk_id = { 9 }) {
     SceneChunk chunk;
-    chunk.m_id = { 9 };
+    chunk.m_id = chunk_id;
     chunk.m_pose_revision = { 1 };
     chunk.m_geometry_valid = true;
     chunk.m_source_frames = { { 18446744073709551614ULL } };
+    if (sequence_count) {
+        chunk.m_source_frames.clear();
+        for (std::size_t i { 0uz }; i < sequence_count; ++i) {
+            chunk.m_source_frames.push_back({ 18446744073709551614ULL - i });
+        }
+    }
     chunk.m_bounds = { { -1, -1, 1 }, { 1, 1, 3 } };
     chunk.m_world_from_chunk = { { 0, 1, 0, 0 }, { 1000, -2000, 3000 }, 2 };
     chunk.m_mesh = SceneMesh { { { { -.5F, -.5F, 2 }, { 0, 0, -1 } },
@@ -47,12 +54,16 @@ SceneSnapshot fixture(bool unknown = false) {
     for (std::size_t i { 0uz }; i < 64uz * 3uz; ++i) {
         rgb.push_back(static_cast<std::byte>(i % 256uz));
     }
-    const auto K_VIEW = ColorProjectionView::create(
-        std::move(depth), std::move(rgb), chunk.m_world_from_chunk, .01);
-    REQUIRE(K_VIEW);
-    auto baker = MeshTextureBaker::create(chunk);
+    auto baker = MeshTextureBaker::create(chunk,
+                                          sequence_count ? MeshTextureProfile::DEPTH_SEQUENCE
+                                                         : MeshTextureProfile::SINGLE_CACHE);
     REQUIRE(baker);
-    REQUIRE((*baker)->add_view(*K_VIEW, chunk.m_source_frames[0]));
+    for (auto frame : chunk.m_source_frames) {
+        depth.m_metadata.m_dependency.m_frame = frame;
+        const auto K_VIEW = ColorProjectionView::create(depth, rgb, chunk.m_world_from_chunk, .01);
+        REQUIRE(K_VIEW);
+        REQUIRE((*baker)->add_view(*K_VIEW, frame));
+    }
     auto baked = (*baker)->finish();
     REQUIRE(baked);
     if (!chunk.m_mesh) {
@@ -64,8 +75,15 @@ SceneSnapshot fixture(bool unknown = false) {
     scene->m_epoch = { 1 };
     scene->m_revision = { 1 };
     scene->m_provenance = { { "source_kind", "synthetic_diagnostic" } };
-    scene->m_chunks[{ 9 }] = std::make_shared<SceneChunk>(std::move(chunk));
+    scene->m_chunks[chunk_id] = std::make_shared<SceneChunk>(std::move(chunk));
     return scene;
+}
+
+const BakedMeshAppearance& baked_of(const SceneChunk& chunk) {
+    if (!chunk.m_mesh || !chunk.m_mesh->m_baked) {
+        throw std::runtime_error("Missing baked test payload");
+    }
+    return *chunk.m_mesh->m_baked;
 }
 
 struct Directory {
@@ -121,6 +139,164 @@ std::vector<std::byte> mutate_document(const std::vector<std::byte>& bytes, Muta
 
 }  // namespace
 
+TEST_CASE("sequence GLB preserves all 120 candidate bits wide identities and native topology",
+          "[gltf][sequence_glb]") {
+    const auto K_COUNT = GENERATE(19uz, 63uz, 120uz);
+    const auto K_SOURCE = fixture(GENERATE(false, true), K_COUNT);
+    const auto K_HASH = scene_content_hash(*K_SOURCE);
+    const auto K_BYTES = encode_baked_glb(K_SOURCE);
+    REQUIRE(K_BYTES);
+    const auto K_LOADED = decode_baked_glb(*K_BYTES);
+    REQUIRE(K_LOADED);
+    const auto& before = *K_SOURCE->m_chunks.at({ 9 });
+    const auto& after = *(*K_LOADED)->m_chunks.at({ 9 });
+    const auto& native = baked_of(before);
+    const auto& portable = baked_of(after);
+    CHECK(scene_untextured_chunk_hash(before) == scene_untextured_chunk_hash(after));
+    CHECK(portable.m_profile == MeshTextureProfile::DEPTH_SEQUENCE);
+    CHECK(portable.m_frames == native.m_frames);
+    CHECK(portable.m_owners == native.m_owners);
+    CHECK(portable.m_candidates.empty());
+    CHECK(portable.m_sequence_candidates == native.m_sequence_candidates);
+    CHECK(portable.m_corner_uv == native.m_corner_uv);
+    CHECK(portable.m_portable_parent_sha256 == scene_chunk_content_hash(before));
+    const auto K_META = nlohmann::json::parse(portable.m_manifest_json);
+    CHECK(K_META.at("schema_version") == 4);
+    CHECK(K_META.at("kind") == "CAPTURED_UNLIT_ATLAS_SEQUENCE_PNG_V1");
+    for (std::size_t i { 0uz }; i < native.m_rgba.size(); ++i) {
+        CHECK(portable.m_rgba[i][3] == native.m_rgba[i][3]);
+        for (std::size_t c { 0uz }; c < 3uz; ++c) {
+            CHECK(std::abs(portable.m_rgba[i][c] - native.m_rgba[i][c]) <= .0045F);
+        }
+        if (native.m_rgba[i][3] == 1) {
+            CHECK(portable.m_owners[i] == before.m_source_frames.back());
+            for (std::size_t bit { 0uz }; bit < 128uz; ++bit) {
+                CHECK(((portable.m_sequence_candidates[i][bit / 32uz] >> (bit % 32uz)) & 1U) ==
+                      (bit < K_COUNT ? 1U : 0U));
+            }
+        }
+    }
+    Directory directory;
+    REQUIRE(write_bundle(directory.m_root / "portable", *K_LOADED));
+    const auto K_REOPENED = load_bundle(directory.m_root / "portable");
+    REQUIRE(K_REOPENED);
+    CHECK(scene_content_hash(**K_REOPENED) == scene_content_hash(**K_LOADED));
+    CHECK(encode_baked_glb(*K_LOADED).has_value() == false);
+    CHECK(scene_content_hash(*K_SOURCE) == K_HASH);
+}
+
+TEST_CASE("sequence GLB explicitly describes mixed legacy and sequence ownership",
+          "[gltf][sequence_glb]") {
+    auto scene = std::make_shared<SceneState>(*fixture(false, 63uz));
+    scene->m_chunks[{ 10 }] = fixture(false, 0uz, { 10 })->m_chunks.at({ 10 });
+    const auto K_BYTES = encode_baked_glb(scene);
+    REQUIRE(K_BYTES);
+    const auto K_LOADED = decode_baked_glb(*K_BYTES);
+    REQUIRE(K_LOADED);
+    CHECK((*K_LOADED)->m_chunks.size() == 2uz);
+    Directory directory;
+    REQUIRE(write_bundle(directory.m_root / "mixed", *K_LOADED));
+    const auto K_REOPENED = load_bundle(directory.m_root / "mixed");
+    REQUIRE(K_REOPENED);
+    CHECK(scene_content_hash(**K_REOPENED) == scene_content_hash(**K_LOADED));
+    for (const auto& [K_ID, K_CHUNK] : (*K_REOPENED)->m_chunks) {
+        const auto& baked = baked_of(*K_CHUNK);
+        CHECK(baked.m_profile == (K_ID.m_value == 9 ? MeshTextureProfile::DEPTH_SEQUENCE
+                                                    : MeshTextureProfile::SINGLE_CACHE));
+        CHECK(nlohmann::json::parse(baked.m_manifest_json).at("schema_version") ==
+              (K_ID.m_value == 9 ? 4 : 2));
+    }
+}
+
+TEST_CASE("sequence GLB rejects ambiguous layouts budgets and rehashed authoring changes",
+          "[gltf][sequence_glb]") {
+    const auto K_BYTES = encode_baked_glb(fixture(false, GENERATE(19uz, 63uz, 120uz)));
+    REQUIRE(K_BYTES);
+    const auto K_CASE = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+    const auto K_CHANGED = mutate_document(*K_BYTES, [&](auto& document) {
+        auto& header = document["nodes"][0]["extras"];
+        if (K_CASE == 0) {
+            document["extras"]["profile"] = "WE_CAPTURED_GLB_V1";
+        }
+        if (K_CASE == 1) {
+            header["ownership_layout"] = "OWNER_U64_CANDIDATES_U32_LE";
+        }
+        if (K_CASE == 2) {
+            header.erase("ownership_layout");
+        }
+        if (K_CASE == 3) {
+            header["ownership_layout"] = "OWNER_U64_CANDIDATES_U32X5_LE";
+        }
+        if (K_CASE == 4) {
+            header["frames"].push_back(header["frames"][0]);
+        }
+        if (K_CASE == 5) {
+            header["frames"] = std::vector<std::string>(121uz, "1");
+        }
+        if (K_CASE == 6) {
+            header["width"] = 4097;
+        }
+        if (K_CASE == 7) {
+            header["height"] = 4096;
+            header["width"] = 4096;
+        }
+        if (K_CASE == 8) {
+            document["bufferViews"][4]["byteLength"] = 0;
+        }
+        if (K_CASE >= 9) {
+            auto metadata =
+                nlohmann::json::parse(header["appearance_json"].template get<std::string>());
+            if (K_CASE == 9) {
+                metadata["schema_version"] = 1;
+            }
+            if (K_CASE == 10) {
+                metadata["kind"] = "CAPTURED_UNLIT_ATLAS_V1";
+            }
+            if (K_CASE == 11) {
+                metadata["blend"] = "invented";
+            }
+            if (K_CASE == 12) {
+                metadata["parent_chunk_sha256"] = std::string(64uz, 'a');
+            }
+            const auto K_TEXT = metadata.dump(2);
+            header["appearance_json"] = K_TEXT;
+            header["appearance_sha256"] = sha256(std::as_bytes(std::span(K_TEXT)));
+        }
+    });
+    CHECK(decode_baked_glb(K_CHANGED).has_value() == false);
+}
+
+TEST_CASE("sequence GLB rejects reserved candidate bits missing owners and damaged wide planes",
+          "[gltf][sequence_glb]") {
+    const auto K_COUNT = GENERATE(19uz, 63uz, 120uz);
+    const auto K_BYTES = encode_baked_glb(fixture(false, K_COUNT));
+    REQUIRE(K_BYTES);
+    auto changed = *K_BYTES;
+    const auto K_LENGTH = word(changed, 12uz);
+    const auto K_DOCUMENT =
+        nlohmann::json::parse(reinterpret_cast<const char*>(changed.data()) + 20,
+                              reinterpret_cast<const char*>(changed.data()) + 20uz + K_LENGTH);
+    const auto K_START =
+        28uz + K_LENGTH + K_DOCUMENT["bufferViews"][4]["byteOffset"].get<std::size_t>();
+    const auto K_CASE = GENERATE(0, 1, 2, 3);
+    if (K_CASE == 0) {
+        changed[K_START + 23uz] |= std::byte { 128 };
+    }
+    if (K_CASE == 1) {
+        const auto K_OFFSET = K_START + 8uz + (K_COUNT - 1uz) / 32uz * 4uz;
+        integer(changed, K_OFFSET, word(changed, K_OFFSET) & ~(1U << ((K_COUNT - 1uz) % 32uz)));
+    }
+    if (K_CASE == 2) {
+        const auto K_OFFSET = K_START + 8uz + K_COUNT / 32uz * 4uz;
+        integer(changed, K_OFFSET, word(changed, K_OFFSET) | (1U << (K_COUNT % 32uz)));
+    }
+    if (K_CASE == 3) {
+        integer(changed, K_START, 1);
+        integer(changed, K_START + 4uz, 0);
+    }
+    CHECK(decode_baked_glb(changed).has_value() == false);
+}
+
 TEST_CASE("GLB keeps complete geometry source pins and exact half-pixel UVs with bounded RGB "
           "quantization",
           "[gltf]") {
@@ -134,14 +310,8 @@ TEST_CASE("GLB keeps complete geometry source pins and exact half-pixel UVs with
     const auto& original = *K_SOURCE->m_chunks.at({ 9 });
     const auto& loaded = *(*K_LOADED)->m_chunks.at({ 9 });
     CHECK(scene_untextured_chunk_hash(original) == scene_untextured_chunk_hash(loaded));
-    const auto K_BAKED = [](const SceneChunk& chunk) -> const BakedMeshAppearance& {
-        if (!chunk.m_mesh || !chunk.m_mesh->m_baked) {
-            throw std::runtime_error("Missing baked test payload");
-        }
-        return *chunk.m_mesh->m_baked;
-    };
-    const auto& before = K_BAKED(original);
-    const auto& after = K_BAKED(loaded);
+    const auto& before = baked_of(original);
+    const auto& after = baked_of(loaded);
     CHECK(after.m_portable_parent_sha256 == scene_chunk_content_hash(original));
     CHECK(before.m_owners == after.m_owners);
     CHECK(before.m_candidates == after.m_candidates);
@@ -254,7 +424,7 @@ TEST_CASE("GLB rejects damaged embedded geometry PNG checksums ownership and tru
 
 TEST_CASE("GLB cancellation and publication failures preserve inputs and previous outputs",
           "[gltf]") {
-    const auto K_SOURCE = fixture();
+    const auto K_SOURCE = fixture(false, GENERATE(0uz, 120uz));
     std::stop_source cancelled;
     cancelled.request_stop();
     const auto K_ENCODED = encode_baked_glb(K_SOURCE, cancelled.get_token());
@@ -320,7 +490,7 @@ TEST_CASE("GLB refuses stale hybrid and partially untextured snapshots instead o
 }
 
 TEST_CASE("portable native admission binds filter parent and rounded sRGB8 storage", "[gltf]") {
-    const auto K_BYTES = encode_baked_glb(fixture());
+    const auto K_BYTES = encode_baked_glb(fixture(false, GENERATE(0uz, 120uz)));
     REQUIRE(K_BYTES);
     const auto K_LOADED = decode_baked_glb(*K_BYTES);
     REQUIRE(K_LOADED);

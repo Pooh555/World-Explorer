@@ -88,9 +88,9 @@ struct Image {
 std::vector<std::byte> encode_png(const Image& image, const std::stop_token& stop);
 Image decode_png(std::span<const std::byte> bytes, const std::stop_token& stop);
 Json parse(std::string_view text);
-Json chunk_header(const SceneChunk& chunk);
-SceneChunk read_header(const Json& document);
-Json document_base(const SceneState& scene);
+Json chunk_header(const SceneChunk& chunk, bool sequence_profile);
+SceneChunk read_header(const Json& document, bool sequence_profile);
+Json document_base(const SceneState& scene, bool sequence_profile);
 std::size_t count(const Json& value, std::size_t maximum);
 std::array<std::uint32_t, 2> image_extent(const BakedMeshAppearance& baked);
 

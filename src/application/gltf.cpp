@@ -7,6 +7,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
+
 namespace world_explorer {
 namespace {
 
@@ -53,9 +55,13 @@ Result<void> export_baked_glb_bundle(const BakedGlbExport& request, const std::s
         if (!K_HASH) {
             return std::unexpected(K_HASH.error());
         }
+        const bool K_SEQUENCE = std::ranges::any_of((*K_SCENE)->m_chunks, [](const auto& entry) {
+            return entry.second->m_mesh && entry.second->m_mesh->m_baked &&
+                   entry.second->m_mesh->m_baked->m_profile == MeshTextureProfile::DEPTH_SEQUENCE;
+        });
         const nlohmann::json K_MANIFEST {
-            { "schema_version", 1 },
-            { "kind", "CAPTURED_UNLIT_GLB_EXPORT_V1" },
+            { "schema_version", K_SEQUENCE ? 2 : 1 },
+            { "kind", K_SEQUENCE ? "CAPTURED_UNLIT_GLB_EXPORT_V2" : "CAPTURED_UNLIT_GLB_EXPORT_V1" },
             { "source_scene_sha256", scene_content_hash(**K_SCENE) },
             { "glb", { { "path", "scene.glb" }, { "bytes", bytes->size() }, { "sha256", *K_HASH } } },
             { "lighting", "captured_unlit" },

@@ -88,7 +88,10 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
         scene->m_provenance["source_kind"] = K_DOCUMENT.at("extras").at("synthetic").get<bool>()
                                                  ? "synthetic_diagnostic"
                                                  : "captured_baked_glb";
-        const auto K_BASE = document_base(*scene);
+        const auto K_PROFILE = K_DOCUMENT.at("extras").at("profile").get<std::string>();
+        const bool K_SEQUENCE_PROFILE { K_PROFILE == "WE_CAPTURED_GLB_V2" };
+        require(K_SEQUENCE_PROFILE || K_PROFILE == "WE_CAPTURED_GLB_V1", "Unsupported GLB profile");
+        const auto K_BASE = document_base(*scene, K_SEQUENCE_PROFILE);
         for (const auto* key : { "asset", "samplers", "extensionsUsed", "extensionsRequired" }) {
             K_EQUAL(K_DOCUMENT.at(key), K_BASE.at(key));
         }
@@ -105,15 +108,18 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
             "baked_appearance; captured unlit; conservative bilinear validity; sRGB8 quantization";
         Json selected_nodes = Json::array();
         std::size_t total_vertices {}, total_triangles {}, total_texels {};
+        bool has_sequence {};
         for (std::size_t n { 0uz }; n < K_N; ++n) {
             cancelled(stop);
             const auto& node = nodes[n];
             require(node.is_object() && node.size() == 5uz, "Unsupported GLB node fields");
             const auto& header = node.at("extras");
-            auto chunk = read_header(header);
+            auto chunk = read_header(header, K_SEQUENCE_PROFILE);
             require(chunk.m_mesh && chunk.m_mesh->m_baked, "Missing GLB mesh metadata");
             auto& mesh = *chunk.m_mesh;
             auto& baked = *mesh.m_baked;
+            const bool K_SEQUENCE { baked.m_profile == MeshTextureProfile::DEPTH_SEQUENCE };
+            has_sequence = has_sequence || K_SEQUENCE;
             const auto K_V = count(header.at("vertices"), 4000000uz - total_vertices);
             const auto K_T =
                 count(header.at("triangles"), std::min(100000uz, 8000000uz - total_triangles));
@@ -127,7 +133,7 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
             require(views[K_VIEW].size() == K_T * 60uz &&
                         views[K_VIEW + 1uz].size() == K_V * 24uz &&
                         views[K_VIEW + 2uz].size() == K_T * 12uz &&
-                        views[K_VIEW + 4uz].size() == K_P * 12uz,
+                        views[K_VIEW + 4uz].size() == K_P * (K_SEQUENCE ? 24uz : 12uz),
                     "GLB geometry/ownership counts disagree with bytes");
             Reader vertices { views[K_VIEW + 1uz] }, triangles { views[K_VIEW + 2uz] },
                 ownership { views[K_VIEW + 4uz] };
@@ -154,7 +160,11 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
                     "GLB PNG extent differs");
             baked.m_rgba.resize(K_P);
             baked.m_owners.resize(K_P);
-            baked.m_candidates.resize(K_P);
+            if (K_SEQUENCE) {
+                baked.m_sequence_candidates.resize(K_P);
+            } else {
+                baked.m_candidates.resize(K_P);
+            }
             for (std::size_t y { 0uz }; y < K_IMAGE.m_height; ++y) {
                 cancelled(stop);
                 for (std::size_t x { 0uz }; x < K_IMAGE.m_width; ++x) {
@@ -182,7 +192,13 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
             }
             for (std::size_t i { 0uz }; i < K_P; ++i) {
                 baked.m_owners[i] = { ownership.integer(8uz) };
-                baked.m_candidates[i] = static_cast<std::uint32_t>(ownership.integer());
+                if (K_SEQUENCE) {
+                    for (auto& word : baked.m_sequence_candidates[i]) {
+                        word = static_cast<std::uint32_t>(ownership.integer());
+                    }
+                } else {
+                    baked.m_candidates[i] = static_cast<std::uint32_t>(ownership.integer());
+                }
             }
             Reader rendered { views[K_VIEW] };
             const auto K_COLUMNS = baked.m_width / 8U;
@@ -266,14 +282,21 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
                         baked.m_manifest_sha256,
                     "GLB authoring metadata hash differs");
             auto appearance = parse(baked.m_manifest_json);
-            require(count(appearance.at("schema_version"), 1uz) == 1uz &&
-                        appearance.at("kind").get<std::string>() == "CAPTURED_UNLIT_ATLAS_V1" &&
+            require(count(appearance.at("schema_version"), K_SEQUENCE ? 3uz : 1uz) ==
+                            (K_SEQUENCE ? 3uz : 1uz) &&
+                        appearance.at("kind").get<std::string>() ==
+                            (K_SEQUENCE ? "CAPTURED_UNLIT_ATLAS_SEQUENCE_V1"
+                                        : "CAPTURED_UNLIT_ATLAS_V1") &&
+                        !appearance.contains("parent_chunk_sha256") &&
+                        appearance.at("blend").get<std::string>() ==
+                            "score_squared_convex_linear_rgb" &&
                         appearance.at("filter").get<std::string>() ==
                             "triangular_linear_valid_only",
                     "Unsupported GLB original appearance");
             baked.m_portable_parent_sha256 = header.at("parent_chunk_sha256").get<std::string>();
-            appearance["schema_version"] = 2;
-            appearance["kind"] = "CAPTURED_UNLIT_ATLAS_PNG_V1";
+            appearance["schema_version"] = K_SEQUENCE ? 4 : 2;
+            appearance["kind"] =
+                K_SEQUENCE ? "CAPTURED_UNLIT_ATLAS_SEQUENCE_PNG_V1" : "CAPTURED_UNLIT_ATLAS_PNG_V1";
             appearance["filter"] = "bilinear_valid_only";
             appearance["blend"] = "score_squared_convex_linear_rgb_then_srgb8";
             appearance["parent_chunk_sha256"] = baked.m_portable_parent_sha256;
@@ -290,6 +313,7 @@ Result<SceneSnapshot> decode_baked_glb(std::span<const std::byte> bytes,
                 "Duplicate GLB chunk ID");
             selected_nodes.push_back(n);
         }
+        require(has_sequence == K_SEQUENCE_PROFILE, "GLB profile disagrees with appearances");
         K_EQUAL(K_DOCUMENT.at("scenes"), Json::array({ { { "nodes", selected_nodes } } }));
         if (std::ranges::all_of(scene->m_chunks, [](const auto& entry) {
                 return entry.second->m_mesh && entry.second->m_mesh->m_observed &&

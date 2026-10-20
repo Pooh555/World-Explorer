@@ -318,27 +318,42 @@ qualify their redistribution rights or the drifted installed headers.
   two future-version rejection fixtures to schema 5. Legacy bundle bytes remain
   exact. Conditional lattice support is 98.1173%; the room remains fragmented.
 
+- [Sequence captured-unlit GLB](validation/2026-10-20-glb-sequence.md): explicit
+  V2 preserves all 120 candidate bits and uint64 identities, including mixed
+  legacy scenes. Full 63-view export/import and independent geometry/PNG/mask/UV
+  checks pass; four legacy exports/manifests/imports remain byte-identical.
+  Native imported viewing and GPU diagnostics report zero Vulkan errors; full
+  sanitizer export/import reproduce all bytes. Conservative bilinear masking
+  loses 14.527% of sampled native-known interiors and adds none; captured surfaces
+  remain fragmented. 403 dev / 379 C++23 checks and 58 focused sanitizer cases /
+  109,177 assertions pass. This completes the narrow sequence interchange slice.
+
 ## Next executable step and protection rules
 
-Extend the restricted captured-unlit GLB producer/importer to sequence
-appearances, starting with `src/scene_store/gltf.cpp`, `gltf_import.cpp` and their
-private helpers. The current `WE_CAPTURED_GLB_V1` ownership payload stores one
-uint32 candidate mask, and the exporter correctly rejects sequence materials.
-Add an explicit new portable profile/ownership representation retaining all
-120 bits, uint64 frame/owner identities and complete source/validity metadata.
-Preserve legacy V1 bytes and the 256-MiB encoded / existing decoded/texel budgets;
-do not silently truncate masks or lift limits. Version the derived appearance
-metadata/hash family as needed, keeping the original sequence bake immutable.
-Add 19/63/120-view round-trip/adverse input, cancellation and legacy regression
-checks before real export/import, an independent validator/oracle and native
-imported-scene viewing. Retain declared sRGB8/filtering losses and unlit labeling.
+Integrate owned cleanup/bake/export stages into the shared geometry workflow,
+starting with `src/application/geometry_job.cpp`, `owned_job.*`,
+`fusion_cleanup.cpp`, `mesh_texture.cpp`, `gltf.cpp` and
+`tests/unit/geometry_job_tests.cpp`. Inspect existing request/terminal ownership
+and the source/cache admission contracts before adding an explicit versioned
+postprocessing request. Keep raw defaults compatible. Pin each stage's input
+scene/poses/cache/parameters; publish separate immutable attempts and validated
+terminal results. Reuse completed stages only on exact input/output identity;
+cancellation/failure must preserve the prior usable scene, completed products and
+partial attempts. GUI and CLI must share this job path. Begin with contract tests
+for replay, changed inputs, failed/cancelled stages and final scene handoff, then
+validate the saved full sequence locally; do not start platform qualification.
 
-Use `artifacts/validation/m3-texture-sequence-20261020/sequence.wexplore` (manifest
+Use the existing raw/native sequence and the saved full bake as inputs:
+`artifacts/validation/m3-texture-sequence-20261020/sequence.wexplore` (manifest
 SHA `bc49f7d9f5adba0941d1cae8aaffb37fe6fbeae02947ed36e72d17b08fddedf6`).
-Inspect `checks-repaired.json`, `native-commands.json`, `oracle.json`,
-`inspect.log`, `output-identities.json` and `sanitizer-parity.json` first.
-Reserve new outputs. No unchanged CUDA, fusion, bake or completed refit is needed;
-this is partial captured geometry, not an asset/PBR or measured-geometry gate.
+The portable result is
+`artifacts/validation/m3-glb-sequence-20261020/sequence-import.wexplore` (manifest
+SHA `c081c55b30ab1683429b7fec466d61dd06186419d01a822741f426613f1537a1`).
+Inspect that slice's `real.json`, `oracle.json`, `native-commands.json`,
+`sanitizer-parity.json` and final preservation/identity receipts first. Retain the
+original bake for exports; lossy imported previews cannot be re-exported. Reserve
+new outputs. No unchanged CUDA, fusion, bake or completed refit is needed; this is
+partial captured geometry, not an asset/PBR or measured-geometry gate.
 
 Preserve the 916-file copied/original depth jobs, 48-file cancelled fresh cache,
 152 source input files, native raw/baked/sanitizer scenes, all prior attempts,
@@ -376,7 +391,7 @@ Preserve saved runs, failed/decoded stages, both frozen fixtures and the pilot.
 Keep CPU pose/training environments unchanged. No unchanged three-view/nine-view/18-view or
 sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Complete room
-surface coverage, fresh sequence processing beyond raw fusion, broader owned mesh processing, compressed storage,
+surface coverage, broader owned mesh processing, compressed storage,
 measured scale, collision/walking and general interchange remain open.
 A0–A6/AP gates are unstarted; M4 has not begun.
 

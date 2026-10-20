@@ -470,8 +470,11 @@ TEST_CASE("sequence baking retains all candidate words global blends and wide-ID
     CHECK(restored.m_rgba == baked.m_rgba);
     CHECK(restored.m_frames == baked.m_frames);
     const auto K_GLB = encode_baked_glb(*K_LOADED);
-    REQUIRE(K_GLB.has_value() == false);
-    CHECK(K_GLB.error().m_code == ErrorCode::UNSUPPORTED_OPERATION);
+    REQUIRE(K_GLB);
+    const auto K_IMPORTED = decode_baked_glb(*K_GLB);
+    REQUIRE(K_IMPORTED);
+    CHECK(baked_of(*(*K_IMPORTED)->m_chunks.begin()->second).m_sequence_candidates ==
+          baked.m_sequence_candidates);
 }
 
 TEST_CASE("sequence texture unknowns and final-word owners never invent candidates",

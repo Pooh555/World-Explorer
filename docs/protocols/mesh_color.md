@@ -195,7 +195,7 @@ Sequence appearances instead own an exclusive four-uint32 plane, with receipt
 view `i` in word `i/32`, bit `i%32`. Unused bits, including 120–127, are zero;
 owners must belong to a set candidate bit. Unknown/padding texels have zero words
 and owners. Validation rejects mixed/missing planes, unknown profiles, excessive
-frames and the portable-parent field on a sequence appearance. Sequence metadata
+frames and malformed portable metadata. Original sequence metadata
 has `schema_version: 3`, `kind: CAPTURED_UNLIT_ATLAS_SEQUENCE_V1`; numerical policy,
 continuous normals, score-squared blend and all coverage denominators stay fixed.
 Global blending and lower-ID owner ties span every admitted source view.
@@ -208,11 +208,16 @@ expanded per-corner vertices in the existing staged residency budget and rejects
 storage-buffer range excess. Replacement becomes visible only after upload
 completion; geometry invalidation hides its baked appearance. Source frames,
 parents and input caches remain external authoring dependencies.
-[Restricted unlit GLB export/import](gltf.md) is available for legacy appearances
-with declared quantization/conservative filtering losses. Its current producer
-explicitly rejects sequence appearances before encoding. Production jobs/resume, general
-interchange and material-quality qualification remain open.
+[Restricted unlit GLB export/import](gltf.md) supports legacy and sequence
+appearances with declared quantization/conservative filtering losses. Sequence
+imports retain the wider plane, use metadata schema 4 /
+`CAPTURED_UNLIT_ATLAS_SEQUENCE_PNG_V1` and pin their original native parent.
+Production jobs/resume, general interchange and material-quality qualification
+remain open.
 See [actual checks](../validation/2026-10-19-mesh-textures.md).
 [Sequence baking checks](../validation/2026-10-20-texture-sequence.md) cover the
 complete 63-view bake, wider persistence, independent lattice oracle, native
 viewing, active decoder cancellation and unchanged legacy bytes.
+
+[Sequence GLB checks](../validation/2026-10-20-glb-sequence.md) cover portable
+ownership, full real interchange, declared losses and unchanged legacy bytes.

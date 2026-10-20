@@ -1,10 +1,12 @@
 # Captured-unlit GLB interchange
 
 M3 exports complete baked mesh snapshots as self-contained glTF 2.0/GLB and imports
-this producer's restricted `WE_CAPTURED_GLB_V1` profile into native bundles.
+this producer's restricted `WE_CAPTURED_GLB_V1` (legacy) and
+`WE_CAPTURED_GLB_V2` (sequence/mixed) profiles into native bundles.
 This is captured appearance, not intrinsic albedo, PBR recovery, measured geometry
 or asset-track qualification. General glTF editing/import and engine packaging
-remain separate. [Actual local checks](../validation/2026-10-19-mesh-glb.md).
+remain separate. [Legacy checks](../validation/2026-10-19-mesh-glb.md),
+[sequence checks](../validation/2026-10-20-glb-sequence.md).
 
 ```sh
 build/dev/we_process export-glb SOURCE.wexplore NEW_DIRECTORY
@@ -58,8 +60,9 @@ collision or walking eligibility. No source inspection camera is exported.
 GLB is little-endian, version 2, exactly one aligned JSON chunk followed by one
 aligned BIN chunk. The profile caps the file at 256 MiB, JSON at 16 MiB, nesting at
 24, nodes at 4,096, aggregate original vertices at 4M and native texture texels at
-8M. Existing per-mesh 100k triangle / 18-view limits remain. Individual padded
-PNGs are at most 4096×4096. Excess fails instead of dropping data.
+8M. Existing per-mesh 100k triangle and aggregate decoded payload budgets remain.
+Legacy appearances retain the 18-view cap; explicit sequence appearances permit
+120 views. Individual padded PNGs are at most 4096×4096. Excess fails instead of dropping data.
 
 Every chunk uses five contiguous, four-byte-aligned BIN views:
 
@@ -69,7 +72,16 @@ Every chunk uses five contiguous, four-byte-aligned BIN views:
 | Original vertices | Six float32 per source vertex: xyz and original normal |
 | Original indices | Three uint32 per original source triangle |
 | Image | Embedded PNG with exact declared byte length |
-| Ownership | One uint64 owner plus uint32 ordered-source candidate mask per native texel |
+| Ownership | Per native texel: little-endian uint64 owner, then one uint32 candidate word for legacy or four uint32 words for sequences (12/24 bytes) |
+
+V1 bytes remain unchanged and have no ownership-layout field. Export selects V2
+when any chunk has a `DEPTH_SEQUENCE` appearance. Each V2 node adds exactly one
+`ownership_layout`: `OWNER_U64_CANDIDATES_U32X4_LE` for a sequence or
+`OWNER_U64_CANDIDATES_U32_LE` for legacy. The original metadata family and frame
+cap must agree with that layout; it cannot be inferred from view count. At least
+one sequence node is required in V2. Candidate view `i` is word `i/32`, bit `i%32`;
+unused bits, including 120–127, remain zero. Ownership membership, unknown/alpha
+and padding invariants remain unchanged. No candidate evidence is truncated.
 
 Node extras preserve bounds, original chunk ID/generation/pose revision, source
 frame IDs, source/cleanup pins, exact authoring documents and original bake metadata.
@@ -102,11 +114,12 @@ import; checksums are integrity evidence, not authorship or quality certificatio
 
 ## Native compatibility and publication
 
-The current GLB profile accepts legacy single-cache appearances only. Native
-sequence appearances use a wider candidate plane and bundle schema 4; export
-returns unsupported before encoding rather than truncating their evidence.
+V1 accepts original legacy single-cache appearances; V2 also accepts original
+sequence appearances and mixtures. Export manifests use schema/kind 1 /
+`CAPTURED_UNLIT_GLB_EXPORT_V1` for V1 and 2 /
+`CAPTURED_UNLIT_GLB_EXPORT_V2` for V2. Original native bakes remain immutable.
 
-Imported appearances have metadata schema 2 / `CAPTURED_UNLIT_ATLAS_PNG_V1`,
+Imported legacy appearances have metadata schema 2 / `CAPTURED_UNLIT_ATLAS_PNG_V1`,
 `bilinear_valid_only`, `score_squared_convex_linear_rgb_then_srgb8` and an original
 `parent_chunk_sha256`. RGB must match an sRGB8-decoded float within one ULP for
 library rounding. The native source geometry hash stays unchanged. The derived
@@ -117,6 +130,13 @@ provenance differ.
 [Bundle schema 3](scene.md#baked-appearance-bundle-schema-3) keeps its binary layout;
 its reader derives the portable-parent field from exact authoring JSON and validates
 the complete metadata family. Earlier readers reject the unsupported family.
+Sequence imports instead use metadata schema 4 /
+`CAPTURED_UNLIT_ATLAS_SEQUENCE_PNG_V1` and content-hash prefix **6**, with the
+same portable blend/filter/parent and sRGB8 admission rules. Original native
+sequence metadata schema 3 / hash prefix 5 remain unchanged.
+[Bundle schema 4](scene.md#sequence-baked-appearance-bundle-schema-4) retains its
+`WEXCHK04/WEXMAT02` layout for these wider portable appearances, including mixed
+legacy/sequence scenes. No native binary version or budget increases.
 The owned parent string counts toward decoded budgets. The renderer privately
 encodes the bilinear flag in its atlas-height word; public contracts expose no GPU
 objects. The original native triangular path remains available and unchanged.
