@@ -322,3 +322,28 @@ external projection proof or establish material quality.
 appearance metadata family, without changing the schema-3 binary layout. Original
 native material bytes/hashes remain unchanged; portable previews use conservative
 bilinear validity and sRGB8-derived RGB with an explicit parent pin.
+
+## Sequence baked appearance bundle schema 4
+
+Schema 4 requires at least one `DEPTH_SEQUENCE` appearance and retains the same
+geometry declarations as schema 3 except `encoding: WEXCHK04/WEXMSH01/WEXMAT02`.
+It can mix sequence, legacy baked, raw mesh and splat chunks. Earlier schemas
+reject sequence chunks; a relabeled legacy-only scene does not qualify as schema 4.
+Legacy schema-1/2/3 writers and content hashes remain unchanged.
+
+`WEXCHK04` keeps the complete chunk header and `WEXMSH01` geometry/source block.
+Its `WEXMAT02` material keeps schema 3's field order, dimensions, ordered uint64
+frames, authoring strings, UVs, RGBA and owners; it permits up to **120** source
+frames and replaces each uint32 candidate with **four little-endian uint32 words**.
+View `i` is word `i/32`, bit `i%32`; all unused bits are zero. The exact remaining
+material payload is `24*T + 40*width*height` bytes, checked before allocation.
+Aggregate 8M-texel and decoded payload budgets include the wider candidate plane.
+
+The [shared validator](mesh_color.md#bounded-native-baked-appearance) enforces
+exclusive legacy/sequence planes, frame/owner membership, canonical UVs,
+unknown/padding zeros and the sequence authoring metadata family. Sequence chunk
+content hashes use prefix **5**; untextured source hashes remain unchanged.
+Native rendering consumes the same linear RGBA and UV representation through
+ordinary immutable scene updates. This format adds candidate evidence, not PBR,
+scale, collision, geometry coverage or walking qualification. The current GLB
+profile explicitly rejects sequence appearances.

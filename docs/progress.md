@@ -306,37 +306,45 @@ qualify their redistribution rights or the drifted installed headers.
   view attempts, with exact masks, owners and RGB. Real cancellation, repeat,
   legacy byte preservation and full sanitizers pass; 393 dev / 369 C++23 checks
   pass. Conditional color support is 97.321% on the partial mesh; large seam jumps
-  remain. The sequence baker explicitly rejects until its format is extended.
+  remain. This diagnostic precedes the sequence baking slice below.
+
+- [Sequence captured-color baking](validation/2026-10-20-texture-sequence.md):
+  explicit 120-view appearance, schema-4 persistence and real 63-view native
+  viewing preserve all original geometry. The independent oracle checks every
+  1,793,988 surface sample / 113,021,244 view attempts; masks/owners match exactly,
+  maximum RGBA error is 9.313e-10 and known shared-edge lattice colors match.
+  Native viewer/GPU diagnostics report zero Vulkan errors; full sanitizer bake
+  reproduces every bundle byte. 399 dev / 375 C++23 checks pass after advancing
+  two future-version rejection fixtures to schema 5. Legacy bundle bytes remain
+  exact. Conditional lattice support is 98.1173%; the room remains fragmented.
 
 ## Next executable step and protection rules
 
-Extend bounded native captured-color baking/persistence to sequence inputs.
-Start with `src/scene_store/mesh_texture.cpp`,
-`include/world_explorer/scene_store/mesh_texture.hpp`, `baked_appearance.cpp`, the
-bundle reader/writer and `src/application/mesh_texture.cpp`. Inspect their uint32 mask,
-18-frame and schema-3 assumptions before raising any cap. Preserve legacy
-appearance/bundle bytes and the 100k-triangle / 8M-texel limits. Add an explicit
-versioned appearance/bundle representation for all 120 candidate bits, exact
-owner/frame membership, padding/unknown rules, checked aggregate budgets and
-current pose dependencies. Keep captured radiance unlit; do not relabel it PBR.
-Add 19/63/120-view CPU accumulation, malformed persistence, cancellation and
-legacy round-trip contracts before the real bake and native textured view.
+Extend the restricted captured-unlit GLB producer/importer to sequence
+appearances, starting with `src/scene_store/gltf.cpp`, `gltf_import.cpp` and their
+private helpers. The current `WE_CAPTURED_GLB_V1` ownership payload stores one
+uint32 candidate mask, and the exporter correctly rejects sequence materials.
+Add an explicit new portable profile/ownership representation retaining all
+120 bits, uint64 frame/owner identities and complete source/validity metadata.
+Preserve legacy V1 bytes and the 256-MiB encoded / existing decoded/texel budgets;
+do not silently truncate masks or lift limits. Version the derived appearance
+metadata/hash family as needed, keeping the original sequence bake immutable.
+Add 19/63/120-view round-trip/adverse input, cancellation and legacy regression
+checks before real export/import, an independent validator/oracle and native
+imported-scene viewing. Retain declared sRGB8/filtering losses and unlit labeling.
 
-Use the completed read-only audit under
-`artifacts/validation/m3-color-sequence-20261020/`: inspect `checks.json`,
-`native-commands.json`, `run/real-commands.json`, `run/oracle.json` and
-`run/sequence-audit/report.json`. `run/sequence-request.json` pins the same
-63-view cache/native source used by the fresh geometry job (request SHA
-`825c893f46a4db2246690d6010fa96fca98ed5e0ab3107b4f56364e4684edfd5`).
-The diagnostic contact sheet is not a usable atlas. Reserve new outputs; do not
-rerun CUDA, fusion or a completed refit. The existing restricted GLB producer
-also assumes legacy appearance: keep sequence export explicitly unsupported
-until its representation and actual interchange checks are extended.
+Use `artifacts/validation/m3-texture-sequence-20261020/sequence.wexplore` (manifest
+SHA `bc49f7d9f5adba0941d1cae8aaffb37fe6fbeae02947ed36e72d17b08fddedf6`).
+Inspect `checks-repaired.json`, `native-commands.json`, `oracle.json`,
+`inspect.log`, `output-identities.json` and `sanitizer-parity.json` first.
+Reserve new outputs. No unchanged CUDA, fusion, bake or completed refit is needed;
+this is partial captured geometry, not an asset/PBR or measured-geometry gate.
 
 Preserve the 916-file copied/original depth jobs, 48-file cancelled fresh cache,
-all 152 current audit input files, prior attempts/scratch/caches, bakes, audits
-and scenes. Sequence cleanup/baking/export, measured alignment/collision/walking
-and quality remain open; A0–A6 remain NOT_STARTED and M4 has not begun.
+152 source input files, native raw/baked/sanitizer scenes, all prior attempts,
+scratch, caches, bakes and audits. Owned cleanup/bake/export integration,
+measured alignment/collision/walking and quality remain open; A0–A6 remain
+NOT_STARTED and M4 has not begun.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list

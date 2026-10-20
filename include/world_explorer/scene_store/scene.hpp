@@ -31,6 +31,8 @@ struct ObservedMeshSource {
     std::string m_cleanup_sha256 {}, m_cleanup_json {};
 };
 
+enum class MeshTextureProfile : std::uint8_t { SINGLE_CACHE, DEPTH_SEQUENCE };
+
 struct BakedMeshAppearance {
     std::uint32_t m_width {}, m_height {};
     // Linear captured sRGB, alpha exactly 0 (unknown) or 1 (observed candidate).
@@ -42,6 +44,10 @@ struct BakedMeshAppearance {
     std::string m_source_chunk_sha256, m_manifest_sha256, m_manifest_json;
     // Nonempty only for the sRGB8 GLB-derived conservative bilinear profile.
     std::string m_portable_parent_sha256 {};
+    MeshTextureProfile m_profile { MeshTextureProfile::SINGLE_CACHE };
+    // Exclusive with the legacy candidate plane; four receipt-order words,
+    // with unused bits (including 120–127) required to remain zero.
+    std::vector<std::array<std::uint32_t, 4uz>> m_sequence_candidates;
 };
 
 // Raw observed surfaces or explicitly labeled synthetic diagnostics. No measured

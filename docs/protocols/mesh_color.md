@@ -147,17 +147,18 @@ build/dev/we_viewer --scene NEW_SCENE.wexplore
 ```
 
 The baker replays the same pinned input admission and streams one calibrated view
-at a time. It accepts at most 100,000 source triangles, 18 ordered source views
-and 48M source pixels, rejecting excess rather than trimming geometry. Every
+at a time. It accepts at most 100,000 source triangles. The default single-cache
+profile retains 18 ordered views / 48M pixels; explicit schema-2 sequence requests
+select `MeshTextureProfile::DEPTH_SEQUENCE`, with up to 120 ordered views and
+the same per-child cache limits. Excess rejects without trimming geometry. Every
 triangle receives an independent 8×8 atlas tile; columns are `ceil(sqrt(T))`, rows
 `ceil(T/columns)`. Its 36 surface lattice points have integer `x+y<=7` and
 barycentrics `((7-x-y)/7,x/7,y/7)`. Original positions and interpolated original
 vertex normals supply the projector above. Shared source edges therefore use the
 same point/normal field. Geometry, topology, support and cleanup certificates are
 preserved exactly. The atlas is deliberately coarse; this is a bounded fallback.
-The baker explicitly rejects schema-2 sequence inputs before accumulation or
-publication: its persisted appearance still has uint32 masks and an 18-view cap.
-Sequence diagnostic success does not qualify sequence baking or textured export.
+The source profile is explicit, including sequences with fewer than 19 views;
+raising the legacy cap or guessing a profile from array sizes is not supported.
 
 For each independently projected lattice point, accepted source colors are
 averaged in linear sRGB with squared candidate scores as positive weights.
@@ -180,8 +181,8 @@ appearance, displayed unlit, **not relightable albedo**. The native viewer selec
 Baked captured color for mesh-only baked bundles; Observed surfaces retains the
 normal diagnostic. Walking stays disabled.
 
-`BakedMeshAppearance` owns linear float32 RGBA, uint64 owner IDs, uint32 candidate
-masks, corner UVs, ordered frames, an untextured chunk hash and exact hashed authoring
+`BakedMeshAppearance` owns linear float32 RGBA, uint64 owner IDs, candidate masks,
+corner UVs, ordered frames, an untextured chunk hash and exact hashed authoring
 JSON. Validation enforces the canonical layout, finite ranges, binary validity,
 mask/owner membership, zero padding, strict metadata semantics and current source
 hash. Current observed pose context must match every input view. Cancelled partial
@@ -189,14 +190,29 @@ accumulation cannot be finalized or retried; finalization cancellation publishes
 nothing. Application admission and projection finish before atomic bundle
 publication begins; the writer itself finishes or reports failure.
 
-[Schema 3](scene.md#baked-appearance-bundle-schema-3) persists the immutable result.
+Legacy appearances retain the uint32 candidate plane and exact existing metadata.
+Sequence appearances instead own an exclusive four-uint32 plane, with receipt
+view `i` in word `i/32`, bit `i%32`. Unused bits, including 120–127, are zero;
+owners must belong to a set candidate bit. Unknown/padding texels have zero words
+and owners. Validation rejects mixed/missing planes, unknown profiles, excessive
+frames and the portable-parent field on a sequence appearance. Sequence metadata
+has `schema_version: 3`, `kind: CAPTURED_UNLIT_ATLAS_SEQUENCE_V1`; numerical policy,
+continuous normals, score-squared blend and all coverage denominators stay fixed.
+Global blending and lower-ID owner ties span every admitted source view.
+
+[Schema 3](scene.md#baked-appearance-bundle-schema-3) persists legacy appearances;
+[schema 4](scene.md#sequence-baked-appearance-bundle-schema-4) persists sequences.
 Scene limits cap aggregate texture texels at 8M and account for RGBA, masks,
 owners, UVs and metadata in payload budgets. GPU upload includes atlas RGBA and
 expanded per-corner vertices in the existing staged residency budget and rejects
 storage-buffer range excess. Replacement becomes visible only after upload
 completion; geometry invalidation hides its baked appearance. Source frames,
 parents and input caches remain external authoring dependencies.
-[Restricted unlit GLB export/import](gltf.md) is available with declared
-quantization/conservative filtering losses. Production jobs/resume, general
+[Restricted unlit GLB export/import](gltf.md) is available for legacy appearances
+with declared quantization/conservative filtering losses. Its current producer
+explicitly rejects sequence appearances before encoding. Production jobs/resume, general
 interchange and material-quality qualification remain open.
 See [actual checks](../validation/2026-10-19-mesh-textures.md).
+[Sequence baking checks](../validation/2026-10-20-texture-sequence.md) cover the
+complete 63-view bake, wider persistence, independent lattice oracle, native
+viewing, active decoder cancellation and unchanged legacy bytes.

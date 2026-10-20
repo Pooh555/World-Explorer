@@ -243,9 +243,12 @@ SimilarityTransform get_transform(Decoder& input) {
 
 Encoder encode_chunk(const SceneChunk& chunk) {
     Encoder output;
-    output.text(chunk.m_mesh && chunk.m_mesh->m_baked ? "WEXCHK03"
-                : chunk.m_mesh                        ? "WEXCHK02"
-                                                      : "WEXCHK01");
+    output.text(chunk.m_mesh && chunk.m_mesh->m_baked &&
+                        chunk.m_mesh->m_baked->m_profile == MeshTextureProfile::DEPTH_SEQUENCE
+                    ? "WEXCHK04"
+                : chunk.m_mesh && chunk.m_mesh->m_baked ? "WEXCHK03"
+                : chunk.m_mesh                          ? "WEXCHK02"
+                                                        : "WEXCHK01");
     output.integer(chunk.m_id.m_value);
     output.integer(chunk.m_generation);
     output.integer(chunk.m_pose_revision.m_value);
@@ -318,7 +321,8 @@ Encoder encode_chunk(const SceneChunk& chunk) {
         }
         if (mesh.m_baked) {
             const auto& baked = *mesh.m_baked;
-            output.text("WEXMAT01");
+            output.text(baked.m_profile == MeshTextureProfile::DEPTH_SEQUENCE ? "WEXMAT02"
+                                                                              : "WEXMAT01");
             output.integer(baked.m_width, 4);
             output.integer(baked.m_height, 4);
             output.integer(baked.m_frames.size(), 4);
@@ -346,12 +350,17 @@ Encoder encode_chunk(const SceneChunk& chunk) {
             for (auto mask : baked.m_candidates) {
                 output.integer(mask, 4);
             }
+            for (const auto& mask : baked.m_sequence_candidates) {
+                for (auto word : mask) {
+                    output.integer(word, 4);
+                }
+            }
         }
     }
     return output;
 }
 
-SceneMesh decode_mesh(Decoder& input, SceneLimits limits, bool has_baked) {
+SceneMesh decode_mesh(Decoder& input, SceneLimits limits, std::uint64_t material_version) {
     input.magic("WEXMSH01");
     const auto K_VERTICES = input.integer(), K_TRIANGLES = input.integer();
     if (K_VERTICES > limits.m_max_mesh_vertices || K_TRIANGLES > limits.m_max_mesh_triangles ||
@@ -387,8 +396,8 @@ SceneMesh decode_mesh(Decoder& input, SceneLimits limits, bool has_baked) {
     }
     const auto K_REMAINING = input.m_bytes.size() - input.m_position;
     if (K_VERTICES > K_REMAINING / 24uz || K_TRIANGLES > (K_REMAINING - K_VERTICES * 24uz) / 12uz ||
-        (!has_baked && (K_TRIANGLES != (K_REMAINING - K_VERTICES * 24uz) / 12uz ||
-                        (K_REMAINING - K_VERTICES * 24uz) % 12uz != 0))) {
+        (material_version == 0 && (K_TRIANGLES != (K_REMAINING - K_VERTICES * 24uz) / 12uz ||
+                                   (K_REMAINING - K_VERTICES * 24uz) % 12uz != 0))) {
         throw std::runtime_error("mesh counts do not match exact byte size");
     }
     mesh.m_vertices.resize(static_cast<std::size_t>(K_VERTICES));
@@ -406,14 +415,18 @@ SceneMesh decode_mesh(Decoder& input, SceneLimits limits, bool has_baked) {
             index = static_cast<std::uint32_t>(input.integer(4));
         }
     }
-    if (has_baked) {
-        input.magic("WEXMAT01");
+    if (material_version) {
+        const bool K_SEQUENCE { material_version == 2 };
+        input.magic(K_SEQUENCE ? "WEXMAT02" : "WEXMAT01");
         auto& baked = mesh.m_baked.emplace();
+        baked.m_profile =
+            K_SEQUENCE ? MeshTextureProfile::DEPTH_SEQUENCE : MeshTextureProfile::SINGLE_CACHE;
         baked.m_width = static_cast<std::uint32_t>(input.integer(4));
         baked.m_height = static_cast<std::uint32_t>(input.integer(4));
         const auto K_FRAMES = input.integer(4);
         if (!baked.m_width || !baked.m_height || baked.m_width > 8192 || baked.m_height > 8192 ||
-            baked.m_height > limits.m_max_texture_texels / baked.m_width || K_FRAMES > 18) {
+            baked.m_height > limits.m_max_texture_texels / baked.m_width || !K_FRAMES ||
+            K_FRAMES > (K_SEQUENCE ? 120U : 18U)) {
             throw std::runtime_error("Texture dimensions or frames exceed budget");
         }
         for (std::uint64_t i { 0 }; i < K_FRAMES; ++i) {
@@ -432,15 +445,21 @@ SceneMesh decode_mesh(Decoder& input, SceneLimits limits, bool has_baked) {
         const auto K_METADATA = parse_json(std::as_bytes(std::span(baked.m_manifest_json)));
         baked.m_portable_parent_sha256 = K_METADATA.value("parent_chunk_sha256", std::string {});
         const auto K_PIXELS = static_cast<std::size_t>(baked.m_width) * baked.m_height;
+        const auto K_TEXEL_BYTES = K_SEQUENCE ? 40uz : 28uz;
         if (K_TRIANGLES > limits.m_max_payload_bytes / 24uz ||
-            K_PIXELS > (limits.m_max_payload_bytes - K_TRIANGLES * 24uz) / 28uz ||
-            input.m_bytes.size() - input.m_position != K_TRIANGLES * 24uz + K_PIXELS * 28uz) {
+            K_PIXELS > (limits.m_max_payload_bytes - K_TRIANGLES * 24uz) / K_TEXEL_BYTES ||
+            input.m_bytes.size() - input.m_position !=
+                K_TRIANGLES * 24uz + K_PIXELS * K_TEXEL_BYTES) {
             throw std::runtime_error("Texture counts differ from exact payload size/budget");
         }
         baked.m_corner_uv.resize(static_cast<std::size_t>(K_TRIANGLES) * 3uz);
         baked.m_rgba.resize(K_PIXELS);
         baked.m_owners.resize(K_PIXELS);
-        baked.m_candidates.resize(K_PIXELS);
+        if (K_SEQUENCE) {
+            baked.m_sequence_candidates.resize(K_PIXELS);
+        } else {
+            baked.m_candidates.resize(K_PIXELS);
+        }
         for (auto& uv : baked.m_corner_uv) {
             for (auto& value : uv) {
                 value = input.real32();
@@ -457,6 +476,11 @@ SceneMesh decode_mesh(Decoder& input, SceneLimits limits, bool has_baked) {
         for (auto& mask : baked.m_candidates) {
             mask = static_cast<std::uint32_t>(input.integer(4));
         }
+        for (auto& mask : baked.m_sequence_candidates) {
+            for (auto& word : mask) {
+                word = static_cast<std::uint32_t>(input.integer(4));
+            }
+        }
     }
     return mesh;
 }
@@ -465,7 +489,8 @@ std::shared_ptr<const SceneChunk>
 decode_chunk(std::span<const std::byte> bytes, SceneLimits limits, std::uint64_t schema) {
     Decoder input { bytes };
     const auto K_MAGIC = input.text(8uz);
-    const bool K_BAKED = K_MAGIC == "WEXCHK03" && schema == 3;
+    const bool K_SEQUENCE { K_MAGIC == "WEXCHK04" && schema == 4 };
+    const bool K_BAKED = (K_MAGIC == "WEXCHK03" && schema >= 3) || K_SEQUENCE;
     const bool K_MESH = (K_MAGIC == "WEXCHK02" && schema >= 2) || K_BAKED;
     if (K_MAGIC != "WEXCHK01" && !K_MESH) {
         throw std::runtime_error("unsupported binary chunk version");
@@ -519,7 +544,7 @@ decode_chunk(std::span<const std::byte> bytes, SceneLimits limits, std::uint64_t
         splat.m_sh_degree = static_cast<std::uint8_t>(K_DEGREE);
     }
     if (K_MESH) {
-        chunk->m_mesh = decode_mesh(input, limits, K_BAKED);
+        chunk->m_mesh = decode_mesh(input, limits, K_SEQUENCE ? 2U : K_BAKED ? 1U : 0U);
     }
     auto checked = validate_chunk(*chunk, limits);
     if (!checked) {
@@ -582,6 +607,10 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
         const bool K_BAKED = std::ranges::any_of(snapshot->m_chunks, [](const auto& entry) {
             return entry.second->m_mesh && entry.second->m_mesh->m_baked;
         });
+        const bool K_SEQUENCE = std::ranges::any_of(snapshot->m_chunks, [](const auto& entry) {
+            return entry.second->m_mesh && entry.second->m_mesh->m_baked &&
+                   entry.second->m_mesh->m_baked->m_profile == MeshTextureProfile::DEPTH_SEQUENCE;
+        });
         std::filesystem::create_directories(directory);
         Encoder index;
         index.text("WEXIDX01");
@@ -611,9 +640,10 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
         write_atomic(asset_path(directory, K_PROVENANCE_NAME), as_bytes(K_PROVENANCE));
         Json manifest = {
             { "schema_version",
-             K_BAKED  ? 3
-             : K_MESH ? 2
-                      : 1 },
+             K_SEQUENCE ? 4
+             : K_BAKED  ? 3
+             : K_MESH   ? 2
+                        : 1 },
             { "scene_id", snapshot->m_id.m_value },
             { "epoch", snapshot->m_epoch.m_value },
             { "revision", snapshot->m_revision.m_value },
@@ -645,7 +675,8 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
         }
         if (K_BAKED) {
             manifest["geometry"]["representation"] = "indexed_position_normal_baked_unlit";
-            manifest["geometry"]["encoding"] = "WEXCHK03/WEXMSH01/WEXMAT01";
+            manifest["geometry"]["encoding"] =
+                K_SEQUENCE ? "WEXCHK04/WEXMSH01/WEXMAT02" : "WEXCHK03/WEXMSH01/WEXMAT01";
             manifest["geometry"]["lighting"] = "captured_unlit";
         }
         const auto K_TEXT = manifest.dump(2);
@@ -664,7 +695,7 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
             read_file(asset_path(directory, "manifest.json"), limits.m_max_manifest_bytes);
         const auto K_MANIFEST = parse_json(K_BYTES);
         const auto K_SCHEMA = unsigned_field(K_MANIFEST, "schema_version");
-        if (K_SCHEMA != 1 && K_SCHEMA != 2 && K_SCHEMA != 3) {
+        if (K_SCHEMA != 1 && K_SCHEMA != 2 && K_SCHEMA != 3 && K_SCHEMA != 4) {
             return fail(ErrorCode::UNSUPPORTED_OPERATION, "unsupported scene schema major version");
         }
         if (K_SCHEMA >= 2) {
@@ -672,12 +703,14 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
             expect(geometry, "collision_status", "UNAVAILABLE");
             expect(geometry,
                    "representation",
-                   K_SCHEMA == 3 ? "indexed_position_normal_baked_unlit"
+                   K_SCHEMA >= 3 ? "indexed_position_normal_baked_unlit"
                                  : "indexed_position_normal");
             expect(geometry,
                    "encoding",
-                   K_SCHEMA == 3 ? "WEXCHK03/WEXMSH01/WEXMAT01" : "WEXCHK02/WEXMSH01");
-            if (K_SCHEMA == 3) {
+                   K_SCHEMA == 4   ? "WEXCHK04/WEXMSH01/WEXMAT02"
+                   : K_SCHEMA == 3 ? "WEXCHK03/WEXMSH01/WEXMAT01"
+                                   : "WEXCHK02/WEXMSH01");
+            if (K_SCHEMA >= 3) {
                 expect(geometry, "lighting", "captured_unlit");
             }
             expect(geometry, "source_validation", "snapshot_dependencies");
@@ -741,7 +774,7 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
         }
         std::size_t total_bytes {}, total_splats {}, total_vertices {}, total_triangles {},
             total_texels {};
-        bool has_mesh = false, has_baked = false;
+        bool has_mesh = false, has_baked = false, has_sequence = false;
         for (std::uint64_t i { 0 }; i < K_COUNT; ++i) {
             const ChunkId K_ID { index.integer() };
             const auto K_SIZE = index.integer();
@@ -773,13 +806,18 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory, Bundle
                 has_mesh = true;
                 if (chunk->m_mesh->m_baked) {
                     has_baked = true;
+                    has_sequence = has_sequence || chunk->m_mesh->m_baked->m_profile ==
+                                                       MeshTextureProfile::DEPTH_SEQUENCE;
                     total_texels += chunk->m_mesh->m_baked->m_rgba.size();
                 }
                 total_vertices += chunk->m_mesh->m_vertices.size();
                 total_triangles += chunk->m_mesh->m_triangles.size();
             }
         }
-        if (K_SCHEMA == 3 && !has_baked) {
+        if (K_SCHEMA == 4 && !has_sequence) {
+            throw std::runtime_error("Sequence schema requires sequence appearance");
+        }
+        if (K_SCHEMA >= 3 && !has_baked) {
             throw std::runtime_error("Texture schema requires a baked mesh");
         }
         if (K_SCHEMA >= 2 && !has_mesh) {

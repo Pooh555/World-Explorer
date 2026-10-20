@@ -102,6 +102,10 @@ import; checksums are integrity evidence, not authorship or quality certificatio
 
 ## Native compatibility and publication
 
+The current GLB profile accepts legacy single-cache appearances only. Native
+sequence appearances use a wider candidate plane and bundle schema 4; export
+returns unsupported before encoding rather than truncating their evidence.
+
 Imported appearances have metadata schema 2 / `CAPTURED_UNLIT_ATLAS_PNG_V1`,
 `bilinear_valid_only`, `score_squared_convex_linear_rgb_then_srgb8` and an original
 `parent_chunk_sha256`. RGB must match an sRGB8-decoded float within one ULP for

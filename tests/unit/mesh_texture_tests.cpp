@@ -1,6 +1,7 @@
 #include "world_explorer/application/mesh_texture.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
+#include "world_explorer/scene_store/gltf.hpp"
 #include "world_explorer/scene_store/mesh_texture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -134,6 +135,31 @@ void write_bytes(const std::filesystem::path& path, const std::string& bytes) {
 
 std::string digest(const std::string& bytes) {
     return sha256(std::as_bytes(std::span(bytes)));
+}
+
+SceneChunk sequence_fixture(std::size_t count, bool unknown = false, bool last_only = false) {
+    auto chunk = chunk_fixture();
+    chunk.m_source_frames.clear();
+    for (std::size_t i { 0uz }; i < count; ++i) {
+        chunk.m_source_frames.push_back({ 9007199254740993ULL + count - i });
+    }
+    auto baker = MeshTextureBaker::create(chunk, MeshTextureProfile::DEPTH_SEQUENCE);
+    REQUIRE(baker);
+    for (std::size_t i { 0uz }; i < count; ++i) {
+        const auto K_COLOR = i + 1uz == count ? std::array<unsigned char, 3uz> { 0, 0, 255 }
+                                              : std::array<unsigned char, 3uz> { 255, 0, 0 };
+        const auto K_VIEW = view_fixture(
+            K_COLOR, unknown || (last_only && i + 1uz != count), false, chunk.m_source_frames[i]);
+        REQUIRE((*baker)->add_view(K_VIEW, chunk.m_source_frames[i]));
+    }
+    auto baked = (*baker)->finish();
+    REQUIRE(baked);
+    CHECK((*baker)->finish().has_value() == false);
+    if (!chunk.m_mesh) {
+        throw std::runtime_error("Missing sequence mesh fixture");
+    }
+    chunk.m_mesh->m_baked = std::move(*baked);
+    return chunk;
 }
 
 }  // namespace
@@ -413,4 +439,202 @@ TEST_CASE("bake command rejects cancelled malformed and existing destinations be
     CHECK(K_CANCELLED.error().m_code == ErrorCode::CANCELLED);
     CHECK(read_bytes(K_REQUEST) == "{}");
     CHECK(std::filesystem::exists(K_OUTPUT) == false);
+}
+
+TEST_CASE("sequence baking retains all candidate words global blends and wide-ID ties",
+          "[sequence_texture]") {
+    const auto K_COUNT = GENERATE(19uz, 63uz, 120uz);
+    auto chunk = sequence_fixture(K_COUNT);
+    const auto& baked = baked_of(chunk);
+    REQUIRE(validate_scene(*scene_fixture(chunk)));
+    CHECK(baked.m_profile == MeshTextureProfile::DEPTH_SEQUENCE);
+    CHECK(baked.m_candidates.empty());
+    CHECK(baked.m_owners[0] == chunk.m_source_frames.back());
+    CHECK(std::abs(baked.m_rgba[0][0] -
+                   static_cast<double>(K_COUNT - 1uz) / static_cast<double>(K_COUNT)) < 1e-6);
+    CHECK(std::abs(baked.m_rgba[0][2] - 1.0 / static_cast<double>(K_COUNT)) < 1e-6);
+    for (std::size_t index { 0uz }; index < 128uz; ++index) {
+        const bool K_SET { (baked.m_sequence_candidates[0][index / 32uz] &
+                           (std::uint32_t { 1 } << (index % 32uz))) != 0 };
+        CHECK(K_SET == (index < K_COUNT));
+    }
+    Directory directory;
+    REQUIRE(write_bundle(directory.m_root, scene_fixture(chunk)));
+    CHECK(nlohmann::json::parse(read_bytes(directory.m_root / "manifest.json"))["schema_version"] ==
+          4);
+    const auto K_LOADED = load_bundle(directory.m_root);
+    REQUIRE(K_LOADED);
+    CHECK(scene_content_hash(**K_LOADED) == scene_content_hash(*scene_fixture(chunk)));
+    const auto& restored = baked_of(*(*K_LOADED)->m_chunks.begin()->second);
+    CHECK(restored.m_sequence_candidates == baked.m_sequence_candidates);
+    CHECK(restored.m_rgba == baked.m_rgba);
+    CHECK(restored.m_frames == baked.m_frames);
+    const auto K_GLB = encode_baked_glb(*K_LOADED);
+    REQUIRE(K_GLB.has_value() == false);
+    CHECK(K_GLB.error().m_code == ErrorCode::UNSUPPORTED_OPERATION);
+}
+
+TEST_CASE("sequence texture unknowns and final-word owners never invent candidates",
+          "[sequence_texture]") {
+    const auto K_UNKNOWN = GENERATE(false, true);
+    auto chunk = sequence_fixture(120uz, K_UNKNOWN, true);
+    const auto& baked = baked_of(chunk);
+    REQUIRE(validate_scene(*scene_fixture(chunk)));
+    CHECK(baked.m_sequence_candidates[0] ==
+          (K_UNKNOWN ? std::array<std::uint32_t, 4uz> {}
+                     : std::array<std::uint32_t, 4uz> { 0U, 0U, 0U, 0x00800000U }));
+    CHECK(baked.m_owners[0] == (K_UNKNOWN ? FrameId {} : chunk.m_source_frames.back()));
+    CHECK(baked.m_rgba[0] ==
+          (K_UNKNOWN ? std::array<float, 4uz> {} : std::array<float, 4uz> { 0, 0, 1, 1 }));
+    CHECK(baked.m_sequence_candidates[15] == std::array<std::uint32_t, 4uz> {});
+    CHECK(baked.m_owners[15] == FrameId {});
+}
+
+TEST_CASE("sequence texture admission rejects profile padding ownership and budget changes",
+          "[sequence_texture]") {
+    auto chunk = sequence_fixture(120uz);
+    const auto K_VALID = scene_fixture(chunk);
+    auto& baked = baked_of(chunk);
+    const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5, 6, 7);
+    switch (K_MUTATION) {
+    case 0:
+        baked.m_sequence_candidates[0][3] |= 0x80000000U;
+        break;
+    case 1:
+        baked.m_sequence_candidates[0][3] &= ~0x00800000U;
+        break;
+    case 2:
+        baked.m_sequence_candidates[15][0] = 1U;
+        break;
+    case 3:
+        baked.m_sequence_candidates.pop_back();
+        break;
+    case 4:
+        baked.m_candidates.resize(64uz);
+        break;
+    case 5:
+        baked.m_profile = MeshTextureProfile::SINGLE_CACHE;
+        break;
+    case 6:
+        baked.m_portable_parent_sha256 = std::string(64uz, 'a');
+        break;
+    case 7:
+        baked.m_frames.back() = baked.m_frames.front();
+        break;
+    default:
+        FAIL("Unknown sequence appearance mutation");
+    }
+    CHECK(validate_scene(*scene_fixture(chunk)).has_value() == false);
+    CHECK(validate_scene(*K_VALID));
+    Directory directory;
+    REQUIRE(write_bundle(directory.m_root, K_VALID));
+    const auto K_MANIFEST = read_bytes(directory.m_root / "manifest.json");
+    CHECK(write_bundle(directory.m_root, scene_fixture(chunk)).has_value() == false);
+    CHECK(read_bytes(directory.m_root / "manifest.json") == K_MANIFEST);
+}
+
+TEST_CASE("sequence texture source bounds cancellation and forty-byte payload accounting hold",
+          "[sequence_texture]") {
+    auto chunk = sequence_fixture(19uz);
+    const auto K_BYTES = validate_baked_appearance(chunk);
+    REQUIRE(K_BYTES);
+    SceneLimits limits;
+    limits.m_max_payload_bytes = *K_BYTES;
+    CHECK(validate_baked_appearance(chunk, limits));
+    --limits.m_max_payload_bytes;
+    CHECK(validate_baked_appearance(chunk, limits).has_value() == false);
+    auto raw = chunk_fixture();
+    raw.m_source_frames.clear();
+    for (std::size_t i { 0uz }; i < 121uz; ++i) {
+        raw.m_source_frames.push_back({ i + 1uz });
+    }
+    CHECK(MeshTextureBaker::create(raw, MeshTextureProfile::DEPTH_SEQUENCE).has_value() == false);
+    raw.m_source_frames.pop_back();
+    CHECK(MeshTextureBaker::create(raw).has_value() == false);
+    auto baker = MeshTextureBaker::create(raw, MeshTextureProfile::DEPTH_SEQUENCE);
+    REQUIRE(baker);
+    std::stop_source cancelled;
+    cancelled.request_stop();
+    const auto K_VIEW = view_fixture({ 255, 0, 0 }, false, false, raw.m_source_frames[0]);
+    CHECK((*baker)->add_view(K_VIEW, raw.m_source_frames[0], cancelled.get_token()).has_value() ==
+          false);
+    CHECK((*baker)->add_view(K_VIEW, raw.m_source_frames[0]).has_value() == false);
+    CHECK((*baker)->finish().has_value() == false);
+}
+
+TEST_CASE("rehashed sequence payloads reject downgraded masks counts and trailing bytes",
+          "[sequence_texture][bundle]") {
+    const auto K_MUTATION = GENERATE(0, 1, 2, 3, 4, 5);
+    Directory directory;
+    const auto K_SCENE = scene_fixture(sequence_fixture(19uz));
+    REQUIRE(write_bundle(directory.m_root, K_SCENE));
+    const auto K_RETAINED = load_bundle(directory.m_root);
+    REQUIRE(K_RETAINED);
+    auto manifest = nlohmann::json::parse(read_bytes(directory.m_root / "manifest.json"));
+    auto index = read_bytes(directory.m_root / manifest.at("index").get<std::string>());
+    const auto K_NAME = index.substr(100uz);
+    auto bytes = read_bytes(directory.m_root / K_NAME);
+    const auto K_MATERIAL = bytes.find("WEXMAT02");
+    REQUIRE(K_MATERIAL != bytes.npos);
+    if (K_MUTATION == 0) {
+        bytes[K_MATERIAL + 16uz] = static_cast<char>(121);
+    } else if (K_MUTATION == 1) {
+        bytes.pop_back();
+    } else if (K_MUTATION == 2) {
+        bytes.push_back('\0');
+    } else if (K_MUTATION == 3) {
+        bytes[K_MATERIAL + 7uz] = '1';
+    } else if (K_MUTATION == 4) {
+        bytes.back() = static_cast<char>(128);
+    } else {
+        manifest["schema_version"] = 3;
+        manifest["geometry"]["encoding"] = "WEXCHK03/WEXMSH01/WEXMAT01";
+    }
+    const auto K_HASH = digest(bytes), K_CHUNK = "chunk_" + K_HASH + ".bin";
+    write_bytes(directory.m_root / K_CHUNK, bytes);
+    for (std::size_t i { 0uz }; i < 8uz; ++i) {
+        index[24uz + i] = static_cast<char>((bytes.size() >> (i * 8uz)) & 255U);
+    }
+    index.replace(32uz, 64uz, K_HASH);
+    index.replace(100uz, K_NAME.size(), K_CHUNK);
+    const auto K_INDEX_HASH = digest(index), K_INDEX_NAME = "index_" + K_INDEX_HASH + ".bin";
+    write_bytes(directory.m_root / K_INDEX_NAME, index);
+    manifest["index"] = K_INDEX_NAME;
+    manifest["index_sha256"] = K_INDEX_HASH;
+    manifest["index_bytes"] = index.size();
+    write_bytes(directory.m_root / "manifest.json", manifest.dump());
+    CHECK(load_bundle(directory.m_root).has_value() == false);
+    CHECK(scene_content_hash(**K_RETAINED) == scene_content_hash(*K_SCENE));
+}
+
+TEST_CASE("schema four mixes sequence legacy and raw chunks within aggregate atlas budgets",
+          "[sequence_texture][bundle]") {
+    auto scene = std::make_shared<SceneState>(*scene_fixture(sequence_fixture(19uz)));
+    auto legacy = baked_chunk(false, false, false, { 2 });
+    scene->m_chunks[{ 2 }] = std::make_shared<SceneChunk>(legacy);
+    auto raw = chunk_fixture();
+    raw.m_id = { 3 };
+    scene->m_chunks[{ 3 }] = std::make_shared<SceneChunk>(raw);
+    SceneLimits limits;
+    limits.m_max_texture_texels = 127uz;
+    CHECK(validate_scene(*scene, limits).has_value() == false);
+    limits.m_max_texture_texels = 128uz;
+    REQUIRE(validate_scene(*scene, limits));
+    Directory directory;
+    REQUIRE(write_bundle(directory.m_root / "mixed", scene));
+    REQUIRE(write_bundle(directory.m_root / "legacy", scene_fixture(legacy)));
+    const auto K_LOADED = load_bundle(directory.m_root / "mixed");
+    REQUIRE(K_LOADED);
+    CHECK(scene_content_hash(**K_LOADED) == scene_content_hash(*scene));
+    for (const auto& entry : std::filesystem::directory_iterator(directory.m_root / "legacy")) {
+        if (entry.path().filename().string().starts_with("chunk_")) {
+            CHECK(read_bytes(entry.path()) ==
+                  read_bytes(directory.m_root / "mixed" / entry.path().filename()));
+        }
+    }
+    auto manifest = nlohmann::json::parse(read_bytes(directory.m_root / "legacy/manifest.json"));
+    manifest["schema_version"] = 4;
+    manifest["geometry"]["encoding"] = "WEXCHK04/WEXMSH01/WEXMAT02";
+    write_bytes(directory.m_root / "legacy/manifest.json", manifest.dump());
+    CHECK(load_bundle(directory.m_root / "legacy").has_value() == false);
 }

@@ -17,13 +17,14 @@ struct Accumulator {
     std::array<double, 3> m_rgb {};
     double m_weight {}, m_best_score {};
     FrameId m_owner {};
-    std::uint32_t m_candidates {};
+    std::array<std::uint32_t, 4uz> m_candidates {};
 };
 
 }  // namespace
 
 struct MeshTextureBaker::State {
     SceneChunk m_chunk;
+    MeshTextureProfile m_profile { MeshTextureProfile::SINGLE_CACHE };
     std::size_t m_columns {}, m_rows {}, m_views {};
     std::vector<Accumulator> m_samples;
     bool m_finished = false;
@@ -34,19 +35,26 @@ MeshTextureBaker::MeshTextureBaker(std::unique_ptr<State> state) : m_state(std::
 
 MeshTextureBaker::~MeshTextureBaker() = default;
 
-Result<std::unique_ptr<MeshTextureBaker>> MeshTextureBaker::create(SceneChunk chunk) {
+Result<std::unique_ptr<MeshTextureBaker>> MeshTextureBaker::create(SceneChunk chunk,
+                                                                   MeshTextureProfile profile) {
     try {
         const auto K_VALID = validate_chunk(chunk);
         if (!K_VALID) {
             return std::unexpected(K_VALID.error());
         }
+        if (profile != MeshTextureProfile::SINGLE_CACHE &&
+            profile != MeshTextureProfile::DEPTH_SEQUENCE) {
+            return fail(ErrorCode::INVALID_ARGUMENT, "Unsupported texture source profile");
+        }
         if (!chunk.m_geometry_valid || !chunk.m_mesh || chunk.m_mesh->m_baked ||
             chunk.m_mesh->m_triangles.empty() || chunk.m_source_frames.empty() ||
-            chunk.m_source_frames.size() > 18uz) {
+            chunk.m_source_frames.size() >
+                (profile == MeshTextureProfile::DEPTH_SEQUENCE ? 120uz : 18uz)) {
             return fail(ErrorCode::INVALID_ARGUMENT,
                         "Texture bake needs current untextured geometry and source frames");
         }
         auto state = std::make_unique<State>();
+        state->m_profile = profile;
         const auto K_TRIANGLES = chunk.m_mesh->m_triangles.size();
         if (K_TRIANGLES > 100000uz) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Texture triangle budget exceeded");
@@ -118,7 +126,8 @@ Result<void> MeshTextureBaker::add_view(const ColorProjectionView& view,
                     sample.m_rgb[channel] += K_WEIGHT * K_COLOR.m_linear_rgb[channel];
                 }
                 sample.m_weight += K_WEIGHT;
-                sample.m_candidates |= std::uint32_t { 1 } << state.m_views;
+                sample.m_candidates[state.m_views / 32uz] |= std::uint32_t { 1 }
+                                                             << (state.m_views % 32uz);
                 if (!sample.m_owner.m_value || K_COLOR.m_score > sample.m_best_score ||
                     (K_COLOR.m_score == sample.m_best_score && frame < sample.m_owner)) {
                     sample.m_owner = frame;
@@ -140,12 +149,18 @@ Result<BakedMeshAppearance> MeshTextureBaker::finish(const std::stop_token& stop
                         "Texture bake is incomplete or already finalized");
         }
         BakedMeshAppearance baked;
+        baked.m_profile = state.m_profile;
+        const bool K_SEQUENCE { state.m_profile == MeshTextureProfile::DEPTH_SEQUENCE };
         baked.m_width = static_cast<std::uint32_t>(state.m_columns * K_TILE);
         baked.m_height = static_cast<std::uint32_t>(state.m_rows * K_TILE);
         const auto K_PIXELS = static_cast<std::size_t>(baked.m_width) * baked.m_height;
         baked.m_rgba.resize(K_PIXELS);
         baked.m_owners.resize(K_PIXELS);
-        baked.m_candidates.resize(K_PIXELS);
+        if (K_SEQUENCE) {
+            baked.m_sequence_candidates.resize(K_PIXELS);
+        } else {
+            baked.m_candidates.resize(K_PIXELS);
+        }
         baked.m_frames = state.m_chunk.m_source_frames;
         baked.m_source_chunk_sha256 = scene_untextured_chunk_hash(state.m_chunk);
         std::size_t sample_index {}, known {};
@@ -173,26 +188,31 @@ Result<BakedMeshAppearance> MeshTextureBaker::finish(const std::stop_token& stop
                     }
                     baked.m_rgba[K_INDEX][3] = 1;
                     baked.m_owners[K_INDEX] = sample.m_owner;
-                    baked.m_candidates[K_INDEX] = sample.m_candidates;
+                    if (K_SEQUENCE) {
+                        baked.m_sequence_candidates[K_INDEX] = sample.m_candidates;
+                    } else {
+                        baked.m_candidates[K_INDEX] = sample.m_candidates[0];
+                    }
                 }
             }
         }
-        const nlohmann::json K_DOCUMENT { { "schema_version", 1 },
-                                         { "kind", "CAPTURED_UNLIT_ATLAS_V1" },
-                                         { "color_domain", "linear_srgb" },
-                                         { "lighting", "captured_unlit" },
-                                         { "tile_size", K_TILE },
-                                         { "blend", "score_squared_convex_linear_rgb" },
-                                         { "normals", "interpolated_source_vertex_normals" },
-                                         { "filter", "triangular_linear_valid_only" },
-                                         { "source_chunk_sha256", baked.m_source_chunk_sha256 },
-                                         { "surface_texels", state.m_samples.size() },
-                                         { "known_texels", known },
-                                         { "unknown_surface_texels", state.m_samples.size() - known },
-                                         { "atlas_texels", K_PIXELS },
-                                         { "padding_texels", K_PIXELS - state.m_samples.size() },
-                                         { "units", "ARBITRARY_POSE_CAMERA_UNITS" },
-                                         { "walking_enabled", false } };
+        const nlohmann::json K_DOCUMENT {
+            { "schema_version", K_SEQUENCE ? 3 : 1 },
+            { "kind", K_SEQUENCE ? "CAPTURED_UNLIT_ATLAS_SEQUENCE_V1" : "CAPTURED_UNLIT_ATLAS_V1" },
+            { "color_domain", "linear_srgb" },
+            { "lighting", "captured_unlit" },
+            { "tile_size", K_TILE },
+            { "blend", "score_squared_convex_linear_rgb" },
+            { "normals", "interpolated_source_vertex_normals" },
+            { "filter", "triangular_linear_valid_only" },
+            { "source_chunk_sha256", baked.m_source_chunk_sha256 },
+            { "surface_texels", state.m_samples.size() },
+            { "known_texels", known },
+            { "unknown_surface_texels", state.m_samples.size() - known },
+            { "atlas_texels", K_PIXELS },
+            { "padding_texels", K_PIXELS - state.m_samples.size() },
+            { "units", "ARBITRARY_POSE_CAMERA_UNITS" },
+            { "walking_enabled", false } };
         baked.m_manifest_json = K_DOCUMENT.dump(2);
         baked.m_manifest_sha256 = sha256(std::as_bytes(std::span(baked.m_manifest_json)));
         state.m_finished = true;

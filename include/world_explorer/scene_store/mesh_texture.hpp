@@ -9,7 +9,8 @@ namespace world_explorer {
 // convex score-squared blending uses the continuous source vertex normal field.
 class MeshTextureBaker {
   public:
-    static Result<std::unique_ptr<MeshTextureBaker>> create(SceneChunk chunk);
+    static Result<std::unique_ptr<MeshTextureBaker>>
+    create(SceneChunk chunk, MeshTextureProfile profile = MeshTextureProfile::SINGLE_CACHE);
     ~MeshTextureBaker();
     MeshTextureBaker(const MeshTextureBaker&) = delete;
     MeshTextureBaker& operator=(const MeshTextureBaker&) = delete;

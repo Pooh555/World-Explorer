@@ -15,6 +15,11 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
     }
     const auto& mesh = *chunk.m_mesh;
     const auto& baked = *mesh.m_baked;
+    const bool K_SEQUENCE { baked.m_profile == MeshTextureProfile::DEPTH_SEQUENCE };
+    if ((baked.m_profile != MeshTextureProfile::SINGLE_CACHE && !K_SEQUENCE) ||
+        (K_SEQUENCE && !baked.m_portable_parent_sha256.empty())) {
+        return fail(ErrorCode::INVALID_DATA, "Unsupported baked appearance profile");
+    }
     const auto K_HASH_VALID = [](const std::string& hash) {
         return hash.size() == 64uz && hash.find_first_not_of("0123456789abcdef") == hash.npos;
     };
@@ -30,10 +35,13 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
     }
     const auto K_PIXELS = static_cast<std::size_t>(baked.m_width) * baked.m_height;
     if (baked.m_rgba.size() != K_PIXELS || baked.m_owners.size() != K_PIXELS ||
-        baked.m_candidates.size() != K_PIXELS ||
+        (K_SEQUENCE
+             ? (baked.m_sequence_candidates.size() != K_PIXELS || !baked.m_candidates.empty())
+             : (baked.m_candidates.size() != K_PIXELS || !baked.m_sequence_candidates.empty())) ||
         mesh.m_triangles.size() > limits.m_max_payload_bytes / 24uz ||
         baked.m_corner_uv.size() != mesh.m_triangles.size() * 3uz || baked.m_frames.empty() ||
-        baked.m_frames.size() > 18uz || baked.m_frames != chunk.m_source_frames) {
+        baked.m_frames.size() > (K_SEQUENCE ? 120uz : 18uz) ||
+        baked.m_frames != chunk.m_source_frames) {
         return fail(ErrorCode::INVALID_DATA, "Texture arrays or source frames differ");
     }
     const std::set<FrameId> K_FRAMES(baked.m_frames.begin(), baked.m_frames.end());
@@ -50,7 +58,10 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
         }
         return values;
     }();
-    const auto K_MASK = (std::uint32_t { 1 } << baked.m_frames.size()) - 1U;
+    std::array<std::uint32_t, 4uz> allowed {};
+    for (std::size_t index { 0uz }; index < baked.m_frames.size(); ++index) {
+        allowed[index / 32uz] |= std::uint32_t { 1 } << (index % 32uz);
+    }
     std::size_t known {};
     for (std::size_t i { 0uz }; i < K_PIXELS; ++i) {
         const auto& color = baked.m_rgba[i];
@@ -83,18 +94,28 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
             }
         }
         const auto K_OWNER = baked.m_owners[i];
-        const auto K_CANDIDATES = baked.m_candidates[i];
+        const auto K_CANDIDATES =
+            K_SEQUENCE ? baked.m_sequence_candidates[i]
+                       : std::array<std::uint32_t, 4uz> { baked.m_candidates[i], 0U, 0U, 0U };
+        const bool K_ANY { std::ranges::any_of(K_CANDIDATES, [](auto word) {
+            return word != 0;
+        }) };
+        for (std::size_t word { 0uz }; word < allowed.size(); ++word) {
+            if (K_CANDIDATES[word] & ~allowed[word]) {
+                return fail(ErrorCode::INVALID_DATA, "Texture candidate outside source inventory");
+            }
+        }
         if (color[3] == 0) {
-            if (color != std::array<float, 4> {} || K_OWNER.m_value || K_CANDIDATES) {
+            if (color != std::array<float, 4> {} || K_OWNER.m_value || K_ANY) {
                 return fail(ErrorCode::INVALID_DATA, "Unknown texture texel contains observations");
             }
         } else {
             ++known;
             const auto K_FOUND = std::ranges::find(baked.m_frames, K_OWNER);
-            if (color[3] != 1 || !K_CANDIDATES || (K_CANDIDATES & ~K_MASK) ||
-                K_FOUND == baked.m_frames.end() ||
-                !(K_CANDIDATES & (std::uint32_t { 1 }
-                                  << static_cast<std::size_t>(K_FOUND - baked.m_frames.begin())))) {
+            if (color[3] != 1 || !K_ANY || K_FOUND == baked.m_frames.end() ||
+                !(K_CANDIDATES[static_cast<std::size_t>(K_FOUND - baked.m_frames.begin()) / 32uz] &
+                  (std::uint32_t { 1 }
+                   << (static_cast<std::size_t>(K_FOUND - baked.m_frames.begin()) % 32uz)))) {
                 return fail(ErrorCode::INVALID_DATA, "Invalid texture candidate ownership");
             }
         }
@@ -133,22 +154,23 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
                 }
                 return true;
             });
-        Json expected { { "schema_version", 1 },
-                       { "kind", "CAPTURED_UNLIT_ATLAS_V1" },
-                       { "color_domain", "linear_srgb" },
-                       { "lighting", "captured_unlit" },
-                       { "tile_size", 8 },
-                       { "blend", "score_squared_convex_linear_rgb" },
-                       { "normals", "interpolated_source_vertex_normals" },
-                       { "filter", "triangular_linear_valid_only" },
-                       { "source_chunk_sha256", baked.m_source_chunk_sha256 },
-                       { "surface_texels", mesh.m_triangles.size() * 36uz },
-                       { "known_texels", known },
-                       { "unknown_surface_texels", mesh.m_triangles.size() * 36uz - known },
-                       { "atlas_texels", K_PIXELS },
-                       { "padding_texels", K_PIXELS - mesh.m_triangles.size() * 36uz },
-                       { "units", "ARBITRARY_POSE_CAMERA_UNITS" },
-                       { "walking_enabled", false } };
+        Json expected {
+            { "schema_version", K_SEQUENCE ? 3 : 1 },
+            { "kind", K_SEQUENCE ? "CAPTURED_UNLIT_ATLAS_SEQUENCE_V1" : "CAPTURED_UNLIT_ATLAS_V1" },
+            { "color_domain", "linear_srgb" },
+            { "lighting", "captured_unlit" },
+            { "tile_size", 8 },
+            { "blend", "score_squared_convex_linear_rgb" },
+            { "normals", "interpolated_source_vertex_normals" },
+            { "filter", "triangular_linear_valid_only" },
+            { "source_chunk_sha256", baked.m_source_chunk_sha256 },
+            { "surface_texels", mesh.m_triangles.size() * 36uz },
+            { "known_texels", known },
+            { "unknown_surface_texels", mesh.m_triangles.size() * 36uz - known },
+            { "atlas_texels", K_PIXELS },
+            { "padding_texels", K_PIXELS - mesh.m_triangles.size() * 36uz },
+            { "units", "ARBITRARY_POSE_CAMERA_UNITS" },
+            { "walking_enabled", false } };
         if (!baked.m_portable_parent_sha256.empty()) {
             if (!K_HASH_VALID(baked.m_portable_parent_sha256)) {
                 return fail(ErrorCode::INVALID_DATA, "Invalid portable appearance parent pin");
@@ -184,10 +206,11 @@ Result<std::size_t> validate_baked_appearance(const SceneChunk& chunk, SceneLimi
         return fail(ErrorCode::RESYNC_REQUIRED, "Texture geometry dependency differs");
     }
     auto bytes = mesh.m_triangles.size() * 24uz;
-    if (K_PIXELS > (limits.m_max_payload_bytes - bytes) / 28uz) {
+    const auto K_TEXEL_BYTES = K_SEQUENCE ? 40uz : 28uz;
+    if (K_PIXELS > (limits.m_max_payload_bytes - bytes) / K_TEXEL_BYTES) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Texture payload exceeds budget");
     }
-    bytes += K_PIXELS * 28uz;
+    bytes += K_PIXELS * K_TEXEL_BYTES;
     const auto K_METADATA = baked.m_manifest_json.size() + baked.m_portable_parent_sha256.size() +
                             128uz + baked.m_frames.size() * 8uz;
     if (K_METADATA > limits.m_max_payload_bytes - bytes) {

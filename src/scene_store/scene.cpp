@@ -55,6 +55,9 @@ void append_chunk(SceneHashWriter& hash,
     if (chunk.m_mesh) {
         K_ADD(0);
         K_ADD(include_baked && chunk.m_mesh->m_baked &&
+                      chunk.m_mesh->m_baked->m_profile == MeshTextureProfile::DEPTH_SEQUENCE
+                  ? 5
+              : include_baked && chunk.m_mesh->m_baked &&
                       !chunk.m_mesh->m_baked->m_portable_parent_sha256.empty()
                   ? 4
               : include_baked && chunk.m_mesh->m_baked                                        ? 3
@@ -167,6 +170,11 @@ void append_chunk(SceneHashWriter& hash,
             }
             for (auto mask : baked.m_candidates) {
                 K_ADD(mask);
+            }
+            for (const auto& mask : baked.m_sequence_candidates) {
+                for (auto word : mask) {
+                    K_ADD(word);
+                }
             }
             for (const auto& uv : baked.m_corner_uv) {
                 for (auto value : uv) {

@@ -15,13 +15,12 @@ Result<void> bake_mesh_texture(const std::filesystem::path& request,
         if (!K_INPUT) {
             return std::unexpected(K_INPUT.error());
         }
-        if (K_INPUT->m_sequence) {
-            return fail(ErrorCode::UNSUPPORTED_OPERATION,
-                        "Sequence texture baking requires a versioned appearance format");
-        }
         auto scene = std::make_shared<SceneState>(*K_INPUT->m_scene);
         auto chunk = std::make_shared<SceneChunk>(*scene->m_chunks.begin()->second);
-        auto baker = MeshTextureBaker::create(*chunk);
+        auto baker =
+            MeshTextureBaker::create(*chunk,
+                                     K_INPUT->m_sequence ? MeshTextureProfile::DEPTH_SEQUENCE
+                                                         : MeshTextureProfile::SINGLE_CACHE);
         if (!baker) {
             return std::unexpected(baker.error());
         }

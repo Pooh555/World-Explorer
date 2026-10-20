@@ -230,6 +230,10 @@ Result<std::vector<std::byte>> encode_baked_glb(const SceneSnapshot& scene,
             }
             const auto& mesh = *K_CHUNK->m_mesh;
             const auto& baked = *mesh.m_baked;
+            if (baked.m_profile == MeshTextureProfile::DEPTH_SEQUENCE) {
+                return fail(ErrorCode::UNSUPPORTED_OPERATION,
+                            "GLB sequence appearance is not supported by this profile");
+            }
             require(baked.m_portable_parent_sha256.empty(),
                     "GLB V1 exports original native bakes only");
             const auto K_EXTENT = image_extent(baked);
