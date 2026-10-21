@@ -1,9 +1,6 @@
 #include "world_explorer/collision/static_shape.hpp"
 
-// Jolt requires this before every other Jolt header.
-// clang-format off
-#include <Jolt/Jolt.h>
-// clang-format on
+#include "jolt_internal.hpp"
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Physics/Collision/CastResult.h>
@@ -17,7 +14,7 @@
 #include <stdexcept>
 
 namespace world_explorer {
-namespace {
+namespace collision_detail {
 
 class JoltRuntime {
   public:
@@ -70,13 +67,7 @@ Result<JPH::Vec3> checked_vec(Vec3d point, double tolerance) {
     return JPH::Vec3 { *K_X, *K_Y, *K_Z };
 }
 
-}  // namespace
-
-struct JoltStaticCollision::Impl {
-    JPH::ShapeRefC m_shape;
-    std::size_t m_triangle_count {};
-    double m_precision_tolerance {};
-};
+}  // namespace collision_detail
 
 JoltStaticCollision::JoltStaticCollision(AdmissionToken) { }
 
@@ -103,8 +94,8 @@ Result<std::optional<double>> JoltStaticCollision::ray_cast(const SceneState& cu
     if (!K_VALID) {
         return std::unexpected(K_VALID.error());
     }
-    const auto K_START = checked_vec(start, m_impl->m_precision_tolerance);
-    const auto K_END = checked_vec(end, m_impl->m_precision_tolerance);
+    const auto K_START = collision_detail::checked_vec(start, m_impl->m_precision_tolerance);
+    const auto K_END = collision_detail::checked_vec(end, m_impl->m_precision_tolerance);
     if (!K_START) {
         return std::unexpected(K_START.error());
     }
@@ -138,7 +129,7 @@ build_jolt_static_collision(std::shared_ptr<const CanonicalCollisionMesh> cook,
         return std::unexpected(K_VALID.error());
     }
     try {
-        ensure_jolt_runtime();
+        collision_detail::ensure_jolt_runtime();
         const double K_TOLERANCE { std::min(1e-4, cook->cell_size() * 1e-3) };
         JPH::TriangleList triangles;
         triangles.reserve(static_cast<std::uint32_t>(cook->triangles().size()));
@@ -146,9 +137,12 @@ build_jolt_static_collision(std::shared_ptr<const CanonicalCollisionMesh> cook,
             if (stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Jolt shape build cancelled");
             }
-            const auto K_A = checked_vec(source.m_world_vertices[0uz], K_TOLERANCE);
-            const auto K_B = checked_vec(source.m_world_vertices[1uz], K_TOLERANCE);
-            const auto K_C = checked_vec(source.m_world_vertices[2uz], K_TOLERANCE);
+            const auto K_A =
+                collision_detail::checked_vec(source.m_world_vertices[0uz], K_TOLERANCE);
+            const auto K_B =
+                collision_detail::checked_vec(source.m_world_vertices[1uz], K_TOLERANCE);
+            const auto K_C =
+                collision_detail::checked_vec(source.m_world_vertices[2uz], K_TOLERANCE);
             if (!K_A) {
                 return std::unexpected(K_A.error());
             }

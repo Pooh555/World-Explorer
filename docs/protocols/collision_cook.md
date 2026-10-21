@@ -51,8 +51,9 @@ owner exposes a source-validated diagnostic segment ray cast and keeps Jolt
 types private to `collision`. Construction and queries reject corrected or
 cancelled contexts without replacing a prior owner. No Jolt shape is installed
 in the source scene or viewer. The canonical input performs no vertex welding
-or inferred face generation. There is no collision response, kinematic
-controller, metric floor or measured-walking permission in this slice.
+or inferred face generation. The separate [synthetic kinematic controller](kinematic_capsule.md)
+uses this shape and the support ledger for bounded flat-floor diagnostics.
+There is no real metric floor or measured-walking permission.
 
 [V1 validation](../validation/2026-10-21-collision-cook.md) covers canonical replay,
 source correction, conservative barriers and native diagnostic viewing.

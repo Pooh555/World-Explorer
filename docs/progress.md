@@ -351,21 +351,25 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-[Synthetic wall-face admission and cooking](validation/2026-10-21-collision-wall.md)
-now extends the [canonical cook](validation/2026-10-21-collision-cook.md) and
-[pinned Jolt shape](validation/2026-10-21-jolt-static-shape.md) with two explicit
-source triangles covering an occupied cell face. V1 fixture and canonical bytes
-are unchanged. The V2 mesh ray hits the wall while the separate conservative ledger
-blocks occupied/unknown cells; native synthetic mesh and diagnostic views pass.
-No controller or measured walking is enabled.
+[Synthetic kinematic capsule](validation/2026-10-21-kinematic-capsule.md)
+now adds a private Jolt character/world, exact 120 Hz clock, eight-tick catch-up
+cap, swept wall sliding and conservative occupied/unknown/unsupported blocking.
+Cancellation, stale revisions/epochs/poses and invalid inputs preserve prior
+position and fractional clock. Saved source/support reload produces three
+synthetic path traces and a separate native diagnostic mesh. V1/V2 source and
+canonical contracts are retained. The 45°/0.30 settings are configured, but
+support is still flat: non-flat stairs/slopes are not qualified and measured
+walking remains disabled.
 
-Next, implement fixed 120 Hz kinematic capsule movement on the private Jolt
-static collision shape, with capped catch-up and the plan's 45° slope/0.30 m
-step limits. Verify wall, corner, unknown, correction, cancellation and
-prior-owner preservation without making diagnostic support into measured walk
-permission. Recheck plan §§4.6/4.8/5.1 and the [support](protocols/collision_support.md) and
-[depth-space](protocols/depth_space.md#typed-evidence-admission) contracts.
-Keep Jolt private to `collision`; no backend types in navigation/application.
+Next, add an application-owned synthetic capsule session using the pinned
+source/support admission already used by `inspect-collision`, then expose its
+fixed-clock advance to explicitly labeled native diagnostic controls. Exercise
+live wall/unknown paths and correction/stop behavior without promoting synthetic
+support to measured walk permission. Recheck plan §§4.6/4.8/5.1, the
+[controller](protocols/kinematic_capsule.md), [support](protocols/collision_support.md)
+and [depth-space](protocols/depth_space.md#typed-evidence-admission) contracts.
+Non-flat support admission and actual step/slope fixtures, followed by the dated
+M3 local exit review, remain before A0. Keep Jolt private to `collision`.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
 clearance. `sample_1` has no independent distance/up reference: ADR 020 permits
 a local M3 software exit without it, while Q5/N2 and A1 scale evidence stay open.

@@ -193,7 +193,8 @@ add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cp
 we_target(scene_store)
 target_link_libraries(scene_store PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 
-add_library(collision src/collision/triangle_cook.cpp src/collision/static_shape.cpp)
+add_library(collision src/collision/triangle_cook.cpp src/collision/static_shape.cpp
+    src/collision/kinematic_capsule.cpp)
 we_target(collision)
 target_link_libraries(collision PUBLIC scene_store PRIVATE ${WE_JOLT_TARGET})
 
@@ -388,7 +389,7 @@ install(DIRECTORY "${WE_WIRE_DIRECTORY}/python/" DESTINATION share/world-explore
 if(BUILD_TESTING)
   add_executable(we_collision_fixture tests/fixtures/collision_fixture.cpp)
   we_target(we_collision_fixture)
-  target_link_libraries(we_collision_fixture PRIVATE scene_store nlohmann_json::nlohmann_json)
+  target_link_libraries(we_collision_fixture PRIVATE collision nlohmann_json::nlohmann_json)
   add_executable(we_scale_fixture tests/fixtures/scale_fixture.cpp)
   we_target(we_scale_fixture)
   target_link_libraries(we_scale_fixture PRIVATE scene_store render_core nlohmann_json::nlohmann_json)

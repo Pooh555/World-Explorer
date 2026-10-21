@@ -31,6 +31,7 @@ class JoltStaticCollision {
                                            const std::stop_token& stop = {}) const;
 
   private:
+    friend class SyntheticCapsuleController;
     friend Result<std::shared_ptr<const JoltStaticCollision>> build_jolt_static_collision(
         std::shared_ptr<const CanonicalCollisionMesh>, const SceneState&, const std::stop_token&);
 

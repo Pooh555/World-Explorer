@@ -1,5 +1,7 @@
 # Validation index
 
+- [Synthetic kinematic capsule](2026-10-21-kinematic-capsule.md): fixed 120 Hz clock/eight-tick cap, private Jolt wall sliding, conservative ledger blocking, transactional cancellation/correction and saved-file/native path diagnostics; flat synthetic support only, no measured walking.
+
 - [Jolt MSVC runtime alignment](2026-10-21-windows-jolt-crt.md): addresses supplied `/MTd` versus `/MDd` LNK2038 failure by honoring the parent CRT policy; Windows-target object probes verify default/explicit settings, full native MSVC link pending.
 - [MSVC Jolt enum-conformance repair](2026-10-21-windows-jolt-enums.md): addresses supplied Windows SDK C4865/C2220 failure with consistent `/Zc:enumTypes` for Jolt/header consumers; warning policy retained, native Windows rerun pending.
 - [Explicit synthetic wall faces](2026-10-21-collision-wall.md): V2 source-bound occupied-cell face selection, complete coverage/winding checks, canonical/Jolt wall shapes and native mesh/diagnostic viewing; V1 bytes preserved, no controller or measured walking.
