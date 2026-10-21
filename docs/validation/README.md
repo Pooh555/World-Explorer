@@ -1,5 +1,6 @@
 # Validation index
 
+- [Explicit synthetic wall faces](2026-10-21-collision-wall.md): V2 source-bound occupied-cell face selection, complete coverage/winding checks, canonical/Jolt wall shapes and native mesh/diagnostic viewing; V1 bytes preserved, no controller or measured walking.
 - [Pinned Jolt static shape](2026-10-21-jolt-static-shape.md): 5.3.0 source/notice and local CPU shape/ray-cast checks; synthetic floor only, no controller or measured walking.
 - [Canonical synthetic collision cook](2026-10-21-collision-cook.md): immutable source/support-bound floor triangles, portable digest, stale-context refusal and native diagnostic replay; no Jolt or measured walking.
 - [M3 local development exit policy](2026-10-21-m3-development-exit-policy.md): software-phase handoff can proceed without an independent measurement for internet-sourced `sample_1`; Q5/N2 and A1's separate scale requirements remain unchanged and open.

@@ -346,21 +346,19 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-[Canonical synthetic collision cook](validation/2026-10-21-collision-cook.md)
-binds floor triangles and support to source/pose revisions. The
-[Jolt 5.3.0 static-shape slice](validation/2026-10-21-jolt-static-shape.md)
-pins the upstream archive to the immutable vcpkg baseline and adds a private
-native mesh shape with source-validated diagnostic ray casts. Explicit occupied
-and unknown grid cells still block conservative support probes; no wall mesh,
-controller or measured walking is enabled.
+[Synthetic wall-face admission and cooking](validation/2026-10-21-collision-wall.md)
+now extends the [canonical cook](validation/2026-10-21-collision-cook.md) and
+[pinned Jolt shape](validation/2026-10-21-jolt-static-shape.md) with two explicit
+source triangles covering an occupied cell face. V1 fixture and canonical bytes
+are unchanged. The V2 mesh ray hits the wall while the separate conservative ledger
+blocks occupied/unknown cells; native synthetic mesh and diagnostic views pass.
+No controller or measured walking is enabled.
 
-Next, version the synthetic support fixture to select explicit vertical wall
-triangles with checked source/pose/hash dependencies and a conservative relation
-to occupied cells. Extend the canonical cook and Jolt static shape without
-changing V1 bytes. Then implement fixed 120 Hz kinematic capsule movement with
-the plan's 45° slope/0.30 m step limits and capped catch-up; verify wall,
-corner, unknown, correction, cancellation and prior-owner preservation. Recheck
-plan §§4.6/4.8/5.1 and the [support](protocols/collision_support.md) and
+Next, implement fixed 120 Hz kinematic capsule movement on the private Jolt
+static collision shape, with capped catch-up and the plan's 45° slope/0.30 m
+step limits. Verify wall, corner, unknown, correction, cancellation and
+prior-owner preservation without making diagnostic support into measured walk
+permission. Recheck plan §§4.6/4.8/5.1 and the [support](protocols/collision_support.md) and
 [depth-space](protocols/depth_space.md#typed-evidence-admission) contracts.
 Keep Jolt private to `collision`; no backend types in navigation/application.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not

@@ -45,6 +45,14 @@ class CanonicalCollisionMesh {
         return m_triangles;
     }
 
+    std::size_t floor_triangle_count() const {
+        return m_floor_triangle_count;
+    }
+
+    std::size_t wall_triangle_count() const {
+        return m_triangles.size() - m_floor_triangle_count;
+    }
+
     std::span<const std::byte> canonical_bytes() const {
         return m_canonical_bytes;
     }
@@ -82,6 +90,7 @@ class CanonicalCollisionMesh {
     CollisionCookParameters m_parameters;
     std::shared_ptr<const CollisionSupport> m_support;
     std::vector<CollisionCookTriangle> m_triangles;
+    std::size_t m_floor_triangle_count {};
     std::vector<std::byte> m_canonical_bytes;
     std::string m_source_sha256, m_digest;
 };

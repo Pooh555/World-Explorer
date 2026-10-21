@@ -5,8 +5,8 @@ checks conservative capsule envelopes against it. This is a synthetic-only M3
 software profile. There is no observed-space producer, measured collision,
 character controller or walking permission. A metric flag, a drawn mesh and an
 allocated TSDF voxel cannot establish free space.
-The separate [canonical triangle cook](collision_cook.md) binds its selected
-floor triangles to this admitted support and the exact source scene.
+The separate [canonical triangle cook](collision_cook.md) binds selected floor
+and, in V2, wall triangles to this admitted support and the exact source scene.
 
 ## Pinned support document
 
@@ -16,13 +16,27 @@ scalars are required. Duplicate keys, raw NUL, unknown fields, invalid states an
 unsupported profiles fail admission. Source scenes must validate with a synthetic
 [world-frame alignment](world_frame.md); real or flag-only scenes are refused.
 
+`SYNTHETIC_COLLISION_SUPPORT_V2` retains the V1 fields and adds a required,
+nonempty `walls` array. Each record pins `chunk_id`, `generation`,
+`pose_revision`, `chunk_sha256`, one three-index `occupied_cell`, a face
+(`NEG_X`, `POS_X`, `NEG_Z` or `POS_Z`) and exactly two unique source triangle
+indices. At most 128 faces and 256 selected floor-plus-wall triangles are
+admitted. Each pair must cover all four corners of exactly one occupied cell
+face with the correct outward winding and shared diagonal. Every transformed
+vertex must equal a face corner on the same bounded grid lattice; a face on a
+free, unknown or absent cell fails. The face is explicit source mesh geometry,
+never fabricated from a `#` state. Duplicate faces or reused source triangles
+fail. One-sided mesh rays are diagnostic; the conservative ledger still blocks
+the entire occupied cell and all unknown space.
+
 | Field | Meaning |
 |---|---|
-| `schema` | `SYNTHETIC_COLLISION_SUPPORT_V1` |
+| `schema` | `SYNTHETIC_COLLISION_SUPPORT_V1` or `SYNTHETIC_COLLISION_SUPPORT_V2` |
 | `scene_sha256`, `epoch`, `revision` | Exact aligned source content and identities |
 | `world_frame_sha256` | Exact admitted alignment declaration |
 | `grid` | `origin` vector, `cell_size`, three `dimensions`, complete `states` string |
 | `floors` | Explicit source chunks and selected floor triangles |
+| `walls` | V2 only: explicit source triangles covering occupied-cell vertical faces |
 
 Dimensions are 1–64 per axis (at most 262,144 cells); cell size is 1e-6–1,000 in
 synthetic scene units; each origin coordinate has magnitude at most 1e6. These
@@ -66,13 +80,15 @@ resynchronize. Existing scene reset and renderer update contracts remain intact.
 
 ```sh
 build/dev/we_collision_fixture artifacts/NEW_SYNTHETIC_INPUT
+build/dev/we_collision_fixture artifacts/NEW_SYNTHETIC_WALL_INPUT --walls
 build/dev/we_process inspect-collision artifacts/NEW_SYNTHETIC_INPUT/request.json REQUEST_SHA artifacts/NEW_INSPECTION
 build/dev/we_viewer --scene artifacts/NEW_INSPECTION/diagnostic.wexplore --max-splats 1000000
 ```
 
 The development fixture executable produces an analytic aligned source, explicit
-space states and four probes. It never reads capture data. Its output is new and
-clearly labeled synthetic.
+space states and four probes. `--walls` adds a source wall mesh, occupied cell
+and V2 face selection; the default V1 fixture remains byte-identical. It never
+reads capture data. Its output is new and clearly labeled synthetic.
 
 The shared application command consumes a SHA-pinned, ≤1 MiB request with kind
 `COLLISION_SUPPORT_INSPECTION_V1`, `source_bundle`, `source_manifest_sha256`,
@@ -96,6 +112,9 @@ boundaries. The diagnostic is an independent arbitrary-scale scene; it is never
 installed as collision for the source reconstruction. Legacy bundle encoding,
 scene hashes and captured GLB profiles remain unchanged.
 
-[Validation](../validation/2026-10-20-collision-support.md) records CPU/native
-checks and retained real-scene refusal. No real measured alignment/support exists
-for sample_1. Q5/N2 and the remaining M3 product gates are unchanged.
+[V1 validation](../validation/2026-10-20-collision-support.md) records CPU/native
+checks and retained real-scene refusal;
+[V2 wall validation](../validation/2026-10-21-collision-wall.md) records explicit
+face admission, canonical/Jolt construction and native synthetic viewing.
+No real measured alignment/support exists for sample_1. Q5/N2 and the remaining
+M3 product gates are unchanged.

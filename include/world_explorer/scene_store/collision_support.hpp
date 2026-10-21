@@ -23,13 +23,15 @@ struct ClearanceProbe {
     std::size_t m_checked_cells {};
 };
 
-struct CollisionFloorTriangleRef {
+struct CollisionTriangleRef {
     ChunkId m_chunk_id;
     std::uint64_t m_generation {};
     SceneRevisionId m_pose_revision;
     std::string m_chunk_sha256;
     std::uint64_t m_triangle_index {};
 };
+
+using CollisionFloorTriangleRef = CollisionTriangleRef;
 
 constexpr std::size_t K_COLLISION_SUPPORT_DOCUMENT_BYTES { 1024uz * 1024uz };
 
@@ -68,6 +70,14 @@ class CollisionSupport {
         return m_floor_triangles;
     }
 
+    std::span<const CollisionTriangleRef> wall_triangles() const {
+        return m_wall_triangles;
+    }
+
+    std::uint32_t format_version() const {
+        return m_format_version;
+    }
+
     const std::string& source_sha256() const {
         return m_source_sha256;
     }
@@ -95,6 +105,8 @@ class CollisionSupport {
     std::vector<SpaceState> m_cells;
     std::vector<std::uint8_t> m_floors;
     std::vector<CollisionFloorTriangleRef> m_floor_triangles;
+    std::vector<CollisionTriangleRef> m_wall_triangles;
+    std::uint32_t m_format_version { 1 };
     std::string m_source_sha256, m_document_sha256;
 };
 

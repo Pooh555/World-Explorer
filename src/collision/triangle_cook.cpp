@@ -51,9 +51,10 @@ cook_synthetic_collision(const SceneSnapshot& source,
         cooked->m_revision = source->m_revision;
         cooked->m_support = std::move(support);
         cooked->m_source_sha256 = cooked->m_support->source_sha256();
+        cooked->m_parameters.m_format_version = cooked->m_support->format_version();
         auto selected =
-            std::vector<CollisionFloorTriangleRef> {cooked->m_support->floor_triangles().begin(),
-                                                    cooked->m_support->floor_triangles().end()};
+            std::vector<CollisionFloorTriangleRef> { cooked->m_support->floor_triangles().begin(),
+                                                    cooked->m_support->floor_triangles().end() };
         std::sort(selected.begin(), selected.end(), [](const auto& a, const auto& b) {
             return a.m_chunk_id < b.m_chunk_id ||
                    (a.m_chunk_id == b.m_chunk_id && a.m_triangle_index < b.m_triangle_index);
@@ -61,10 +62,26 @@ cook_synthetic_collision(const SceneSnapshot& source,
         if (selected.empty() || selected.size() > 256uz) {
             return fail(ErrorCode::INVALID_DATA, "Collision floor triangle count is invalid");
         }
-        cooked->m_triangles.reserve(selected.size());
+        auto walls = std::vector<CollisionTriangleRef> { cooked->m_support->wall_triangles().begin(),
+                                                        cooked->m_support->wall_triangles().end() };
+        std::sort(walls.begin(), walls.end(), [](const auto& a, const auto& b) {
+            return a.m_chunk_id < b.m_chunk_id ||
+                   (a.m_chunk_id == b.m_chunk_id && a.m_triangle_index < b.m_triangle_index);
+        });
+        if ((cooked->m_parameters.m_format_version == 1U && !walls.empty()) ||
+            (cooked->m_parameters.m_format_version == 2U && walls.empty()) ||
+            (cooked->m_parameters.m_format_version != 1U &&
+             cooked->m_parameters.m_format_version != 2U) ||
+            walls.size() > 256uz - selected.size()) {
+            return fail(ErrorCode::INVALID_DATA, "Collision wall triangle count is invalid");
+        }
+        cooked->m_floor_triangle_count = selected.size();
+        cooked->m_triangles.reserve(selected.size() + walls.size());
         auto& bytes = cooked->m_canonical_bytes;
-        bytes.reserve(256uz + selected.size() * 104uz);
-        append_text(bytes, "WE_COLLISION_TRIANGLES_V1");
+        bytes.reserve(256uz + (selected.size() + walls.size()) * 104uz);
+        append_text(bytes,
+                    cooked->m_parameters.m_format_version == 1U ? "WE_COLLISION_TRIANGLES_V1"
+                                                                : "WE_COLLISION_TRIANGLES_V2");
         append_u64(bytes, cooked->m_parameters.m_format_version);
         append_u64(bytes, cooked->m_parameters.m_weld_vertices);
         append_u64(bytes, cooked->m_parameters.m_double_sided);
@@ -74,24 +91,24 @@ cook_synthetic_collision(const SceneSnapshot& source,
         append_text(bytes, cooked->m_source_sha256);
         append_text(bytes, cooked->m_support->document_sha256());
         append_u64(bytes, selected.size());
-        for (const auto& ref : selected) {
+        const auto K_APPEND_TRIANGLE = [&](const CollisionTriangleRef& ref) -> Result<void> {
             if (stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Collision triangle cook cancelled");
             }
             const auto K_FOUND = source->m_chunks.find(ref.m_chunk_id);
             if (K_FOUND == source->m_chunks.end() || !K_FOUND->second) {
-                return fail(ErrorCode::WRONG_BASE, "Collision floor geometry disappeared");
+                return fail(ErrorCode::WRONG_BASE, "Selected collision geometry disappeared");
             }
             const auto& chunk = *K_FOUND->second;
             if (!chunk.m_mesh || !chunk.m_geometry_valid) {
-                return fail(ErrorCode::WRONG_BASE, "Collision floor geometry disappeared");
+                return fail(ErrorCode::WRONG_BASE, "Selected collision geometry disappeared");
             }
             const auto& mesh = *chunk.m_mesh;
             if (chunk.m_generation != ref.m_generation ||
                 chunk.m_pose_revision != ref.m_pose_revision ||
                 scene_chunk_content_hash(chunk) != ref.m_chunk_sha256 ||
                 ref.m_triangle_index >= mesh.m_triangles.size()) {
-                return fail(ErrorCode::WRONG_BASE, "Collision floor dependency changed");
+                return fail(ErrorCode::WRONG_BASE, "Selected collision dependency changed");
             }
             CollisionCookTriangle triangle;
             triangle.m_chunk_id = ref.m_chunk_id;
@@ -104,7 +121,7 @@ cook_synthetic_collision(const SceneSnapshot& source,
                     mesh.m_triangles.at(static_cast<std::size_t>(ref.m_triangle_index))[corner];
                 const auto& position = mesh.m_vertices.at(K_INDEX).m_position;
                 auto point =
-                    transform_point(K_WORLD, {position[0uz], position[1uz], position[2uz]});
+                    transform_point(K_WORLD, { position[0uz], position[1uz], position[2uz] });
                 if (!finite(point)) {
                     return fail(ErrorCode::INVALID_DATA, "Collision triangle is nonfinite");
                 }
@@ -135,9 +152,25 @@ cook_synthetic_collision(const SceneSnapshot& source,
                 append_coordinate(bytes, point.m_z);
             }
             cooked->m_triangles.push_back(triangle);
+            return {};
+        };
+        for (const auto& ref : selected) {
+            const auto K_APPENDED = K_APPEND_TRIANGLE(ref);
+            if (!K_APPENDED) {
+                return std::unexpected(K_APPENDED.error());
+            }
+        }
+        if (cooked->m_parameters.m_format_version == 2U) {
+            append_u64(bytes, walls.size());
+            for (const auto& ref : walls) {
+                const auto K_APPENDED = K_APPEND_TRIANGLE(ref);
+                if (!K_APPENDED) {
+                    return std::unexpected(K_APPENDED.error());
+                }
+            }
         }
         cooked->m_digest = sha256(std::span<const std::byte>(bytes.data(), bytes.size()));
-        return std::shared_ptr<const CanonicalCollisionMesh> {std::move(cooked)};
+        return std::shared_ptr<const CanonicalCollisionMesh> { std::move(cooked) };
     } catch (const std::bad_alloc&) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Collision cook allocation failed");
     } catch (const std::exception& error) {

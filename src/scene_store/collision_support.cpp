@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <limits>
 #include <set>
+#include <tuple>
 
 namespace world_explorer {
 namespace {
@@ -100,15 +101,29 @@ admit_collision_support(const SceneState& source,
                 }
                 return true;
             });
-        fields(K_DOCUMENT,
-               { "schema",
-                "scene_sha256",
-                "epoch",
-                "revision",
-                "world_frame_sha256",
-                "grid",
-                "floors" });
-        if (K_DOCUMENT.at("schema") != "SYNTHETIC_COLLISION_SUPPORT_V1") {
+        const bool K_V2 = K_DOCUMENT.is_object() && K_DOCUMENT.contains("schema") &&
+                          K_DOCUMENT.at("schema") == "SYNTHETIC_COLLISION_SUPPORT_V2";
+        if (K_V2) {
+            fields(K_DOCUMENT,
+                   { "schema",
+                    "scene_sha256",
+                    "epoch",
+                    "revision",
+                    "world_frame_sha256",
+                    "grid",
+                    "floors",
+                    "walls" });
+        } else {
+            fields(K_DOCUMENT,
+                   { "schema",
+                    "scene_sha256",
+                    "epoch",
+                    "revision",
+                    "world_frame_sha256",
+                    "grid",
+                    "floors" });
+        }
+        if (!K_V2 && K_DOCUMENT.at("schema") != "SYNTHETIC_COLLISION_SUPPORT_V1") {
             throw std::runtime_error("Unsupported collision-support profile");
         }
         if (integer(K_DOCUMENT.at("epoch")) != source.m_epoch.m_value) {
@@ -135,6 +150,7 @@ admit_collision_support(const SceneState& source,
         support->m_revision = source.m_revision;
         support->m_source_sha256 = K_SOURCE_HASH;
         support->m_document_sha256 = digest;
+        support->m_format_version = K_V2 ? 2U : 1U;
         support->m_origin = { real(grid.at("origin").at(0uz)),
                              real(grid.at("origin").at(1uz)),
                              real(grid.at("origin").at(2uz)) };
@@ -233,6 +249,152 @@ admit_collision_support(const SceneState& source,
                         "Collision floor must have upward nondegenerate geometric winding");
                 }
                 triangles.push_back(triangle);
+            }
+        }
+        if (K_V2) {
+            const auto& walls = K_DOCUMENT.at("walls");
+            if (!walls.is_array() || walls.empty() || walls.size() > 128uz ||
+                walls.size() > (256uz - support->m_floor_triangles.size()) / 2uz) {
+                throw std::runtime_error("Collision wall face count exceeds profile limits");
+            }
+            std::set<std::tuple<std::array<std::uint64_t, 3uz>, std::string>> seen_faces;
+            for (const auto& wall : walls) {
+                if (stop.stop_requested()) {
+                    return fail(ErrorCode::CANCELLED, "Collision wall admission cancelled");
+                }
+                fields(wall,
+                       { "chunk_id",
+                        "generation",
+                        "pose_revision",
+                        "chunk_sha256",
+                        "occupied_cell",
+                        "face",
+                        "triangles" });
+                const ChunkId K_ID { integer(wall.at("chunk_id")) };
+                const auto K_FOUND = source.m_chunks.find(K_ID);
+                if (K_FOUND == source.m_chunks.end() || !K_FOUND->second ||
+                    !K_FOUND->second->m_mesh || !K_FOUND->second->m_geometry_valid) {
+                    throw std::runtime_error("Collision wall requires current mesh geometry");
+                }
+                const auto& chunk = *K_FOUND->second;
+                const auto K_CHUNK_HASH = scene_chunk_content_hash(chunk);
+                if (integer(wall.at("generation")) != chunk.m_generation ||
+                    integer(wall.at("pose_revision")) != chunk.m_pose_revision.m_value ||
+                    wall.at("chunk_sha256").get<std::string>() != K_CHUNK_HASH) {
+                    return fail(ErrorCode::WRONG_BASE,
+                                "Collision wall mesh/pose dependency differs");
+                }
+                const auto& cell_json = wall.at("occupied_cell");
+                if (!cell_json.is_array() || cell_json.size() != 3uz) {
+                    throw std::runtime_error("Collision wall cell must have three indices");
+                }
+                std::array<std::uint64_t, 3uz> cell {};
+                for (std::size_t axis { 0uz }; axis < 3uz; ++axis) {
+                    cell[axis] = integer(cell_json.at(axis));
+                    if (cell[axis] >= support->m_dimensions[axis]) {
+                        throw std::runtime_error("Collision wall cell leaves the grid");
+                    }
+                }
+                const auto K_CELL_OFFSET =
+                    static_cast<std::size_t>(cell[0uz]) +
+                    support->m_dimensions[0uz] *
+                        (static_cast<std::size_t>(cell[1uz]) +
+                         support->m_dimensions[1uz] * static_cast<std::size_t>(cell[2uz]));
+                if (support->m_cells[K_CELL_OFFSET] != SpaceState::OCCUPIED) {
+                    throw std::runtime_error(
+                        "Collision wall face requires an occupied source cell");
+                }
+                const auto K_FACE = wall.at("face").get<std::string>();
+                if (K_FACE != "NEG_X" && K_FACE != "POS_X" && K_FACE != "NEG_Z" &&
+                    K_FACE != "POS_Z") {
+                    throw std::runtime_error(
+                        "Collision wall face must be vertical and axis aligned");
+                }
+                if (!seen_faces.emplace(cell, K_FACE).second) {
+                    throw std::runtime_error("Duplicate collision wall face");
+                }
+                const double K_X0 { support->m_origin.m_x +
+                                   static_cast<double>(cell[0uz]) * support->m_cell_size };
+                const double K_Y0 { support->m_origin.m_y +
+                                   static_cast<double>(cell[1uz]) * support->m_cell_size };
+                const double K_Z0 { support->m_origin.m_z +
+                                   static_cast<double>(cell[2uz]) * support->m_cell_size };
+                const double K_X1 { K_X0 + support->m_cell_size };
+                const double K_Y1 { K_Y0 + support->m_cell_size };
+                const double K_Z1 { K_Z0 + support->m_cell_size };
+                const bool K_X_FACE = K_FACE == "NEG_X" || K_FACE == "POS_X";
+                const double K_FIXED = K_X_FACE ? (K_FACE == "NEG_X" ? K_X0 : K_X1)
+                                                : (K_FACE == "NEG_Z" ? K_Z0 : K_Z1);
+                const std::array<Vec3d, 4uz> K_CORNERS =
+                    K_X_FACE ? std::array<Vec3d, 4uz> { Vec3d { K_FIXED, K_Y0, K_Z0 },
+                                                       Vec3d { K_FIXED, K_Y1, K_Z0 },
+                                                       Vec3d { K_FIXED, K_Y0, K_Z1 },
+                                                       Vec3d { K_FIXED, K_Y1, K_Z1 } }
+                             : std::array<Vec3d, 4uz> { Vec3d { K_X0, K_Y0, K_FIXED },
+                                                       Vec3d { K_X1, K_Y0, K_FIXED },
+                                                       Vec3d { K_X0, K_Y1, K_FIXED },
+                                                       Vec3d { K_X1, K_Y1, K_FIXED } };
+                const Vec3d K_OUTWARD = K_FACE == "NEG_X"   ? Vec3d { -1, 0, 0 }
+                                        : K_FACE == "POS_X" ? Vec3d { 1, 0, 0 }
+                                        : K_FACE == "NEG_Z" ? Vec3d { 0, 0, -1 }
+                                                            : Vec3d { 0, 0, 1 };
+                const auto& indices = wall.at("triangles");
+                if (!indices.is_array() || indices.size() != 2uz) {
+                    throw std::runtime_error("Collision wall face needs exactly two triangles");
+                }
+                std::array<std::array<std::size_t, 3uz>, 2uz> corner_ids {};
+                for (std::size_t side { 0uz }; side < 2uz; ++side) {
+                    const auto K_INDEX = integer(indices.at(side));
+                    const auto& mesh = *chunk.m_mesh;
+                    if (K_INDEX >= mesh.m_triangles.size() || !seen.emplace(K_ID, K_INDEX).second) {
+                        throw std::runtime_error("Invalid/duplicate collision wall triangle");
+                    }
+                    const auto K_TRANSFORM = scene_world_from_chunk(source, chunk);
+                    std::array<Vec3d, 3uz> points {};
+                    for (std::size_t corner { 0uz }; corner < 3uz; ++corner) {
+                        const auto K_VERTEX =
+                            mesh.m_triangles.at(static_cast<std::size_t>(K_INDEX))[corner];
+                        const auto& position = mesh.m_vertices.at(K_VERTEX).m_position;
+                        points[corner] = transform_point(
+                            K_TRANSFORM, { position[0uz], position[1uz], position[2uz] });
+                        const auto K_MATCH = std::find_if(
+                            K_CORNERS.begin(), K_CORNERS.end(), [&](const Vec3d& expected) {
+                                return points[corner].m_x == expected.m_x &&
+                                       points[corner].m_y == expected.m_y &&
+                                       points[corner].m_z == expected.m_z;
+                            });
+                        if (K_MATCH == K_CORNERS.end()) {
+                            throw std::runtime_error(
+                                "Collision wall triangle leaves its occupied cell face");
+                        }
+                        corner_ids[side][corner] =
+                            static_cast<std::size_t>(K_MATCH - K_CORNERS.begin());
+                    }
+                    auto unique = corner_ids[side];
+                    std::sort(unique.begin(), unique.end());
+                    if (unique[0uz] == unique[1uz] || unique[1uz] == unique[2uz] ||
+                        dot(cross(points[1uz] - points[0uz], points[2uz] - points[0uz]),
+                            K_OUTWARD) <= 0) {
+                        throw std::runtime_error(
+                            "Collision wall has invalid winding or degeneracy");
+                    }
+                    support->m_wall_triangles.push_back(
+                        { K_ID, chunk.m_generation, chunk.m_pose_revision, K_CHUNK_HASH, K_INDEX });
+                }
+                std::array<std::size_t, 2uz> shared {};
+                std::size_t shared_count {};
+                for (const auto K_CORNER_ID : corner_ids[0uz]) {
+                    if (std::find(corner_ids[1uz].begin(), corner_ids[1uz].end(), K_CORNER_ID) !=
+                        corner_ids[1uz].end()) {
+                        if (shared_count < shared.size()) {
+                            shared[shared_count] = K_CORNER_ID;
+                        }
+                        ++shared_count;
+                    }
+                }
+                if (shared_count != 2uz || shared[0uz] + shared[1uz] != 3uz) {
+                    throw std::runtime_error("Collision wall triangles do not cover the full face");
+                }
             }
         }
         const auto K_NX = support->m_dimensions[0uz], K_NZ = support->m_dimensions[2uz];

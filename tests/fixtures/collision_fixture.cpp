@@ -21,26 +21,31 @@ void write(const std::filesystem::path& path, const nlohmann::json& value) {
 
 int main(int argc, char** argv) {
     try {
-        if (argc != 2) {
-            std::cerr << "Usage: we_collision_fixture NEW_DIRECTORY (synthetic only)\n";
+        if ((argc != 2 && argc != 3) || (argc == 3 && std::string_view(argv[2]) != "--walls")) {
+            std::cerr << "Usage: we_collision_fixture NEW_DIRECTORY [--walls] (synthetic only)\n";
             return 2;
         }
+        const bool K_WITH_WALL = argc == 3;
         const auto K_OUTPUT = std::filesystem::absolute(argv[1]);
         if (std::filesystem::exists(std::filesystem::symlink_status(K_OUTPUT)) ||
             !std::filesystem::create_directory(K_OUTPUT)) {
             throw std::runtime_error("Choose a new synthetic fixture directory");
         }
-        const auto K_SOURCE = std::make_shared<SceneState>(collision_source());
+        const auto K_SOURCE = std::make_shared<SceneState>(collision_source(K_WITH_WALL));
         const auto K_WRITTEN = write_bundle(K_OUTPUT / "source.wexplore", K_SOURCE);
         if (!K_WRITTEN) {
             throw std::runtime_error(K_WRITTEN.error().m_message);
         }
-        auto document = collision_document(*K_SOURCE);
+        auto document =
+            K_WITH_WALL ? collision_wall_document(*K_SOURCE) : collision_document(*K_SOURCE);
         auto& cells = document["grid"]["states"].get_ref<std::string&>();
-        // Full-height thin wall; explicit unknown column; neither is inferred from TSDF allocation.
+        // V1 keeps its occupied stripe; V2 selects one explicit mesh face.
+        // Both retain an unknown column; no state is inferred from TSDF allocation.
         for (std::size_t y { 0uz }; y < 4uz; ++y) {
-            for (std::size_t z { 0uz }; z < 3uz; ++z) {
-                cells[3uz + 8uz * (y + 4uz * z)] = '#';
+            if (!K_WITH_WALL) {
+                for (std::size_t z { 0uz }; z < 3uz; ++z) {
+                    cells[3uz + 8uz * (y + 4uz * z)] = '#';
+                }
             }
             cells[1uz + 8uz * (y + 4uz * 4uz)] = '?';
         }
