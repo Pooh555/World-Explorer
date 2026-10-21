@@ -70,6 +70,12 @@ endif()
 # -----------------------------------------------------------------------------
 include(cmake/dependencies.cmake)
 
+if(WE_SYSTEM_DEVELOPMENT_DEPS)
+  # Jolt's /Wall diagnoses Windows SDK enums without MSVC's conforming deduction.
+  # Its header consumers must use the same enum ABI as the library.
+  target_compile_options(Jolt PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/Zc:enumTypes>")
+endif()
+
 if(WE_SANITIZER AND WE_SYSTEM_DEVELOPMENT_DEPS AND NOT MSVC)
   target_compile_options(Jolt PRIVATE -fsanitize=${WE_SANITIZER} -fno-omit-frame-pointer)
 endif()

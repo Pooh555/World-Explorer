@@ -19,6 +19,16 @@ development and the vcpkg `rtti` feature so UBSan vptr checks can link; this
 does not lower first-party C++26/C++23 targets. Jolt headers and target linkage
 remain private to `collision`.
 
+The MSVC development build explicitly enables
+[`/Zc:enumTypes`](https://learn.microsoft.com/en-us/cpp/build/reference/zc-enumtypes?view=msvc-170)
+on Jolt and exposes it to its header consumers. Microsoft documents that this
+conforming enum deduction is off by default, including under `/permissive-`,
+and can change enum layout. A public target option keeps the library and its
+direct consumers consistent. This addresses the supplied Windows SDK C4865
+failure under upstream `/Wall /WX`; no warning level or error policy is reduced.
+The [build repair evidence](../validation/2026-10-21-windows-jolt-enums.md)
+distinguishes local regression checks from the pending native MSVC rerun.
+
 The pinned [vcpkg portfile](https://github.com/microsoft/vcpkg/blob/ce613c41372b23b1f51333815feb3edd87ef8a8b/ports/joltphysics/portfile.cmake)
 builds a static target from the same tag and exports `Jolt::Jolt`, but leaves
 upstream x86 instruction defaults in place. From the upstream defaults, the
@@ -30,5 +40,5 @@ is unchanged. Release-vcpkg and other native hosts remain unverified before M4.
 The [upstream mesh settings](https://github.com/jrouwe/JoltPhysics/blob/v5.3.0/Jolt/Physics/Collision/Shape/MeshShape.h)
 can sanitize degenerate/duplicate triangles and use one-sided simulation faces.
 The adapter rejects any selected triangle loss and binds every shape to the
-canonical scene/support digest. Ray queries are diagnostic until explicit wall
-selection, known clearance and a kinematic controller are implemented.
+canonical scene/support digest. Ray queries remain diagnostic until known
+clearance and a kinematic controller are implemented.
