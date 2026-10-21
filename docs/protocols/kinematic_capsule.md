@@ -3,11 +3,11 @@
 `SyntheticCapsuleController` in `collision` consumes an immutable
 [Jolt static shape](collision_cook.md) and its source-bound synthetic support
 ledger. All Jolt world, body, shape, character and allocator types remain private.
-This single-threaded diagnostic API does not enable viewer walk mode, declare
+This single-threaded diagnostic API does not enable measured walk mode, declare
 real scale, or admit observation-backed collision. Dimensions are explicit
 synthetic inputs: radius 0.05–1, height at least twice the radius plus 0.01 and
 at most 3, in the synthetic aligned coordinate system. Creation requires an
-entirely clear, supported capsule spawn on the ledger's flat floor.
+entirely clear, supported capsule spawn on the ledger's declared surface.
 
 `advance(current, horizontal_velocity, elapsed, stop)` validates the current
 scene/epoch/revision/content and selected pose pins on every call, even with
@@ -39,11 +39,13 @@ Only the final proposed straight movement segment becomes project state, after
 the existing conservative swept-envelope probe accepts it. Occupied, unknown,
 out-of-grid and unsupported-floor envelopes block it even when no triangle was
 selected there. A blocked call returns its clearance reason and retains the
-last accepted tick position. The admitted support profile is still flat:
+last accepted tick position. V1/V2 remain flat:
 proposed vertical displacement beyond 0.002 units is unsupported, while smaller
-floor-contact rounding is normalized to the admitted plane. The configured
-slope/step limits are not evidence of stair/slope capability; non-flat support
-admission, real reconstruction and N2 qualification remain pending.
+floor-contact rounding is normalized to the admitted plane.
+[V3 inclined support](collision_ramps.md) supplies tangent vertical velocity,
+proves plane-relative clearance and normalizes bounded contact rounding to the
+capsule/plane contact height. General floor transitions, stairs, real
+reconstruction and N2 qualification remain pending.
 
 `we_collision_fixture NEW_DIRECTORY --capsule` is a development fixture tool.
 It writes the existing V2 source/support/request, reloads their pinned bytes,

@@ -103,7 +103,20 @@ admit_collision_support(const SceneState& source,
             });
         const bool K_V2 = K_DOCUMENT.is_object() && K_DOCUMENT.contains("schema") &&
                           K_DOCUMENT.at("schema") == "SYNTHETIC_COLLISION_SUPPORT_V2";
-        if (K_V2) {
+        const bool K_V3 = K_DOCUMENT.is_object() && K_DOCUMENT.contains("schema") &&
+                          K_DOCUMENT.at("schema") == "SYNTHETIC_COLLISION_SUPPORT_V3";
+        if (K_V3) {
+            fields(K_DOCUMENT,
+                   { "schema",
+                    "scene_sha256",
+                    "epoch",
+                    "revision",
+                    "world_frame_sha256",
+                    "grid",
+                    "floors",
+                    "walls",
+                    "plane" });
+        } else if (K_V2) {
             fields(K_DOCUMENT,
                    { "schema",
                     "scene_sha256",
@@ -123,7 +136,7 @@ admit_collision_support(const SceneState& source,
                     "grid",
                     "floors" });
         }
-        if (!K_V2 && K_DOCUMENT.at("schema") != "SYNTHETIC_COLLISION_SUPPORT_V1") {
+        if (!K_V2 && !K_V3 && K_DOCUMENT.at("schema") != "SYNTHETIC_COLLISION_SUPPORT_V1") {
             throw std::runtime_error("Unsupported collision-support profile");
         }
         if (integer(K_DOCUMENT.at("epoch")) != source.m_epoch.m_value) {
@@ -150,11 +163,20 @@ admit_collision_support(const SceneState& source,
         support->m_revision = source.m_revision;
         support->m_source_sha256 = K_SOURCE_HASH;
         support->m_document_sha256 = digest;
-        support->m_format_version = K_V2 ? 2U : 1U;
+        support->m_format_version = K_V3 ? 3U : K_V2 ? 2U : 1U;
         support->m_origin = { real(grid.at("origin").at(0uz)),
                              real(grid.at("origin").at(1uz)),
                              real(grid.at("origin").at(2uz)) };
         support->m_cell_size = real(grid.at("cell_size"));
+        if (K_V3) {
+            const auto& plane = K_DOCUMENT.at("plane");
+            fields(plane, { "rise_x", "rise_z" });
+            support->m_floor_gradient = { real(plane.at("rise_x")), 0, real(plane.at("rise_z")) };
+            if (std::abs(support->m_floor_gradient.m_x) > 4 ||
+                std::abs(support->m_floor_gradient.m_z) > 4) {
+                throw std::runtime_error("Synthetic plane gradient exceeds bounded profile");
+            }
+        }
         if (support->m_cell_size < 1e-6 || support->m_cell_size > 1000 ||
             std::abs(support->m_origin.m_x) > 1e6 || std::abs(support->m_origin.m_y) > 1e6 ||
             std::abs(support->m_origin.m_z) > 1e6) {
@@ -227,15 +249,15 @@ admit_collision_support(const SceneState& source,
                     const auto K_WORLD = transform_point(K_TRANSFORM, { p[0uz], p[1uz], p[2uz] });
                     const double K_X { (K_WORLD.m_x - support->m_origin.m_x) / support->m_cell_size };
                     const double K_Z { (K_WORLD.m_z - support->m_origin.m_z) / support->m_cell_size };
-                    if (K_WORLD.m_y != support->m_origin.m_y || !std::isfinite(K_X) ||
+                    if (K_WORLD.m_y != support->floor_height(K_WORLD) || !std::isfinite(K_X) ||
                         !std::isfinite(K_Z) || K_X < 0 ||
                         K_X > static_cast<double>(support->m_dimensions[0uz]) || K_Z < 0 ||
                         K_Z > static_cast<double>(support->m_dimensions[2uz]) ||
                         K_X != std::round(K_X) || K_Z != std::round(K_Z) ||
                         K_WORLD.m_x != support->m_origin.m_x + K_X * support->m_cell_size ||
                         K_WORLD.m_z != support->m_origin.m_z + K_Z * support->m_cell_size) {
-                        throw std::runtime_error(
-                            "Diagnostic floors must lie exactly on the bounded flat grid lattice");
+                        throw std::runtime_error("Diagnostic floors must lie exactly on the "
+                                                 "declared plane and X/Z lattice");
                     }
                     triangle[corner] = { static_cast<std::int64_t>(K_X),
                                         static_cast<std::int64_t>(K_Z) };
@@ -251,9 +273,9 @@ admit_collision_support(const SceneState& source,
                 triangles.push_back(triangle);
             }
         }
-        if (K_V2) {
+        if (K_V2 || K_V3) {
             const auto& walls = K_DOCUMENT.at("walls");
-            if (!walls.is_array() || walls.empty() || walls.size() > 128uz ||
+            if (!walls.is_array() || (K_V2 && walls.empty()) || walls.size() > 128uz ||
                 walls.size() > (256uz - support->m_floor_triangles.size()) / 2uz) {
                 throw std::runtime_error("Collision wall face count exceeds profile limits");
             }
@@ -325,15 +347,22 @@ admit_collision_support(const SceneState& source,
                 const bool K_X_FACE = K_FACE == "NEG_X" || K_FACE == "POS_X";
                 const double K_FIXED = K_X_FACE ? (K_FACE == "NEG_X" ? K_X0 : K_X1)
                                                 : (K_FACE == "NEG_Z" ? K_Z0 : K_Z1);
+                const auto K_CORNER = [&](double x, double y, double z) {
+                    Vec3d point { x, y, z };
+                    if (K_V3) {
+                        point.m_y += support->floor_height(point) - support->m_origin.m_y;
+                    }
+                    return point;
+                };
                 const std::array<Vec3d, 4uz> K_CORNERS =
-                    K_X_FACE ? std::array<Vec3d, 4uz> { Vec3d { K_FIXED, K_Y0, K_Z0 },
-                                                       Vec3d { K_FIXED, K_Y1, K_Z0 },
-                                                       Vec3d { K_FIXED, K_Y0, K_Z1 },
-                                                       Vec3d { K_FIXED, K_Y1, K_Z1 } }
-                             : std::array<Vec3d, 4uz> { Vec3d { K_X0, K_Y0, K_FIXED },
-                                                       Vec3d { K_X1, K_Y0, K_FIXED },
-                                                       Vec3d { K_X0, K_Y1, K_FIXED },
-                                                       Vec3d { K_X1, K_Y1, K_FIXED } };
+                    K_X_FACE ? std::array<Vec3d, 4uz> { K_CORNER(K_FIXED, K_Y0, K_Z0),
+                                                       K_CORNER(K_FIXED, K_Y1, K_Z0),
+                                                       K_CORNER(K_FIXED, K_Y0, K_Z1),
+                                                       K_CORNER(K_FIXED, K_Y1, K_Z1) }
+                             : std::array<Vec3d, 4uz> { K_CORNER(K_X0, K_Y0, K_FIXED),
+                                                       K_CORNER(K_X1, K_Y0, K_FIXED),
+                                                       K_CORNER(K_X0, K_Y1, K_FIXED),
+                                                       K_CORNER(K_X1, K_Y1, K_FIXED) };
                 const Vec3d K_OUTWARD = K_FACE == "NEG_X"   ? Vec3d { -1, 0, 0 }
                                         : K_FACE == "POS_X" ? Vec3d { 1, 0, 0 }
                                         : K_FACE == "NEG_Z" ? Vec3d { 0, 0, -1 }
@@ -398,12 +427,16 @@ admit_collision_support(const SceneState& source,
             }
         }
         const auto K_NX = support->m_dimensions[0uz], K_NZ = support->m_dimensions[2uz];
+        const bool K_WALKABLE { dot(support->m_floor_gradient, support->m_floor_gradient) <= 1 };
         support->m_floors.assign(K_NX * K_NZ, 0);
         for (std::size_t z { 0uz }; z < K_NZ; ++z) {
             if (stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Collision floor admission cancelled");
             }
             for (std::size_t x { 0uz }; x < K_NX; ++x) {
+                if (!K_WALKABLE) {
+                    continue;
+                }
                 const auto K_X = static_cast<std::int64_t>(x), K_Z = static_cast<std::int64_t>(z);
                 for (const auto& triangle : triangles) {
                     if (inside(triangle, { K_X, K_Z }) && inside(triangle, { K_X + 1, K_Z }) &&
@@ -457,8 +490,23 @@ Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
         sweep.m_height <= 0 || sweep.m_radius > sweep.m_height / 2) {
         return fail(ErrorCode::INVALID_ARGUMENT, "Invalid diagnostic capsule dimensions or sweep");
     }
-    if (sweep.m_start_feet.m_y != support.m_origin.m_y ||
-        sweep.m_end_feet.m_y != support.m_origin.m_y) {
+    const bool K_V3 { support.m_format_version == 3U };
+    double lower_height {}, upper_height { sweep.m_height };
+    if (K_V3) {
+        const auto K_GRADIENT = support.m_floor_gradient;
+        const double K_SLOPE_SQUARED { dot(K_GRADIENT, K_GRADIENT) };
+        const double K_EXTRA { sweep.m_radius * (std::sqrt(1 + K_SLOPE_SQUARED) - 1) };
+        const double K_START_HEIGHT { sweep.m_start_feet.m_y -
+                                     support.floor_height(sweep.m_start_feet) };
+        const double K_END_HEIGHT { sweep.m_end_feet.m_y - support.floor_height(sweep.m_end_feet) };
+        lower_height = std::min(K_START_HEIGHT, K_END_HEIGHT) - K_EXTRA;
+        upper_height = std::max(K_START_HEIGHT, K_END_HEIGHT) + sweep.m_height + K_EXTRA;
+        if (K_SLOPE_SQUARED > 1 || lower_height < 0 ||
+            std::max(K_START_HEIGHT, K_END_HEIGHT) - K_EXTRA > .01) {
+            return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
+        }
+    } else if (sweep.m_start_feet.m_y != support.m_origin.m_y ||
+               sweep.m_end_feet.m_y != support.m_origin.m_y) {
         return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
     }
     const auto K_DOWN = -std::numeric_limits<double>::infinity();
@@ -466,13 +514,13 @@ Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
     const std::array<double, 3uz> K_MINIMUM {
         std::nextafter(std::min(sweep.m_start_feet.m_x, sweep.m_end_feet.m_x) - sweep.m_radius,
                        K_DOWN),
-        support.m_origin.m_y,
+        support.m_origin.m_y + lower_height,
         std::nextafter(std::min(sweep.m_start_feet.m_z, sweep.m_end_feet.m_z) - sweep.m_radius,
                        K_DOWN) };
     const std::array<double, 3uz> K_MAXIMUM {
         std::nextafter(std::max(sweep.m_start_feet.m_x, sweep.m_end_feet.m_x) + sweep.m_radius,
                        K_UP),
-        std::nextafter(support.m_origin.m_y + sweep.m_height, K_UP),
+        std::nextafter(support.m_origin.m_y + upper_height, K_UP),
         std::nextafter(std::max(sweep.m_start_feet.m_z, sweep.m_end_feet.m_z) + sweep.m_radius,
                        K_UP) };
     const std::array<double, 3uz> K_ORIGIN {
@@ -481,7 +529,8 @@ Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
     for (std::size_t axis { 0uz }; axis < 3uz; ++axis) {
         const double K_LOWER {
             axis == 1uz
-                ? 0.
+                ? (K_V3 ? std::max(0.0, std::nextafter(lower_height / support.m_cell_size, K_DOWN))
+                        : 0.)
                 : std::nextafter((K_MINIMUM[axis] - K_ORIGIN[axis]) / support.m_cell_size, K_DOWN) };
         const double K_UPPER {
             std::nextafter((K_MAXIMUM[axis] - K_ORIGIN[axis]) / support.m_cell_size, K_UP) };

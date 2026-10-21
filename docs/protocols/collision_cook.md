@@ -60,3 +60,6 @@ source correction, conservative barriers and native diagnostic viewing.
 [V2 validation](../validation/2026-10-21-collision-wall.md) adds complete wall-face
 selection, all four winding directions, Jolt rays and exact V1 byte preservation.
 M3 remains in progress; Q5/N2 and A1's separate independent-scale requirement remain open.
+
+[V3 inclined support](collision_ramps.md) uses version 3 and the V2 floor/wall
+record layout, including an empty wall group; its document pin binds the plane.

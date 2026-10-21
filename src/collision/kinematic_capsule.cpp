@@ -190,7 +190,14 @@ SyntheticCapsuleController::advance(const SceneState& current,
             if (stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Synthetic capsule advance cancelled");
             }
-            character.SetLinearVelocity(*K_VELOCITY + JPH::Vec3(0, -9.81F * K_STEP_SECONDS, 0));
+            const bool K_RAMP { m_shape->m_cook->parameters().m_format_version == 3U };
+            const auto K_GRADIENT = m_shape->m_cook->floor_gradient();
+            const float K_VERTICAL {
+                K_RAMP ? static_cast<float>(dot(K_GRADIENT, horizontal_velocity)) : 0.F };
+            // V3 is grounded on one admitted plane. Its downward support sweep
+            // replaces free-fall integration, avoiding idle downslope creep.
+            const float K_GRAVITY_STEP { K_RAMP ? 0.F : 9.81F * K_STEP_SECONDS };
+            character.SetLinearVelocity(*K_VELOCITY + JPH::Vec3(0, K_VERTICAL - K_GRAVITY_STEP, 0));
             character.ExtendedUpdate(K_STEP_SECONDS,
                                      { 0, -9.81F, 0 },
                                      update,
@@ -199,15 +206,33 @@ SyntheticCapsuleController::advance(const SceneState& current,
                                      {},
                                      {},
                                      m_impl->m_allocator);
-            if (character.GetMaxHitsExceeded()) {
+            const bool K_UPDATE_OVERFLOW { character.GetMaxHitsExceeded() };
+            if (K_RAMP) {
+                // A wall can remove horizontal travel while tangent input still
+                // requests upward travel. Sweep back to supported geometry before
+                // certifying the final segment; never enlarge contact tolerance.
+                character.StickToFloor(update.mStickToFloorStepDown,
+                                       K_BROAD_PHASE,
+                                       K_LAYER,
+                                       {},
+                                       {},
+                                       m_impl->m_allocator);
+            }
+            if (K_UPDATE_OVERFLOW || character.GetMaxHitsExceeded()) {
                 return fail(ErrorCode::RESOURCE_EXHAUSTED, "Jolt capsule contact budget exhausted");
             }
             const auto K_POSITION = character.GetPosition();
             Vec3d candidate { K_POSITION.GetX(), m_state.m_feet.m_y, K_POSITION.GetZ() };
-            // The admitted ledger is flat. A step/slope result is never silently
-            // projected onto it; only bounded floor-contact rounding is tolerated.
+            if (K_RAMP) {
+                // Normalize only bounded contact rounding to the admitted plane.
+                // The physical capsule's lowest point rests above an incline;
+                // Jolt adds padding internally in both its up offset and sweep.
+                const double K_EXTRA { (m_settings.m_radius + K_PADDING) *
+                                      (std::sqrt(1 + dot(K_GRADIENT, K_GRADIENT)) - 1) };
+                candidate.m_y = m_shape->m_cook->floor_height(candidate) + K_EXTRA + 1e-6;
+            }
             if (!std::isfinite(K_POSITION.GetY()) ||
-                std::abs(K_POSITION.GetY() - m_state.m_feet.m_y) > 0.002) {
+                std::abs(K_POSITION.GetY() - candidate.m_y) > 0.002) {
                 result.m_clearance = ClearanceState::UNSUPPORTED_FLOOR;
                 break;
             }

@@ -19,7 +19,7 @@ struct CapsuleSweep {
 };
 
 struct ClearanceProbe {
-    ClearanceState m_state {ClearanceState::UNKNOWN};
+    ClearanceState m_state { ClearanceState::UNKNOWN };
     std::size_t m_checked_cells {};
 };
 
@@ -52,6 +52,15 @@ class CollisionSupport {
 
     double cell_size() const {
         return m_cell_size;
+    }
+
+    Vec3d floor_gradient() const {
+        return m_floor_gradient;
+    }
+
+    double floor_height(Vec3d point) const {
+        return m_origin.m_y + m_floor_gradient.m_x * (point.m_x - m_origin.m_x) +
+               m_floor_gradient.m_z * (point.m_z - m_origin.m_z);
     }
 
     std::array<std::size_t, 3uz> dimensions() const {
@@ -100,6 +109,7 @@ class CollisionSupport {
     WorldEpoch m_epoch;
     SceneRevisionId m_revision;
     Vec3d m_origin;
+    Vec3d m_floor_gradient;
     double m_cell_size {};
     std::array<std::size_t, 3uz> m_dimensions {};
     std::vector<SpaceState> m_cells;
@@ -116,9 +126,9 @@ admit_collision_support(const SceneState& source,
                         std::string_view sha256,
                         const std::stop_token& stop = {});
 
-// Checks every touched cell in the continuous swept AABB enclosing a vertical
-// capsule. Deliberately conservative at diagonals, seams and cell boundaries.
-// Flat floor only; this is a diagnostic clearance probe, not a character controller.
+// Checks the continuous capsule envelope: a world AABB for V1/V2, or a
+// plane-relative prism-grid box for V3. Conservative at diagonals and seams.
+// Diagnostic clearance only; this function is not a character controller.
 Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
                                                const SceneState& source,
                                                const CapsuleSweep& sweep,

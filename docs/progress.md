@@ -351,26 +351,26 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-[Application-owned capsule session](validation/2026-10-21-capsule-session.md)
-now adds shared pinned source/support loading, camera-relative horizontal input,
-CLI replay and explicitly synthetic native controls around the
-[fixed-clock controller](validation/2026-10-21-kinematic-capsule.md). Focus/dialog
-pauses retain the fractional clock; stop/cancellation is terminal and corrected
-scene/epoch/pose input permanently invalidates the session. The original
-collision inspection and retained V2 inputs remain unchanged. No measured walk
-permission is granted, and the support profile is still flat.
+[Source-bound inclined support](validation/2026-10-21-collision-ramp.md) now
+extends the [shared capsule session](validation/2026-10-21-capsule-session.md)
+with one explicit synthetic plane, plane-relative free/occupied/unknown prisms,
+strict 45° support and private Jolt tangent movement/support sweeps. Independent
+capsule-envelope checks, native wall sliding/unknown blocking/45° ascent,
+focus/dialog pauses and terminal correction/stop pass. V1/V2 fixture and
+inspection bytes remain identical. Measured walking stays disabled; steps and
+transitions between planes are outside the current profile.
 
-Next, specify and implement bounded non-flat synthetic floor/support admission
-before claiming the configured 45°/0.30 step/slope behavior. Start from the
-existing exact-cell floor proof in `src/scene_store/collision_support.cpp` and
-extend it with explicit source-bound surface/clearance proofs, never generated
-occupancy faces or observed-depth front labels. Add actual step-height/slope
-boundary and corner fixtures, then exercise them through the same shared
-session/native controls. Recheck plan §§4.8/5.1 and the
-[session](protocols/capsule_session.md), [controller](protocols/kinematic_capsule.md)
-and [support](protocols/collision_support.md) contracts. Keep existing V1/V2
-bytes and real-scene rejection; Jolt stays private to `collision`. The dated M3
-local exit review follows that validation before A0.
+Next, specify bounded piecewise floor/step admission starting from
+`src/scene_store/collision_support.cpp`. Prove source-bound risers, landing support
+and full capsule clearance through each transition; never generate occupancy
+faces or use observed-depth front labels as clearance. Add actual 0.30 step-height
+and just-above-boundary fixtures, ascent/descent, mixed-slope transitions and
+corner blocking, then exercise the same shared CLI/native session. Recheck plan
+§§4.8/5.1 and the [inclined support](protocols/collision_ramps.md),
+[session](protocols/capsule_session.md) and
+[controller](protocols/kinematic_capsule.md) contracts. Preserve V1–V3 bytes and
+real-scene rejection; Jolt stays private to `collision`. The dated M3 local exit
+review follows that validation before A0.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
 clearance. `sample_1` has no independent distance/up reference: ADR 020 permits
 a local M3 software exit without it, while Q5/N2 and A1 scale evidence stay open.

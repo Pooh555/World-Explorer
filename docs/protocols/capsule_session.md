@@ -1,6 +1,6 @@
 # Application-owned synthetic capsule session
 
-`SyntheticCapsuleSession` owns the [flat synthetic controller](kinematic_capsule.md)
+`SyntheticCapsuleSession` owns the [synthetic controller](kinematic_capsule.md)
 behind an application interface shared by viewer and CLI. Its public types are
 project-owned scene, camera, input and clearance values; Jolt stays private to
 `collision`. The application may privately depend on `collision`. The existing
@@ -71,5 +71,6 @@ runs 1–600 deterministic frames through the same session command and prints
 clearance and false measured-collision/walking flags. It writes no assets.
 `we_collision_fixture NEW_DIRECTORY --capsule` now also emits `session-wall.json`,
 `session-unknown.json` and `session-unsupported.json`, bound to the original inputs.
-No non-flat support, measured reconstruction, Q5/N2 or platform qualification is
-conferred by this diagnostic workflow.
+[V3 inclined support](collision_ramps.md) now admits a single source-proven
+plane through this same workflow. Step transitions, measured reconstruction,
+Q5/N2 and platform qualification remain unverified.

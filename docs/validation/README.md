@@ -1,5 +1,7 @@
 # Validation index
 
+- [Source-bound synthetic ramps](2026-10-21-collision-ramp.md): strict 45° single-plane support, complete capsule-envelope checks, native ascent/wall sliding and legacy byte preservation; steps and measured walking remain unqualified.
+
 - [Shared synthetic capsule session](2026-10-21-capsule-session.md): pinned application/CLI/native lifetime and horizontal camera input, terminal correction/stop and focus/dialog pause; flat diagnostics only, measured walking disabled.
 
 - [Synthetic kinematic capsule](2026-10-21-kinematic-capsule.md): fixed 120 Hz clock/eight-tick cap, private Jolt wall sliding, conservative ledger blocking, transactional cancellation/correction and saved-file/native path diagnostics; flat synthetic support only, no measured walking.

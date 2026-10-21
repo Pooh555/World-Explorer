@@ -23,7 +23,7 @@ struct SyntheticCapsuleAdvance {
     ClearanceState m_clearance { ClearanceState::CLEAR_DIAGNOSTIC };
 };
 
-// Single-threaded flat-floor diagnostic. Dimensions are explicit synthetic
+// Single-threaded flat/inclined synthetic diagnostic. Dimensions are explicit synthetic
 // inputs, never a scale declaration or permission for measured walking.
 class SyntheticCapsuleController {
     struct AdmissionToken { };

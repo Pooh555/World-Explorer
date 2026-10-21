@@ -71,7 +71,8 @@ cook_synthetic_collision(const SceneSnapshot& source,
         if ((cooked->m_parameters.m_format_version == 1U && !walls.empty()) ||
             (cooked->m_parameters.m_format_version == 2U && walls.empty()) ||
             (cooked->m_parameters.m_format_version != 1U &&
-             cooked->m_parameters.m_format_version != 2U) ||
+             cooked->m_parameters.m_format_version != 2U &&
+             cooked->m_parameters.m_format_version != 3U) ||
             walls.size() > 256uz - selected.size()) {
             return fail(ErrorCode::INVALID_DATA, "Collision wall triangle count is invalid");
         }
@@ -80,8 +81,9 @@ cook_synthetic_collision(const SceneSnapshot& source,
         auto& bytes = cooked->m_canonical_bytes;
         bytes.reserve(256uz + (selected.size() + walls.size()) * 104uz);
         append_text(bytes,
-                    cooked->m_parameters.m_format_version == 1U ? "WE_COLLISION_TRIANGLES_V1"
-                                                                : "WE_COLLISION_TRIANGLES_V2");
+                    cooked->m_parameters.m_format_version == 1U   ? "WE_COLLISION_TRIANGLES_V1"
+                    : cooked->m_parameters.m_format_version == 2U ? "WE_COLLISION_TRIANGLES_V2"
+                                                                  : "WE_COLLISION_TRIANGLES_V3");
         append_u64(bytes, cooked->m_parameters.m_format_version);
         append_u64(bytes, cooked->m_parameters.m_weld_vertices);
         append_u64(bytes, cooked->m_parameters.m_double_sided);
@@ -160,7 +162,7 @@ cook_synthetic_collision(const SceneSnapshot& source,
                 return std::unexpected(K_APPENDED.error());
             }
         }
-        if (cooked->m_parameters.m_format_version == 2U) {
+        if (cooked->m_parameters.m_format_version >= 2U) {
             append_u64(bytes, walls.size());
             for (const auto& ref : walls) {
                 const auto K_APPENDED = K_APPEND_TRIANGLE(ref);

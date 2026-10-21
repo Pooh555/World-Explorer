@@ -73,6 +73,14 @@ class CanonicalCollisionMesh {
         return m_support->cell_size();
     }
 
+    Vec3d floor_gradient() const {
+        return m_support->floor_gradient();
+    }
+
+    double floor_height(Vec3d point) const {
+        return m_support->floor_height(point);
+    }
+
     Result<void> validate_source(const SceneState& current, const std::stop_token& stop = {}) const;
 
     // Diagnostic envelope probe only; the support ledger owns unknown blocking.

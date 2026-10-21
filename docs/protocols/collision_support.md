@@ -2,13 +2,14 @@
 
 `scene_store/collision_support.hpp` admits immutable diagnostic space support and
 checks conservative capsule envelopes against it. This is a synthetic-only M3
-software profile. There is no observed-space producer, measured collision,
-character controller or walking permission. A metric flag, a drawn mesh and an
+software profile. The separate [capsule controller](kinematic_capsule.md) consumes
+this support; observed-space production, measured collision and walking permission
+remain unavailable. A metric flag, a drawn mesh and an
 allocated TSDF voxel cannot establish free space.
 The separate [canonical triangle cook](collision_cook.md) binds selected floor
 and, in V2, wall triangles to this admitted support and the exact source scene.
 
-## Pinned support document
+## Pinned flat support documents (V1/V2)
 
 `SYNTHETIC_COLLISION_SUPPORT_V1` is SHA-256-pinned JSON, at most 1 MiB with eight
 nesting levels. Exact fields, unsigned integer IDs/indices and finite numeric
@@ -118,3 +119,6 @@ checks and retained real-scene refusal;
 face admission, canonical/Jolt construction and native synthetic viewing.
 No real measured alignment/support exists for sample_1. Q5/N2 and the remaining
 M3 product gates are unchanged.
+
+[V3 inclined support](collision_ramps.md) adds a single source-proven plane and
+explicit plane-relative prisms. The flat V1/V2 contracts above are retained.

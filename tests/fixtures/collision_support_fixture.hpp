@@ -13,7 +13,9 @@ inline std::string collision_digest(std::string_view text) {
 
 inline SceneState collision_source(bool with_wall = false,
                                    bool duplicate_wall = false,
-                                   std::string_view wall_face = "NEG_X") {
+                                   std::string_view wall_face = "NEG_X",
+                                   float rise_x = 0,
+                                   float rise_z = 0) {
     SceneState source;
     source.m_id = { 39 };
     source.m_epoch = { 7 };
@@ -72,6 +74,46 @@ inline SceneState collision_source(bool with_wall = false,
         }
         source.m_chunks.emplace(wall->m_id, wall);
     }
+    if (rise_x != 0 || rise_z != 0) {
+        source.m_provenance["fixture"] = "inclined_collision_grid_v3";
+        for (auto& [id, owner] : source.m_chunks) {
+            static_cast<void>(id);
+            auto inclined = std::make_shared<SceneChunk>(*owner);
+            if (!inclined->m_mesh) {
+                throw std::runtime_error("Expected synthetic mesh");
+            }
+            bool first { true };
+            for (auto& vertex : inclined->m_mesh->m_vertices) {
+                vertex.m_position[1uz] +=
+                    rise_x * vertex.m_position[0uz] + rise_z * vertex.m_position[2uz];
+                auto& normal = vertex.m_normal;
+                normal[0uz] -= rise_x * normal[1uz];
+                normal[2uz] -= rise_z * normal[1uz];
+                const float K_LENGTH { std::sqrt(normal[0uz] * normal[0uz] +
+                                                normal[1uz] * normal[1uz] +
+                                                normal[2uz] * normal[2uz]) };
+                for (auto& component : normal) {
+                    component /= K_LENGTH;
+                }
+                const Vec3d K_POINT {
+                    vertex.m_position[0uz], vertex.m_position[1uz], vertex.m_position[2uz] };
+                if (first) {
+                    inclined->m_bounds = { K_POINT, K_POINT };
+                    first = false;
+                } else {
+                    auto& low = inclined->m_bounds.m_minimum;
+                    auto& high = inclined->m_bounds.m_maximum;
+                    low = { std::min(low.m_x, K_POINT.m_x),
+                           std::min(low.m_y, K_POINT.m_y),
+                           std::min(low.m_z, K_POINT.m_z) };
+                    high = { std::max(high.m_x, K_POINT.m_x),
+                            std::max(high.m_y, K_POINT.m_y),
+                            std::max(high.m_z, K_POINT.m_z) };
+                }
+            }
+            owner = std::move(inclined);
+        }
+    }
     const auto K_ANCHOR = [&](std::array<double, 3uz> weights) {
         return nlohmann::json {
             { "chunk_id", chunk->m_id.m_value }, { "triangle", 0U }, { "barycentric", weights } };
@@ -85,7 +127,9 @@ inline SceneState collision_source(bool with_wall = false,
         { "distance",
          { { "a", K_ANCHOR({ 1, 0, 0 }) },
           { "b", K_ANCHOR({ 0, 0, 1 }) },
-          { "metres", 8 },
+          { "metres",
+           rise_x == 0 ? nlohmann::json(8)
+                       : nlohmann::json(std::hypot(8.0, static_cast<double>(8.F * rise_x), 0.0)) },
           { "uncertainty_metres", 0 },
           { "method", "SYNTHETIC" },
           { "record", "Analytic synthetic length; no physical measurement" } } },
@@ -148,6 +192,28 @@ inline nlohmann::json collision_wall_document(const SceneState& source,
                                                 { "face", face },
                                                 { "triangles", { 0U, 1U } } } });
     return document;
+}
+
+inline nlohmann::json collision_ramp_document(const SceneState& source,
+                                              double rise_x,
+                                              double rise_z,
+                                              bool with_wall = false,
+                                              std::string_view face = "NEG_X") {
+    auto document = with_wall ? collision_wall_document(source, face) : collision_document(source);
+    document["schema"] = "SYNTHETIC_COLLISION_SUPPORT_V3";
+    document["plane"] = { { "rise_x", rise_x }, { "rise_z", rise_z } };
+    if (!with_wall) {
+        document["walls"] = nlohmann::json::array();
+    }
+    return document;
+}
+
+inline double
+collision_ramp_feet_y(double x, double z, double rise_x, double rise_z, double radius = .25) {
+    return rise_x * x + rise_z * z +
+           (radius + static_cast<double>(.005F)) *
+               (std::sqrt(1 + rise_x * rise_x + rise_z * rise_z) - 1) +
+           1e-6;
 }
 
 }  // namespace world_explorer::testing

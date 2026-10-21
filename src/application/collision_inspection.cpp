@@ -40,15 +40,30 @@ SceneSnapshot diagnostic_scene(const CollisionSupport& support) {
                         static_cast<double>(K_SIZE[2uz]) } };
     chunk->m_world_from_chunk.m_translation = support.origin();
     chunk->m_world_from_chunk.m_scale = support.cell_size();
+    if (support.format_version() == 3U) {
+        const auto K_GRADIENT = support.floor_gradient();
+        const double K_X { K_GRADIENT.m_x * static_cast<double>(K_SIZE[0uz]) };
+        const double K_Z { K_GRADIENT.m_z * static_cast<double>(K_SIZE[2uz]) };
+        chunk->m_bounds.m_minimum.m_y = std::min(0.0, K_X) + std::min(0.0, K_Z);
+        chunk->m_bounds.m_maximum.m_y += std::max(0.0, K_X) + std::max(0.0, K_Z);
+        scene->m_provenance["collision_support"] =
+            "Synthetic plane-relative space: green free, red occupied, blue unknown; amber "
+            "unsupported floor. Samples are not volume boundaries. Walking unavailable.";
+    }
 
     struct DiagnosticSplat {
         std::array<float, 3uz> m_position, m_scale, m_color;
         float m_opacity {};
     };
 
-    const auto K_SPLAT = [](const DiagnosticSplat& input) {
+    const auto K_SPLAT = [&](const DiagnosticSplat& input) {
         Gaussian splat;
         splat.m_mean = input.m_position;
+        if (support.format_version() == 3U) {
+            const auto K_GRADIENT = support.floor_gradient();
+            splat.m_mean[1uz] += static_cast<float>(K_GRADIENT.m_x * input.m_position[0uz] +
+                                                    K_GRADIENT.m_z * input.m_position[2uz]);
+        }
         splat.m_scale = input.m_scale;
         splat.m_opacity = input.m_opacity;
         for (std::size_t channel { 0uz }; channel < 3uz; ++channel) {

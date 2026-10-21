@@ -135,25 +135,36 @@ void trace_capsules(const std::filesystem::path& directory,
 
 int main(int argc, char** argv) {
     try {
-        if ((argc != 2 && argc != 3) || (argc == 3 && std::string_view(argv[2]) != "--walls" &&
-                                         std::string_view(argv[2]) != "--capsule")) {
-            std::cerr << "Usage: we_collision_fixture NEW_DIRECTORY [--walls|--capsule] (synthetic "
+        if ((argc != 2 && argc != 3) ||
+            (argc == 3 && std::string_view(argv[2]) != "--walls" &&
+             std::string_view(argv[2]) != "--capsule" && std::string_view(argv[2]) != "--ramp" &&
+             std::string_view(argv[2]) != "--ramp-45" &&
+             std::string_view(argv[2]) != "--ramp-steep")) {
+            std::cerr << "Usage: we_collision_fixture NEW_DIRECTORY "
+                         "[--walls|--capsule|--ramp|--ramp-45|--ramp-steep] (synthetic "
                          "only)\n";
             return 2;
         }
         const bool K_WITH_WALL = argc == 3;
+        const bool K_RAMP { argc == 3 && std::string_view(argv[2]).starts_with("--ramp") };
+        const float K_RISE { !K_RAMP                                    ? 0.F
+                            : std::string_view(argv[2]) == "--ramp"    ? .5F
+                            : std::string_view(argv[2]) == "--ramp-45" ? 1.F
+                                                                       : 1.F + 1.F / 1024.F };
         const auto K_OUTPUT = std::filesystem::absolute(argv[1]);
         if (std::filesystem::exists(std::filesystem::symlink_status(K_OUTPUT)) ||
             !std::filesystem::create_directory(K_OUTPUT)) {
             throw std::runtime_error("Choose a new synthetic fixture directory");
         }
-        const auto K_SOURCE = std::make_shared<SceneState>(collision_source(K_WITH_WALL));
+        const auto K_SOURCE =
+            std::make_shared<SceneState>(collision_source(K_WITH_WALL, false, "NEG_X", K_RISE, 0));
         const auto K_WRITTEN = write_bundle(K_OUTPUT / "source.wexplore", K_SOURCE);
         if (!K_WRITTEN) {
             throw std::runtime_error(K_WRITTEN.error().m_message);
         }
-        auto document =
-            K_WITH_WALL ? collision_wall_document(*K_SOURCE) : collision_document(*K_SOURCE);
+        auto document = K_RAMP        ? collision_ramp_document(*K_SOURCE, K_RISE, 0, true)
+                        : K_WITH_WALL ? collision_wall_document(*K_SOURCE)
+                                      : collision_document(*K_SOURCE);
         auto& cells = document["grid"]["states"].get_ref<std::string&>();
         // V1 keeps its occupied stripe; V2 selects one explicit mesh face.
         // Both retain an unknown column; no state is inferred from TSDF allocation.
@@ -172,7 +183,11 @@ int main(int argc, char** argv) {
         if (!K_SUPPORT_HASH || !K_SOURCE_HASH) {
             throw std::runtime_error("Could not hash synthetic inputs");
         }
-        const auto K_PROBE = [](std::array<double, 3uz> start, std::array<double, 3uz> end) {
+        const auto K_PROBE = [&](std::array<double, 3uz> start, std::array<double, 3uz> end) {
+            if (K_RAMP) {
+                start[1uz] = collision_ramp_feet_y(start[0uz], start[2uz], K_RISE, 0, .2);
+                end[1uz] = collision_ramp_feet_y(end[0uz], end[2uz], K_RISE, 0, .2);
+            }
             return nlohmann::json {
                 { "start_feet", start }, { "end_feet", end }, { "radius", .2 }, { "height", 1.7 } };
         };
@@ -187,6 +202,31 @@ int main(int argc, char** argv) {
                                        K_PROBE({ 1.5, 0, 1.5 }, { 4.5, 0, 1.5 }),
                                        K_PROBE({ 1.5, 0, 4.5 }, { 1.5, 0, 4.5 }),
                                        K_PROBE({ 3.5, 0, 4.5 }, { 3.5, 0, 4.5 }) }) } });
+        if (K_RAMP) {
+            const std::array<std::string_view, 3uz> K_NAMES { "wall", "unknown", "unsupported" };
+            const std::array<Vec3d, 3uz> K_STARTS { { { 2.5, 0, 1.3 }, { 1.5, 0, 3.5 }, { 2.5, 0, 3.5 } } };
+            const std::array<Vec3d, 3uz> K_VELOCITIES { { { 3, 0, .4 }, { 0, 0, 3 }, { 3, 0, 0 } } };
+            for (std::size_t route { 0uz }; route < K_NAMES.size(); ++route) {
+                const auto K_START = K_STARTS[route];
+                const auto K_VELOCITY = K_VELOCITIES[route];
+                write(K_OUTPUT / ("session-" + std::string(K_NAMES[route]) + ".json"),
+                      { { "kind", "SYNTHETIC_CAPSULE_SESSION_V1" },
+                       { "source_bundle", "source.wexplore" },
+                       { "source_manifest_sha256", *K_SOURCE_HASH },
+                       { "support", "support.json" },
+                       { "support_sha256", *K_SUPPORT_HASH },
+                       { "capsule",
+                        { { "feet",
+                          { K_START.m_x,
+                           collision_ramp_feet_y(K_START.m_x, K_START.m_z, K_RISE, 0),
+                           K_START.m_z } },
+                         { "radius", .25 },
+                         { "height", 1.7 },
+                         { "eye_height", 1.6 },
+                         { "speed", std::hypot(K_VELOCITY.m_x, K_VELOCITY.m_z) },
+                         { "yaw_radians", std::atan2(K_VELOCITY.m_x, -K_VELOCITY.m_z) } } } });
+            }
+        }
         if (argc == 3 && std::string_view(argv[2]) == "--capsule") {
             trace_capsules(K_OUTPUT, *K_SOURCE_HASH, *K_SUPPORT_HASH);
         }
