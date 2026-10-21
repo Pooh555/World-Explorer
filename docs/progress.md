@@ -18,9 +18,11 @@ receipts. Those default/local checks passed for that build; current runtime rece
 recapture after subsequent native rebuilds. The 253 source/rights gaps remain.
 The earlier full Windows log confirms C4702/C2220 unreachable-code failures.
 Local non-Linux branch checks pass; native Windows rerun remains pending.
-The latest supplied excerpt stops in Jolt on Windows SDK C4865/C2220; the
-[MSVC enum-conformance repair](validation/2026-10-21-windows-jolt-enums.md)
-keeps warning errors enabled and awaits native confirmation.
+The latest Windows excerpt compiles the previously failing source after the
+[enum-conformance repair](validation/2026-10-21-windows-jolt-enums.md), then
+reports 95 CRT link mismatches: Jolt `/MTd` versus tests `/MDd`. The
+[runtime alignment](validation/2026-10-21-windows-jolt-crt.md) follows the parent
+CRT setting; full native Windows build/test confirmation remains pending.
 
 [ADR 019](adr/019-assets-before-platforms.md) orders M3 → A0–A5 → M4 → M5 → M6,
 then A6 engine packaging. The [asset track](technical_plan.md#11-offline-asset-production-track)

@@ -1,5 +1,6 @@
 # Validation index
 
+- [Jolt MSVC runtime alignment](2026-10-21-windows-jolt-crt.md): addresses supplied `/MTd` versus `/MDd` LNK2038 failure by honoring the parent CRT policy; Windows-target object probes verify default/explicit settings, full native MSVC link pending.
 - [MSVC Jolt enum-conformance repair](2026-10-21-windows-jolt-enums.md): addresses supplied Windows SDK C4865/C2220 failure with consistent `/Zc:enumTypes` for Jolt/header consumers; warning policy retained, native Windows rerun pending.
 - [Explicit synthetic wall faces](2026-10-21-collision-wall.md): V2 source-bound occupied-cell face selection, complete coverage/winding checks, canonical/Jolt wall shapes and native mesh/diagnostic viewing; V1 bytes preserved, no controller or measured walking.
 - [Pinned Jolt static shape](2026-10-21-jolt-static-shape.md): 5.3.0 source/notice and local CPU shape/ray-cast checks; synthetic floor only, no controller or measured walking.

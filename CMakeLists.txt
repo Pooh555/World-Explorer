@@ -74,6 +74,12 @@ if(WE_SYSTEM_DEVELOPMENT_DEPS)
   # Jolt's /Wall diagnoses Windows SDK enums without MSVC's conforming deduction.
   # Its header consumers must use the same enum ABI as the library.
   target_compile_options(Jolt PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/Zc:enumTypes>")
+  # Jolt defaults to a static CRT; match our explicit selection or CMake's default.
+  if(DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+    set_property(TARGET Jolt PROPERTY MSVC_RUNTIME_LIBRARY "${CMAKE_MSVC_RUNTIME_LIBRARY}")
+  else()
+    set_property(TARGET Jolt PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+  endif()
 endif()
 
 if(WE_SANITIZER AND WE_SYSTEM_DEVELOPMENT_DEPS AND NOT MSVC)

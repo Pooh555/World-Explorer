@@ -29,6 +29,17 @@ failure under upstream `/Wall /WX`; no warning level or error policy is reduced.
 The [build repair evidence](../validation/2026-10-21-windows-jolt-enums.md)
 distinguishes local regression checks from the pending native MSVC rerun.
 
+Jolt's upstream development recipe selects the static MSVC CRT by default.
+The parent now resets Jolt's `MSVC_RUNTIME_LIBRARY` target property to the
+explicit parent `CMAKE_MSVC_RUNTIME_LIBRARY`, including an explicitly empty
+value, or to
+[CMake's documented default](https://cmake.org/cmake/help/latest/prop_tgt/MSVC_RUNTIME_LIBRARY.html)
+`MultiThreaded$<$<CONFIG:Debug>:Debug>DLL`. This keeps the dependency consistent
+with first-party targets and preserves explicit static/dynamic toolchain choices.
+The [CRT alignment evidence](../validation/2026-10-21-windows-jolt-crt.md)
+records the supplied `/MTd` versus `/MDd` link failure and scoped cross-compiled
+object checks; a full native MSVC build/link remains pending.
+
 The pinned [vcpkg portfile](https://github.com/microsoft/vcpkg/blob/ce613c41372b23b1f51333815feb3edd87ef8a8b/ports/joltphysics/portfile.cmake)
 builds a static target from the same tag and exports `Jolt::Jolt`, but leaves
 upstream x86 instruction defaults in place. From the upstream defaults, the
