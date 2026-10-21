@@ -61,6 +61,10 @@ class CanonicalCollisionMesh {
         return m_support->document_sha256();
     }
 
+    double cell_size() const {
+        return m_support->cell_size();
+    }
+
     Result<void> validate_source(const SceneState& current, const std::stop_token& stop = {}) const;
 
     // Diagnostic envelope probe only; the support ledger owns unknown blocking.

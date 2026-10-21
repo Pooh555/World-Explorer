@@ -70,6 +70,10 @@ endif()
 # -----------------------------------------------------------------------------
 include(cmake/dependencies.cmake)
 
+if(WE_SANITIZER AND WE_SYSTEM_DEVELOPMENT_DEPS AND NOT MSVC)
+  target_compile_options(Jolt PRIVATE -fsanitize=${WE_SANITIZER} -fno-omit-frame-pointer)
+endif()
+
 function(we_target target)
   target_include_directories(${target} PUBLIC "${PROJECT_SOURCE_DIR}/include")
   target_compile_features(${target} PUBLIC cxx_std_${WE_CXX_STANDARD})
@@ -177,9 +181,9 @@ add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cp
 we_target(scene_store)
 target_link_libraries(scene_store PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 
-add_library(collision src/collision/triangle_cook.cpp)
+add_library(collision src/collision/triangle_cook.cpp src/collision/static_shape.cpp)
 we_target(collision)
-target_link_libraries(collision PUBLIC scene_store)
+target_link_libraries(collision PUBLIC scene_store PRIVATE ${WE_JOLT_TARGET})
 
 if(WE_FUZZING)
   add_executable(we_fuzz_ply tests/fuzz/ply_fuzzer.cpp)

@@ -346,25 +346,26 @@ qualify their redistribution rights or the drifted installed headers.
 
 ## Next executable step and protection rules
 
-[Canonical synthetic collision cook](validation/2026-10-21-collision-cook.md) now
-binds immutable floor triangles and a portable digest to exact source, pose and
-support identities. Occupied/unknown cells remain blocked by the diagnostic
-ledger. Development/C++23 suites, focused sanitizers and 90-frame native
-synthetic viewing pass; no Jolt controller or real collision is enabled.
+[Canonical synthetic collision cook](validation/2026-10-21-collision-cook.md)
+binds floor triangles and support to source/pose revisions. The
+[Jolt 5.3.0 static-shape slice](validation/2026-10-21-jolt-static-shape.md)
+pins the upstream archive to the immutable vcpkg baseline and adds a private
+native mesh shape with source-validated diagnostic ray casts. Explicit occupied
+and unknown grid cells still block conservative support probes; no wall mesh,
+controller or measured walking is enabled.
 
-Next, review official Jolt release/license/ABI sources against
-`cmake/dependencies.cmake`, pin a reproducible source archive and build it only
-inside `collision`. Extend the synthetic fixture with explicit barrier mesh
-triangles and source-bound selection, then create static shapes and a fixed
-120 Hz kinematic capsule with the plan's slope/step limits. Test wall/unknown
-blocking, corrected-source invalidation, cancellation and prior scene/evidence
-preservation; keep backend types out of navigation/application headers. Recheck
-plan §§4.6/4.8/5.1, the [synthetic support](protocols/collision_support.md) and
-[typed depth-space](protocols/depth_space.md#typed-evidence-admission) contracts
-before integration. All **5,184** retained real cells remain unknown;
-`FRONT_DIAGNOSTIC` is not clearance. No independent distance/up reference exists
-for internet-sourced `sample_1`; ADR 020 permits the M3 local software exit
-without it, while Q5/N2 and A1 independent-scale evidence stay open.
+Next, version the synthetic support fixture to select explicit vertical wall
+triangles with checked source/pose/hash dependencies and a conservative relation
+to occupied cells. Extend the canonical cook and Jolt static shape without
+changing V1 bytes. Then implement fixed 120 Hz kinematic capsule movement with
+the plan's 45° slope/0.30 m step limits and capped catch-up; verify wall,
+corner, unknown, correction, cancellation and prior-owner preservation. Recheck
+plan §§4.6/4.8/5.1 and the [support](protocols/collision_support.md) and
+[depth-space](protocols/depth_space.md#typed-evidence-admission) contracts.
+Keep Jolt private to `collision`; no backend types in navigation/application.
+All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
+clearance. `sample_1` has no independent distance/up reference: ADR 020 permits
+a local M3 software exit without it, while Q5/N2 and A1 scale evidence stay open.
 
 [Typed depth-space admission](validation/2026-10-20-depth-space-admission.md) now
 reloads the exact terminal/ledger/native bundle into an immutable owner, checks

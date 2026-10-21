@@ -50,7 +50,7 @@ instructions are for the CPU-only compatibility build currently exercised in CI.
 - A Vulkan-capable device and driver to run the viewer.
 
 The documented development profile is tested on Arch Linux with an NVIDIA GPU.
-The `dev` preset fetches SHA-256-pinned ImGui, JSON, and Catch2 archives unless
+The `dev` preset fetches SHA-256-pinned Jolt, ImGui, JSON, and Catch2 archives unless
 they are already present in `.deps/`.
 
 #### Installation

@@ -38,8 +38,15 @@ no padding or host-ABI dependency. It contains, in order:
 The owner exposes SHA-256 of these exact bytes. The stream binds cook parameters,
 source content and support identity. A future Jolt cooked cache must separately
 bind its Jolt version, CPU/ABI and these canonical bytes; this stream itself is
-not a Jolt cache. There is no vertex welding, face generation, collision response,
-kinematic controller, metric floor or measured-walking permission in this slice.
+not a Jolt cache. The [Jolt 5.3.0 adapter](../research/jolt_dependency.md)
+builds an in-memory static mesh shape from these floor triangles and rejects
+any triangle discarded by the backend. Its project-owned `JoltStaticCollision`
+owner exposes a source-validated diagnostic segment ray cast and keeps Jolt
+types private to `collision`. Construction and queries reject corrected or
+cancelled contexts without replacing a prior owner. No Jolt shape is installed
+in the source scene or viewer. There is no vertex welding, face generation,
+collision response, kinematic controller, metric floor or measured-walking
+permission in this slice.
 
 [Validation](../validation/2026-10-21-collision-cook.md) covers canonical replay,
 source correction, conservative barriers and native diagnostic viewing. M3 remains

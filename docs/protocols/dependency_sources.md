@@ -1,6 +1,6 @@
 # Selected dependency source and notice gaps
 
-The current dated [inventory](../../third_party/dependency-audit-repair-20261020.json) separates
+The current dated [inventory](../../third_party/dependency-audit-jolt-20261021.json) separates
 native development archives, three installed worker profiles, observed Linux
 system/build packages, unresolved release-vcpkg declarations and metric models.
 Each component retains version, source evidence, archive availability, notice
@@ -8,7 +8,11 @@ identity and explicit gaps. `rights_qualified` remains false. This is a selected
 dependency inventory, not a complete SBOM, source build attestation or rights
 clearance. Sources and gaps must be re-audited when selected dependencies change.
 
-The checker now defaults to this refreshed inventory. The
+The new inventory includes the pinned
+[Jolt 5.3.0 source and notice](../research/jolt_dependency.md); release-vcpkg
+remains a declaration, not a built package. The checker's default remains the
+historical 20 October inventory, which intentionally fails against changed
+dependency declarations; select this dated inventory explicitly. The
 [20 October repair](../validation/2026-10-20-native-inventory-repair.md) recaptures
 the current loader, all five mapping contexts and owner associations; earlier
 dated receipts remain historical.
@@ -16,12 +20,12 @@ dated receipts remain historical.
 Run from the repository root:
 
 ```sh
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json --local-evidence --require-closure
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-jolt-20261021.json
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-jolt-20261021.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-jolt-20261021.json --local-evidence --require-closure
 ```
 
-The default check needs only tracked inputs. It checks bound bytes, selected
+The first command needs only tracked inputs. It checks bound bytes, selected
 worker package identities and completeness, native archive declarations and
 release registry/version declarations. The local check additionally needs the
 exact ignored raw receipts, development archives and selected metadata/notices
@@ -29,6 +33,9 @@ listed in `inputs`. Missing or changed evidence fails; no cache search, network,
 installation, backend import or checkpoint loading occurs. Local checks validate
 historical raw RECORD inventories against their hashes; they do not freshly hash
 every installed payload or establish source provenance from installed bytes.
+The current `--local-evidence` check fails because the prior runtime summary
+binds binaries that changed in this native build; a new runtime recapture is
+required before current loader mappings can be certified.
 
 Exit **0** means the inventory is consistent, **2** means invalid/missing/stale
 evidence, and **3** means `--require-closure` found open gaps. Inventory consistency

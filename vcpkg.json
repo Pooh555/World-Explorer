@@ -2,8 +2,8 @@
   "name": "world-explorer",
   "version-string": "0.1.0-dev",
   "dependencies": [
-    "nlohmann-json", "openssl", "catch2", "flatbuffers", "sdl3", "vulkan", "shaderc", "vulkan-memory-allocator",
+    "nlohmann-json", "openssl", "catch2", "flatbuffers", {"name":"joltphysics", "features":["rtti"]}, "sdl3", "vulkan", "shaderc", "vulkan-memory-allocator",
     {"name":"imgui", "features":["sdl3-binding", "vulkan-binding"]}
   ],
-  "overrides": [{"name": "flatbuffers", "version": "25.2.10"}]
+  "overrides": [{"name": "flatbuffers", "version": "25.2.10"}, {"name": "joltphysics", "version": "5.3.0"}]
 }
