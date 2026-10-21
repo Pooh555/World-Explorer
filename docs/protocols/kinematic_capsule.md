@@ -57,3 +57,6 @@ adds tiny synthetic mesh markers and an inspection camera to a separate,
 unaligned diagnostic scene; those markers never enter the collision cook.
 Use `we_viewer --scene .../paths.wexplore --source-view` to inspect the paths
 beside the source floor and wall. Default and `--walls` fixture bytes are retained.
+
+The [application session](capsule_session.md) owns interactive lifetime, pinned
+loading, shared camera input, terminal stop/invalidation and CLI replay.

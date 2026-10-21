@@ -1,3 +1,4 @@
+#include "world_explorer/application/capsule_session.hpp"
 #include "world_explorer/application/collision_inspection.hpp"
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/dense_inputs.hpp"
@@ -78,6 +79,8 @@ int main(int argc, char** argv) {
                    "  we_process align-world SOURCE.wexplore MEASUREMENT.json SHA256 "
                    "NEW_SCENE.wexplore\n"
                    "  we_process inspect-collision REQUEST.json SHA256 NEW_DIRECTORY\n"
+                   "  we_process capsule-session REQUEST.json SHA256 FORWARD RIGHT FRAME_NS "
+                   "FRAMES\n"
                    "  we_process inspect-depth-space REQUEST.json SHA256 NEW_DIRECTORY\n"
                    "  we_process check-depth-space SOURCE SOURCE_SHA DIRECTORY REPORT_SHA "
                    "REQUEST_SHA\n"
@@ -235,6 +238,39 @@ int main(int argc, char** argv) {
             }
             std::cout << "Published observed-depth space diagnostic; scale arbitrary, walking "
                          "unavailable\n";
+            return 0;
+        }
+        if (K_COMMAND == "capsule-session") {
+            if (argc != 8) {
+                std::cerr
+                    << "Usage: capsule-session REQUEST.json SHA256 FORWARD RIGHT FRAME_NS FRAMES\n";
+                return 2;
+            }
+            const auto K_NUMBER = []<class Number>(const char* text, Number& value) {
+                const auto K_END = text + std::char_traits<char>::length(text);
+                const auto K_PARSED = std::from_chars(text, K_END, value);
+                return K_PARSED.ec == std::errc {} && K_PARSED.ptr == K_END;
+            };
+            FlyInput input;
+            input.m_captured = true;
+            std::int64_t frame_ns {};
+            std::size_t frames {};
+            if (!K_NUMBER(argv[4], input.m_forward) || !K_NUMBER(argv[5], input.m_right) ||
+                !K_NUMBER(argv[6], frame_ns) || !K_NUMBER(argv[7], frames)) {
+                std::cerr << "Invalid capsule replay numeric argument\n";
+                return 2;
+            }
+            const auto K_RESULT = replay_capsule_session(argv[2],
+                                                         argv[3],
+                                                         input,
+                                                         std::chrono::nanoseconds(frame_ns),
+                                                         frames,
+                                                         cancellation.get_token());
+            if (!K_RESULT) {
+                std::cerr << K_RESULT.error().m_message << '\n';
+                return K_RESULT.error().m_code == ErrorCode::CANCELLED ? 130 : 2;
+            }
+            std::cout << *K_RESULT << '\n';
             return 0;
         }
         if (K_COMMAND == "inspect-collision") {

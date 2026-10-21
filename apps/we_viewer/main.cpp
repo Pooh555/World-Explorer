@@ -1,6 +1,7 @@
 #include "input_latency.hpp"
 #include "job_state.hpp"
 #include "preferences.hpp"
+#include "world_explorer/application/capsule_session.hpp"
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/scenes.hpp"
 #include "world_explorer/navigation/fly_camera.hpp"
@@ -55,6 +56,8 @@ int viewer_main(int argc, char** argv) {
     std::filesystem::path geometry_request;
     std::filesystem::path geometry_output;
     std::string geometry_request_sha256;
+    std::filesystem::path capsule_request;
+    std::string capsule_request_sha256;
     DepthSpaceOpenRequest depth_space;
     SceneRepresentation representation { SceneRepresentation::CAPTURED_APPEARANCE };
     WorkerConfiguration worker { WE_WORKER_SCRIPT };
@@ -88,6 +91,8 @@ int viewer_main(int argc, char** argv) {
             std::cout << "          [--input-trace FILE.jsonl] (bounded native input diagnostics; "
                          "F12 readback)\n";
             std::cout << "          [--input-latency NEW.json] (buffered CPU input timing)\n";
+            std::cout << "          [--capsule-request FILE.json --capsule-request-sha SHA256] "
+                         "(synthetic only)\n";
 #if defined(WE_VULKAN_TEST_FAULTS)
             std::cout << "          [--inject-device-loss-frame N] (synthetic Debug diagnostic)\n";
 #endif
@@ -101,7 +106,11 @@ int viewer_main(int argc, char** argv) {
             inspect_source = true;
         } else if (argument + 1 < argc) {
             const std::string K_VALUE = argv[++argument];
-            if (K_OPTION == "--depth-space") {
+            if (K_OPTION == "--capsule-request") {
+                capsule_request = K_VALUE;
+            } else if (K_OPTION == "--capsule-request-sha") {
+                capsule_request_sha256 = K_VALUE;
+            } else if (K_OPTION == "--depth-space") {
                 depth_space.m_directory = K_VALUE;
             } else if (K_OPTION == "--depth-space-report-sha") {
                 depth_space.m_report_sha256 = K_VALUE;
@@ -190,6 +199,23 @@ int viewer_main(int argc, char** argv) {
     }
     if (!input_latency_path.empty() && (!input_trace_path.empty() || !screenshot.empty())) {
         throw std::runtime_error("Input latency requires traces and screenshots disabled");
+    }
+    if (capsule_request.empty() != capsule_request_sha256.empty()) {
+        throw std::runtime_error("Synthetic capsule requires a request and its SHA-256 pin");
+    }
+    if (!capsule_request.empty() &&
+        (!scene_path.empty() || diagnostic_fixture || inspect_source || !fusion_request.empty() ||
+         !geometry_request.empty() || !depth_space.m_directory.empty() ||
+         !reconstruction_request.empty() || !review_request.empty())) {
+        throw std::runtime_error("Choose one startup scene source for the synthetic capsule");
+    }
+    std::unique_ptr<SyntheticCapsuleSession> capsule;
+    if (!capsule_request.empty()) {
+        auto opened = SyntheticCapsuleSession::open(capsule_request, capsule_request_sha256);
+        if (!opened) {
+            throw std::runtime_error(opened.error().m_message);
+        }
+        capsule = std::move(*opened);
     }
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         throw std::runtime_error(SDL_GetError());
@@ -359,7 +385,9 @@ int viewer_main(int argc, char** argv) {
     unsigned frames = 0;
     bool screenshot_requested = false;
     auto previous = std::chrono::steady_clock::now();
-    if (!depth_space.m_directory.empty()) {
+    if (capsule) {
+        state.loaded = capsule->source();
+    } else if (!depth_space.m_directory.empty()) {
         state.load_depth_space(depth_space);
     } else if (!fusion_request.empty()) {
         representation = SceneRepresentation::OBSERVED_MESH;
@@ -421,7 +449,9 @@ int viewer_main(int argc, char** argv) {
             }
         }
         const auto K_NOW = std::chrono::steady_clock::now();
-        const auto K_ELAPSED = std::chrono::duration<double>(K_NOW - previous).count();
+        const auto K_FRAME_TIME =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(K_NOW - previous);
+        const auto K_ELAPSED = std::chrono::duration<double>(K_FRAME_TIME).count();
         previous = K_NOW;
         if (!reconstruction_request.empty() && !state.has_pending_work() && !pending_ticket) {
             state.reconstruction(std::exchange(reconstruction_request, {}));
@@ -452,7 +482,22 @@ int viewer_main(int argc, char** argv) {
             static_cast<int>(keys[settings.keys[4]]) - static_cast<int>(keys[settings.keys[5]]);
         movement.m_accelerate = keys[settings.keys[6]];
         const auto K_CAMERA_BEFORE = camera;
-        camera.update(movement, K_ELAPSED);
+        if (capsule && capsule->frame().m_status == CapsuleSessionStatus::ACTIVE) {
+            if (current) {
+                auto input = movement;
+                input.m_captured = input.m_captured && !pending_ticket && !state.has_pending_work();
+                const auto K_FRAME = capsule->advance(*current, input, K_FRAME_TIME);
+                if (K_FRAME) {
+                    camera = K_FRAME->m_camera;
+                } else {
+                    release_mouse();
+                    std::lock_guard lock(state.mutex);
+                    state.status = "Synthetic capsule stopped: " + K_FRAME.error().m_message;
+                }
+            }
+        } else {
+            camera.update(movement, K_ELAPSED);
+        }
         if (input_latency) {
             input_latency->finish_frame(frames + 1,
                                         SDL_GetTicksNS(),
@@ -490,6 +535,14 @@ int viewer_main(int argc, char** argv) {
                                      : SceneRepresentation::CAPTURED_APPEARANCE;
                 camera.m_up_axis = { 0, 1, 0 };
                 camera.fit(world_bounds(*current));
+                if (capsule && capsule->frame().m_status == CapsuleSessionStatus::ACTIVE) {
+                    const auto K_VALID =
+                        capsule->advance(*current, {}, std::chrono::nanoseconds::zero());
+                    if (K_VALID) {
+                        camera = K_VALID->m_camera;
+                    }
+                    release_mouse();
+                }
                 if (inspect_source) {
                     const auto K_INSPECTION = source_view(*current);
                     if (!K_INSPECTION) {
@@ -544,6 +597,9 @@ int viewer_main(int argc, char** argv) {
         K_TRACE_ITEM("import");
         ImGui::SameLine();
         if (ImGui::Button("Fit") && current) {
+            if (capsule) {
+                capsule->stop();
+            }
             camera.fit(world_bounds(*current));
             camera_fov = CameraView {}.m_vertical_fov_radians;
         }
@@ -551,6 +607,9 @@ int viewer_main(int argc, char** argv) {
         ImGui::SameLine();
         ImGui::BeginDisabled(!current || !current->m_provenance.contains("source_inspection_view"));
         if (ImGui::Button("Source view")) {
+            if (capsule) {
+                capsule->stop();
+            }
             const auto K_INSPECTION = source_view(*current);
             if (K_INSPECTION) {
                 camera = K_INSPECTION->m_camera;
@@ -567,7 +626,17 @@ int viewer_main(int argc, char** argv) {
                               "direction; gravity remains unmeasured. No camera following.");
         }
         ImGui::SameLine();
-        ImGui::TextUnformatted("Fly");
+        ImGui::TextUnformatted(capsule && capsule->frame().m_status == CapsuleSessionStatus::ACTIVE
+                                   ? "Synthetic capsule"
+                                   : "Fly");
+        if (capsule && capsule->frame().m_status == CapsuleSessionStatus::ACTIVE) {
+            ImGui::SameLine();
+            if (ImGui::Button("Stop capsule")) {
+                capsule->stop();
+                release_mouse();
+            }
+            K_TRACE_ITEM("stop_capsule");
+        }
         ImGui::SameLine();
         ImGui::BeginDisabled();
         ImGui::Button("Walk unavailable");
@@ -667,6 +736,9 @@ int viewer_main(int argc, char** argv) {
                     auto restored =
                         restore_bookmark(bookmark->m_pose, current->m_id, current->m_epoch);
                     if (restored) {
+                        if (capsule) {
+                            capsule->stop();
+                        }
                         camera = *restored;
                         camera_fov = bookmark->m_vertical_fov_radians;
                     }
@@ -728,6 +800,17 @@ int viewer_main(int argc, char** argv) {
         ImGui::SetNextWindowPos({ 0, K_DISPLAY.y - K_BOTTOM });
         ImGui::SetNextWindowSize({ K_DISPLAY.x, K_BOTTOM });
         ImGui::Begin("Job status", nullptr, K_PANEL_FLAGS);
+        if (capsule) {
+            const auto K_FRAME = capsule->frame();
+            const auto K_STATUS = capsule_session_label(K_FRAME.m_status);
+            const auto K_CLEARANCE = clearance_label(K_FRAME.m_clearance);
+            ImGui::Text("Synthetic capsule: %.*s / %.*s | ticks %llu",
+                        static_cast<int>(K_STATUS.size()),
+                        K_STATUS.data(),
+                        static_cast<int>(K_CLEARANCE.size()),
+                        K_CLEARANCE.data(),
+                        static_cast<unsigned long long>(K_FRAME.m_simulated_ticks));
+        }
         bool cancel_requested = false;
         {
             std::lock_guard lock(state.mutex);
@@ -750,7 +833,12 @@ int viewer_main(int argc, char** argv) {
         if (cancel_requested) {
             state.request_cancel();
         }
-        if (settings.controls) {
+        if (settings.controls && capsule &&
+            capsule->frame().m_status == CapsuleSessionStatus::ACTIVE) {
+            ImGui::TextWrapped(
+                "Synthetic capsule: click viewport for mouse look and horizontal movement. "
+                "Esc pauses; Stop capsule returns to Fly. Vertical keys and wheel are inactive.");
+        } else if (settings.controls) {
             ImGui::TextWrapped("Click viewport: mouse look | %s/%s/%s/%s: move | %s/%s: vertical "
                                "| %s: accelerate | Wheel: speed | Esc: release. Remap in Settings.",
                                SDL_GetScancodeName(static_cast<SDL_Scancode>(settings.keys[0])),
@@ -772,6 +860,7 @@ int viewer_main(int argc, char** argv) {
                                              : "Choose an unpacked .wexplore directory.");
             ImGui::SetNextItemWidth(560 * scale);
             ImGui::InputText("Path", path.data(), path.size());
+            K_TRACE_ITEM("scene_path");
             ImGui::BeginDisabled(state.busy);
             if (ImGui::Button("Open")) {
                 if (open_geometry) {
@@ -782,6 +871,7 @@ int viewer_main(int argc, char** argv) {
                 show_open = false;
                 ImGui::CloseCurrentPopup();
             }
+            K_TRACE_ITEM("load_scene");
             ImGui::EndDisabled();
             ImGui::SameLine();
             if (ImGui::Button("Close")) {
@@ -973,7 +1063,7 @@ int viewer_main(int argc, char** argv) {
             frames >= 8 && !state.has_pending_work() && reconstruction_request.empty() &&
             review_request.empty() && geometry_request.empty() &&
             (!(K_REQUIRE_RECONSTRUCTION_SUCCESS || !depth_space.m_directory.empty() ||
-               !scene_path.empty() || !fusion_request.empty()) ||
+               !scene_path.empty() || !fusion_request.empty() || !capsule_request.empty()) ||
              (current && !pending_ticket))) {
             if (K_REQUIRE_RECONSTRUCTION_SUCCESS) {
                 std::lock_guard lock(state.mutex);
@@ -1097,6 +1187,16 @@ int viewer_main(int argc, char** argv) {
                 std::lock_guard lock(state.mutex);
                 reviewed = state.reviewed_request != nullptr;
             }
+            nlohmann::json capsule_trace;
+            if (capsule) {
+                const auto K_FRAME = capsule->frame();
+                capsule_trace = {
+                    { "status", capsule_session_label(K_FRAME.m_status) },
+                    { "feet", { K_FRAME.m_feet.m_x, K_FRAME.m_feet.m_y, K_FRAME.m_feet.m_z } },
+                    { "tick", K_FRAME.m_simulated_ticks },
+                    { "dropped_ticks", K_FRAME.m_dropped_ticks },
+                    { "clearance", clearance_label(K_FRAME.m_clearance) } };
+            }
             input_trace
                 << nlohmann::json { { "frame", frames },
                                    { "position",
@@ -1116,6 +1216,9 @@ int viewer_main(int argc, char** argv) {
                                    { "mouse", { io.MousePos.x, io.MousePos.y } },
                                    { "focused", movement.m_focused },
                                    { "forward", movement.m_forward },
+                                   { "right", movement.m_right },
+                                   { "frame_nanoseconds", K_FRAME_TIME.count() },
+                                   { "capsule", capsule_trace },
                                    { "text_input", movement.m_text_input },
                                    { "import", show_import },
                                    { "settings", show_settings },
@@ -1152,7 +1255,7 @@ int viewer_main(int argc, char** argv) {
                 }
             }
             if ((!scene_path.empty() || !fusion_request.empty() ||
-                 !depth_space.m_directory.empty()) &&
+                 !depth_space.m_directory.empty() || !capsule_request.empty()) &&
                 !current) {
                 std::lock_guard lock(state.mutex);
                 throw std::runtime_error(state.status);

@@ -185,7 +185,7 @@ add_library(map_store src/map_store/map_store.cpp src/map_store/pose_asset.cpp
 we_target(map_store)
 target_include_directories(map_store SYSTEM PRIVATE "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
 target_link_libraries(map_store PUBLIC reconstruction_api)
-target_link_libraries(map_store PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(map_store PRIVATE collision nlohmann_json::nlohmann_json)
 
 add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp
   src/scene_store/world_frame.cpp src/scene_store/collision_support.cpp src/scene_store/depth_space.cpp src/scene_store/depth_space_grid.cpp src/scene_store/depth_space_evidence.cpp src/scene_store/depth_asset.cpp src/scene_store/fusion_asset.cpp src/scene_store/fusion_components.cpp
@@ -226,6 +226,7 @@ add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/dense_inputs.cpp src/application/depth_visibility.cpp src/application/depth_space.cpp
   src/application/reconstruction_progress.cpp
   src/application/scene_import.cpp src/application/source_view.cpp src/application/world_alignment.cpp src/application/collision_inspection.cpp
+  src/application/collision_inputs.cpp src/application/capsule_session.cpp
   src/application/reconstruction_job.cpp src/application/job_validation.cpp src/application/pose_replay.cpp
   src/application/pose_pipeline.cpp src/application/pose_solve.cpp src/application/pose_export.cpp
   src/application/map_commands.cpp src/application/pose_preparation.cpp src/application/video_preflight.cpp

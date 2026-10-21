@@ -107,6 +107,21 @@ void trace_capsules(const std::filesystem::path& directory,
         const auto K_VELOCITY = K_VELOCITIES[route];
         trace["routes"].push_back(
             { { "velocity", { K_VELOCITY.m_x, K_VELOCITY.m_y, K_VELOCITY.m_z } }, { "samples", samples } });
+        const std::array<std::string_view, 3uz> K_NAMES { "wall", "unknown", "unsupported" };
+        const auto K_START = K_STARTS[route];
+        write(directory / ("session-" + std::string(K_NAMES[route]) + ".json"),
+              { { "kind", "SYNTHETIC_CAPSULE_SESSION_V1" },
+               { "source_bundle", "source.wexplore" },
+               { "source_manifest_sha256", source_hash },
+               { "support", "support.json" },
+               { "support_sha256", support_hash },
+               { "capsule",
+                { { "feet", { K_START.m_x, K_START.m_y, K_START.m_z } },
+                 { "radius", .25 },
+                 { "height", 1.7 },
+                 { "eye_height", 1.6 },
+                 { "speed", std::hypot(K_VELOCITY.m_x, K_VELOCITY.m_z) },
+                 { "yaw_radians", std::atan2(K_VELOCITY.m_x, -K_VELOCITY.m_z) } } } });
     }
     visible->m_chunks.emplace(path->m_id, path);
     const auto K_WRITTEN = write_bundle(directory / "paths.wexplore", visible);

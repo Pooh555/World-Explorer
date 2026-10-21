@@ -1,5 +1,6 @@
 #include "world_explorer/application/collision_inspection.hpp"
 
+#include "collision_inputs.hpp"
 #include "world_explorer/core/asset_files.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/scene_store/bundle.hpp"
@@ -8,37 +9,15 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
-#include <set>
 
 namespace world_explorer {
 namespace {
 
 using Json = nlohmann::json;
 
-void fields(const Json& value, std::initializer_list<const char*> names) {
-    if (!value.is_object() || value.size() != names.size()) {
-        throw std::runtime_error("Unexpected collision inspection fields");
-    }
-    for (const auto* name : names) {
-        if (!value.contains(name)) {
-            throw std::runtime_error("Missing collision inspection field");
-        }
-    }
-}
-
-double real(const Json& value) {
-    if (!value.is_number() || !std::isfinite(value.get<double>())) {
-        throw std::runtime_error("Collision probe scalars must be finite numeric data");
-    }
-    return value.get<double>();
-}
-
-Vec3d vector(const Json& value) {
-    if (!value.is_array() || value.size() != 3uz) {
-        throw std::runtime_error("Collision probe vectors must have three components");
-    }
-    return { real(value.at(0uz)), real(value.at(1uz)), real(value.at(2uz)) };
-}
+using collision_inputs::fields;
+using collision_inputs::real;
+using collision_inputs::vector;
 
 SceneSnapshot diagnostic_scene(const CollisionSupport& support) {
     auto scene = std::make_shared<SceneState>();
@@ -118,93 +97,45 @@ Result<void> inspect_collision_support(const std::filesystem::path& request,
             std::filesystem::exists(std::filesystem::symlink_status(destination))) {
             return fail(ErrorCode::INVALID_ARGUMENT, "Choose a new collision inspection directory");
         }
-        const auto K_BYTES = asset_files::read_bytes(request, 1024uz * 1024uz, stop);
-        if (!K_BYTES) {
-            return std::unexpected(K_BYTES.error());
+        const auto K_READ = collision_inputs::read_request(request, expected_sha256, stop);
+        if (!K_READ) {
+            return std::unexpected(K_READ.error());
         }
-        if (sha256(*K_BYTES) != expected_sha256) {
-            return fail(ErrorCode::INVALID_DATA, "Collision inspection request checksum differs");
-        }
-        const std::string_view K_TEXT(reinterpret_cast<const char*>(K_BYTES->data()),
-                                      K_BYTES->size());
-        if (K_TEXT.find('\0') != K_TEXT.npos) {
-            throw std::runtime_error("Raw NUL in collision inspection request");
-        }
-        std::vector<std::set<std::string>> keys;
-        const auto K_REQUEST =
-            Json::parse(K_TEXT, [&](int depth, Json::parse_event_t event, Json& value) {
-                if (depth > 8) {
-                    throw std::runtime_error("Collision inspection nesting exceeds budget");
-                }
-                const auto K_DEPTH = static_cast<std::size_t>(depth);
-                if (event == Json::parse_event_t::object_start) {
-                    keys.resize(K_DEPTH + 1uz);
-                    keys[K_DEPTH].clear();
-                }
-                if (event == Json::parse_event_t::key &&
-                    !keys.at(K_DEPTH - 1uz).insert(value.get<std::string>()).second) {
-                    throw std::runtime_error("Duplicate collision inspection key");
-                }
-                return true;
-            });
-        fields(K_REQUEST,
+        const auto& request_document = *K_READ;
+        fields(request_document,
                { "kind",
                 "source_bundle",
                 "source_manifest_sha256",
                 "support",
                 "support_sha256",
                 "probes" });
-        if (K_REQUEST.at("kind") != "COLLISION_SUPPORT_INSPECTION_V1") {
+        if (request_document.at("kind") != "COLLISION_SUPPORT_INSPECTION_V1") {
             throw std::runtime_error("Unsupported collision inspection request");
         }
-        const auto K_BASE = std::filesystem::canonical(request).parent_path();
-        const auto K_PATH = [&](const char* name) {
-            const auto K_NAME = K_REQUEST.at(name).get<std::string>();
-            if (K_NAME.empty() || K_NAME.size() > 4096uz || K_NAME.find('\0') != K_NAME.npos) {
-                throw std::runtime_error("Invalid collision inspection input path");
-            }
-            return std::filesystem::canonical(K_BASE / K_NAME);
-        };
-        const auto K_SOURCE = K_PATH("source_bundle");
+        const auto K_INPUTS = collision_inputs::load(request, request_document, stop);
+        if (!K_INPUTS) {
+            return std::unexpected(K_INPUTS.error());
+        }
+        const auto& scene_snapshot = K_INPUTS->m_source;
+        const auto& support = K_INPUTS->m_support;
         const auto K_OUTPUT =
             std::filesystem::weakly_canonical(std::filesystem::absolute(destination));
-        const auto K_RELATIVE = K_OUTPUT.lexically_relative(K_SOURCE);
+        const auto K_RELATIVE = K_OUTPUT.lexically_relative(K_INPUTS->m_source_path);
         if (!K_RELATIVE.empty() && *K_RELATIVE.begin() != "..") {
             return fail(ErrorCode::INVALID_ARGUMENT,
                         "Collision diagnostic overlaps immutable source");
         }
-        const auto K_MANIFEST_HASH = K_REQUEST.at("source_manifest_sha256").get<std::string>();
-        if (K_MANIFEST_HASH.size() != 64uz) {
-            throw std::runtime_error(
-                "Collision source manifest pin must have 64 hexadecimal characters");
-        }
-        const auto K_SCENE = load_bundle(K_SOURCE, {}, K_MANIFEST_HASH);
-        if (!K_SCENE) {
-            return std::unexpected(K_SCENE.error());
-        }
-        const auto K_SUPPORT_BYTES =
-            asset_files::read_bytes(K_PATH("support"), K_COLLISION_SUPPORT_DOCUMENT_BYTES, stop);
-        if (!K_SUPPORT_BYTES) {
-            return std::unexpected(K_SUPPORT_BYTES.error());
-        }
-        const auto K_SUPPORT = admit_collision_support(
-            **K_SCENE,
-            std::string_view(reinterpret_cast<const char*>(K_SUPPORT_BYTES->data()),
-                             K_SUPPORT_BYTES->size()),
-            K_REQUEST.at("support_sha256").get<std::string>(),
-            stop);
-        if (!K_SUPPORT) {
-            return std::unexpected(K_SUPPORT.error());
-        }
-        const auto& probes = K_REQUEST.at("probes");
+        const auto K_MANIFEST_HASH =
+            request_document.at("source_manifest_sha256").get<std::string>();
+        const auto& probes = request_document.at("probes");
         if (!probes.is_array() || probes.size() > 256uz) {
             throw std::runtime_error("Collision inspection probe budget exceeded");
         }
         Json results = Json::array();
         for (const auto& probe : probes) {
             fields(probe, { "start_feet", "end_feet", "radius", "height" });
-            const auto K_RESULT = probe_collision_support(**K_SUPPORT,
-                                                          **K_SCENE,
+            const auto K_RESULT = probe_collision_support(*support,
+                                                          *scene_snapshot,
                                                           { vector(probe.at("start_feet")),
                                                            vector(probe.at("end_feet")),
                                                            real(probe.at("radius")),
@@ -216,7 +147,7 @@ Result<void> inspect_collision_support(const std::filesystem::path& request,
             results.push_back({ { "state", clearance_label(K_RESULT->m_state) },
                                { "checked_cells", K_RESULT->m_checked_cells } });
         }
-        auto diagnostic = diagnostic_scene(**K_SUPPORT);
+        auto diagnostic = diagnostic_scene(*support);
         const auto K_VALID = validate_scene(*diagnostic);
         if (!K_VALID) {
             return std::unexpected(K_VALID.error());
@@ -236,7 +167,7 @@ Result<void> inspect_collision_support(const std::filesystem::path& request,
             return fail(ErrorCode::INVALID_DATA, "Collision diagnostic failed independent reload");
         }
         const auto K_COUNTS = [&](SpaceState state) {
-            return std::ranges::count((*K_SUPPORT)->cells(), state);
+            return std::ranges::count(support->cells(), state);
         };
         const auto K_DIAGNOSTIC_HASH =
             sha256_file(K_OUTPUT / "diagnostic.wexplore/manifest.json", 1024uz * 1024uz, stop);
@@ -247,13 +178,13 @@ Result<void> inspect_collision_support(const std::filesystem::path& request,
             { "kind", "SYNTHETIC_COLLISION_INSPECTION_V1" },
             { "request_sha256", expected_sha256 },
             { "source_manifest_sha256", K_MANIFEST_HASH },
-            { "source_scene_sha256", (*K_SUPPORT)->source_sha256() },
-            { "support_sha256", (*K_SUPPORT)->document_sha256() },
+            { "source_scene_sha256", support->source_sha256() },
+            { "support_sha256", support->document_sha256() },
             { "cells",
              { { "free", K_COUNTS(SpaceState::FREE) },
               { "occupied", K_COUNTS(SpaceState::OCCUPIED) },
               { "unknown", K_COUNTS(SpaceState::UNKNOWN) } } },
-            { "supported_floor_tiles", std::ranges::count((*K_SUPPORT)->floors(), std::uint8_t { 1 }) },
+            { "supported_floor_tiles", std::ranges::count(support->floors(), std::uint8_t { 1 }) },
             { "probes", results },
             { "diagnostic_manifest_sha256", *K_DIAGNOSTIC_HASH },
             { "walking_enabled", false },

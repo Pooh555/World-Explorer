@@ -1,5 +1,7 @@
 # Validation index
 
+- [Shared synthetic capsule session](2026-10-21-capsule-session.md): pinned application/CLI/native lifetime and horizontal camera input, terminal correction/stop and focus/dialog pause; flat diagnostics only, measured walking disabled.
+
 - [Synthetic kinematic capsule](2026-10-21-kinematic-capsule.md): fixed 120 Hz clock/eight-tick cap, private Jolt wall sliding, conservative ledger blocking, transactional cancellation/correction and saved-file/native path diagnostics; flat synthetic support only, no measured walking.
 
 - [Jolt MSVC runtime alignment](2026-10-21-windows-jolt-crt.md): addresses supplied `/MTd` versus `/MDd` LNK2038 failure by honoring the parent CRT policy; Windows-target object probes verify default/explicit settings, full native MSVC link pending.
