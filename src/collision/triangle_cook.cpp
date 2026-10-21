@@ -64,7 +64,14 @@ cook_synthetic_collision(const SceneSnapshot& source,
         }
         auto walls = std::vector<CollisionTriangleRef> { cooked->m_support->wall_triangles().begin(),
                                                         cooked->m_support->wall_triangles().end() };
+        auto risers =
+            std::vector<CollisionTriangleRef> { cooked->m_support->riser_triangles().begin(),
+                                               cooked->m_support->riser_triangles().end() };
         std::sort(walls.begin(), walls.end(), [](const auto& a, const auto& b) {
+            return a.m_chunk_id < b.m_chunk_id ||
+                   (a.m_chunk_id == b.m_chunk_id && a.m_triangle_index < b.m_triangle_index);
+        });
+        std::sort(risers.begin(), risers.end(), [](const auto& a, const auto& b) {
             return a.m_chunk_id < b.m_chunk_id ||
                    (a.m_chunk_id == b.m_chunk_id && a.m_triangle_index < b.m_triangle_index);
         });
@@ -72,18 +79,22 @@ cook_synthetic_collision(const SceneSnapshot& source,
             (cooked->m_parameters.m_format_version == 2U && walls.empty()) ||
             (cooked->m_parameters.m_format_version != 1U &&
              cooked->m_parameters.m_format_version != 2U &&
-             cooked->m_parameters.m_format_version != 3U) ||
-            walls.size() > 256uz - selected.size()) {
+             cooked->m_parameters.m_format_version != 3U &&
+             cooked->m_parameters.m_format_version != 4U) ||
+            walls.size() + risers.size() > 256uz - selected.size() ||
+            (cooked->m_parameters.m_format_version == 4U && risers.size() != 2uz)) {
             return fail(ErrorCode::INVALID_DATA, "Collision wall triangle count is invalid");
         }
         cooked->m_floor_triangle_count = selected.size();
-        cooked->m_triangles.reserve(selected.size() + walls.size());
+        cooked->m_riser_triangle_count = risers.size();
+        cooked->m_triangles.reserve(selected.size() + walls.size() + risers.size());
         auto& bytes = cooked->m_canonical_bytes;
-        bytes.reserve(256uz + (selected.size() + walls.size()) * 104uz);
+        bytes.reserve(256uz + (selected.size() + walls.size() + risers.size()) * 104uz);
         append_text(bytes,
                     cooked->m_parameters.m_format_version == 1U   ? "WE_COLLISION_TRIANGLES_V1"
                     : cooked->m_parameters.m_format_version == 2U ? "WE_COLLISION_TRIANGLES_V2"
-                                                                  : "WE_COLLISION_TRIANGLES_V3");
+                    : cooked->m_parameters.m_format_version == 3U ? "WE_COLLISION_TRIANGLES_V3"
+                                                                  : "WE_COLLISION_TRIANGLES_V4");
         append_u64(bytes, cooked->m_parameters.m_format_version);
         append_u64(bytes, cooked->m_parameters.m_weld_vertices);
         append_u64(bytes, cooked->m_parameters.m_double_sided);
@@ -165,6 +176,15 @@ cook_synthetic_collision(const SceneSnapshot& source,
         if (cooked->m_parameters.m_format_version >= 2U) {
             append_u64(bytes, walls.size());
             for (const auto& ref : walls) {
+                const auto K_APPENDED = K_APPEND_TRIANGLE(ref);
+                if (!K_APPENDED) {
+                    return std::unexpected(K_APPENDED.error());
+                }
+            }
+        }
+        if (cooked->m_parameters.m_format_version == 4U) {
+            append_u64(bytes, risers.size());
+            for (const auto& ref : risers) {
                 const auto K_APPENDED = K_APPEND_TRIANGLE(ref);
                 if (!K_APPENDED) {
                     return std::unexpected(K_APPENDED.error());

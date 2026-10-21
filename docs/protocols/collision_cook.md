@@ -63,3 +63,7 @@ M3 remains in progress; Q5/N2 and A1's separate independent-scale requirement re
 
 [V3 inclined support](collision_ramps.md) uses version 3 and the V2 floor/wall
 record layout, including an empty wall group; its document pin binds the plane.
+[V4 selected step geometry](collision_steps.md) uses version 4 and adds a
+64-bit riser count plus its two sorted source triangle records after the V2
+floor/wall groups. The document pin binds the selected step and landings. Its
+clearance probe blocks controller spawn until step transitions are qualified.

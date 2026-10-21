@@ -1,5 +1,7 @@
 # Validation index
 
+- [Selected synthetic step admission](2026-10-21-collision-step-admission.md): exact source-bound lower/upper landings and riser, 0.30 boundary rejection, canonical cook, CPU and native visual checks; V4 movement remains blocked.
+
 - [Source-bound synthetic ramps](2026-10-21-collision-ramp.md): strict 45° single-plane support, complete capsule-envelope checks, native ascent/wall sliding and legacy byte preservation; steps and measured walking remain unqualified.
 
 - [Shared synthetic capsule session](2026-10-21-capsule-session.md): pinned application/CLI/native lifetime and horizontal camera input, terminal correction/stop and focus/dialog pause; flat diagnostics only, measured walking disabled.

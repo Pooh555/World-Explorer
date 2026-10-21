@@ -139,30 +139,34 @@ int main(int argc, char** argv) {
             (argc == 3 && std::string_view(argv[2]) != "--walls" &&
              std::string_view(argv[2]) != "--capsule" && std::string_view(argv[2]) != "--ramp" &&
              std::string_view(argv[2]) != "--ramp-45" &&
-             std::string_view(argv[2]) != "--ramp-steep")) {
+             std::string_view(argv[2]) != "--ramp-steep" &&
+             std::string_view(argv[2]) != "--step")) {
             std::cerr << "Usage: we_collision_fixture NEW_DIRECTORY "
-                         "[--walls|--capsule|--ramp|--ramp-45|--ramp-steep] (synthetic "
+                         "[--walls|--capsule|--ramp|--ramp-45|--ramp-steep|--step] (synthetic "
                          "only)\n";
             return 2;
         }
-        const bool K_WITH_WALL = argc == 3;
+        const bool K_STEP { argc == 3 && std::string_view(argv[2]) == "--step" };
+        const bool K_WITH_WALL = argc == 3 && !K_STEP;
         const bool K_RAMP { argc == 3 && std::string_view(argv[2]).starts_with("--ramp") };
         const float K_RISE { !K_RAMP                                    ? 0.F
                             : std::string_view(argv[2]) == "--ramp"    ? .5F
                             : std::string_view(argv[2]) == "--ramp-45" ? 1.F
                                                                        : 1.F + 1.F / 1024.F };
+        const float K_STEP_HEIGHT { K_STEP ? std::nextafter(.3F, 0.F) : 0.F };
         const auto K_OUTPUT = std::filesystem::absolute(argv[1]);
         if (std::filesystem::exists(std::filesystem::symlink_status(K_OUTPUT)) ||
             !std::filesystem::create_directory(K_OUTPUT)) {
             throw std::runtime_error("Choose a new synthetic fixture directory");
         }
-        const auto K_SOURCE =
-            std::make_shared<SceneState>(collision_source(K_WITH_WALL, false, "NEG_X", K_RISE, 0));
+        const auto K_SOURCE = std::make_shared<SceneState>(
+            collision_source(K_WITH_WALL, false, "NEG_X", K_RISE, 0, K_STEP_HEIGHT));
         const auto K_WRITTEN = write_bundle(K_OUTPUT / "source.wexplore", K_SOURCE);
         if (!K_WRITTEN) {
             throw std::runtime_error(K_WRITTEN.error().m_message);
         }
-        auto document = K_RAMP        ? collision_ramp_document(*K_SOURCE, K_RISE, 0, true)
+        auto document = K_STEP        ? collision_step_document(*K_SOURCE, K_STEP_HEIGHT)
+                        : K_RAMP      ? collision_ramp_document(*K_SOURCE, K_RISE, 0, true)
                         : K_WITH_WALL ? collision_wall_document(*K_SOURCE)
                                       : collision_document(*K_SOURCE);
         auto& cells = document["grid"]["states"].get_ref<std::string&>();

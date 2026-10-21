@@ -59,6 +59,9 @@ class CollisionSupport {
     }
 
     double floor_height(Vec3d point) const {
+        if (m_format_version == 4U && point.m_x >= m_step_boundary_x) {
+            return m_origin.m_y + m_step_height;
+        }
         return m_origin.m_y + m_floor_gradient.m_x * (point.m_x - m_origin.m_x) +
                m_floor_gradient.m_z * (point.m_z - m_origin.m_z);
     }
@@ -81,6 +84,10 @@ class CollisionSupport {
 
     std::span<const CollisionTriangleRef> wall_triangles() const {
         return m_wall_triangles;
+    }
+
+    std::span<const CollisionTriangleRef> riser_triangles() const {
+        return m_riser_triangles;
     }
 
     std::uint32_t format_version() const {
@@ -110,12 +117,15 @@ class CollisionSupport {
     SceneRevisionId m_revision;
     Vec3d m_origin;
     Vec3d m_floor_gradient;
+    double m_step_boundary_x {}, m_step_height {};
+    std::size_t m_step_boundary_cell {};
     double m_cell_size {};
     std::array<std::size_t, 3uz> m_dimensions {};
     std::vector<SpaceState> m_cells;
     std::vector<std::uint8_t> m_floors;
     std::vector<CollisionFloorTriangleRef> m_floor_triangles;
     std::vector<CollisionTriangleRef> m_wall_triangles;
+    std::vector<CollisionTriangleRef> m_riser_triangles;
     std::uint32_t m_format_version { 1 };
     std::string m_source_sha256, m_document_sha256;
 };

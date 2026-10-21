@@ -9,6 +9,7 @@
 #include <limits>
 #include <set>
 #include <tuple>
+#include <utility>
 
 namespace world_explorer {
 namespace {
@@ -105,7 +106,20 @@ admit_collision_support(const SceneState& source,
                           K_DOCUMENT.at("schema") == "SYNTHETIC_COLLISION_SUPPORT_V2";
         const bool K_V3 = K_DOCUMENT.is_object() && K_DOCUMENT.contains("schema") &&
                           K_DOCUMENT.at("schema") == "SYNTHETIC_COLLISION_SUPPORT_V3";
-        if (K_V3) {
+        const bool K_V4 = K_DOCUMENT.is_object() && K_DOCUMENT.contains("schema") &&
+                          K_DOCUMENT.at("schema") == "SYNTHETIC_COLLISION_SUPPORT_V4";
+        if (K_V4) {
+            fields(K_DOCUMENT,
+                   { "schema",
+                    "scene_sha256",
+                    "epoch",
+                    "revision",
+                    "world_frame_sha256",
+                    "grid",
+                    "floors",
+                    "walls",
+                    "step" });
+        } else if (K_V3) {
             fields(K_DOCUMENT,
                    { "schema",
                     "scene_sha256",
@@ -136,7 +150,8 @@ admit_collision_support(const SceneState& source,
                     "grid",
                     "floors" });
         }
-        if (!K_V2 && !K_V3 && K_DOCUMENT.at("schema") != "SYNTHETIC_COLLISION_SUPPORT_V1") {
+        if (!K_V2 && !K_V3 && !K_V4 &&
+            K_DOCUMENT.at("schema") != "SYNTHETIC_COLLISION_SUPPORT_V1") {
             throw std::runtime_error("Unsupported collision-support profile");
         }
         if (integer(K_DOCUMENT.at("epoch")) != source.m_epoch.m_value) {
@@ -163,7 +178,7 @@ admit_collision_support(const SceneState& source,
         support->m_revision = source.m_revision;
         support->m_source_sha256 = K_SOURCE_HASH;
         support->m_document_sha256 = digest;
-        support->m_format_version = K_V3 ? 3U : K_V2 ? 2U : 1U;
+        support->m_format_version = K_V4 ? 4U : K_V3 ? 3U : K_V2 ? 2U : 1U;
         support->m_origin = { real(grid.at("origin").at(0uz)),
                              real(grid.at("origin").at(1uz)),
                              real(grid.at("origin").at(2uz)) };
@@ -192,6 +207,19 @@ admit_collision_support(const SceneState& source,
             support->m_dimensions[axis] = static_cast<std::size_t>(K_SIZE);
             count *= static_cast<std::size_t>(K_SIZE);
         }
+        if (K_V4) {
+            const auto& step = K_DOCUMENT.at("step");
+            fields(step, { "boundary_x", "height", "riser" });
+            const auto K_BOUNDARY = integer(step.at("boundary_x"));
+            support->m_step_height = real(step.at("height"));
+            if (K_BOUNDARY == 0 || K_BOUNDARY >= support->m_dimensions[0uz] ||
+                support->m_step_height <= 0 || support->m_step_height > .30) {
+                throw std::runtime_error("Synthetic step exceeds bounded height or grid");
+            }
+            support->m_step_boundary_x =
+                support->m_origin.m_x + static_cast<double>(K_BOUNDARY) * support->m_cell_size;
+            support->m_step_boundary_cell = static_cast<std::size_t>(K_BOUNDARY);
+        }
         const auto K_STATES = grid.at("states").get<std::string>();
         if (K_STATES.size() != count || K_STATES.find_first_not_of("?.#") != K_STATES.npos) {
             throw std::runtime_error(
@@ -208,7 +236,7 @@ admit_collision_support(const SceneState& source,
             throw std::runtime_error("Collision floor reference count exceeds profile limits");
         }
         std::set<std::pair<ChunkId, std::uint64_t>> seen;
-        std::vector<GridTriangle> triangles;
+        std::vector<std::pair<GridTriangle, double>> triangles;
         for (const auto& floor : floors) {
             fields(floor, { "chunk_id", "generation", "pose_revision", "chunk_sha256", "triangles" });
             const ChunkId K_ID { integer(floor.at("chunk_id")) };
@@ -241,6 +269,7 @@ admit_collision_support(const SceneState& source,
                 support->m_floor_triangles.push_back(
                     { K_ID, chunk.m_generation, chunk.m_pose_revision, K_CHUNK_HASH, K_INDEX });
                 GridTriangle triangle;
+                double triangle_height {};
                 for (std::size_t corner { 0uz }; corner < 3uz; ++corner) {
                     const auto& p =
                         mesh.m_vertices
@@ -249,8 +278,17 @@ admit_collision_support(const SceneState& source,
                     const auto K_WORLD = transform_point(K_TRANSFORM, { p[0uz], p[1uz], p[2uz] });
                     const double K_X { (K_WORLD.m_x - support->m_origin.m_x) / support->m_cell_size };
                     const double K_Z { (K_WORLD.m_z - support->m_origin.m_z) / support->m_cell_size };
-                    if (K_WORLD.m_y != support->floor_height(K_WORLD) || !std::isfinite(K_X) ||
-                        !std::isfinite(K_Z) || K_X < 0 ||
+                    if (corner == 0uz) {
+                        triangle_height = K_WORLD.m_y;
+                    }
+                    const bool K_STEP_VERTEX {
+                        K_V4 && K_WORLD.m_y == triangle_height &&
+                        ((triangle_height == support->m_origin.m_y &&
+                          K_WORLD.m_x <= support->m_step_boundary_x) ||
+                         (triangle_height == support->m_origin.m_y + support->m_step_height &&
+                          K_WORLD.m_x >= support->m_step_boundary_x)) };
+                    if ((K_V4 ? !K_STEP_VERTEX : K_WORLD.m_y != support->floor_height(K_WORLD)) ||
+                        !std::isfinite(K_X) || !std::isfinite(K_Z) || K_X < 0 ||
                         K_X > static_cast<double>(support->m_dimensions[0uz]) || K_Z < 0 ||
                         K_Z > static_cast<double>(support->m_dimensions[2uz]) ||
                         K_X != std::round(K_X) || K_Z != std::round(K_Z) ||
@@ -270,12 +308,13 @@ admit_collision_support(const SceneState& source,
                     throw std::runtime_error(
                         "Collision floor must have upward nondegenerate geometric winding");
                 }
-                triangles.push_back(triangle);
+                triangles.emplace_back(triangle, triangle_height);
             }
         }
-        if (K_V2 || K_V3) {
+        if (K_V2 || K_V3 || K_V4) {
             const auto& walls = K_DOCUMENT.at("walls");
-            if (!walls.is_array() || (K_V2 && walls.empty()) || walls.size() > 128uz ||
+            if (!walls.is_array() || (K_V2 && walls.empty()) || (K_V4 && !walls.empty()) ||
+                walls.size() > 128uz ||
                 walls.size() > (256uz - support->m_floor_triangles.size()) / 2uz) {
                 throw std::runtime_error("Collision wall face count exceeds profile limits");
             }
@@ -426,6 +465,85 @@ admit_collision_support(const SceneState& source,
                 }
             }
         }
+        if (K_V4) {
+            const auto& riser = K_DOCUMENT.at("step").at("riser");
+            fields(riser, { "chunk_id", "generation", "pose_revision", "chunk_sha256", "triangles" });
+            const ChunkId K_ID { integer(riser.at("chunk_id")) };
+            const auto K_FOUND = source.m_chunks.find(K_ID);
+            if (K_FOUND == source.m_chunks.end() || !K_FOUND->second || !K_FOUND->second->m_mesh ||
+                !K_FOUND->second->m_geometry_valid) {
+                throw std::runtime_error("Synthetic step riser requires current mesh geometry");
+            }
+            const auto& chunk = *K_FOUND->second;
+            const auto K_CHUNK_HASH = scene_chunk_content_hash(chunk);
+            if (integer(riser.at("generation")) != chunk.m_generation ||
+                integer(riser.at("pose_revision")) != chunk.m_pose_revision.m_value ||
+                riser.at("chunk_sha256").get<std::string>() != K_CHUNK_HASH) {
+                return fail(ErrorCode::WRONG_BASE, "Synthetic step riser source differs");
+            }
+            const auto& indices = riser.at("triangles");
+            if (!indices.is_array() || indices.size() != 2uz ||
+                support->m_floor_triangles.size() + support->m_wall_triangles.size() > 254uz) {
+                throw std::runtime_error("Synthetic step riser needs two selected triangles");
+            }
+            const double K_X { support->m_step_boundary_x };
+            const double K_Y { support->m_origin.m_y };
+            const double K_Z { support->m_origin.m_z };
+            const double K_Z_END { K_Z + static_cast<double>(support->m_dimensions[2uz]) *
+                                            support->m_cell_size };
+            const std::array<Vec3d, 4uz> K_CORNERS { { { K_X, K_Y, K_Z },
+                                                     { K_X, K_Y + support->m_step_height, K_Z },
+                                                     { K_X, K_Y, K_Z_END },
+                                                     { K_X, K_Y + support->m_step_height, K_Z_END } } };
+            std::array<std::array<std::size_t, 3uz>, 2uz> corner_ids {};
+            const auto K_TRANSFORM = scene_world_from_chunk(source, chunk);
+            for (std::size_t side { 0uz }; side < 2uz; ++side) {
+                const auto K_INDEX = integer(indices.at(side));
+                if (K_INDEX >= chunk.m_mesh->m_triangles.size() ||
+                    !seen.emplace(K_ID, K_INDEX).second) {
+                    throw std::runtime_error("Invalid/duplicate synthetic step riser triangle");
+                }
+                std::array<Vec3d, 3uz> points {};
+                for (std::size_t corner { 0uz }; corner < 3uz; ++corner) {
+                    const auto K_VERTEX =
+                        chunk.m_mesh->m_triangles.at(static_cast<std::size_t>(K_INDEX))[corner];
+                    const auto& p = chunk.m_mesh->m_vertices.at(K_VERTEX).m_position;
+                    points[corner] = transform_point(K_TRANSFORM, { p[0uz], p[1uz], p[2uz] });
+                    const auto K_MATCH = std::find_if(
+                        K_CORNERS.begin(), K_CORNERS.end(), [&](const Vec3d& expected) {
+                            return points[corner].m_x == expected.m_x &&
+                                   points[corner].m_y == expected.m_y &&
+                                   points[corner].m_z == expected.m_z;
+                        });
+                    if (K_MATCH == K_CORNERS.end()) {
+                        throw std::runtime_error("Synthetic step riser leaves selected edge");
+                    }
+                    corner_ids[side][corner] =
+                        static_cast<std::size_t>(K_MATCH - K_CORNERS.begin());
+                }
+                auto unique = corner_ids[side];
+                std::sort(unique.begin(), unique.end());
+                if (unique[0uz] == unique[1uz] || unique[1uz] == unique[2uz] ||
+                    dot(cross(points[1uz] - points[0uz], points[2uz] - points[0uz]), { -1, 0, 0 }) <=
+                        0) {
+                    throw std::runtime_error("Synthetic step riser winding is invalid");
+                }
+                support->m_riser_triangles.push_back(
+                    { K_ID, chunk.m_generation, chunk.m_pose_revision, K_CHUNK_HASH, K_INDEX });
+            }
+            std::size_t shared_count {};
+            std::size_t shared_sum {};
+            for (const auto K_CORNER : corner_ids[0uz]) {
+                if (std::find(corner_ids[1uz].begin(), corner_ids[1uz].end(), K_CORNER) !=
+                    corner_ids[1uz].end()) {
+                    ++shared_count;
+                    shared_sum += K_CORNER;
+                }
+            }
+            if (shared_count != 2uz || shared_sum != 3uz) {
+                throw std::runtime_error("Synthetic step riser triangles leave a gap");
+            }
+        }
         const auto K_NX = support->m_dimensions[0uz], K_NZ = support->m_dimensions[2uz];
         const bool K_WALKABLE { dot(support->m_floor_gradient, support->m_floor_gradient) <= 1 };
         support->m_floors.assign(K_NX * K_NZ, 0);
@@ -438,13 +556,40 @@ admit_collision_support(const SceneState& source,
                     continue;
                 }
                 const auto K_X = static_cast<std::int64_t>(x), K_Z = static_cast<std::int64_t>(z);
-                for (const auto& triangle : triangles) {
-                    if (inside(triangle, { K_X, K_Z }) && inside(triangle, { K_X + 1, K_Z }) &&
-                        inside(triangle, { K_X, K_Z + 1 }) && inside(triangle, { K_X + 1, K_Z + 1 })) {
+                for (const auto& [K_TRIANGLE, K_HEIGHT] : triangles) {
+                    if (K_V4 &&
+                        K_HEIGHT != support->floor_height(
+                                        { support->m_origin.m_x +
+                                             (static_cast<double>(x) + .5) * support->m_cell_size,
+                                         0,
+                                         support->m_origin.m_z + (static_cast<double>(z) + .5) *
+                                                                     support->m_cell_size })) {
+                        continue;
+                    }
+                    if (inside(K_TRIANGLE, { K_X, K_Z }) && inside(K_TRIANGLE, { K_X + 1, K_Z }) &&
+                        inside(K_TRIANGLE, { K_X, K_Z + 1 }) &&
+                        inside(K_TRIANGLE, { K_X + 1, K_Z + 1 })) {
                         support->m_floors[x + K_NX * z] = 1;
                         break;
                     }
                 }
+            }
+        }
+        if (K_V4) {
+            bool lower {}, upper {}, paired_landing {};
+            for (std::size_t z { 0uz }; z < K_NZ; ++z) {
+                for (std::size_t x { 0uz }; x < K_NX; ++x) {
+                    if (support->m_floors[x + K_NX * z]) {
+                        (x < support->m_step_boundary_cell ? lower : upper) = true;
+                    }
+                }
+                paired_landing =
+                    paired_landing ||
+                    (support->m_floors[support->m_step_boundary_cell - 1uz + K_NX * z] &&
+                     support->m_floors[support->m_step_boundary_cell + K_NX * z]);
+            }
+            if (!lower || !upper || !paired_landing) {
+                throw std::runtime_error("Synthetic step lacks paired selected landing support");
             }
         }
         return std::shared_ptr<const CollisionSupport> { std::move(support) };
@@ -489,6 +634,11 @@ Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
         !std::isfinite(sweep.m_radius) || !std::isfinite(sweep.m_height) || sweep.m_radius <= 0 ||
         sweep.m_height <= 0 || sweep.m_radius > sweep.m_height / 2) {
         return fail(ErrorCode::INVALID_ARGUMENT, "Invalid diagnostic capsule dimensions or sweep");
+    }
+    if (support.m_format_version == 4U) {
+        // The V4 source proof only admits selected geometry. A straight feet
+        // segment cannot certify the vertical lift around a step riser.
+        return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
     }
     const bool K_V3 { support.m_format_version == 3U };
     double lower_height {}, upper_height { sweep.m_height };

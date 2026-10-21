@@ -360,16 +360,23 @@ focus/dialog pauses and terminal correction/stop pass. V1/V2 fixture and
 inspection bytes remain identical. Measured walking stays disabled; steps and
 transitions between planes are outside the current profile.
 
-Next, specify bounded piecewise floor/step admission starting from
-`src/scene_store/collision_support.cpp`. Prove source-bound risers, landing support
-and full capsule clearance through each transition; never generate occupancy
-faces or use observed-depth front labels as clearance. Add actual 0.30 step-height
-and just-above-boundary fixtures, ascent/descent, mixed-slope transitions and
-corner blocking, then exercise the same shared CLI/native session. Recheck plan
-§§4.8/5.1 and the [inclined support](protocols/collision_ramps.md),
+[Selected step admission](validation/2026-10-21-collision-step-admission.md) now
+adds a bounded V4 synthetic geometry profile: two exact source-bound floor
+levels, one positive-X riser, paired landing support and a separate canonical
+cook. The 0.30 boundary and just-above case are checked at source admission.
+The V4 clearance probe deliberately blocks even static spawn: step movement,
+mixed slopes and shared-session validation remain unimplemented. V1–V3 and all
+real-scene rejection rules remain. No real geometry or walking gate advances.
+
+Next, extend [V4 step admission](protocols/collision_steps.md) with an explicit
+full-capsule transition path: lift before the riser, horizontal crossing and
+supported descent, with each swept envelope checked against source-bound floors,
+occupied and unknown cells. Add 0.30 ascent/descent, just-above rejection,
+mixed-slope transitions and corners to the shared CLI/native session. Do not
+enable V4 controller spawn until those checks and a native replay pass. Review
+plan §§4.8/5.1 and the [inclined support](protocols/collision_ramps.md),
 [session](protocols/capsule_session.md) and
-[controller](protocols/kinematic_capsule.md) contracts. Preserve V1–V3 bytes and
-real-scene rejection; Jolt stays private to `collision`. The dated M3 local exit
+[controller](protocols/kinematic_capsule.md) contracts. The dated M3 local exit
 review follows that validation before A0.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
 clearance. `sample_1` has no independent distance/up reference: ADR 020 permits

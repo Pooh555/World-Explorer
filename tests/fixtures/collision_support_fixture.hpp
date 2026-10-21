@@ -15,7 +15,8 @@ inline SceneState collision_source(bool with_wall = false,
                                    bool duplicate_wall = false,
                                    std::string_view wall_face = "NEG_X",
                                    float rise_x = 0,
-                                   float rise_z = 0) {
+                                   float rise_z = 0,
+                                   float step_height = 0) {
     SceneState source;
     source.m_id = { 39 };
     source.m_epoch = { 7 };
@@ -33,6 +34,36 @@ inline SceneState collision_source(bool with_wall = false,
                                 { { 8, 0, 8 }, { 0, 1, 0 } } },
                                { { 0, 2, 1 }, { 1, 2, 3 } },
                                {} };
+    if (step_height > 0) {
+        chunk->m_bounds.m_maximum.m_x = 4;
+        chunk->m_mesh->m_vertices[1uz].m_position[0uz] = 4;
+        chunk->m_mesh->m_vertices[3uz].m_position[0uz] = 4;
+        auto landing = std::make_shared<SceneChunk>();
+        landing->m_id = { 9007199254740995ULL };
+        landing->m_pose_revision = { 4 };
+        landing->m_geometry_valid = true;
+        landing->m_bounds = { { 4, step_height, 0 }, { 8, step_height, 8 } };
+        landing->m_mesh = SceneMesh { { { { 4, step_height, 0 }, { 0, 1, 0 } },
+                                      { { 8, step_height, 0 }, { 0, 1, 0 } },
+                                      { { 4, step_height, 8 }, { 0, 1, 0 } },
+                                      { { 8, step_height, 8 }, { 0, 1, 0 } } },
+                                     { { 0, 2, 1 }, { 1, 2, 3 } },
+                                     {} };
+        source.m_chunks.emplace(landing->m_id, landing);
+        auto riser = std::make_shared<SceneChunk>();
+        riser->m_id = { 9007199254740996ULL };
+        riser->m_pose_revision = { 4 };
+        riser->m_geometry_valid = true;
+        riser->m_bounds = { { 4, 0, 0 }, { 4, step_height, 8 } };
+        riser->m_mesh = SceneMesh { { { { 4, 0, 0 }, { -1, 0, 0 } },
+                                    { { 4, step_height, 0 }, { -1, 0, 0 } },
+                                    { { 4, 0, 8 }, { -1, 0, 0 } },
+                                    { { 4, step_height, 8 }, { -1, 0, 0 } } },
+                                   { { 0, 2, 1 }, { 1, 2, 3 } },
+                                   {} };
+        source.m_chunks.emplace(riser->m_id, riser);
+        source.m_provenance["fixture"] = "selected_step_collision_v4";
+    }
     source.m_chunks.emplace(chunk->m_id, chunk);
     if (with_wall) {
         auto wall = std::make_shared<SceneChunk>();
@@ -128,8 +159,9 @@ inline SceneState collision_source(bool with_wall = false,
          { { "a", K_ANCHOR({ 1, 0, 0 }) },
           { "b", K_ANCHOR({ 0, 0, 1 }) },
           { "metres",
-           rise_x == 0 ? nlohmann::json(8)
-                       : nlohmann::json(std::hypot(8.0, static_cast<double>(8.F * rise_x), 0.0)) },
+           step_height > 0 ? nlohmann::json(4)
+           : rise_x == 0 ? nlohmann::json(8)
+                         : nlohmann::json(std::hypot(8.0, static_cast<double>(8.F * rise_x), 0.0)) },
           { "uncertainty_metres", 0 },
           { "method", "SYNTHETIC" },
           { "record", "Analytic synthetic length; no physical measurement" } } },
@@ -205,6 +237,33 @@ inline nlohmann::json collision_ramp_document(const SceneState& source,
     if (!with_wall) {
         document["walls"] = nlohmann::json::array();
     }
+    return document;
+}
+
+inline nlohmann::json collision_step_document(const SceneState& source, double height) {
+    auto document = collision_document(source);
+    document["schema"] = "SYNTHETIC_COLLISION_SUPPORT_V4";
+    document["walls"] = nlohmann::json::array();
+    const auto K_LANDING = source.m_chunks.find(ChunkId { 9007199254740995ULL });
+    const auto K_RISER = source.m_chunks.find(ChunkId { 9007199254740996ULL });
+    if (K_LANDING == source.m_chunks.end() || K_RISER == source.m_chunks.end()) {
+        throw std::runtime_error("Expected synthetic step chunks");
+    }
+    const auto& landing = *K_LANDING->second;
+    const auto& riser = *K_RISER->second;
+    document["floors"].push_back({ { "chunk_id", landing.m_id.m_value },
+                                  { "generation", landing.m_generation },
+                                  { "pose_revision", landing.m_pose_revision.m_value },
+                                  { "chunk_sha256", scene_chunk_content_hash(landing) },
+                                  { "triangles", { 0U, 1U } } });
+    document["step"] = { { "boundary_x", 4U },
+                        { "height", height },
+                        { "riser",
+                         { { "chunk_id", riser.m_id.m_value },
+                          { "generation", riser.m_generation },
+                          { "pose_revision", riser.m_pose_revision.m_value },
+                          { "chunk_sha256", scene_chunk_content_hash(riser) },
+                          { "triangles", { 0U, 1U } } } } };
     return document;
 }
 
