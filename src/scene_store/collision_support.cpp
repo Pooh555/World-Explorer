@@ -998,6 +998,41 @@ Result<StepTransitionCertificate> certify_step_transition(const CollisionSupport
     return StepTransitionCertificate { result, K_PATH };
 }
 
+Result<std::optional<CapsuleSweep>> select_step_transition(const CollisionSupport& support,
+                                                           const SceneState& source,
+                                                           const CapsuleSweep& intent,
+                                                           const std::stop_token& stop) {
+    const auto K_VALID = support.validate_source(source, stop);
+    if (!K_VALID) {
+        return std::unexpected(K_VALID.error());
+    }
+    if (support.m_format_version != 4U || !finite(intent.m_start_feet) ||
+        !finite(intent.m_end_feet) || !std::isfinite(intent.m_radius) ||
+        !std::isfinite(intent.m_height) || intent.m_radius <= 0 ||
+        intent.m_height < 2 * intent.m_radius ||
+        intent.m_start_feet.m_y != support.floor_height(intent.m_start_feet) ||
+        intent.m_end_feet.m_y != intent.m_start_feet.m_y) {
+        return fail(ErrorCode::INVALID_ARGUMENT, "Invalid synthetic step landing intent");
+    }
+    constexpr double K_GAP { .01 };
+    const double K_LEFT { support.m_step_boundary_x - intent.m_radius - K_GAP };
+    const double K_RIGHT { support.m_step_boundary_x + intent.m_radius + K_GAP };
+    const bool K_UP { intent.m_start_feet.m_x <= K_LEFT && intent.m_end_feet.m_x >= K_LEFT &&
+                     intent.m_end_feet.m_x > intent.m_start_feet.m_x };
+    const bool K_DOWN { intent.m_start_feet.m_x >= K_RIGHT && intent.m_end_feet.m_x <= K_RIGHT &&
+                       intent.m_end_feet.m_x < intent.m_start_feet.m_x };
+    if (!K_UP && !K_DOWN) {
+        return std::optional<CapsuleSweep> {};
+    }
+    return std::optional<CapsuleSweep> {
+        CapsuleSweep { intent.m_start_feet,
+                      { K_UP ? K_RIGHT : K_LEFT,
+                       support.m_origin.m_y + (K_UP ? support.m_step_height : 0),
+                       intent.m_start_feet.m_z },
+                      intent.m_radius,
+                      intent.m_height } };
+}
+
 Result<ClearanceProbe> probe_step_motion(const CollisionSupport& support,
                                          const SceneState& source,
                                          const CapsuleSweep& sweep,

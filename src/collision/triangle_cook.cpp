@@ -258,4 +258,13 @@ Result<StepTransitionCertificate> CanonicalCollisionMesh::certify_transition(
     return certify_step_transition(*m_support, current, sweep, stop);
 }
 
+Result<std::optional<CapsuleSweep>> CanonicalCollisionMesh::select_transition(
+    const SceneState& current, const CapsuleSweep& intent, const std::stop_token& stop) const {
+    const auto K_VALID = validate_source(current, stop);
+    if (!K_VALID) {
+        return std::unexpected(K_VALID.error());
+    }
+    return select_step_transition(*m_support, current, intent, stop);
+}
+
 }  // namespace world_explorer

@@ -255,7 +255,7 @@ TEST_CASE("synthetic step certificate checks both full-capsule routes", "[collis
     REQUIRE(K_SHAPE);
     const auto K_CONTROLLER =
         SyntheticCapsuleController::create(*K_SHAPE, K_SOURCE, { .25, 1.7 }, K_ASCENT.m_start_feet);
-    CHECK(!K_CONTROLLER);
+    CHECK(K_CONTROLLER);
     const auto K_UPPER_LANDING = probe_collision_support(
         **K_SUPPORT, K_SOURCE, { { 5.4, K_HEIGHT, 3.5 }, { 5.5, K_HEIGHT, 3.5 }, .25, 1.7 });
     REQUIRE(K_UPPER_LANDING);
@@ -516,6 +516,137 @@ TEST_CASE("step path ownership requires a complete current certificate", "[colli
     CHECK((*K_COOK)->validate_source(K_SOURCE));
 }
 
+TEST_CASE("step controllers retain certified phases across clock boundaries", "[collision-step]") {
+    using namespace std::chrono_literals;
+    const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+    const auto K_SOURCE =
+        std::make_shared<const SceneState>(collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT));
+    const auto K_TEXT = collision_step_document(*K_SOURCE, K_HEIGHT, true).dump();
+    const auto K_SUPPORT = admit_collision_support(*K_SOURCE, K_TEXT, collision_digest(K_TEXT));
+    REQUIRE(K_SUPPORT);
+    const auto K_COOK = cook_synthetic_collision(K_SOURCE, *K_SUPPORT);
+    REQUIRE(K_COOK);
+    const auto K_SHAPE = build_jolt_static_collision(*K_COOK, *K_SOURCE);
+    REQUIRE(K_SHAPE);
+    for (const double K_SPEED : { .3, 3., 10. }) {
+        for (const bool K_DESCEND : { false, true }) {
+            const Vec3d K_SPAWN { K_DESCEND ? 4.6 : 3.4, K_DESCEND ? K_HEIGHT : 0, 3.5 };
+            auto controller =
+                SyntheticCapsuleController::create(*K_SHAPE, *K_SOURCE, { .25, 1.7 }, K_SPAWN);
+            REQUIRE(controller);
+            bool crossed {};
+            for (std::size_t tick { 0uz }; tick < 1000uz && !crossed; ++tick) {
+                const auto K_BEFORE = (*controller)->state();
+                const auto K_NEXT =
+                    (*controller)
+                        ->advance(*K_SOURCE, { K_DESCEND ? -K_SPEED : K_SPEED, 0, 0 }, 8333334ns);
+                REQUIRE(K_NEXT);
+                CHECK(K_NEXT->m_steps == 1U);
+                CHECK(K_NEXT->m_clearance == ClearanceState::CLEAR_DIAGNOSTIC);
+                const CapsuleSweep K_SWEEP { K_BEFORE.m_feet, K_NEXT->m_state.m_feet, .25, 1.7 };
+                const auto K_DELTA = K_SWEEP.m_end_feet - K_SWEEP.m_start_feet;
+                CHECK(std::sqrt(dot(K_DELTA, K_DELTA)) <= K_SPEED / 120 + 1e-5);
+                CHECK(minimum_corner_distance_squared(K_SWEEP, K_HEIGHT) >= .25 * .25);
+                crossed = K_DESCEND
+                              ? K_SWEEP.m_end_feet.m_x < 3.75 && K_SWEEP.m_end_feet.m_y == 0
+                              : K_SWEEP.m_end_feet.m_x > 4.25 && K_SWEEP.m_end_feet.m_y == K_HEIGHT;
+            }
+            CHECK(crossed);
+        }
+    }
+    auto controller =
+        SyntheticCapsuleController::create(*K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.74, 0, 3.5 });
+    REQUIRE(controller);
+    const auto K_NEAR = (*controller)->advance(*K_SOURCE, { 3, 0, 0 }, 8333333ns);
+    REQUIRE(K_NEAR);
+    CHECK(K_NEAR->m_steps == 0U);
+    const auto K_LIFT = (*controller)->advance(*K_SOURCE, { 3, 0, 0 }, 1ns);
+    REQUIRE(K_LIFT);
+    CHECK(K_LIFT->m_steps == 1U);
+    REQUIRE(K_LIFT->m_state.m_feet.m_y > 0);
+    const auto K_PAUSE = (*controller)->advance(*K_SOURCE, {}, 1s);
+    REQUIRE(K_PAUSE);
+    CHECK(K_PAUSE->m_steps == 8U);
+    CHECK(K_PAUSE->m_dropped_ticks == 112U);
+    CHECK(K_PAUSE->m_state.m_feet == K_LIFT->m_state.m_feet);
+    const auto K_NO_DEBT = (*controller)->advance(*K_SOURCE, { 3, 0, 0 }, 0ns);
+    REQUIRE(K_NO_DEBT);
+    CHECK(K_NO_DEBT->m_steps == 0U);
+    const auto K_BEFORE = (*controller)->state();
+    std::stop_source stop;
+    stop.request_stop();
+    CHECK(!(*controller)->advance(*K_SOURCE, { 3, 0, 0 }, 8333333ns, stop.get_token()));
+    auto corrected = *K_SOURCE;
+    ++corrected.m_revision.m_value;
+    CHECK(!(*controller)->advance(corrected, {}, 0ns));
+    CHECK(!(*controller)->advance(*K_SOURCE, { 11, 0, 0 }, 8333333ns));
+    CHECK((*controller)->state().m_feet == K_BEFORE.m_feet);
+    CHECK((*controller)->state().m_simulated_ticks == K_BEFORE.m_simulated_ticks);
+    const auto K_SIDEWAYS = (*controller)->advance(*K_SOURCE, { 0, 0, 3 }, 8333333ns);
+    REQUIRE(K_SIDEWAYS);
+    CHECK(K_SIDEWAYS->m_state.m_feet == K_BEFORE.m_feet);
+    const auto K_REVERSE = (*controller)->advance(*K_SOURCE, { -3, 0, 0 }, 8333333ns);
+    REQUIRE(K_REVERSE);
+    CHECK(K_REVERSE->m_state.m_feet.m_y == 0);
+    const auto K_RESUME = (*controller)->advance(*K_SOURCE, { 3, 0, 0 }, 8333334ns);
+    REQUIRE(K_RESUME);
+    CHECK(K_RESUME->m_state.m_feet.m_y > 0);
+
+    auto batched =
+        SyntheticCapsuleController::create(*K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.74, 0, 3.5 });
+    auto single =
+        SyntheticCapsuleController::create(*K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.74, 0, 3.5 });
+    REQUIRE(batched);
+    REQUIRE(single);
+    for (std::size_t tick { 0uz }; tick < 10uz; ++tick) {
+        REQUIRE((*batched)->advance(*K_SOURCE, { 3, 0, 0 }, 8333334ns));
+        REQUIRE((*single)->advance(*K_SOURCE, { 3, 0, 0 }, 8333334ns));
+    }
+    const auto K_BATCH = (*batched)->advance(*K_SOURCE, { 3, 0, 0 }, 1s);
+    REQUIRE(K_BATCH);
+    CHECK(K_BATCH->m_steps == 8U);
+    CHECK(K_BATCH->m_dropped_ticks == 112U);
+    for (std::size_t tick { 0uz }; tick < 8uz; ++tick) {
+        REQUIRE((*single)->advance(*K_SOURCE, { 3, 0, 0 }, 8333334ns));
+    }
+    CHECK((*single)->state().m_feet == K_BATCH->m_state.m_feet);
+    CHECK((*single)->state().m_simulated_ticks == K_BATCH->m_state.m_simulated_ticks);
+    CHECK(K_BATCH->m_state.m_feet.m_y == K_HEIGHT);
+}
+
+TEST_CASE("step controllers block unknown corners short spawns and mixed floors",
+          "[collision-step]") {
+    using namespace std::chrono_literals;
+    const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+    const auto K_SOURCE =
+        std::make_shared<const SceneState>(collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT));
+    for (const char K_LABEL : { '?', '#' }) {
+        auto document = collision_step_document(*K_SOURCE, K_HEIGHT, true);
+        document["grid"]["states"].get_ref<std::string&>()[4uz + 8uz * (1uz + 4uz * 4uz)] = K_LABEL;
+        const auto K_TEXT = document.dump();
+        const auto K_SUPPORT = admit_collision_support(*K_SOURCE, K_TEXT, collision_digest(K_TEXT));
+        REQUIRE(K_SUPPORT);
+        const auto K_COOK = cook_synthetic_collision(K_SOURCE, *K_SUPPORT);
+        REQUIRE(K_COOK);
+        const auto K_SHAPE = build_jolt_static_collision(*K_COOK, *K_SOURCE);
+        REQUIRE(K_SHAPE);
+        auto controller =
+            SyntheticCapsuleController::create(*K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.74, 0, 3.85 });
+        REQUIRE(controller);
+        const auto K_BLOCK = (*controller)->advance(*K_SOURCE, { 3, 0, 1 }, 1s);
+        REQUIRE(K_BLOCK);
+        CHECK(K_BLOCK->m_state.m_feet == Vec3d { 3.74, 0, 3.85 });
+        CHECK(K_BLOCK->m_steps == 8U);
+        CHECK(K_BLOCK->m_dropped_ticks == 112U);
+        CHECK(K_BLOCK->m_clearance ==
+              (K_LABEL == '?' ? ClearanceState::UNKNOWN : ClearanceState::OCCUPIED));
+        CHECK(!SyntheticCapsuleController::create(*K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.8, 0, 3.5 }));
+    }
+    const auto K_MIXED = collision_source(false, false, "NEG_X", .1F, 0, K_HEIGHT);
+    const auto K_MIXED_TEXT = collision_step_document(K_MIXED, K_HEIGHT, true).dump();
+    CHECK(!admit_collision_support(K_MIXED, K_MIXED_TEXT, collision_digest(K_MIXED_TEXT)));
+}
+
 TEST_CASE("synthetic step rejects over-height and source-gap mutations", "[collision-step]") {
     const float K_HEIGHT { std::nextafter(.3F, 0.F) };
     const auto K_SOURCE = collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT);
@@ -616,7 +747,7 @@ TEST_CASE("bounded Jolt step proposals retain rejection and respect tick travel"
     CHECK(K_DOWN->back().m_raw_feet.m_x < 3.5);
     CHECK(K_DOWN->back().m_raw_feet.m_y == Catch::Approx(0).margin(.002));
     CHECK(scene_content_hash(*K_SOURCE) == K_HASH);
-    CHECK(!SyntheticCapsuleController::create(*K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.4, 0, 3.5 }));
+    CHECK(SyntheticCapsuleController::create(*K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.4, 0, 3.5 }));
 
     auto corrected = *K_SOURCE;
     ++corrected.m_revision.m_value;

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <numbers>
 #include <utility>
 
 using namespace world_explorer;
@@ -279,19 +280,22 @@ int main(int argc, char** argv) {
              std::string_view(argv[2]) != "--ramp-steep" && std::string_view(argv[2]) != "--step" &&
              std::string_view(argv[2]) != "--step-clearance" &&
              std::string_view(argv[2]) != "--step-proposals" &&
-             std::string_view(argv[2]) != "--step-motion")) {
+             std::string_view(argv[2]) != "--step-motion" &&
+             std::string_view(argv[2]) != "--step-session")) {
             std::cerr << "Usage: we_collision_fixture NEW_DIRECTORY "
                          "[--walls|--capsule|--ramp|--ramp-45|--ramp-steep|--step|--step-clearance|"
-                         "--step-proposals|--step-motion]"
+                         "--step-proposals|--step-motion|--step-session]"
                          " (synthetic "
                          "only)\n";
             return 2;
         }
         const bool K_STEP_MOTION { argc == 3 && std::string_view(argv[2]) == "--step-motion" };
+        const bool K_STEP_SESSION { argc == 3 && std::string_view(argv[2]) == "--step-session" };
         const bool K_STEP_PROPOSALS {
             K_STEP_MOTION || (argc == 3 && std::string_view(argv[2]) == "--step-proposals") };
         const bool K_STEP_CLEARANCE {
-            K_STEP_PROPOSALS || (argc == 3 && std::string_view(argv[2]) == "--step-clearance") };
+            K_STEP_PROPOSALS || K_STEP_SESSION ||
+            (argc == 3 && std::string_view(argv[2]) == "--step-clearance") };
         const bool K_STEP { K_STEP_CLEARANCE ||
                            (argc == 3 && std::string_view(argv[2]) == "--step") };
         const bool K_WITH_WALL = argc == 3 && !K_STEP;
@@ -353,6 +357,46 @@ int main(int argc, char** argv) {
                                        K_PROBE({ 1.5, 0, 1.5 }, { 4.5, 0, 1.5 }),
                                        K_PROBE({ 1.5, 0, 4.5 }, { 1.5, 0, 4.5 }),
                                        K_PROBE({ 3.5, 0, 4.5 }, { 3.5, 0, 4.5 }) }) } });
+        if (K_STEP_SESSION) {
+            const std::array<std::string_view, 5uz> K_NAMES {
+                "up", "down", "slow", "short", "corner" };
+            for (std::size_t route { 0uz }; route < K_NAMES.size(); ++route) {
+                const bool K_DOWN { route == 1uz };
+                const bool K_CORNER { route == 4uz };
+                auto selected_support = std::string("support.json");
+                auto support_hash = *K_SUPPORT_HASH;
+                if (K_CORNER) {
+                    auto blocked = document;
+                    blocked["grid"]["states"]
+                        .get_ref<std::string&>()[4uz + 8uz * (1uz + 4uz * 4uz)] = '#';
+                    write(K_OUTPUT / "corner-support.json", blocked);
+                    selected_support = "corner-support.json";
+                    const auto K_HASH = sha256_file(K_OUTPUT / selected_support, 1024uz * 1024uz);
+                    if (!K_HASH) {
+                        throw std::runtime_error("Could not hash corner support");
+                    }
+                    support_hash = *K_HASH;
+                }
+                write(K_OUTPUT / ("session-" + std::string(K_NAMES[route]) + ".json"),
+                      { { "kind", "SYNTHETIC_CAPSULE_SESSION_V1" },
+                       { "source_bundle", "source.wexplore" },
+                       { "source_manifest_sha256", *K_SOURCE_HASH },
+                       { "support", selected_support },
+                       { "support_sha256", support_hash },
+                       { "capsule",
+                        { { "feet",
+                          { K_DOWN         ? 4.6
+                           : route == 3uz ? 3.8
+                                          : 3.4,
+                           K_DOWN ? K_STEP_HEIGHT : 0,
+                           K_CORNER ? 3.85 : 3.5 } },
+                         { "radius", .25 },
+                         { "height", 1.7 },
+                         { "eye_height", 1.6 },
+                         { "speed", route == 2uz ? .3 : 3 },
+                         { "yaw_radians", K_DOWN ? -std::numbers::pi / 2 : std::numbers::pi / 2 } } } });
+            }
+        }
         if (K_RAMP) {
             const std::array<std::string_view, 3uz> K_NAMES { "wall", "unknown", "unsupported" };
             const std::array<Vec3d, 3uz> K_STARTS { { { 2.5, 0, 1.3 }, { 1.5, 0, 3.5 }, { 2.5, 0, 3.5 } } };

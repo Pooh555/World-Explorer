@@ -25,12 +25,16 @@ struct SessionFixture {
     nlohmann::json m_document;
     std::size_t m_requests {};
 
-    SessionFixture() {
+    explicit SessionFixture(bool step = false) {
         std::filesystem::create_directory(m_path);
-        const auto K_SOURCE = std::make_shared<const SceneState>(collision_source(true));
+        const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+        const auto K_SOURCE = std::make_shared<const SceneState>(
+            step ? collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT)
+                 : collision_source(true));
         const auto K_WRITTEN = write_bundle(m_path / "source.wexplore", K_SOURCE);
         REQUIRE(K_WRITTEN);
-        auto support = collision_wall_document(*K_SOURCE);
+        auto support = step ? collision_step_document(*K_SOURCE, K_HEIGHT, true)
+                            : collision_wall_document(*K_SOURCE);
         auto& cells = support["grid"]["states"].get_ref<std::string&>();
         for (std::size_t y { 0uz }; y < 4uz; ++y) {
             cells[1uz + 8uz * (y + 4uz * 4uz)] = '?';
@@ -94,6 +98,54 @@ void same_pose(const CapsuleSessionFrame& before, const CapsuleSessionFrame& aft
 }
 
 }  // namespace
+
+TEST_CASE("shared step sessions cross both landings and retain airborne pause state",
+          "[capsule-session]") {
+    const double K_SPEED { GENERATE(.3, 3.) };
+    const bool K_DOWN { GENERATE(false, true) };
+    const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+    SessionFixture fixture { true };
+    fixture.m_document["capsule"]["feet"] =
+        nlohmann::json::array({ K_DOWN ? 4.6 : 3.4, K_DOWN ? K_HEIGHT : 0, 3.5 });
+    fixture.m_document["capsule"]["speed"] = K_SPEED;
+    fixture.m_document["capsule"]["yaw_radians"] =
+        K_DOWN ? -std::numbers::pi / 2 : std::numbers::pi / 2;
+    auto session = fixture.open();
+    REQUIRE(session);
+    const auto K_SOURCE = (*session)->source();
+    bool crossed {}, paused {};
+    for (std::size_t frame { 0uz }; frame < 600uz && !crossed; ++frame) {
+        const auto K_FRAME = (*session)->advance(*K_SOURCE, forward_input(), 10ms);
+        REQUIRE(K_FRAME);
+        CHECK(K_FRAME->m_clearance == ClearanceState::CLEAR_DIAGNOSTIC);
+        CHECK(K_FRAME->m_camera.m_position.m_y == K_FRAME->m_feet.m_y + 1.6);
+        if (!paused && K_FRAME->m_feet.m_y > .05 && K_FRAME->m_feet.m_y < .25) {
+            auto input = forward_input();
+            input.m_focused = false;
+            const auto K_FOCUS = (*session)->advance(*K_SOURCE, input, 1s);
+            REQUIRE(K_FOCUS);
+            same_pose(*K_FRAME, *K_FOCUS);
+            input.m_focused = true;
+            input.m_text_input = true;
+            const auto K_DIALOG = (*session)->advance(*K_SOURCE, input, 1s);
+            REQUIRE(K_DIALOG);
+            same_pose(*K_FRAME, *K_DIALOG);
+            paused = true;
+        }
+        crossed = K_DOWN ? K_FRAME->m_feet.m_x < 3.75 && K_FRAME->m_feet.m_y == 0
+                         : K_FRAME->m_feet.m_x > 4.25 && K_FRAME->m_feet.m_y == K_HEIGHT;
+    }
+    CHECK(paused);
+    CHECK(crossed);
+    CHECK(walking_block_reason(*K_SOURCE) == WalkingBlockReason::SYNTHETIC_DIAGNOSTIC);
+    auto corrected = *K_SOURCE;
+    ++corrected.m_revision.m_value;
+    const auto K_BEFORE = (*session)->frame();
+    CHECK(!(*session)->advance(corrected, forward_input(), 0ns));
+    CHECK((*session)->frame().m_status == CapsuleSessionStatus::INVALIDATED);
+    same_pose(K_BEFORE, (*session)->frame());
+    CHECK(!(*session)->advance(*K_SOURCE, forward_input(), 10ms));
+}
 
 TEST_CASE("application capsule admits pinned bytes and drives a bounded horizontal camera",
           "[capsule-session]") {
@@ -257,7 +309,7 @@ TEST_CASE("application capsule validates strict JSON pins and frame input transa
     std::stop_source cancelled;
     cancelled.request_stop();
     REQUIRE(!(SyntheticCapsuleSession::open(K_PATH, K_HASH, cancelled.get_token())));
-    const auto [K_DUPLICATE, K_DUPLICATE_HASH] = fixture.request("{\"kind\":0,\"kind\":1}");
+    const auto [K_DUPLICATE, K_DUPLICATE_HASH] = fixture.request("{ \"kind\":0,\"kind\":1 }");
     REQUIRE(!(SyntheticCapsuleSession::open(K_DUPLICATE, K_DUPLICATE_HASH)));
     auto session = fixture.open();
     REQUIRE(session);

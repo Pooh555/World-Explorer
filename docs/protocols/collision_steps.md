@@ -51,10 +51,8 @@ departure on the destination landing. Zero-length segments are checked too.
 Each envelope uses the same floor, occupied and unknown checks. This path is
 an existence certificate for a bounded synthetic crossing; it is not a
 per-tick trajectory or proof that Jolt proposed the path. The controller
-explicitly rejects V4 creation until it can realize and check a continuous
-transition without skipping time, and shared CLI/native sessions therefore
-remain disabled for steps. Mixed-slope transitions and native step replay are
-still pending. The original `--step` fixture retains its bytes and geometry-only
+integration below follows its checked legs with retained phase and a bounded
+clock. Mixed-slope transitions remain unsupported. The original `--step` fixture retains its bytes and geometry-only
 behavior; `--step-clearance` writes an explicitly opted-in support document
 and inspection request against the same source bundle. Neither diagnostic is
 a walking trace. No measured collision or N2 result follows from these
@@ -129,9 +127,8 @@ clearance/cell counts, and includes an additional 10-unit/s ascent. It uses
 the same explicit 0.002 floor-contact normalization for query copies only.
 Markers now distinguish the new motion-probe result; the raw rows remain
 speculative, with false walking/measured flags. Previous fixture modes and
-their serialized outputs are retained. Endpoint support, descending/high-speed
-chords, safe slow-step continuation and actual shared-session movement still
-require their controller checks before V4 creation can be enabled.
+their serialized outputs are retained. The raw proposal trace remains independent of the certified controller path
+below; rejected proposal chords retain their original probe results.
 
 ## Owned transition cursor
 
@@ -164,8 +161,49 @@ An endpoint holds on continued input and can be retraced with opposite input.
 
 This cursor permits intermediate airborne poses only through the complete
 landing-to-landing certificate. Those poses need not pass the ordinary motion
-probe's endpoint-contact rule. It does not reclassify any rejected raw Jolt
-proposal, prove continuous grounding, run Jolt, schedule elapsed time, enable a
-V4 controller, or connect to the shared CLI/native session. Integrating it with
-the controller's speculative state, clock, Jolt proposals and pause/input
-policy remains required before V4 session creation can be accepted.
+probe's endpoint-contact rule. The cursor itself does not reclassify rejected
+raw Jolt proposals, prove continuous grounding, run Jolt or schedule elapsed time. The controller owns
+the elapsed-time integration below.
+
+## Controller integration
+
+`select_step_transition` and `CanonicalCollisionMesh::select_transition` propose
+an opposite landing when one tick's horizontal intent reaches the radius-plus-
+0.01 riser margin from a grounded point outside that margin. Selection validates
+the source and inputs but grants no clearance. The proposed destination is the
+opposite margin at its admitted floor height, with the starting Z coordinate.
+No route starts at an unsupported rounded-cap pose or uses raw Jolt corner
+proposals to infer a landing. The existing complete-path certificate must pass
+before an owned cursor starts. Occupied, unknown or unsupported certificates
+hold the last accepted point and consume scheduled time with their clearance
+reason, preserving the existing eight-tick cap and dropped-time behavior.
+
+V4 controller creation now uses the ordinary supported-spawn check; geometry-
+only legacy V4 and short unsupported spawns remain blocked. Away from a
+transition, Jolt proposes ordinary same-landing movement and the original probe
+checks it. During a crossing the cursor uses signed `velocity.x` along the
+selected path and holds Z; pure lateral or zero input holds phase. Reverse X
+retraces the same certified legs. Each tick bounds full 3D travel and cannot
+join different legs with a shortcut chord. Jolt position/contact state is
+synchronized to each accepted point and contact-budget overflow fails the call.
+These transition sweeps are owned by the geometric certificate, not inferred
+from Jolt's support flag. Stick-down is not applied to a retained lift/drop.
+
+A speculative copy retains the cursor, its initial point and direction across
+calls. Pose, ticks, fractional clock and cursor commit together. Failure or
+cancellation preserves all four; source changes fail even with zero elapsed
+time. Finishing or retracing to the original landing releases the certificate.
+Same-landing height normalization uses the last accepted tick, allowing movement
+after landing within one multi-tick call. A rendered frame may contain several
+certified ticks; its endpoint-to-endpoint chord is not a new sweep certificate.
+Single-plane V3 remains separate. Mixed inclined/step source geometry and
+arbitrary surface transitions remain unsupported.
+
+`we_collision_fixture NEW_DIRECTORY --step-session` retains the explicit
+step source/support/request and adds pinned `session-up.json`, `session-down.json`,
+`session-slow.json`, `session-short.json` and `session-corner.json`. The corner
+request uses a separate occupied upper-side cell ledger; the short spawn is
+intentionally unsupported. Use the ordinary `capsule-session` CLI and
+`--capsule-request` viewer paths. All outputs remain synthetic with false
+measured-collision/walking flags. These APIs do not admit real observed collision
+or advance Q5/N2.

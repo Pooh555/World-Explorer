@@ -101,6 +101,10 @@ class CanonicalCollisionMesh {
                                                          const CapsuleSweep& sweep,
                                                          const std::stop_token& stop = {}) const;
 
+    Result<std::optional<CapsuleSweep>> select_transition(const SceneState& current,
+                                                          const CapsuleSweep& intent,
+                                                          const std::stop_token& stop = {}) const;
+
   private:
     friend Result<std::shared_ptr<const CanonicalCollisionMesh>> cook_synthetic_collision(
         const SceneSnapshot&, std::shared_ptr<const CollisionSupport>, const std::stop_token&);

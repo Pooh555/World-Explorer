@@ -16,8 +16,8 @@ support; the old controller cannot advance against it. Inputs must be finite,
 horizontal, at most 10 units/s in magnitude, with elapsed nanoseconds in
 [0, 60 seconds]. Invalid input, stale context, allocation/backend failure or
 cancellation returns an error and preserves position, tick count and fractional
-clock. The immutable shape and source scene remain usable under their original
-context.
+clock and retained transition phase. The immutable shape and source scene remain
+usable under their original context.
 
 The clock accumulates integer nanoseconds multiplied by 120. Each 1,000,000,000
 accumulated units schedules one fixed 1/120-second Jolt update. At most eight
@@ -36,8 +36,8 @@ fails the whole call. No rigid-body simulation, worker pool or dynamic obstacles
 are introduced. The minimum forward stair distance is zero so its default
 0.02 displacement cannot exceed a fixed tick's requested travel.
 
-Only the final proposed straight movement segment becomes project state, after
-the existing conservative swept-envelope probe accepts it. Occupied, unknown,
+For ordinary plane movement, only the proposed straight segment becomes project
+state after the existing conservative swept-envelope probe accepts it. Occupied, unknown,
 out-of-grid and unsupported-floor envelopes block it even when no triangle was
 selected there. A blocked call returns its clearance reason and retains the
 last accepted tick position. V1/V2 remain flat:
@@ -45,10 +45,17 @@ proposed vertical displacement beyond 0.002 units is unsupported, while smaller
 floor-contact rounding is normalized to the admitted plane.
 [V3 inclined support](collision_ramps.md) supplies tangent vertical velocity,
 proves plane-relative clearance and normalizes bounded contact rounding to the
-capsule/plane contact height. The [V4 step contract](collision_steps.md) can
-certify a conservative lift/cross/descent path independently, but controller
-creation still rejects V4. The separate certified path cursor can retain and
-advance transition phase, but is not yet part of this controller or its clock.
+capsule/plane contact height. The [V4 step contract](collision_steps.md#controller-integration)
+uses retained complete-path ownership when horizontal intent reaches the riser
+margin. The cursor and fractional clock are copied into speculative call state
+and committed together with pose only after all error/cancellation checks.
+Each transition tick follows one certified leg and synchronizes Jolt position
+and contacts without applying stair/stick-down integration to airborne phases.
+X input controls signed path speed; lateral movement is held during a crossing.
+Total 3D travel is bounded by the X speed/120, including lift and descent.
+Reversal retraces the same certificate and releases it at the original landing;
+completion releases it at the opposite landing. Zero X input holds phase.
+Only explicitly opted-in V4 clearance and supported spawns can create owners.
 General floor transitions, stairs, real reconstruction and N2 qualification
 remain pending.
 The bounded [step proposal diagnostic](collision_steps.md) shares this private

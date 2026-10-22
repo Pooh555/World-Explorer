@@ -127,6 +127,10 @@ class CollisionSupport {
                                                     const SceneState&,
                                                     const CapsuleSweep&,
                                                     const std::stop_token&);
+    friend Result<std::optional<CapsuleSweep>> select_step_transition(const CollisionSupport&,
+                                                                      const SceneState&,
+                                                                      const CapsuleSweep&,
+                                                                      const std::stop_token&);
 
     SceneId m_scene;
     WorldEpoch m_epoch;
@@ -177,5 +181,11 @@ Result<ClearanceProbe> probe_step_motion(const CollisionSupport& support,
                                          const CapsuleSweep& sweep,
                                          const std::stop_token& stop = {});
 std::string_view clearance_label(ClearanceState state);
+// Selection proposes an opposite landing when horizontal intent reaches the
+// riser margin. It grants no clearance or movement permission.
+Result<std::optional<CapsuleSweep>> select_step_transition(const CollisionSupport& support,
+                                                           const SceneState& source,
+                                                           const CapsuleSweep& intent,
+                                                           const std::stop_token& stop = {});
 
 }  // namespace world_explorer

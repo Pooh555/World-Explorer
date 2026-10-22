@@ -74,6 +74,12 @@ class SyntheticCapsuleController {
     struct AdmissionToken { };
     struct Impl;
 
+    struct StepTraversal {
+        SyntheticStepTransition m_cursor;
+        Vec3d m_start;
+        double m_direction {};
+    };
+
   public:
     explicit SyntheticCapsuleController(AdmissionToken);
     ~SyntheticCapsuleController();
@@ -89,7 +95,7 @@ class SyntheticCapsuleController {
 
     SyntheticCapsuleState state() const;
 
-    // Bounded speculative Jolt replay, never an enabled V4 controller. Every
+    // Bounded speculative Jolt replay, independent of accepted movement. Every
     // raw proposal is retained even when the project clearance probes block it.
     static Result<std::vector<SyntheticStepProposal>>
     inspect_step_motion(std::shared_ptr<const JoltStaticCollision> shape,
@@ -109,18 +115,11 @@ class SyntheticCapsuleController {
                                             const std::stop_token& stop = {});
 
   private:
-    static Result<std::unique_ptr<SyntheticCapsuleController>>
-    create_impl(std::shared_ptr<const JoltStaticCollision> shape,
-                const SceneState& current,
-                SyntheticCapsuleSettings settings,
-                Vec3d feet,
-                bool step_diagnostic,
-                const std::stop_token& stop);
-
     std::shared_ptr<const JoltStaticCollision> m_shape;
     SyntheticCapsuleSettings m_settings;
     SyntheticCapsuleState m_state;
     std::uint64_t m_clock_units {};
+    std::optional<StepTraversal> m_transition;
     std::unique_ptr<Impl> m_impl;
 };
 

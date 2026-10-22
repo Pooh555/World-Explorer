@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-22 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-23 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: IN_PROGRESS.** No full Q/P/N/E
 gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
@@ -393,23 +393,30 @@ certified airborne intermediate poses. Pauses, reversal, cancellation and stale
 source checks preserve phase. This is a separate geometric diagnostic, not an
 active Jolt controller; V4 creation and shared sessions remain blocked.
 
-Next, integrate `SyntheticStepTransition` into the speculative state of
-`SyntheticCapsuleController::advance` in `src/collision/kinematic_capsule.cpp`.
-First add controller tests in `tests/unit/collision_step_tests.cpp` for a
-retained transition across calls, fractional clock/eight-tick catch-up/drop,
-zero input, reversal and cancellation/stale-source rollback; run
-`build/dev/we_core_tests '[collision-step],[kinematic-capsule]'`. Define bounded
-landing selection and input-direction policy before starting a cursor; never
-create a path from an unsupported corner pose or accept the 17 rejected raw
-segments. Reuse direct-sweep proofs where supported and retain complete-path
-ownership for airborne phases. The cursor's signed path speed is not yet a
-mapping from horizontal application input. Add 0.30 ascent/descent, short
-crossing, mixed-slope and corner cases to shared CLI/native replay before
-accepting public V4 controller creation. Recheck plan §§4.8/5.1 and the
-[inclined support](protocols/collision_ramps.md),
-[session](protocols/capsule_session.md), [step](protocols/collision_steps.md) and
-[controller](protocols/kinematic_capsule.md) contracts. The dated M3 local exit
-review follows that validation before A0.
+[Controller/clock integration](validation/2026-10-23-step-controller.md) is
+**IMPLEMENTED_UNVERIFIED** pending local native input. V4 selects an opposite
+landing at the riser margin, retains certified transition state transactionally
+with pose/clock, bounds lift/drop travel and supports pause/reversal. CPU and
+shared CLI ascent/descent/slow/corner checks pass, including fractional/capped
+clock, failure preservation, short-spawn and mixed-floor rejection. Public V4
+construction is implemented, but its native acceptance gate remains open.
+The locked desktop prevented both focus attempts; loaded source geometry had
+zero Vulkan errors and no capsule ticks advanced. Measured walking stays disabled.
+
+Next executable step: unlock the local desktop, then run
+`python3 artifacts/validation/m3-step-controller-20261023/native_steps.py`
+with native GPU/display/compositor access. Its preflight stops while `hyprlock`
+is running. The prepared shared-session harness checks slow ascent with airborne
+Escape/dialog pause/resume and terminal stop, descent, and occupied-corner
+blocking, retaining targeted input and readbacks. Preserve `attempt1-*` and
+`attempt2-*`; they record failed focus attempts, not product passes. Complete
+and inspect this local replay before accepting V4 session creation, then review
+plan §8.3's M3 software exit with evidence and explicit unqualified Q/P/N/E
+items before A0. Keep mixed-slope/general transitions unsupported, the 17 raw
+proposal refusals unchanged and original source data immutable. Relevant
+contracts: [steps](protocols/collision_steps.md),
+[controller](protocols/kinematic_capsule.md),
+[session](protocols/capsule_session.md), plan §§4.8/5.1.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
 clearance. `sample_1` has no independent distance/up reference: ADR 020 permits
 a local M3 software exit without it, while Q5/N2 and A1 scale evidence stay open.

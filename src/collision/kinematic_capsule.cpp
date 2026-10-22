@@ -205,16 +205,6 @@ SyntheticCapsuleController::create(std::shared_ptr<const JoltStaticCollision> sh
                                    SyntheticCapsuleSettings settings,
                                    Vec3d feet,
                                    const std::stop_token& stop) {
-    return create_impl(std::move(shape), current, settings, feet, false, stop);
-}
-
-Result<std::unique_ptr<SyntheticCapsuleController>>
-SyntheticCapsuleController::create_impl(std::shared_ptr<const JoltStaticCollision> shape,
-                                        const SceneState& current,
-                                        SyntheticCapsuleSettings settings,
-                                        Vec3d feet,
-                                        bool step_diagnostic,
-                                        const std::stop_token& stop) {
     if (!shape || !std::isfinite(settings.m_radius) || !std::isfinite(settings.m_height) ||
         settings.m_radius < 0.05 || settings.m_radius > 1 ||
         settings.m_height < 2 * settings.m_radius + 0.01 || settings.m_height > 3) {
@@ -223,10 +213,6 @@ SyntheticCapsuleController::create_impl(std::shared_ptr<const JoltStaticCollisio
     const auto K_VALID = shape->validate_source(current, stop);
     if (!K_VALID) {
         return std::unexpected(K_VALID.error());
-    }
-    if (!step_diagnostic && shape->m_cook->parameters().m_format_version == 4U) {
-        return fail(ErrorCode::WOULD_BLOCK,
-                    "Synthetic step controller motion has not been certified");
     }
     const auto K_FEET = collision_detail::checked_vec(feet, shape->m_impl->m_precision_tolerance);
     if (!K_FEET) {
@@ -296,7 +282,7 @@ SyntheticCapsuleController::inspect_step_motion(std::shared_ptr<const JoltStatic
         std::hypot(horizontal_velocity.m_x, horizontal_velocity.m_z) > 10) {
         return fail(ErrorCode::INVALID_ARGUMENT, "Invalid bounded synthetic step inspection");
     }
-    const auto K_OWNER = create_impl(std::move(shape), current, settings, feet, true, stop);
+    const auto K_OWNER = create(std::move(shape), current, settings, feet, stop);
     if (!K_OWNER) {
         return std::unexpected(K_OWNER.error());
     }
@@ -405,6 +391,7 @@ SyntheticCapsuleController::advance(const SceneState& current,
     try {
         // All Jolt state is speculative. Only the checked project state below is
         // committed, so an error or cancellation cannot leak a partial advance.
+        auto transition = m_transition;
         const auto K_START =
             collision_detail::checked_vec(m_state.m_feet, m_shape->m_impl->m_precision_tolerance);
         if (!K_START) {
@@ -421,6 +408,67 @@ SyntheticCapsuleController::advance(const SceneState& current,
             if (stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Synthetic capsule advance cancelled");
             }
+            const bool K_STEP { m_shape->m_cook->parameters().m_format_version == 4U };
+            if (K_STEP && !transition) {
+                const auto K_FEET = result.m_state.m_feet;
+                const auto K_ROUTE =
+                    m_shape->m_cook->select_transition(current,
+                                                       { K_FEET,
+                                                        K_FEET + horizontal_velocity * (1. / 120),
+                                                        m_settings.m_radius,
+                                                        m_settings.m_height },
+                                                       stop);
+                if (!K_ROUTE) {
+                    return std::unexpected(K_ROUTE.error());
+                }
+                if (K_ROUTE->has_value()) {
+                    auto cursor =
+                        SyntheticStepTransition::create(m_shape->m_cook, current, **K_ROUTE, stop);
+                    if (!cursor) {
+                        if (cursor.error().m_code != ErrorCode::WOULD_BLOCK) {
+                            return std::unexpected(cursor.error());
+                        }
+                        const auto K_BLOCKED =
+                            m_shape->m_cook->probe_transition(current, **K_ROUTE, stop);
+                        if (!K_BLOCKED) {
+                            return std::unexpected(K_BLOCKED.error());
+                        }
+                        result.m_clearance = K_BLOCKED->m_state;
+                        break;
+                    }
+                    transition = StepTraversal { std::move(*cursor),
+                                                K_FEET,
+                                                (**K_ROUTE).m_end_feet.m_x > K_FEET.m_x ? 1. : -1. };
+                }
+            }
+            if (transition) {
+                auto& traversal = *transition;
+                const auto K_SWEEP = traversal.m_cursor.advance_tick(
+                    current, horizontal_velocity.m_x * traversal.m_direction, stop);
+                if (!K_SWEEP) {
+                    return std::unexpected(K_SWEEP.error());
+                }
+                const auto K_POSITION = collision_detail::checked_vec(
+                    K_SWEEP->m_end_feet, m_shape->m_impl->m_precision_tolerance);
+                if (!K_POSITION) {
+                    return std::unexpected(K_POSITION.error());
+                }
+                // The complete certificate owns these single-leg sweeps,
+                // including airborne phases. Keep Jolt's contact state at the
+                // accepted project point; do not apply stick-down to a lift.
+                character.SetPosition(JPH::RVec3(*K_POSITION));
+                character.RefreshContacts(K_BROAD_PHASE, K_LAYER, {}, {}, m_impl->m_allocator);
+                if (character.GetMaxHitsExceeded()) {
+                    return fail(ErrorCode::RESOURCE_EXHAUSTED,
+                                "Jolt capsule contact budget exhausted");
+                }
+                result.m_state.m_feet = K_SWEEP->m_end_feet;
+                if (traversal.m_cursor.state().m_finished ||
+                    result.m_state.m_feet == traversal.m_start) {
+                    transition.reset();
+                }
+                continue;
+            }
             const bool K_RAMP { m_shape->m_cook->parameters().m_format_version == 3U };
             const auto K_GRADIENT = m_shape->m_cook->floor_gradient();
             const float K_VERTICAL {
@@ -434,7 +482,7 @@ SyntheticCapsuleController::advance(const SceneState& current,
                 return std::unexpected(K_UPDATE.error());
             }
             const auto K_POSITION = character.GetPosition();
-            Vec3d candidate { K_POSITION.GetX(), m_state.m_feet.m_y, K_POSITION.GetZ() };
+            Vec3d candidate { K_POSITION.GetX(), result.m_state.m_feet.m_y, K_POSITION.GetZ() };
             if (K_RAMP) {
                 // Normalize only bounded contact rounding to the admitted plane.
                 // The physical capsule's lowest point rests above an incline;
@@ -467,6 +515,7 @@ SyntheticCapsuleController::advance(const SceneState& current,
         result.m_state.m_simulated_ticks += K_STEPS;
         m_state = result.m_state;
         m_clock_units = K_UNITS % K_TICK_UNITS;
+        m_transition = std::move(transition);
         return result;
     } catch (const std::bad_alloc&) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Synthetic capsule update allocation failed");

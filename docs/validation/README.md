@@ -1,5 +1,7 @@
 # Validation index
 
+- [Synthetic step controller integration](2026-10-23-step-controller.md): transactional phase/clock, selected landing, slow ascent/descent and shared CLI; CPU/sanitizer checks pass, native input blocked by locked desktop, acceptance remains open.
+
 - [Owned synthetic step transition cursor](2026-10-23-step-cursor.md): complete-path ownership, bounded single-leg 120 Hz advancement, slow ascent/descent, pause/reversal and failure preservation; V4 controller/session integration remains open.
 
 - [Synthetic capsule/corner sweep proof](2026-10-22-step-motion-proof.md): bounded outward-rounded solid proof and clipped-cell blocking, independent chord/quadratic oracles, saved/native diagnostic with 781 clear/17 unsupported segments; V4 sessions remain gated.
