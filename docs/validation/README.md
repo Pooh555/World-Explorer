@@ -1,5 +1,7 @@
 # Validation index
 
+- [Native selected-step acceptance](2026-10-23-step-native.md): unlocked local Linux replay passes 12 input assertions with zero Vulkan errors; negative startup checks and current retained-real mesh viewing pass, M3 exit review remains due.
+
 - [Synthetic step controller integration](2026-10-23-step-controller.md): transactional phase/clock, selected landing, slow ascent/descent and shared CLI; CPU/sanitizer checks pass, native input blocked by locked desktop, acceptance remains open.
 
 - [Owned synthetic step transition cursor](2026-10-23-step-cursor.md): complete-path ownership, bounded single-leg 120 Hz advancement, slow ascent/descent, pause/reversal and failure preservation; V4 controller/session integration remains open.

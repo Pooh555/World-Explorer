@@ -393,29 +393,38 @@ certified airborne intermediate poses. Pauses, reversal, cancellation and stale
 source checks preserve phase. This is a separate geometric diagnostic, not an
 active Jolt controller; V4 creation and shared sessions remain blocked.
 
-[Controller/clock integration](validation/2026-10-23-step-controller.md) is
-**IMPLEMENTED_UNVERIFIED** pending local native input. V4 selects an opposite
-landing at the riser margin, retains certified transition state transactionally
-with pose/clock, bounds lift/drop travel and supports pause/reversal. CPU and
-shared CLI ascent/descent/slow/corner checks pass, including fractional/capped
-clock, failure preservation, short-spawn and mixed-floor rejection. Public V4
-construction is implemented, but its native acceptance gate remains open.
-The locked desktop prevented both focus attempts; loaded source geometry had
-zero Vulkan errors and no capsule ticks advanced. Measured walking stays disabled.
+[Controller/clock integration](validation/2026-10-23-step-controller.md) and
+[native selected-step input](validation/2026-10-23-step-native.md) now pass on
+local Linux/NVIDIA. The same controller/session retains certified phase and
+clock through slow ascent, descent, airborne Escape/dialog pauses, resume and
+terminal Stop. Occupied corners block while ticks advance. All 12 native input
+checks pass with zero Vulkan errors; shared CLI/native startup rejects short
+unsupported spawns and mixed-profile schemas. The earlier locked-desktop
+attempts remain failed historical evidence. This closes selected synthetic-step
+acceptance, not measured walking or general mixed-surface transitions.
 
-Next executable step: unlock the local desktop, then run
-`python3 artifacts/validation/m3-step-controller-20261023/native_steps.py`
-with native GPU/display/compositor access. Its preflight stops while `hyprlock`
-is running. The prepared shared-session harness checks slow ascent with airborne
-Escape/dialog pause/resume and terminal stop, descent, and occupied-corner
-blocking, retaining targeted input and readbacks. Preserve `attempt1-*` and
-`attempt2-*`; they record failed focus attempts, not product passes. Complete
-and inspect this local replay before accepting V4 session creation, then review
-plan §8.3's M3 software exit with evidence and explicit unqualified Q/P/N/E
-items before A0. Keep mixed-slope/general transitions unsupported, the 17 raw
-proposal refusals unchanged and original source data immutable. Relevant
-contracts: [steps](protocols/collision_steps.md),
-[controller](protocols/kinematic_capsule.md),
+The current viewer also reopens the retained real captured-color result with
+all 39,373 vertices/49,213 triangles and zero Vulkan errors. Its manifest is
+unchanged; the inspected output remains fragmented, arbitrary-scale and
+unwalkable. No solve, fusion, bake or export is rerun.
+
+The M3 exit review has started. Its current local dependency check exits 2:
+`Changed evidence: cmake/dependencies.cmake` (post-Jolt dependency additions).
+Raw result: `artifacts/validation/m3-exit-review-20261023/local-evidence.log`.
+Next executable step: refresh the selected dependency inventory under
+[its protocol](protocols/dependency_sources.md) and the
+[runtime receipt contract](protocols/runtime_dependencies.md), including current
+Jolt source/notice identities and rebuilt viewer/CLI observations. Inspect the
+changed graph and recapture loader/mapping/owner receipts; do not merely replace
+expected hashes. Recheck `python3 tools/check_dependency_manifest.py --manifest
+third_party/dependency-audit-repair-20261020.json --local-evidence` using the new
+selected manifest when published. Preserve all historical receipts and rights
+gaps. Then finish plan §8.3 / ADR 020's five-item review, including the exact
+LLVM 23.1.1 availability gap and explicit unqualified Q/P/N/E targets, before
+marking M3 VERIFIED or starting A0. Do not begin M4 qualification. Keep general
+mixed-slope transitions unsupported, the 17 raw proposal refusals unchanged and
+original source data immutable. Current contracts:
+[steps](protocols/collision_steps.md), [controller](protocols/kinematic_capsule.md),
 [session](protocols/capsule_session.md), plan §§4.8/5.1.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
 clearance. `sample_1` has no independent distance/up reference: ADR 020 permits

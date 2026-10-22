@@ -1,5 +1,9 @@
 # Synthetic step controller integration — 2026-10-23 (Asia/Hong_Kong)
 
+Follow-up: the subsequent [unlocked native replay](2026-10-23-step-native.md)
+closes this report's input block. The observations and status below describe
+the original integration checkpoint.
+
 M3 remains **IN_PROGRESS**; step controller/session integration is
 **IMPLEMENTED_UNVERIFIED** pending native input validation. CPU/shared CLI and
 sanitizer checks pass. Native input is **BLOCKED** by the locked desktop, not
