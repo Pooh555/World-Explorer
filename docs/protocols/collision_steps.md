@@ -59,3 +59,33 @@ behavior; `--step-clearance` writes an explicitly opted-in support document
 and inspection request against the same source bundle. Neither diagnostic is
 a walking trace. No measured collision or N2 result follows from these
 synthetic checks.
+
+`SyntheticCapsuleController::inspect_step_motion` performs a separate bounded
+speculative replay of 1–600 exact 120 Hz Jolt updates. It requires a V4 shape,
+the explicit clearance profile, a clear supported spawn and the existing
+capsule dimension/source checks. Input velocity is horizontal, finite and at
+most 10 synthetic units/s. It returns project-owned raw feet, per-tick
+horizontal travel, Jolt's supported flag and both straight/transition probe
+results. It uses the same private world, character settings and update routine
+as the controller. It returns no live controller and commits no application
+pose or clock. Rejected proposals continue only inside this speculative trace;
+Jolt's supported flag never overrides the ledger. Cancellation/errors return
+no partial vector and retain caller data.
+
+The query copy of each raw pose normalizes only the existing 0.002 flat contact
+rounding band; the returned raw pose is untouched. Both probes still reject
+rounded-cap stair-corner contacts and short crossings outside their contracts.
+The common update now sets Jolt's minimum forward stair distance to zero:
+its former 0.02 minimum could exceed a tick's requested horizontal travel.
+On the current 0.30-bounded fixture the resulting slow 0.3-unit/s ascent stalls
+at the riser, while 3-unit/s proposals climb through corner poses that the
+project probes reject. Neither outcome enables V4 sessions.
+
+`we_collision_fixture NEW_DIRECTORY --step-proposals` retains the source and
+support bytes from `--step-clearance` and adds `step-proposals.json`
+(`SYNTHETIC_STEP_PROPOSALS_V1`) plus `proposals.wexplore`. The trace pins source,
+support and canonical input and records raw 3-unit/s ascent/descent and
+0.3-unit/s stalled ascent. Its walking/measured flags are false and
+`proposal_only` is true. The native bundle adds small markers above raw feet
+to a separate synthetic source copy; they never enter the collision cook.
+Use `we_viewer --scene .../proposals.wexplore --source-view` to inspect it.

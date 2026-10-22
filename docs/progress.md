@@ -370,13 +370,22 @@ per-tick Jolt path: V4 controller creation and shared CLI/native capsule
 sessions remain blocked. V1–V3 and the arbitrary-scale real
 scene retain prior behavior. No measured geometry or walking gate advances.
 
-Next, instrument a bounded Jolt step attempt in `tests/unit/collision_step_tests.cpp`
-and run `build/dev/we_core_tests '[collision-step]'`, recording each 120 Hz
-proposal against the [V4 certificate](protocols/collision_steps.md). Integrate
-the proven path into the controller without skipping velocity/time or accepting
-an unsupported intermediate pose. Add 0.30 ascent/descent, short crossing,
-mixed-slope transition and corner cases to the shared CLI/native session;
-capture a native replay before enabling V4 controller spawn. Recheck plan
+[Bounded Jolt step proposals](validation/2026-10-22-step-proposals.md) now use
+the shared private controller update and retain raw poses plus both probe
+results without returning an active V4 owner. The former 0.02 minimum forward
+stair distance exceeded the tick budget; it is now zero. Saved 3-unit/s
+ascent/descent proposals reach the other landing through rejected rounded-cap
+corner poses, while 0.3-unit/s ascent stalls at the riser. Native proposal
+markers are synthetic diagnostics, not accepted movement.
+
+Next, add an explicit source-bound capsule/corner and clipped-cell sweep proof
+to V4 in `src/scene_store/collision_support.cpp`, starting with the recorded
+rejected corner rows in `tests/unit/collision_step_tests.cpp`; run
+`build/dev/we_core_tests '[collision-step]'`. Preserve the current straight and
+five-segment contracts. Integrate only proved per-tick paths into the controller,
+including slow-speed continuation, cancellation and stale-source behavior.
+Add 0.30 ascent/descent, short crossing, mixed-slope and corner cases to the
+shared CLI/native session before accepting V4 controller creation. Recheck plan
 §§4.8/5.1 and the [inclined support](protocols/collision_ramps.md),
 [session](protocols/capsule_session.md) and
 [controller](protocols/kinematic_capsule.md) contracts. The dated M3 local exit

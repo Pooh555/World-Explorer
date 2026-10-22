@@ -1,5 +1,7 @@
 # Validation index
 
+- [Bounded synthetic Jolt step proposals](2026-10-22-step-proposals.md): shared private update, removal of minimum-forward tick overshoot, retained corner rejection and stalled slow ascent, saved/native raw proposal diagnostics; V4 movement stays blocked.
+
 - [Synthetic step clearance certificate](2026-10-22-step-certificate.md): explicit V4 clearance profile, conservative lift/cross/descent envelopes, legacy byte preservation, CPU/sanitizer and native diagnostic checks; controller step movement remains blocked.
 
 - [Selected synthetic step admission](2026-10-21-collision-step-admission.md): exact source-bound lower/upper landings and riser, 0.30 boundary rejection, canonical cook, CPU and native visual checks; V4 movement remains blocked.

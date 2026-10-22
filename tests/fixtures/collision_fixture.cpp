@@ -19,6 +19,110 @@ void write(const std::filesystem::path& path, const nlohmann::json& value) {
     }
 }
 
+void trace_step_proposals(const std::filesystem::path& directory,
+                          std::string_view source_hash,
+                          std::string_view support_hash) {
+    const auto K_LOADED = load_bundle(directory / "source.wexplore", {}, source_hash);
+    if (!K_LOADED) {
+        throw std::runtime_error(K_LOADED.error().m_message);
+    }
+    std::ifstream input(directory / "support.json", std::ios::binary);
+    const std::string K_TEXT { std::istreambuf_iterator<char>(input), {} };
+    const auto K_SUPPORT = admit_collision_support(**K_LOADED, K_TEXT, support_hash);
+    if (!K_SUPPORT) {
+        throw std::runtime_error(K_SUPPORT.error().m_message);
+    }
+    const auto K_COOK = cook_synthetic_collision(*K_LOADED, *K_SUPPORT);
+    if (!K_COOK) {
+        throw std::runtime_error(K_COOK.error().m_message);
+    }
+    const auto K_SHAPE = build_jolt_static_collision(*K_COOK, **K_LOADED);
+    if (!K_SHAPE) {
+        throw std::runtime_error(K_SHAPE.error().m_message);
+    }
+    auto visible = std::make_shared<SceneState>(**K_LOADED);
+    visible->m_id = { 41 };
+    visible->m_world_frame.reset();
+    visible->m_provenance["fixture"] = "synthetic_step_proposals_v1";
+    const double K_DISTANCE { std::sqrt(31.25) };
+    visible->m_provenance["source_inspection_view"] =
+        nlohmann::json { { "schema_version", 1 },
+                        { "position", { 1, 2, -1 } },
+                        { "forward", { 2 / K_DISTANCE, -1.5 / K_DISTANCE, 5 / K_DISTANCE } },
+                        { "vertical_fov_radians", .9 },
+                        { "speed", 2 },
+                        { "frame_name", "Synthetic rejected step proposals (no walking)" } }
+            .dump();
+    auto markers = std::make_shared<SceneChunk>();
+    markers->m_id = { 9007199254740997ULL };
+    markers->m_geometry_valid = true;
+    markers->m_pose_revision = { 4 };
+    markers->m_bounds = { {}, { 8, 2, 8 } };
+    markers->m_mesh = SceneMesh {};
+    nlohmann::json trace { { "schema", "SYNTHETIC_STEP_PROPOSALS_V1" },
+                          { "source_manifest_sha256", source_hash },
+                          { "support_sha256", support_hash },
+                          { "canonical_sha256", (*K_COOK)->digest() },
+                          { "proposal_only", true },
+                          { "walking_enabled", false },
+                          { "measured_collision", false },
+                          { "radius", .25 },
+                          { "height", 1.7 },
+                          { "ticks_per_second", 120U },
+                          { "minimum_step_forward", 0 },
+                          { "routes", nlohmann::json::array() } };
+    const double K_HEIGHT { std::nextafter(.3F, 0.F) };
+    const std::array<Vec3d, 3uz> K_STARTS { { { 3.4, 0, 3.5 }, { 3.4, 0, 3.5 }, { 5.4, K_HEIGHT, 3.5 } } };
+    const std::array<Vec3d, 3uz> K_VELOCITIES { { { 3, 0, 0 }, { .3, 0, 0 }, { -3, 0, 0 } } };
+    const std::array<std::size_t, 3uz> K_TICKS { 90uz, 600uz, 90uz };
+    for (std::size_t route { 0uz }; route < K_STARTS.size(); ++route) {
+        const auto K_PROPOSALS = SyntheticCapsuleController::inspect_step_motion(
+            *K_SHAPE, **K_LOADED, { .25, 1.7 }, K_STARTS[route], K_VELOCITIES[route], K_TICKS[route]);
+        if (!K_PROPOSALS) {
+            throw std::runtime_error(K_PROPOSALS.error().m_message);
+        }
+        auto samples = nlohmann::json::array();
+        for (const auto& proposal : *K_PROPOSALS) {
+            const auto K_FEET = proposal.m_raw_feet;
+            samples.push_back(
+                { { "raw_feet", { K_FEET.m_x, K_FEET.m_y, K_FEET.m_z } },
+                 { "jolt_supported", proposal.m_jolt_supported },
+                 { "horizontal_distance", proposal.m_horizontal_distance },
+                 { "straight_clearance", clearance_label(proposal.m_straight_probe.m_state) },
+                 { "straight_checked_cells", proposal.m_straight_probe.m_checked_cells },
+                 { "transition_clearance", clearance_label(proposal.m_transition_probe.m_state) },
+                 { "transition_checked_cells", proposal.m_transition_probe.m_checked_cells } });
+            auto& mesh = *markers->m_mesh;
+            const auto K_BASE = static_cast<std::uint32_t>(mesh.m_vertices.size());
+            const float K_X { static_cast<float>(K_FEET.m_x) };
+            const float K_Y { static_cast<float>(K_FEET.m_y) + .02F };
+            const float K_Z { static_cast<float>(K_FEET.m_z) };
+            const std::array<float, 3uz> K_NORMAL {
+                proposal.m_straight_probe.m_state == ClearanceState::CLEAR_DIAGNOSTIC ? -1.F : 1.F,
+                0,
+                0 };
+            mesh.m_vertices.push_back({ { K_X - .01F, K_Y, K_Z - .01F }, K_NORMAL });
+            mesh.m_vertices.push_back({ { K_X + .01F, K_Y, K_Z - .01F }, K_NORMAL });
+            mesh.m_vertices.push_back({ { K_X, K_Y, K_Z + .01F }, K_NORMAL });
+            mesh.m_vertices.push_back({ { K_X, K_Y + .04F, K_Z }, K_NORMAL });
+            mesh.m_triangles.push_back({ K_BASE, K_BASE + 1U, K_BASE + 2U });
+            mesh.m_triangles.push_back({ K_BASE, K_BASE + 3U, K_BASE + 1U });
+            mesh.m_triangles.push_back({ K_BASE + 1U, K_BASE + 3U, K_BASE + 2U });
+            mesh.m_triangles.push_back({ K_BASE + 2U, K_BASE + 3U, K_BASE });
+        }
+        const auto K_START = K_STARTS[route], K_VELOCITY = K_VELOCITIES[route];
+        trace["routes"].push_back({ { "start_feet", { K_START.m_x, K_START.m_y, K_START.m_z } },
+                                   { "velocity", { K_VELOCITY.m_x, K_VELOCITY.m_y, K_VELOCITY.m_z } },
+                                   { "samples", samples } });
+    }
+    visible->m_chunks.emplace(markers->m_id, markers);
+    const auto K_WRITTEN = write_bundle(directory / "proposals.wexplore", visible);
+    if (!K_WRITTEN) {
+        throw std::runtime_error(K_WRITTEN.error().m_message);
+    }
+    write(directory / "step-proposals.json", trace);
+}
+
 void trace_capsules(const std::filesystem::path& directory,
                     std::string_view source_hash,
                     std::string_view support_hash) {
@@ -140,14 +244,18 @@ int main(int argc, char** argv) {
              std::string_view(argv[2]) != "--capsule" && std::string_view(argv[2]) != "--ramp" &&
              std::string_view(argv[2]) != "--ramp-45" &&
              std::string_view(argv[2]) != "--ramp-steep" && std::string_view(argv[2]) != "--step" &&
-             std::string_view(argv[2]) != "--step-clearance")) {
+             std::string_view(argv[2]) != "--step-clearance" &&
+             std::string_view(argv[2]) != "--step-proposals")) {
             std::cerr << "Usage: we_collision_fixture NEW_DIRECTORY "
-                         "[--walls|--capsule|--ramp|--ramp-45|--ramp-steep|--step|--step-clearance]"
+                         "[--walls|--capsule|--ramp|--ramp-45|--ramp-steep|--step|--step-clearance|"
+                         "--step-proposals]"
                          " (synthetic "
                          "only)\n";
             return 2;
         }
-        const bool K_STEP_CLEARANCE { argc == 3 && std::string_view(argv[2]) == "--step-clearance" };
+        const bool K_STEP_PROPOSALS { argc == 3 && std::string_view(argv[2]) == "--step-proposals" };
+        const bool K_STEP_CLEARANCE {
+            K_STEP_PROPOSALS || (argc == 3 && std::string_view(argv[2]) == "--step-clearance") };
         const bool K_STEP { K_STEP_CLEARANCE ||
                            (argc == 3 && std::string_view(argv[2]) == "--step") };
         const bool K_WITH_WALL = argc == 3 && !K_STEP;
@@ -236,6 +344,9 @@ int main(int argc, char** argv) {
         }
         if (argc == 3 && std::string_view(argv[2]) == "--capsule") {
             trace_capsules(K_OUTPUT, *K_SOURCE_HASH, *K_SUPPORT_HASH);
+        }
+        if (K_STEP_PROPOSALS) {
+            trace_step_proposals(K_OUTPUT, *K_SOURCE_HASH, *K_SUPPORT_HASH);
         }
         std::cout << "Synthetic collision source/support/request saved; no measured collision or "
                      "walking\n";

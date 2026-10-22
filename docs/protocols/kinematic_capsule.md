@@ -33,7 +33,8 @@ sliding, with +Y up, one-sided source triangles, 45° maximum slope and 0.30
 step-up/stick-down settings. Jolt supplies its own 0.005 padding; it is not
 applied twice. Contact collection is bounded by Jolt's 256-hit limit and overflow
 fails the whole call. No rigid-body simulation, worker pool or dynamic obstacles
-are introduced.
+are introduced. The minimum forward stair distance is zero so its default
+0.02 displacement cannot exceed a fixed tick's requested travel.
 
 Only the final proposed straight movement segment becomes project state, after
 the existing conservative swept-envelope probe accepts it. Occupied, unknown,
@@ -49,6 +50,8 @@ certify a conservative lift/cross/descent path independently, but controller
 creation still rejects V4 because no per-tick transition follows that path yet.
 General floor transitions, stairs, real reconstruction and N2 qualification
 remain pending.
+The bounded [step proposal diagnostic](collision_steps.md) shares this private
+update routine, retains rejected raw proposals and returns no active owner.
 
 `we_collision_fixture NEW_DIRECTORY --capsule` is a development fixture tool.
 It writes the existing V2 source/support/request, reloads their pinned bytes,

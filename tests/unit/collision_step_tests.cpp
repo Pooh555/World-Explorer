@@ -46,6 +46,8 @@ TEST_CASE("selected synthetic step admits both landings and an exact riser", "[c
     const auto K_CONTROLLER =
         SyntheticCapsuleController::create(*K_SHAPE, *source, { .25, 1.7 }, { 3.4, 0, 3.5 });
     CHECK(!K_CONTROLLER);
+    CHECK(!SyntheticCapsuleController::inspect_step_motion(
+        *K_SHAPE, *source, { .25, 1.7 }, { 3.4, 0, 3.5 }, { 3, 0, 0 }, 1uz));
     auto corrected = *source;
     ++corrected.m_revision.m_value;
     CHECK(!(*K_COOK)->validate_source(corrected));
@@ -187,4 +189,72 @@ TEST_CASE("synthetic step rejects over-height and source-gap mutations", "[colli
     const auto K_HIGH_DOCUMENT = collision_step_document(K_HIGH_SOURCE, K_ABOVE);
     const auto K_HIGH_TEXT = K_HIGH_DOCUMENT.dump();
     CHECK(!admit_collision_support(K_HIGH_SOURCE, K_HIGH_TEXT, collision_digest(K_HIGH_TEXT)));
+}
+
+TEST_CASE("bounded Jolt step proposals retain rejection and respect tick travel",
+          "[collision-step]") {
+    const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+    const auto K_SOURCE =
+        std::make_shared<const SceneState>(collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT));
+    const auto K_TEXT = collision_step_document(*K_SOURCE, K_HEIGHT, true).dump();
+    const auto K_HASH = scene_content_hash(*K_SOURCE);
+    const auto K_SUPPORT = admit_collision_support(*K_SOURCE, K_TEXT, collision_digest(K_TEXT));
+    REQUIRE(K_SUPPORT);
+    const auto K_COOK = cook_synthetic_collision(K_SOURCE, *K_SUPPORT);
+    REQUIRE(K_COOK);
+    const auto K_SHAPE = build_jolt_static_collision(*K_COOK, *K_SOURCE);
+    REQUIRE(K_SHAPE);
+    for (const double K_SPEED : { .3, 3., 10. }) {
+        const auto K_TICKS = static_cast<std::size_t>(std::ceil(1.5 / K_SPEED * 120));
+        const auto K_PROPOSALS = SyntheticCapsuleController::inspect_step_motion(
+            *K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.4, 0, 3.5 }, { K_SPEED, 0, 0 }, K_TICKS);
+        REQUIRE(K_PROPOSALS);
+        REQUIRE(K_PROPOSALS->size() == K_TICKS);
+        bool rejected_corner {};
+        for (const auto& proposal : *K_PROPOSALS) {
+            CHECK(proposal.m_horizontal_distance <= K_SPEED / 120 + 1e-5);
+            if (proposal.m_raw_feet.m_y > .01 && proposal.m_raw_feet.m_y < K_HEIGHT - .01) {
+                rejected_corner = true;
+                CHECK(proposal.m_straight_probe.m_state == ClearanceState::UNSUPPORTED_FLOOR);
+                CHECK(proposal.m_transition_probe.m_state == ClearanceState::UNSUPPORTED_FLOOR);
+            }
+        }
+        if (K_SPEED == .3) {
+            // With no minimum-distance jump Jolt cannot climb this riser at
+            // the slow input. Retain that rejection rather than invent travel.
+            CHECK(!rejected_corner);
+            CHECK(K_PROPOSALS->back().m_raw_feet.m_x < 3.75);
+            CHECK(K_PROPOSALS->back().m_raw_feet.m_y == Catch::Approx(0).margin(.002));
+        } else {
+            CHECK(rejected_corner);
+            CHECK(K_PROPOSALS->back().m_raw_feet.m_x > 4.5);
+            CHECK(K_PROPOSALS->back().m_raw_feet.m_y == Catch::Approx(K_HEIGHT).margin(.002));
+        }
+    }
+    const auto K_DOWN = SyntheticCapsuleController::inspect_step_motion(
+        *K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 5.4, K_HEIGHT, 3.5 }, { -3, 0, 0 }, 90uz);
+    REQUIRE(K_DOWN);
+    CHECK(K_DOWN->back().m_raw_feet.m_x < 3.5);
+    CHECK(K_DOWN->back().m_raw_feet.m_y == Catch::Approx(0).margin(.002));
+    CHECK(scene_content_hash(*K_SOURCE) == K_HASH);
+    CHECK(!SyntheticCapsuleController::create(*K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.4, 0, 3.5 }));
+
+    auto corrected = *K_SOURCE;
+    ++corrected.m_revision.m_value;
+    const auto K_STALE = SyntheticCapsuleController::inspect_step_motion(
+        *K_SHAPE, corrected, { .25, 1.7 }, { 3.4, 0, 3.5 }, { 3, 0, 0 }, 1uz);
+    REQUIRE(!K_STALE);
+    CHECK(K_STALE.error().m_code == ErrorCode::WRONG_BASE);
+    std::stop_source cancelled;
+    cancelled.request_stop();
+    const auto K_CANCELLED = SyntheticCapsuleController::inspect_step_motion(
+        *K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.4, 0, 3.5 }, { 3, 0, 0 }, 1uz, cancelled.get_token());
+    REQUIRE(!K_CANCELLED);
+    CHECK(K_CANCELLED.error().m_code == ErrorCode::CANCELLED);
+    for (const auto K_TICKS : { 0uz, 601uz }) {
+        CHECK(!SyntheticCapsuleController::inspect_step_motion(
+            *K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.4, 0, 3.5 }, { 3, 0, 0 }, K_TICKS));
+    }
+    CHECK(!SyntheticCapsuleController::inspect_step_motion(
+        *K_SHAPE, *K_SOURCE, { .25, 1.7 }, { 3.4, 0, 3.5 }, { 3, 1, 0 }, 1uz));
 }

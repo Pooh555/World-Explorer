@@ -3,6 +3,7 @@
 #include "world_explorer/collision/static_shape.hpp"
 
 #include <chrono>
+#include <vector>
 
 namespace world_explorer {
 
@@ -23,8 +24,16 @@ struct SyntheticCapsuleAdvance {
     ClearanceState m_clearance { ClearanceState::CLEAR_DIAGNOSTIC };
 };
 
-// Single-threaded flat/inclined synthetic diagnostic. Dimensions are explicit synthetic
-// inputs, never a scale declaration or permission for measured walking.
+struct SyntheticStepProposal {
+    Vec3d m_raw_feet;
+    double m_horizontal_distance {};
+    bool m_jolt_supported {};
+    ClearanceProbe m_straight_probe, m_transition_probe;
+};
+
+// Single-threaded flat/inclined controller and speculative step diagnostic.
+// Dimensions are explicit synthetic inputs, never a scale declaration or
+// permission for measured walking.
 class SyntheticCapsuleController {
     struct AdmissionToken { };
     struct Impl;
@@ -44,6 +53,17 @@ class SyntheticCapsuleController {
 
     SyntheticCapsuleState state() const;
 
+    // Bounded speculative Jolt replay, never an enabled V4 controller. Every
+    // raw proposal is retained even when the project clearance probes block it.
+    static Result<std::vector<SyntheticStepProposal>>
+    inspect_step_motion(std::shared_ptr<const JoltStaticCollision> shape,
+                        const SceneState& current,
+                        SyntheticCapsuleSettings settings,
+                        Vec3d feet,
+                        Vec3d horizontal_velocity,
+                        std::size_t ticks,
+                        const std::stop_token& stop = {});
+
     // Fixed 120 Hz, at most eight ticks per call; excess whole ticks are dropped.
     // Horizontal speed is bounded to 10 units/s, elapsed time to [0, 60] seconds.
     // A failed call preserves position and clock; blocked space consumes time.
@@ -53,6 +73,14 @@ class SyntheticCapsuleController {
                                             const std::stop_token& stop = {});
 
   private:
+    static Result<std::unique_ptr<SyntheticCapsuleController>>
+    create_impl(std::shared_ptr<const JoltStaticCollision> shape,
+                const SceneState& current,
+                SyntheticCapsuleSettings settings,
+                Vec3d feet,
+                bool step_diagnostic,
+                const std::stop_token& stop);
+
     std::shared_ptr<const JoltStaticCollision> m_shape;
     SyntheticCapsuleSettings m_settings;
     SyntheticCapsuleState m_state;

@@ -61,6 +61,30 @@ struct SyntheticCapsuleController::Impl {
     JPH::PhysicsSystem m_world;
     JPH::CharacterVirtualSettings m_character_settings;
     JPH::TempAllocatorMalloc m_allocator;
+
+    Result<void> update(JPH::CharacterVirtual& character, JPH::Vec3 velocity, bool plane) {
+        const JPH::BroadPhaseLayerFilter K_BROAD_PHASE;
+        const JPH::ObjectLayerFilter K_LAYER;
+        JPH::CharacterVirtual::ExtendedUpdateSettings settings;
+        settings.mWalkStairsStepUp = { 0, .30F, 0 };
+        settings.mStickToFloorStepDown = { 0, -.30F, 0 };
+        // A nonzero minimum can add more horizontal travel than one tick's
+        // requested displacement, especially at low speeds.
+        settings.mWalkStairsMinStepForward = 0;
+        character.SetLinearVelocity(velocity);
+        character.ExtendedUpdate(
+            K_STEP_SECONDS, { 0, -9.81F, 0 }, settings, K_BROAD_PHASE, K_LAYER, {}, {}, m_allocator);
+        const bool K_OVERFLOW { character.GetMaxHitsExceeded() };
+        if (plane) {
+            // Settle tangent input after a wall removes horizontal travel.
+            character.StickToFloor(
+                settings.mStickToFloorStepDown, K_BROAD_PHASE, K_LAYER, {}, {}, m_allocator);
+        }
+        if (K_OVERFLOW || character.GetMaxHitsExceeded()) {
+            return fail(ErrorCode::RESOURCE_EXHAUSTED, "Jolt capsule contact budget exhausted");
+        }
+        return {};
+    }
 };
 
 SyntheticCapsuleController::SyntheticCapsuleController(AdmissionToken) { }
@@ -77,6 +101,16 @@ SyntheticCapsuleController::create(std::shared_ptr<const JoltStaticCollision> sh
                                    SyntheticCapsuleSettings settings,
                                    Vec3d feet,
                                    const std::stop_token& stop) {
+    return create_impl(std::move(shape), current, settings, feet, false, stop);
+}
+
+Result<std::unique_ptr<SyntheticCapsuleController>>
+SyntheticCapsuleController::create_impl(std::shared_ptr<const JoltStaticCollision> shape,
+                                        const SceneState& current,
+                                        SyntheticCapsuleSettings settings,
+                                        Vec3d feet,
+                                        bool step_diagnostic,
+                                        const std::stop_token& stop) {
     if (!shape || !std::isfinite(settings.m_radius) || !std::isfinite(settings.m_height) ||
         settings.m_radius < 0.05 || settings.m_radius > 1 ||
         settings.m_height < 2 * settings.m_radius + 0.01 || settings.m_height > 3) {
@@ -86,7 +120,7 @@ SyntheticCapsuleController::create(std::shared_ptr<const JoltStaticCollision> sh
     if (!K_VALID) {
         return std::unexpected(K_VALID.error());
     }
-    if (shape->m_cook->parameters().m_format_version == 4U) {
+    if (!step_diagnostic && shape->m_cook->parameters().m_format_version == 4U) {
         return fail(ErrorCode::WOULD_BLOCK,
                     "Synthetic step controller motion has not been certified");
     }
@@ -144,6 +178,98 @@ SyntheticCapsuleController::create(std::shared_ptr<const JoltStaticCollision> sh
     }
 }
 
+Result<std::vector<SyntheticStepProposal>>
+SyntheticCapsuleController::inspect_step_motion(std::shared_ptr<const JoltStaticCollision> shape,
+                                                const SceneState& current,
+                                                SyntheticCapsuleSettings settings,
+                                                Vec3d feet,
+                                                Vec3d horizontal_velocity,
+                                                std::size_t ticks,
+                                                const std::stop_token& stop) {
+    if (!shape || shape->m_cook->parameters().m_format_version != 4U || ticks == 0uz ||
+        ticks > 600uz || !std::isfinite(horizontal_velocity.m_x) ||
+        !std::isfinite(horizontal_velocity.m_z) || horizontal_velocity.m_y != 0 ||
+        std::hypot(horizontal_velocity.m_x, horizontal_velocity.m_z) > 10) {
+        return fail(ErrorCode::INVALID_ARGUMENT, "Invalid bounded synthetic step inspection");
+    }
+    const auto K_OWNER = create_impl(std::move(shape), current, settings, feet, true, stop);
+    if (!K_OWNER) {
+        return std::unexpected(K_OWNER.error());
+    }
+    const auto K_VELOCITY = collision_detail::checked_vec(horizontal_velocity, 1e-5);
+    if (!K_VELOCITY) {
+        return std::unexpected(K_VELOCITY.error());
+    }
+    try {
+        auto& owner = **K_OWNER;
+        auto& impl = *owner.m_impl;
+        const auto K_START =
+            collision_detail::checked_vec(feet, owner.m_shape->m_impl->m_precision_tolerance);
+        if (!K_START) {
+            return std::unexpected(K_START.error());
+        }
+        JPH::CharacterVirtual character { &impl.m_character_settings,
+                                         JPH::RVec3(*K_START),
+                                         JPH::Quat::sIdentity(),
+                                         &impl.m_world };
+        const JPH::BroadPhaseLayerFilter K_BROAD_PHASE;
+        const JPH::ObjectLayerFilter K_LAYER;
+        character.RefreshContacts(K_BROAD_PHASE, K_LAYER, {}, {}, impl.m_allocator);
+        const auto K_QUERY_FEET = [&](Vec3d raw) {
+            const double K_FLOOR { owner.m_shape->m_cook->floor_height(raw) };
+            if (std::abs(raw.m_y - K_FLOOR) <= .002) {
+                raw.m_y = K_FLOOR;
+            }
+            return raw;
+        };
+        std::vector<SyntheticStepProposal> proposals;
+        proposals.reserve(ticks);
+        for (std::size_t tick { 0uz }; tick < ticks; ++tick) {
+            if (stop.stop_requested()) {
+                return fail(ErrorCode::CANCELLED, "Synthetic step inspection cancelled");
+            }
+            const auto K_UPDATE = impl.update(
+                character, *K_VELOCITY + JPH::Vec3(0, -9.81F * K_STEP_SECONDS, 0), false);
+            if (!K_UPDATE) {
+                return std::unexpected(K_UPDATE.error());
+            }
+            const auto K_POSITION = character.GetPosition();
+            const Vec3d K_RAW { K_POSITION.GetX(), K_POSITION.GetY(), K_POSITION.GetZ() };
+            const auto K_CHECKED =
+                collision_detail::checked_vec(K_RAW, owner.m_shape->m_impl->m_precision_tolerance);
+            if (!K_CHECKED) {
+                return std::unexpected(K_CHECKED.error());
+            }
+            const CapsuleSweep K_SWEEP {
+                K_QUERY_FEET(feet), K_QUERY_FEET(K_RAW), settings.m_radius, settings.m_height };
+            const auto K_STRAIGHT = owner.m_shape->m_cook->probe(current, K_SWEEP, stop);
+            if (!K_STRAIGHT) {
+                return std::unexpected(K_STRAIGHT.error());
+            }
+            const auto K_TRANSITION =
+                owner.m_shape->m_cook->probe_transition(current, K_SWEEP, stop);
+            if (!K_TRANSITION) {
+                return std::unexpected(K_TRANSITION.error());
+            }
+            proposals.push_back({ K_RAW,
+                                 std::hypot(K_RAW.m_x - feet.m_x, K_RAW.m_z - feet.m_z),
+                                 character.IsSupported(),
+                                 *K_STRAIGHT,
+                                 *K_TRANSITION });
+            feet = K_RAW;
+        }
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Synthetic step inspection cancelled");
+        }
+        return proposals;
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Synthetic step inspection allocation failed");
+    } catch (const std::exception& error) {
+        return fail(ErrorCode::BACKEND_FAILURE,
+                    std::string("Jolt step inspection: ") + error.what());
+    }
+}
+
 Result<SyntheticCapsuleAdvance>
 SyntheticCapsuleController::advance(const SceneState& current,
                                     Vec3d horizontal_velocity,
@@ -187,9 +313,6 @@ SyntheticCapsuleController::advance(const SceneState& current,
         const JPH::BroadPhaseLayerFilter K_BROAD_PHASE;
         const JPH::ObjectLayerFilter K_LAYER;
         character.RefreshContacts(K_BROAD_PHASE, K_LAYER, {}, {}, m_impl->m_allocator);
-        JPH::CharacterVirtual::ExtendedUpdateSettings update;
-        update.mWalkStairsStepUp = { 0, 0.30F, 0 };
-        update.mStickToFloorStepDown = { 0, -0.30F, 0 };
         for (std::uint64_t tick {}; tick < K_STEPS; ++tick) {
             if (stop.stop_requested()) {
                 return fail(ErrorCode::CANCELLED, "Synthetic capsule advance cancelled");
@@ -201,29 +324,10 @@ SyntheticCapsuleController::advance(const SceneState& current,
             // V3 is grounded on one admitted plane. Its downward support sweep
             // replaces free-fall integration, avoiding idle downslope creep.
             const float K_GRAVITY_STEP { K_RAMP ? 0.F : 9.81F * K_STEP_SECONDS };
-            character.SetLinearVelocity(*K_VELOCITY + JPH::Vec3(0, K_VERTICAL - K_GRAVITY_STEP, 0));
-            character.ExtendedUpdate(K_STEP_SECONDS,
-                                     { 0, -9.81F, 0 },
-                                     update,
-                                     K_BROAD_PHASE,
-                                     K_LAYER,
-                                     {},
-                                     {},
-                                     m_impl->m_allocator);
-            const bool K_UPDATE_OVERFLOW { character.GetMaxHitsExceeded() };
-            if (K_RAMP) {
-                // A wall can remove horizontal travel while tangent input still
-                // requests upward travel. Sweep back to supported geometry before
-                // certifying the final segment; never enlarge contact tolerance.
-                character.StickToFloor(update.mStickToFloorStepDown,
-                                       K_BROAD_PHASE,
-                                       K_LAYER,
-                                       {},
-                                       {},
-                                       m_impl->m_allocator);
-            }
-            if (K_UPDATE_OVERFLOW || character.GetMaxHitsExceeded()) {
-                return fail(ErrorCode::RESOURCE_EXHAUSTED, "Jolt capsule contact budget exhausted");
+            const auto K_UPDATE = m_impl->update(
+                character, *K_VELOCITY + JPH::Vec3(0, K_VERTICAL - K_GRAVITY_STEP, 0), K_RAMP);
+            if (!K_UPDATE) {
+                return std::unexpected(K_UPDATE.error());
             }
             const auto K_POSITION = character.GetPosition();
             Vec3d candidate { K_POSITION.GetX(), m_state.m_feet.m_y, K_POSITION.GetZ() };
