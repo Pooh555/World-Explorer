@@ -386,17 +386,28 @@ piecewise-quadratic oracles verify it. The saved diagnostic has
 are rejected. These are geometric certificates, not accepted session movement.
 Legacy queries/fixture bytes and V4 controller rejection are retained.
 
-Next, implement bounded V4 transition state in
-`src/collision/kinematic_capsule.cpp`. Start with failing tests for slow ascent
-and supported descent in `tests/unit/collision_step_tests.cpp`; run
-`build/dev/we_core_tests '[collision-step]'`. Reuse the new direct-sweep proof
-and complete landing-path certificate without accepting the 17 currently
-unsupported segments, skipping velocity/time or losing a phase on pause.
-Verify cancellation, clock/drop behavior and stale-source preservation.
-Add 0.30 ascent/descent, short crossing, mixed-slope and corner cases to the
-shared CLI/native session before accepting V4 controller creation. Recheck plan
-§§4.8/5.1 and the [inclined support](protocols/collision_ramps.md),
-[session](protocols/capsule_session.md) and
+[Owned transition cursors](validation/2026-10-23-step-cursor.md) now retain a
+complete five-leg clearance certificate and advance single-leg subsegments at
+bounded 120 Hz path speed. Slow ascent/descent reach both landings, including
+certified airborne intermediate poses. Pauses, reversal, cancellation and stale
+source checks preserve phase. This is a separate geometric diagnostic, not an
+active Jolt controller; V4 creation and shared sessions remain blocked.
+
+Next, integrate `SyntheticStepTransition` into the speculative state of
+`SyntheticCapsuleController::advance` in `src/collision/kinematic_capsule.cpp`.
+First add controller tests in `tests/unit/collision_step_tests.cpp` for a
+retained transition across calls, fractional clock/eight-tick catch-up/drop,
+zero input, reversal and cancellation/stale-source rollback; run
+`build/dev/we_core_tests '[collision-step],[kinematic-capsule]'`. Define bounded
+landing selection and input-direction policy before starting a cursor; never
+create a path from an unsupported corner pose or accept the 17 rejected raw
+segments. Reuse direct-sweep proofs where supported and retain complete-path
+ownership for airborne phases. The cursor's signed path speed is not yet a
+mapping from horizontal application input. Add 0.30 ascent/descent, short
+crossing, mixed-slope and corner cases to shared CLI/native replay before
+accepting public V4 controller creation. Recheck plan §§4.8/5.1 and the
+[inclined support](protocols/collision_ramps.md),
+[session](protocols/capsule_session.md), [step](protocols/collision_steps.md) and
 [controller](protocols/kinematic_capsule.md) contracts. The dated M3 local exit
 review follows that validation before A0.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not

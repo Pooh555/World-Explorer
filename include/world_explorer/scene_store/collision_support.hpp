@@ -23,6 +23,13 @@ struct ClearanceProbe {
     std::size_t m_checked_cells {};
 };
 
+// A path is published only after all five complete envelopes are clear.
+// Airborne internal waypoints do not imply ordinary standing support.
+struct StepTransitionCertificate {
+    ClearanceProbe m_probe;
+    std::optional<std::array<Vec3d, 6uz>> m_path;
+};
+
 struct CollisionTriangleRef {
     ChunkId m_chunk_id;
     std::uint64_t m_generation {};
@@ -112,10 +119,10 @@ class CollisionSupport {
                                                           const SceneState&,
                                                           const CapsuleSweep&,
                                                           const std::stop_token&);
-    friend Result<ClearanceProbe> probe_step_transition(const CollisionSupport&,
-                                                        const SceneState&,
-                                                        const CapsuleSweep&,
-                                                        const std::stop_token&);
+    friend Result<StepTransitionCertificate> certify_step_transition(const CollisionSupport&,
+                                                                     const SceneState&,
+                                                                     const CapsuleSweep&,
+                                                                     const std::stop_token&);
     friend Result<ClearanceProbe> probe_step_motion(const CollisionSupport&,
                                                     const SceneState&,
                                                     const CapsuleSweep&,
@@ -159,6 +166,10 @@ Result<ClearanceProbe> probe_step_transition(const CollisionSupport& support,
                                              const SceneState& source,
                                              const CapsuleSweep& sweep,
                                              const std::stop_token& stop = {});
+Result<StepTransitionCertificate> certify_step_transition(const CollisionSupport& support,
+                                                          const SceneState& source,
+                                                          const CapsuleSweep& sweep,
+                                                          const std::stop_token& stop = {});
 // V4-only straight capsule sweep with floor/corner endpoint support and
 // conservative clipped-cell checks. No clock or controller permission.
 Result<ClearanceProbe> probe_step_motion(const CollisionSupport& support,

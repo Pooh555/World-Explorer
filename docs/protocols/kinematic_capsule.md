@@ -47,7 +47,8 @@ floor-contact rounding is normalized to the admitted plane.
 proves plane-relative clearance and normalizes bounded contact rounding to the
 capsule/plane contact height. The [V4 step contract](collision_steps.md) can
 certify a conservative lift/cross/descent path independently, but controller
-creation still rejects V4 because no per-tick transition follows that path yet.
+creation still rejects V4. The separate certified path cursor can retain and
+advance transition phase, but is not yet part of this controller or its clock.
 General floor transitions, stairs, real reconstruction and N2 qualification
 remain pending.
 The bounded [step proposal diagnostic](collision_steps.md) shares this private

@@ -132,3 +132,40 @@ speculative, with false walking/measured flags. Previous fixture modes and
 their serialized outputs are retained. Endpoint support, descending/high-speed
 chords, safe slow-step continuation and actual shared-session movement still
 require their controller checks before V4 creation can be enabled.
+
+## Owned transition cursor
+
+`certify_step_transition` returns the existing probe result and, only when all
+five complete segments are clear, their six ordered waypoints. Blocked results
+carry no path; invalid, stale or cancelled inputs return errors. The old
+`probe_step_transition` delegates to this same proof and returns only its probe.
+`CanonicalCollisionMesh::certify_transition` preserves the immutable cook's
+source checks. No document format, selected geometry or clearance rule changes.
+
+`SyntheticStepTransition` in `collision/kinematic_capsule.hpp` owns that cook
+and a private copy of the certified path. Creation requires controller-bounded
+capsule dimensions and a complete certificate; unsupported, occupied, unknown,
+short-crossing and legacy geometry-only paths cannot create a cursor. Copying
+an admitted cursor produces an independent checkpoint of its phase and offset.
+Every `advance_tick` validates the current source, including while paused or
+finished. Cancellation, invalid speed and source changes preserve all cursor
+state. Retained certificates cannot authorize a different source revision.
+
+Each explicit call represents one 1/120-second path tick. Signed finite path
+speed is limited to 10 synthetic units/s. Positive speed follows the path;
+negative speed retraces it; zero holds the current phase. The budget bounds
+**total three-dimensional travel**, including lift/drop, rather than only
+horizontal displacement. A tick traverses at most one nonzero leg. Unused
+budget at a corner is discarded; zero-length legs require no displacement.
+The returned `CapsuleSweep` is the actual single-leg subsegment, never a chord
+joining two different legs. Internal points remain inside their certified
+segment envelope; exact waypoint coordinates are restored at leg boundaries.
+An endpoint holds on continued input and can be retraced with opposite input.
+
+This cursor permits intermediate airborne poses only through the complete
+landing-to-landing certificate. Those poses need not pass the ordinary motion
+probe's endpoint-contact rule. It does not reclassify any rejected raw Jolt
+proposal, prove continuous grounding, run Jolt, schedule elapsed time, enable a
+V4 controller, or connect to the shared CLI/native session. Integrating it with
+the controller's speculative state, clock, Jolt proposals and pause/input
+policy remains required before V4 session creation can be accepted.

@@ -95,6 +95,110 @@ SyntheticCapsuleState SyntheticCapsuleController::state() const {
     return m_state;
 }
 
+SyntheticStepTransition::SyntheticStepTransition(AdmissionToken) { }
+
+Result<SyntheticStepTransition>
+SyntheticStepTransition::create(std::shared_ptr<const CanonicalCollisionMesh> cook,
+                                const SceneState& current,
+                                const CapsuleSweep& route,
+                                const std::stop_token& stop) {
+    if (!cook || !std::isfinite(route.m_radius) || !std::isfinite(route.m_height) ||
+        route.m_radius < .05 || route.m_radius > 1 || route.m_height < 2 * route.m_radius + .01 ||
+        route.m_height > 3) {
+        return fail(ErrorCode::INVALID_ARGUMENT, "Invalid synthetic transition dimensions or cook");
+    }
+    const auto K_CERTIFICATE = cook->certify_transition(current, route, stop);
+    if (!K_CERTIFICATE) {
+        return std::unexpected(K_CERTIFICATE.error());
+    }
+    if (!K_CERTIFICATE->m_path) {
+        return fail(ErrorCode::WOULD_BLOCK, "Synthetic transition lacks a complete clear path");
+    }
+    SyntheticStepTransition transition { AdmissionToken {} };
+    transition.m_cook = std::move(cook);
+    transition.m_route = route;
+    transition.m_path = *K_CERTIFICATE->m_path;
+    transition.m_state.m_feet = route.m_start_feet;
+    for (std::size_t segment { 0uz }; segment < transition.m_lengths.size(); ++segment) {
+        const auto K_DELTA = transition.m_path[segment + 1uz] - transition.m_path[segment];
+        const double K_LENGTH { std::hypot(K_DELTA.m_x, K_DELTA.m_y, K_DELTA.m_z) };
+        if (!std::isfinite(K_LENGTH)) {
+            return fail(ErrorCode::INVALID_ARGUMENT, "Synthetic transition path length overflow");
+        }
+        transition.m_lengths[segment] = K_LENGTH;
+    }
+    if (stop.stop_requested()) {
+        return fail(ErrorCode::CANCELLED, "Synthetic transition creation cancelled");
+    }
+    return transition;
+}
+
+SyntheticStepTransitionState SyntheticStepTransition::state() const {
+    return m_state;
+}
+
+Result<CapsuleSweep> SyntheticStepTransition::advance_tick(const SceneState& current,
+                                                           double path_speed,
+                                                           const std::stop_token& stop) {
+    const auto K_VALID = m_cook->validate_source(current, stop);
+    if (!K_VALID) {
+        return std::unexpected(K_VALID.error());
+    }
+    if (!std::isfinite(path_speed) || std::abs(path_speed) > 10) {
+        return fail(ErrorCode::INVALID_ARGUMENT, "Invalid synthetic transition path speed");
+    }
+    CapsuleSweep sweep { m_state.m_feet, m_state.m_feet, m_route.m_radius, m_route.m_height };
+    auto segment = m_state.m_segment;
+    double offset { m_offset };
+    if (path_speed > 0) {
+        while (segment < m_lengths.size() && m_lengths[segment] == 0) {
+            ++segment;
+        }
+    } else if (path_speed < 0) {
+        while (offset == 0 && segment > 0uz) {
+            --segment;
+            offset = m_lengths[segment];
+        }
+    }
+    if (path_speed == 0 || segment == m_lengths.size() ||
+        (path_speed < 0 && segment == 0uz && offset == 0)) {
+        return sweep;
+    }
+    const double K_LENGTH { m_lengths[segment] };
+    // No leftover budget crosses a corner. Otherwise the final-position chord
+    // could cut the riser even though both legs have complete certificates.
+    const double K_TRAVEL {
+        std::min(std::abs(path_speed) / 120, path_speed > 0 ? K_LENGTH - offset : offset) };
+    offset = std::clamp(offset + (path_speed > 0 ? K_TRAVEL : -K_TRAVEL), 0., K_LENGTH);
+    if (offset == 0) {
+        sweep.m_end_feet = m_path[segment];
+    } else if (offset == K_LENGTH) {
+        sweep.m_end_feet = m_path[segment + 1uz];
+    } else {
+        const auto K_START = m_path[segment], K_END = m_path[segment + 1uz];
+        const double K_FRACTION { offset / K_LENGTH };
+        const auto K_INTERPOLATE = [K_FRACTION](double start, double end) {
+            return std::clamp(
+                start + (end - start) * K_FRACTION, std::min(start, end), std::max(start, end));
+        };
+        sweep.m_end_feet = { K_INTERPOLATE(K_START.m_x, K_END.m_x),
+                            K_INTERPOLATE(K_START.m_y, K_END.m_y),
+                            K_INTERPOLATE(K_START.m_z, K_END.m_z) };
+    }
+    if (path_speed > 0 && offset == K_LENGTH) {
+        do {
+            ++segment;
+        } while (segment < m_lengths.size() && m_lengths[segment] == 0);
+        offset = 0;
+    }
+    if (stop.stop_requested()) {
+        return fail(ErrorCode::CANCELLED, "Synthetic transition tick cancelled");
+    }
+    m_state = { sweep.m_end_feet, segment, segment == m_lengths.size() };
+    m_offset = offset;
+    return sweep;
+}
+
 Result<std::unique_ptr<SyntheticCapsuleController>>
 SyntheticCapsuleController::create(std::shared_ptr<const JoltStaticCollision> shape,
                                    const SceneState& current,

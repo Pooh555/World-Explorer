@@ -336,6 +336,186 @@ TEST_CASE("synthetic step certificate checks both full-capsule routes", "[collis
     }
 }
 
+TEST_CASE("certified step cursors bound slow ascent and descent without corner shortcuts",
+          "[collision-step]") {
+    const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+    const auto K_SOURCE = collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT);
+    const auto K_TEXT = collision_step_document(K_SOURCE, K_HEIGHT, true).dump();
+    const auto K_SUPPORT = admit_collision_support(K_SOURCE, K_TEXT, collision_digest(K_TEXT));
+    REQUIRE(K_SUPPORT);
+    const auto K_COOK =
+        cook_synthetic_collision(std::make_shared<const SceneState>(K_SOURCE), *K_SUPPORT);
+    REQUIRE(K_COOK);
+    for (const double K_SPEED : { .3, 3., 10. }) {
+        for (const bool K_DESCEND : { false, true }) {
+            const Vec3d K_LOWER { 3.4, 0, 3.5 }, K_UPPER { 5.4, K_HEIGHT, 3.5 };
+            const CapsuleSweep K_ROUTE {
+                K_DESCEND ? K_UPPER : K_LOWER, K_DESCEND ? K_LOWER : K_UPPER, .25, 1.7 };
+            auto cursor = SyntheticStepTransition::create(*K_COOK, K_SOURCE, K_ROUTE);
+            REQUIRE(cursor);
+            std::size_t ticks { 0uz }, airborne { 0uz };
+            while (!cursor->state().m_finished && ticks < 1200uz) {
+                const auto K_BEFORE = cursor->state();
+                const auto K_TICK = cursor->advance_tick(K_SOURCE, K_SPEED);
+                REQUIRE(K_TICK);
+                CHECK(K_TICK->m_start_feet == K_BEFORE.m_feet);
+                CHECK(K_TICK->m_end_feet == cursor->state().m_feet);
+                CHECK(std::sqrt(dot(K_TICK->m_end_feet - K_TICK->m_start_feet,
+                                    K_TICK->m_end_feet - K_TICK->m_start_feet)) <=
+                      K_SPEED / 120 + 1e-12);
+                CHECK(minimum_corner_distance_squared(*K_TICK, K_HEIGHT) >= .25 * .25);
+                CHECK(std::min(K_TICK->m_start_feet.m_y, K_TICK->m_end_feet.m_y) >= 0);
+                const auto K_DIRECT = (*K_COOK)->probe_motion(K_SOURCE, *K_TICK);
+                REQUIRE(K_DIRECT);
+                airborne += K_DIRECT->m_state != ClearanceState::CLEAR_DIAGNOSTIC;
+                ++ticks;
+            }
+            REQUIRE(cursor->state().m_finished);
+            CHECK(cursor->state().m_feet == K_ROUTE.m_end_feet);
+            CHECK(airborne > 0uz);
+            const auto K_LANDING =
+                (*K_COOK)->probe(K_SOURCE, { K_ROUTE.m_end_feet, K_ROUTE.m_end_feet, .25, 1.7 });
+            REQUIRE(K_LANDING);
+            CHECK(K_LANDING->m_state == ClearanceState::CLEAR_DIAGNOSTIC);
+            const auto K_HELD = cursor->advance_tick(K_SOURCE, K_SPEED);
+            REQUIRE(K_HELD);
+            CHECK(K_HELD->m_start_feet == K_HELD->m_end_feet);
+        }
+    }
+}
+
+TEST_CASE("certified step cursors retain phase on pause failure and reversal", "[collision-step]") {
+    const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+    const auto K_SOURCE = collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT);
+    const auto K_TEXT = collision_step_document(K_SOURCE, K_HEIGHT, true).dump();
+    const auto K_SUPPORT = admit_collision_support(K_SOURCE, K_TEXT, collision_digest(K_TEXT));
+    REQUIRE(K_SUPPORT);
+    const auto K_COOK =
+        cook_synthetic_collision(std::make_shared<const SceneState>(K_SOURCE), *K_SUPPORT);
+    REQUIRE(K_COOK);
+    const CapsuleSweep K_ROUTE { { 3.4, 0, 3.5 }, { 5.4, K_HEIGHT, 3.5 }, .25, 1.7 };
+    auto cursor = SyntheticStepTransition::create(*K_COOK, K_SOURCE, K_ROUTE);
+    REQUIRE(cursor);
+    for (std::size_t tick { 0uz }; tick < 20uz; ++tick) {
+        REQUIRE(cursor->advance_tick(K_SOURCE, 3));
+    }
+    REQUIRE(cursor->state().m_feet.m_y > 0);
+    REQUIRE(cursor->state().m_feet.m_y < K_HEIGHT);
+    const auto K_BEFORE = cursor->state();
+    const auto K_PAUSE = cursor->advance_tick(K_SOURCE, 0);
+    REQUIRE(K_PAUSE);
+    CHECK(K_PAUSE->m_start_feet == K_PAUSE->m_end_feet);
+    CHECK(cursor->state().m_segment == K_BEFORE.m_segment);
+    std::stop_source stop;
+    stop.request_stop();
+    const auto K_CANCEL = cursor->advance_tick(K_SOURCE, 3, stop.get_token());
+    REQUIRE(!K_CANCEL);
+    CHECK(K_CANCEL.error().m_code == ErrorCode::CANCELLED);
+    auto corrected = K_SOURCE;
+    ++corrected.m_revision.m_value;
+    const auto K_STALE = cursor->advance_tick(corrected, 0);
+    REQUIRE(!K_STALE);
+    CHECK(K_STALE.error().m_code == ErrorCode::WRONG_BASE);
+    for (const double K_BAD : { 10.01,
+                               -10.01,
+                               std::numeric_limits<double>::quiet_NaN(),
+                               std::numeric_limits<double>::infinity() }) {
+        CHECK(!cursor->advance_tick(K_SOURCE, K_BAD));
+    }
+    CHECK(cursor->state().m_feet == K_BEFORE.m_feet);
+    CHECK(cursor->state().m_segment == K_BEFORE.m_segment);
+    auto replay = *cursor;
+    CHECK(cursor->advance_tick(K_SOURCE, 3)->m_end_feet ==
+          replay.advance_tick(K_SOURCE, 3)->m_end_feet);
+    for (std::size_t tick { 0uz }; tick < 100uz; ++tick) {
+        const auto K_BACK = cursor->advance_tick(K_SOURCE, -3);
+        REQUIRE(K_BACK);
+        CHECK(std::sqrt(dot(K_BACK->m_end_feet - K_BACK->m_start_feet,
+                            K_BACK->m_end_feet - K_BACK->m_start_feet)) <= 3. / 120 + 1e-12);
+        CHECK(minimum_corner_distance_squared(*K_BACK, K_HEIGHT) >= .25 * .25);
+    }
+    CHECK(cursor->state().m_feet == K_ROUTE.m_start_feet);
+    CHECK(!cursor->state().m_finished);
+}
+
+TEST_CASE("step path ownership requires a complete current certificate", "[collision-step]") {
+    const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+    const auto K_SOURCE = collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT);
+    auto document = collision_step_document(K_SOURCE, K_HEIGHT, true);
+    const auto K_ADMIT = [&](const nlohmann::json& candidate) {
+        const auto K_TEXT = candidate.dump();
+        return admit_collision_support(K_SOURCE, K_TEXT, collision_digest(K_TEXT));
+    };
+    const auto K_SUPPORT = K_ADMIT(document);
+    REQUIRE(K_SUPPORT);
+    const auto K_COOK =
+        cook_synthetic_collision(std::make_shared<const SceneState>(K_SOURCE), *K_SUPPORT);
+    REQUIRE(K_COOK);
+    const CapsuleSweep K_ROUTE { { 3.4, 0, 3.5 }, { 5.4, K_HEIGHT, 3.5 }, .25, 1.7 };
+    const auto K_CERTIFICATE = (*K_COOK)->certify_transition(K_SOURCE, K_ROUTE);
+    REQUIRE(K_CERTIFICATE);
+    REQUIRE(K_CERTIFICATE->m_path);
+    const auto K_PROBE = (*K_COOK)->probe_transition(K_SOURCE, K_ROUTE);
+    REQUIRE(K_PROBE);
+    CHECK(K_CERTIFICATE->m_probe.m_state == K_PROBE->m_state);
+    CHECK(K_CERTIFICATE->m_probe.m_checked_cells == K_PROBE->m_checked_cells);
+    if (const auto K_PATH = K_CERTIFICATE->m_path; K_PATH.has_value()) {
+        CHECK(K_PATH->front() == K_ROUTE.m_start_feet);
+        CHECK(K_PATH->back() == K_ROUTE.m_end_feet);
+    }
+    CHECK(!SyntheticStepTransition::create({}, K_SOURCE, K_ROUTE));
+    for (const auto K_DIMENSIONS : { SyntheticCapsuleSettings { .049, 1.7 },
+                                    SyntheticCapsuleSettings { 1.01, 3 },
+                                    SyntheticCapsuleSettings { .25, .5 },
+                                    SyntheticCapsuleSettings { .25, 3.01 } }) {
+        auto invalid = K_ROUTE;
+        invalid.m_radius = K_DIMENSIONS.m_radius;
+        invalid.m_height = K_DIMENSIONS.m_height;
+        const auto K_BAD = SyntheticStepTransition::create(*K_COOK, K_SOURCE, invalid);
+        REQUIRE(!K_BAD);
+        CHECK(K_BAD.error().m_code == ErrorCode::INVALID_ARGUMENT);
+    }
+    std::stop_source stop;
+    stop.request_stop();
+    const auto K_CANCEL =
+        SyntheticStepTransition::create(*K_COOK, K_SOURCE, K_ROUTE, stop.get_token());
+    REQUIRE(!K_CANCEL);
+    CHECK(K_CANCEL.error().m_code == ErrorCode::CANCELLED);
+    for (const char K_STATE : { '?', '#' }) {
+        document["grid"]["states"].get_ref<std::string&>()[4uz + 8uz * (1uz + 4uz * 3uz)] = K_STATE;
+        const auto K_BLOCKED_SUPPORT = K_ADMIT(document);
+        REQUIRE(K_BLOCKED_SUPPORT);
+        const auto K_BLOCKED_CERTIFICATE =
+            certify_step_transition(**K_BLOCKED_SUPPORT, K_SOURCE, K_ROUTE);
+        REQUIRE(K_BLOCKED_CERTIFICATE);
+        CHECK(!K_BLOCKED_CERTIFICATE->m_path);
+        CHECK(K_BLOCKED_CERTIFICATE->m_probe.m_state ==
+              (K_STATE == '?' ? ClearanceState::UNKNOWN : ClearanceState::OCCUPIED));
+        const auto K_BLOCKED_COOK = cook_synthetic_collision(
+            std::make_shared<const SceneState>(K_SOURCE), *K_BLOCKED_SUPPORT);
+        REQUIRE(K_BLOCKED_COOK);
+        const auto K_BLOCKED = SyntheticStepTransition::create(*K_BLOCKED_COOK, K_SOURCE, K_ROUTE);
+        REQUIRE(!K_BLOCKED);
+        CHECK(K_BLOCKED.error().m_code == ErrorCode::WOULD_BLOCK);
+    }
+    document["step"].erase("clearance_profile");
+    const auto K_LEGACY = K_ADMIT(document);
+    REQUIRE(K_LEGACY);
+    const auto K_LEGACY_CERTIFICATE = certify_step_transition(**K_LEGACY, K_SOURCE, K_ROUTE);
+    REQUIRE(K_LEGACY_CERTIFICATE);
+    CHECK(!K_LEGACY_CERTIFICATE->m_path);
+    const CapsuleSweep K_SHORT { { 3.8, 0, 3.5 }, { 4.2, K_HEIGHT, 3.5 }, .25, 1.7 };
+    const auto K_SHORT_RESULT = SyntheticStepTransition::create(*K_COOK, K_SOURCE, K_SHORT);
+    REQUIRE(!K_SHORT_RESULT);
+    CHECK(K_SHORT_RESULT.error().m_code == ErrorCode::WOULD_BLOCK);
+    auto corrected = K_SOURCE;
+    ++corrected.m_epoch.m_value;
+    const auto K_STALE = SyntheticStepTransition::create(*K_COOK, corrected, K_ROUTE);
+    REQUIRE(!K_STALE);
+    CHECK(K_STALE.error().m_code == ErrorCode::WRONG_EPOCH);
+    CHECK((*K_COOK)->validate_source(K_SOURCE));
+}
+
 TEST_CASE("synthetic step rejects over-height and source-gap mutations", "[collision-step]") {
     const float K_HEIGHT { std::nextafter(.3F, 0.F) };
     const auto K_SOURCE = collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT);

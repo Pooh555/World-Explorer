@@ -31,6 +31,42 @@ struct SyntheticStepProposal {
     ClearanceProbe m_straight_probe, m_transition_probe;
 };
 
+struct SyntheticStepTransitionState {
+    Vec3d m_feet;
+    std::size_t m_segment {};
+    bool m_finished {};
+};
+
+// Development path cursor, not a Jolt controller or walking capability. Each
+// tick traverses at most one certified leg; the controller will own its clock.
+class SyntheticStepTransition {
+    struct AdmissionToken { };
+
+  public:
+    explicit SyntheticStepTransition(AdmissionToken);
+
+    static Result<SyntheticStepTransition>
+    create(std::shared_ptr<const CanonicalCollisionMesh> cook,
+           const SceneState& current,
+           const CapsuleSweep& route,
+           const std::stop_token& stop = {});
+
+    SyntheticStepTransitionState state() const;
+
+    // Signed speed along the certified path, bounded to 10 units/s. Zero holds
+    // the current phase. Negative speed retraces the same certified legs.
+    Result<CapsuleSweep>
+    advance_tick(const SceneState& current, double path_speed, const std::stop_token& stop = {});
+
+  private:
+    std::shared_ptr<const CanonicalCollisionMesh> m_cook;
+    std::array<Vec3d, 6uz> m_path {};
+    std::array<double, 5uz> m_lengths {};
+    CapsuleSweep m_route;
+    SyntheticStepTransitionState m_state;
+    double m_offset {};
+};
+
 // Single-threaded flat/inclined controller and speculative step diagnostic.
 // Dimensions are explicit synthetic inputs, never a scale declaration or
 // permission for measured walking.

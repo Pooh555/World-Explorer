@@ -931,6 +931,17 @@ Result<ClearanceProbe> probe_step_transition(const CollisionSupport& support,
                                              const SceneState& source,
                                              const CapsuleSweep& sweep,
                                              const std::stop_token& stop) {
+    const auto K_CERTIFICATE = certify_step_transition(support, source, sweep, stop);
+    if (!K_CERTIFICATE) {
+        return std::unexpected(K_CERTIFICATE.error());
+    }
+    return K_CERTIFICATE->m_probe;
+}
+
+Result<StepTransitionCertificate> certify_step_transition(const CollisionSupport& support,
+                                                          const SceneState& source,
+                                                          const CapsuleSweep& sweep,
+                                                          const std::stop_token& stop) {
     const auto K_VALID = support.validate_source(source, stop);
     if (!K_VALID) {
         return std::unexpected(K_VALID.error());
@@ -942,7 +953,7 @@ Result<ClearanceProbe> probe_step_transition(const CollisionSupport& support,
         return fail(ErrorCode::INVALID_ARGUMENT, "Invalid V4 capsule transition");
     }
     if (!support.m_step_clearance) {
-        return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
+        return StepTransitionCertificate { { ClearanceState::UNSUPPORTED_FLOOR, 0uz }, {} };
     }
     const bool K_ASCEND { sweep.m_start_feet.m_x < support.m_step_boundary_x &&
                          sweep.m_end_feet.m_x > support.m_step_boundary_x };
@@ -956,7 +967,7 @@ Result<ClearanceProbe> probe_step_transition(const CollisionSupport& support,
         sweep.m_end_feet.m_y != support.floor_height(sweep.m_end_feet) ||
         (K_ASCEND && (sweep.m_start_feet.m_x > K_LEFT || sweep.m_end_feet.m_x < K_RIGHT)) ||
         (K_DESCEND && (sweep.m_start_feet.m_x < K_RIGHT || sweep.m_end_feet.m_x > K_LEFT))) {
-        return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
+        return StepTransitionCertificate { { ClearanceState::UNSUPPORTED_FLOOR, 0uz }, {} };
     }
     const double K_HIGH_Y { support.m_origin.m_y + support.m_step_height };
     const Vec3d K_BEFORE {
@@ -978,10 +989,13 @@ Result<ClearanceProbe> probe_step_transition(const CollisionSupport& support,
         result.m_checked_cells += K_PROBE->m_checked_cells;
         if (K_PROBE->m_state != ClearanceState::CLEAR_DIAGNOSTIC) {
             result.m_state = K_PROBE->m_state;
-            return result;
+            return StepTransitionCertificate { result, {} };
         }
     }
-    return result;
+    if (stop.stop_requested()) {
+        return fail(ErrorCode::CANCELLED, "Step transition certification cancelled");
+    }
+    return StepTransitionCertificate { result, K_PATH };
 }
 
 Result<ClearanceProbe> probe_step_motion(const CollisionSupport& support,

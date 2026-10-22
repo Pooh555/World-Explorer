@@ -1,5 +1,7 @@
 # Validation index
 
+- [Owned synthetic step transition cursor](2026-10-23-step-cursor.md): complete-path ownership, bounded single-leg 120 Hz advancement, slow ascent/descent, pause/reversal and failure preservation; V4 controller/session integration remains open.
+
 - [Synthetic capsule/corner sweep proof](2026-10-22-step-motion-proof.md): bounded outward-rounded solid proof and clipped-cell blocking, independent chord/quadratic oracles, saved/native diagnostic with 781 clear/17 unsupported segments; V4 sessions remain gated.
 
 - [Bounded synthetic Jolt step proposals](2026-10-22-step-proposals.md): shared private update, removal of minimum-forward tick overshoot, retained corner rejection and stalled slow ascent, saved/native raw proposal diagnostics; V4 movement stays blocked.
