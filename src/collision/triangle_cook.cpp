@@ -239,4 +239,14 @@ Result<ClearanceProbe> CanonicalCollisionMesh::probe_transition(const SceneState
     return probe_step_transition(*m_support, current, sweep, stop);
 }
 
+Result<ClearanceProbe> CanonicalCollisionMesh::probe_motion(const SceneState& current,
+                                                            const CapsuleSweep& sweep,
+                                                            const std::stop_token& stop) const {
+    const auto K_VALID = validate_source(current, stop);
+    if (!K_VALID) {
+        return std::unexpected(K_VALID.error());
+    }
+    return probe_step_motion(*m_support, current, sweep, stop);
+}
+
 }  // namespace world_explorer

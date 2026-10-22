@@ -116,6 +116,10 @@ class CollisionSupport {
                                                         const SceneState&,
                                                         const CapsuleSweep&,
                                                         const std::stop_token&);
+    friend Result<ClearanceProbe> probe_step_motion(const CollisionSupport&,
+                                                    const SceneState&,
+                                                    const CapsuleSweep&,
+                                                    const std::stop_token&);
 
     SceneId m_scene;
     WorldEpoch m_epoch;
@@ -155,6 +159,12 @@ Result<ClearanceProbe> probe_step_transition(const CollisionSupport& support,
                                              const SceneState& source,
                                              const CapsuleSweep& sweep,
                                              const std::stop_token& stop = {});
+// V4-only straight capsule sweep with floor/corner endpoint support and
+// conservative clipped-cell checks. No clock or controller permission.
+Result<ClearanceProbe> probe_step_motion(const CollisionSupport& support,
+                                         const SceneState& source,
+                                         const CapsuleSweep& sweep,
+                                         const std::stop_token& stop = {});
 std::string_view clearance_label(ClearanceState state);
 
 }  // namespace world_explorer

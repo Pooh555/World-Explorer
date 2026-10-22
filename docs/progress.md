@@ -378,12 +378,21 @@ ascent/descent proposals reach the other landing through rejected rounded-cap
 corner poses, while 0.3-unit/s ascent stalls at the riser. Native proposal
 markers are synthetic diagnostics, not accepted movement.
 
-Next, add an explicit source-bound capsule/corner and clipped-cell sweep proof
-to V4 in `src/scene_store/collision_support.cpp`, starting with the recorded
-rejected corner rows in `tests/unit/collision_step_tests.cpp`; run
-`build/dev/we_core_tests '[collision-step]'`. Preserve the current straight and
-five-segment contracts. Integrate only proved per-tick paths into the controller,
-including slow-speed continuation, cancellation and stale-source behavior.
+[Capsule/corner motion proof](validation/2026-10-22-step-motion-proof.md) now
+checks straight capsule sweeps against the selected step solid with bounded,
+outward-rounded intervals and clipped-cell checks. Independent chord and
+piecewise-quadratic oracles verify it. The saved diagnostic has
+781 clear and 17 unsupported segments; both high-speed riser-cutting chords
+are rejected. These are geometric certificates, not accepted session movement.
+Legacy queries/fixture bytes and V4 controller rejection are retained.
+
+Next, implement bounded V4 transition state in
+`src/collision/kinematic_capsule.cpp`. Start with failing tests for slow ascent
+and supported descent in `tests/unit/collision_step_tests.cpp`; run
+`build/dev/we_core_tests '[collision-step]'`. Reuse the new direct-sweep proof
+and complete landing-path certificate without accepting the 17 currently
+unsupported segments, skipping velocity/time or losing a phase on pause.
+Verify cancellation, clock/drop behavior and stale-source preservation.
 Add 0.30 ascent/descent, short crossing, mixed-slope and corner cases to the
 shared CLI/native session before accepting V4 controller creation. Recheck plan
 §§4.8/5.1 and the [inclined support](protocols/collision_ramps.md),

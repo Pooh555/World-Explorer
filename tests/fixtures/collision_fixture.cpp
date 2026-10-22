@@ -5,6 +5,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <utility>
 
 using namespace world_explorer;
 using namespace world_explorer::testing;
@@ -21,7 +22,8 @@ void write(const std::filesystem::path& path, const nlohmann::json& value) {
 
 void trace_step_proposals(const std::filesystem::path& directory,
                           std::string_view source_hash,
-                          std::string_view support_hash) {
+                          std::string_view support_hash,
+                          bool motion) {
     const auto K_LOADED = load_bundle(directory / "source.wexplore", {}, source_hash);
     if (!K_LOADED) {
         throw std::runtime_error(K_LOADED.error().m_message);
@@ -43,7 +45,8 @@ void trace_step_proposals(const std::filesystem::path& directory,
     auto visible = std::make_shared<SceneState>(**K_LOADED);
     visible->m_id = { 41 };
     visible->m_world_frame.reset();
-    visible->m_provenance["fixture"] = "synthetic_step_proposals_v1";
+    visible->m_provenance["fixture"] =
+        motion ? "synthetic_step_motion_v1" : "synthetic_step_proposals_v1";
     const double K_DISTANCE { std::sqrt(31.25) };
     visible->m_provenance["source_inspection_view"] =
         nlohmann::json { { "schema_version", 1 },
@@ -51,7 +54,9 @@ void trace_step_proposals(const std::filesystem::path& directory,
                         { "forward", { 2 / K_DISTANCE, -1.5 / K_DISTANCE, 5 / K_DISTANCE } },
                         { "vertical_fov_radians", .9 },
                         { "speed", 2 },
-                        { "frame_name", "Synthetic rejected step proposals (no walking)" } }
+                        { "frame_name",
+                         motion ? "Synthetic step motion proof (no walking)"
+                                : "Synthetic rejected step proposals (no walking)" } }
             .dump();
     auto markers = std::make_shared<SceneChunk>();
     markers->m_id = { 9007199254740997ULL };
@@ -59,32 +64,36 @@ void trace_step_proposals(const std::filesystem::path& directory,
     markers->m_pose_revision = { 4 };
     markers->m_bounds = { {}, { 8, 2, 8 } };
     markers->m_mesh = SceneMesh {};
-    nlohmann::json trace { { "schema", "SYNTHETIC_STEP_PROPOSALS_V1" },
-                          { "source_manifest_sha256", source_hash },
-                          { "support_sha256", support_hash },
-                          { "canonical_sha256", (*K_COOK)->digest() },
-                          { "proposal_only", true },
-                          { "walking_enabled", false },
-                          { "measured_collision", false },
-                          { "radius", .25 },
-                          { "height", 1.7 },
-                          { "ticks_per_second", 120U },
-                          { "minimum_step_forward", 0 },
-                          { "routes", nlohmann::json::array() } };
+    nlohmann::json trace {
+        { "schema", motion ? "SYNTHETIC_STEP_MOTION_V1" : "SYNTHETIC_STEP_PROPOSALS_V1" },
+        { "source_manifest_sha256", source_hash },
+        { "support_sha256", support_hash },
+        { "canonical_sha256", (*K_COOK)->digest() },
+        { "proposal_only", true },
+        { "walking_enabled", false },
+        { "measured_collision", false },
+        { "radius", .25 },
+        { "height", 1.7 },
+        { "ticks_per_second", 120U },
+        { "minimum_step_forward", 0 },
+        { "routes", nlohmann::json::array() } };
     const double K_HEIGHT { std::nextafter(.3F, 0.F) };
-    const std::array<Vec3d, 3uz> K_STARTS { { { 3.4, 0, 3.5 }, { 3.4, 0, 3.5 }, { 5.4, K_HEIGHT, 3.5 } } };
-    const std::array<Vec3d, 3uz> K_VELOCITIES { { { 3, 0, 0 }, { .3, 0, 0 }, { -3, 0, 0 } } };
-    const std::array<std::size_t, 3uz> K_TICKS { 90uz, 600uz, 90uz };
-    for (std::size_t route { 0uz }; route < K_STARTS.size(); ++route) {
+    const std::array<Vec3d, 4uz> K_STARTS {
+        { { 3.4, 0, 3.5 }, { 3.4, 0, 3.5 }, { 5.4, K_HEIGHT, 3.5 }, { 3.4, 0, 3.5 } } };
+    const std::array<Vec3d, 4uz> K_VELOCITIES { { { 3, 0, 0 }, { .3, 0, 0 }, { -3, 0, 0 }, { 10, 0, 0 } } };
+    const std::array<std::size_t, 4uz> K_TICKS { 90uz, 600uz, 90uz, 18uz };
+    const std::size_t K_ROUTE_COUNT { motion ? 4uz : 3uz };
+    for (std::size_t route { 0uz }; route < K_ROUTE_COUNT; ++route) {
         const auto K_PROPOSALS = SyntheticCapsuleController::inspect_step_motion(
             *K_SHAPE, **K_LOADED, { .25, 1.7 }, K_STARTS[route], K_VELOCITIES[route], K_TICKS[route]);
         if (!K_PROPOSALS) {
             throw std::runtime_error(K_PROPOSALS.error().m_message);
         }
         auto samples = nlohmann::json::array();
+        Vec3d previous { K_STARTS[route] };
         for (const auto& proposal : *K_PROPOSALS) {
             const auto K_FEET = proposal.m_raw_feet;
-            samples.push_back(
+            auto sample = nlohmann::json(
                 { { "raw_feet", { K_FEET.m_x, K_FEET.m_y, K_FEET.m_z } },
                  { "jolt_supported", proposal.m_jolt_supported },
                  { "horizontal_distance", proposal.m_horizontal_distance },
@@ -92,13 +101,36 @@ void trace_step_proposals(const std::filesystem::path& directory,
                  { "straight_checked_cells", proposal.m_straight_probe.m_checked_cells },
                  { "transition_clearance", clearance_label(proposal.m_transition_probe.m_state) },
                  { "transition_checked_cells", proposal.m_transition_probe.m_checked_cells } });
+            ClearanceProbe motion_probe {};
+            if (motion) {
+                const auto K_QUERY = [&](Vec3d point) {
+                    const double K_FLOOR { (*K_COOK)->floor_height(point) };
+                    if (std::abs(point.m_y - K_FLOOR) <= .002) {
+                        point.m_y = K_FLOOR;
+                    }
+                    return point;
+                };
+                const auto K_MOTION = (*K_COOK)->probe_motion(
+                    **K_LOADED, { K_QUERY(previous), K_QUERY(K_FEET), .25, 1.7 });
+                if (!K_MOTION) {
+                    throw std::runtime_error(K_MOTION.error().m_message);
+                }
+                motion_probe = *K_MOTION;
+                sample["motion_clearance"] = clearance_label(motion_probe.m_state);
+                sample["motion_checked_cells"] = motion_probe.m_checked_cells;
+            }
+            samples.push_back(std::move(sample));
+            previous = K_FEET;
             auto& mesh = *markers->m_mesh;
             const auto K_BASE = static_cast<std::uint32_t>(mesh.m_vertices.size());
             const float K_X { static_cast<float>(K_FEET.m_x) };
             const float K_Y { static_cast<float>(K_FEET.m_y) + .02F };
             const float K_Z { static_cast<float>(K_FEET.m_z) };
             const std::array<float, 3uz> K_NORMAL {
-                proposal.m_straight_probe.m_state == ClearanceState::CLEAR_DIAGNOSTIC ? -1.F : 1.F,
+                (motion ? motion_probe.m_state : proposal.m_straight_probe.m_state) ==
+                        ClearanceState::CLEAR_DIAGNOSTIC
+                    ? -1.F
+                    : 1.F,
                 0,
                 0 };
             mesh.m_vertices.push_back({ { K_X - .01F, K_Y, K_Z - .01F }, K_NORMAL });
@@ -116,11 +148,12 @@ void trace_step_proposals(const std::filesystem::path& directory,
                                    { "samples", samples } });
     }
     visible->m_chunks.emplace(markers->m_id, markers);
-    const auto K_WRITTEN = write_bundle(directory / "proposals.wexplore", visible);
+    const auto K_WRITTEN =
+        write_bundle(directory / (motion ? "motion.wexplore" : "proposals.wexplore"), visible);
     if (!K_WRITTEN) {
         throw std::runtime_error(K_WRITTEN.error().m_message);
     }
-    write(directory / "step-proposals.json", trace);
+    write(directory / (motion ? "step-motion.json" : "step-proposals.json"), trace);
 }
 
 void trace_capsules(const std::filesystem::path& directory,
@@ -245,15 +278,18 @@ int main(int argc, char** argv) {
              std::string_view(argv[2]) != "--ramp-45" &&
              std::string_view(argv[2]) != "--ramp-steep" && std::string_view(argv[2]) != "--step" &&
              std::string_view(argv[2]) != "--step-clearance" &&
-             std::string_view(argv[2]) != "--step-proposals")) {
+             std::string_view(argv[2]) != "--step-proposals" &&
+             std::string_view(argv[2]) != "--step-motion")) {
             std::cerr << "Usage: we_collision_fixture NEW_DIRECTORY "
                          "[--walls|--capsule|--ramp|--ramp-45|--ramp-steep|--step|--step-clearance|"
-                         "--step-proposals]"
+                         "--step-proposals|--step-motion]"
                          " (synthetic "
                          "only)\n";
             return 2;
         }
-        const bool K_STEP_PROPOSALS { argc == 3 && std::string_view(argv[2]) == "--step-proposals" };
+        const bool K_STEP_MOTION { argc == 3 && std::string_view(argv[2]) == "--step-motion" };
+        const bool K_STEP_PROPOSALS {
+            K_STEP_MOTION || (argc == 3 && std::string_view(argv[2]) == "--step-proposals") };
         const bool K_STEP_CLEARANCE {
             K_STEP_PROPOSALS || (argc == 3 && std::string_view(argv[2]) == "--step-clearance") };
         const bool K_STEP { K_STEP_CLEARANCE ||
@@ -346,7 +382,7 @@ int main(int argc, char** argv) {
             trace_capsules(K_OUTPUT, *K_SOURCE_HASH, *K_SUPPORT_HASH);
         }
         if (K_STEP_PROPOSALS) {
-            trace_step_proposals(K_OUTPUT, *K_SOURCE_HASH, *K_SUPPORT_HASH);
+            trace_step_proposals(K_OUTPUT, *K_SOURCE_HASH, *K_SUPPORT_HASH, K_STEP_MOTION);
         }
         std::cout << "Synthetic collision source/support/request saved; no measured collision or "
                      "walking\n";

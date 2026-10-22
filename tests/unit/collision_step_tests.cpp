@@ -4,10 +4,185 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cmath>
+#include <limits>
+#include <numbers>
 
 using namespace world_explorer;
 using namespace world_explorer::testing;
+
+namespace {
+
+double minimum_corner_distance_squared(const CapsuleSweep& sweep, double upper) {
+    const double K_X { 4 - sweep.m_start_feet.m_x };
+    const double K_DX { sweep.m_start_feet.m_x - sweep.m_end_feet.m_x };
+    const double K_Y { sweep.m_start_feet.m_y + sweep.m_radius - upper };
+    const double K_DY { sweep.m_end_feet.m_y - sweep.m_start_feet.m_y };
+    std::vector<double> breaks { 0, 1 };
+    for (const auto K_PAIR :
+         { std::array<double, 2uz> { K_X, K_DX }, std::array<double, 2uz> { K_Y, K_DY } }) {
+        if (K_PAIR[1uz] != 0) {
+            const double K_ROOT { -K_PAIR[0uz] / K_PAIR[1uz] };
+            if (K_ROOT > 0 && K_ROOT < 1) {
+                breaks.push_back(K_ROOT);
+            }
+        }
+    }
+    std::sort(breaks.begin(), breaks.end());
+    const auto K_DISTANCE = [&](double t) {
+        const double K_A { std::max(0., K_X + t * K_DX) };
+        const double K_B { std::max(0., K_Y + t * K_DY) };
+        return K_A * K_A + K_B * K_B;
+    };
+    double result { std::numeric_limits<double>::infinity() };
+    for (std::size_t index { 1uz }; index < breaks.size(); ++index) {
+        const double K_MIDDLE { (breaks[index - 1uz] + breaks[index]) / 2 };
+        const bool K_X_ACTIVE { K_X + K_MIDDLE * K_DX > 0 };
+        const bool K_Y_ACTIVE { K_Y + K_MIDDLE * K_DY > 0 };
+        const double K_A { K_X_ACTIVE ? K_DX : 0 }, K_B { K_Y_ACTIVE ? K_DY : 0 };
+        const double K_DENOMINATOR { K_A * K_A + K_B * K_B };
+        result = std::min({ result, K_DISTANCE(breaks[index - 1uz]), K_DISTANCE(breaks[index]) });
+        if (K_DENOMINATOR > 0) {
+            const double K_T { std::clamp(
+                -(K_X * K_A + K_Y * K_B) / K_DENOMINATOR, breaks[index - 1uz], breaks[index]) };
+            result = std::min(result, K_DISTANCE(K_T));
+        }
+    }
+    return result;
+}
+
+}  // namespace
+
+TEST_CASE("synthetic corner sweeps prove curved clearance without cutting the riser",
+          "[collision-step]") {
+    const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+    const auto K_SOURCE = collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT);
+    auto document = collision_step_document(K_SOURCE, K_HEIGHT, true);
+    const auto K_ADMIT = [&](const nlohmann::json& candidate) {
+        const auto K_TEXT = candidate.dump();
+        return admit_collision_support(K_SOURCE, K_TEXT, collision_digest(K_TEXT));
+    };
+    const auto K_SUPPORT = K_ADMIT(document);
+    REQUIRE(K_SUPPORT);
+
+    struct CornerCircle {
+        double m_radius {}, m_gap {};
+    };
+
+    const auto K_POINT = [&](CornerCircle circle, double angle) {
+        const double K_ANGLE { angle * std::numbers::pi / 180 };
+        return Vec3d { 4 - (circle.m_radius + circle.m_gap) * std::cos(K_ANGLE),
+                      K_HEIGHT - circle.m_radius +
+                          (circle.m_radius + circle.m_gap) * std::sin(K_ANGLE),
+                      4.5 };
+    };
+    for (const double K_RADIUS : { .05, .25, .75 }) {
+        for (const double K_ANGLE : { 75., 79., 83. }) {
+            const CapsuleSweep K_SAFE { K_POINT({ K_RADIUS, .006 }, K_ANGLE),
+                                       K_POINT({ K_RADIUS, .006 }, K_ANGLE + 2),
+                                       K_RADIUS,
+                                       2 * K_RADIUS + .5 };
+            // Independent chord formula: its nearest point has radius R*cos(delta/2).
+            CHECK((K_RADIUS + .006) * std::cos(std::numbers::pi / 180) > K_RADIUS);
+            const auto K_FORWARD = probe_step_motion(**K_SUPPORT, K_SOURCE, K_SAFE);
+            const auto K_REVERSE = probe_step_motion(
+                **K_SUPPORT,
+                K_SOURCE,
+                { K_SAFE.m_end_feet, K_SAFE.m_start_feet, K_SAFE.m_radius, K_SAFE.m_height });
+            REQUIRE(K_FORWARD);
+            REQUIRE(K_REVERSE);
+            CHECK(K_FORWARD->m_state == ClearanceState::CLEAR_DIAGNOSTIC);
+            CHECK(K_REVERSE->m_state == ClearanceState::CLEAR_DIAGNOSTIC);
+            CHECK(K_FORWARD->m_checked_cells > 0uz);
+        }
+    }
+    const CapsuleSweep K_CUT { K_POINT({ .25, .001 }, 45), K_POINT({ .25, .001 }, 85), .25, 1.7 };
+    CHECK(.251 * std::cos(20 * std::numbers::pi / 180) < .25);
+    for (const auto K_FEET : { K_CUT.m_start_feet, K_CUT.m_end_feet }) {
+        const auto K_STATIC = probe_step_motion(**K_SUPPORT, K_SOURCE, { K_FEET, K_FEET, .25, 1.7 });
+        REQUIRE(K_STATIC);
+        CHECK(K_STATIC->m_state == ClearanceState::CLEAR_DIAGNOSTIC);
+    }
+    const auto K_REJECTED = probe_step_motion(**K_SUPPORT, K_SOURCE, K_CUT);
+    REQUIRE(K_REJECTED);
+    CHECK(K_REJECTED->m_state == ClearanceState::UNSUPPORTED_FLOOR);
+    const CapsuleSweep K_CORNER { { 3.8, .21, 3.5 }, { 3.81, .222, 3.5 }, .25, 1.7 };
+    const auto K_CLEAR = probe_step_motion(**K_SUPPORT, K_SOURCE, K_CORNER);
+    REQUIRE(K_CLEAR);
+    CHECK(K_CLEAR->m_state == ClearanceState::CLEAR_DIAGNOSTIC);
+    const auto K_TANGENT =
+        probe_step_motion(**K_SUPPORT, K_SOURCE, { { 3.75, 0, 3.5 }, { 3.75, 0, 3.5 }, .25, 1.7 });
+    REQUIRE(K_TANGENT);
+    CHECK(K_TANGENT->m_state == ClearanceState::UNSUPPORTED_FLOOR);
+    const auto K_EDGE =
+        probe_step_motion(**K_SUPPORT, K_SOURCE, { { .1, 0, 3.5 }, { .1, 0, 3.5 }, .25, 1.7 });
+    REQUIRE(K_EDGE);
+    CHECK(K_EDGE->m_state == ClearanceState::UNKNOWN);
+    for (const char K_STATE : { '?', '#' }) {
+        document["grid"]["states"].get_ref<std::string&>()[4uz + 8uz * (0uz + 4uz * 3uz)] = K_STATE;
+        const auto K_BLOCK_SUPPORT = K_ADMIT(document);
+        REQUIRE(K_BLOCK_SUPPORT);
+        const auto K_BLOCK = probe_step_motion(**K_BLOCK_SUPPORT, K_SOURCE, K_CORNER);
+        REQUIRE(K_BLOCK);
+        CHECK(K_BLOCK->m_state ==
+              (K_STATE == '?' ? ClearanceState::UNKNOWN : ClearanceState::OCCUPIED));
+    }
+    document = collision_step_document(K_SOURCE, K_HEIGHT, true);
+    document["grid"]["states"].get_ref<std::string&>()[5uz + 8uz * (1uz + 4uz * 3uz)] = '?';
+    const auto K_TOUCH_SUPPORT = K_ADMIT(document);
+    REQUIRE(K_TOUCH_SUPPORT);
+    const auto K_TOUCH = probe_step_motion(
+        **K_TOUCH_SUPPORT, K_SOURCE, { { 4.75, K_HEIGHT, 3.5 }, { 4.75, K_HEIGHT, 3.5 }, .25, 1.7 });
+    REQUIRE(K_TOUCH);
+    CHECK(K_TOUCH->m_state == ClearanceState::UNKNOWN);
+    document = collision_step_document(K_SOURCE, K_HEIGHT);
+    const auto K_LEGACY = K_ADMIT(document);
+    REQUIRE(K_LEGACY);
+    const auto K_LEGACY_PROBE = probe_step_motion(**K_LEGACY, K_SOURCE, K_CORNER);
+    REQUIRE(K_LEGACY_PROBE);
+    CHECK(K_LEGACY_PROBE->m_state == ClearanceState::UNSUPPORTED_FLOOR);
+    auto corrected = K_SOURCE;
+    ++corrected.m_revision.m_value;
+    CHECK(!probe_step_motion(**K_SUPPORT, corrected, K_CORNER));
+    std::stop_source cancelled;
+    cancelled.request_stop();
+    const auto K_CANCELLED =
+        probe_step_motion(**K_SUPPORT, K_SOURCE, K_CORNER, cancelled.get_token());
+    REQUIRE(!K_CANCELLED);
+    CHECK(K_CANCELLED.error().m_code == ErrorCode::CANCELLED);
+    CHECK(!probe_step_motion(
+        **K_SUPPORT, K_SOURCE, { K_CORNER.m_start_feet, K_CORNER.m_end_feet, .01, 1.7 }));
+}
+
+TEST_CASE("synthetic corner sweeps clip cell evidence at the selected upper floor",
+          "[collision-step]") {
+    const float K_HEIGHT { std::nextafter(.3F, 0.F) };
+    const auto K_SOURCE = collision_source(false, false, "NEG_X", 0, 0, K_HEIGHT);
+    auto document = collision_step_document(K_SOURCE, K_HEIGHT, true);
+    document["grid"]["cell_size"] = .125;
+    document["grid"]["dimensions"] = { 64U, 32U, 64U };
+    document["grid"]["states"] = std::string(64uz * 32uz * 64uz, '.');
+    document["step"]["boundary_x"] = 32U;
+    const auto K_ADMIT = [&](const nlohmann::json& candidate) {
+        const auto K_TEXT = candidate.dump();
+        return admit_collision_support(K_SOURCE, K_TEXT, collision_digest(K_TEXT));
+    };
+    const CapsuleSweep K_CORNER { { 3.8, .21, 3.5 }, { 3.81, .222, 3.5 }, .25, 1.7 };
+    auto& states = document["grid"]["states"].get_ref<std::string&>();
+    states[32uz + 64uz * (1uz + 32uz * 28uz)] = '?';
+    const auto K_BELOW = K_ADMIT(document);
+    REQUIRE(K_BELOW);
+    const auto K_BELOW_PROBE = probe_step_motion(**K_BELOW, K_SOURCE, K_CORNER);
+    REQUIRE(K_BELOW_PROBE);
+    CHECK(K_BELOW_PROBE->m_state == ClearanceState::CLEAR_DIAGNOSTIC);
+    states[32uz + 64uz * (2uz + 32uz * 28uz)] = '?';
+    const auto K_ABOVE = K_ADMIT(document);
+    REQUIRE(K_ABOVE);
+    const auto K_ABOVE_PROBE = probe_step_motion(**K_ABOVE, K_SOURCE, K_CORNER);
+    REQUIRE(K_ABOVE_PROBE);
+    CHECK(K_ABOVE_PROBE->m_state == ClearanceState::UNKNOWN);
+}
 
 TEST_CASE("selected synthetic step admits both landings and an exact riser", "[collision-step]") {
     const float K_HEIGHT { std::nextafter(.3F, 0.F) };
@@ -211,8 +386,29 @@ TEST_CASE("bounded Jolt step proposals retain rejection and respect tick travel"
         REQUIRE(K_PROPOSALS);
         REQUIRE(K_PROPOSALS->size() == K_TICKS);
         bool rejected_corner {};
+        std::size_t proved_corners {};
+        Vec3d previous { 3.4, 0, 3.5 };
+        const auto K_QUERY = [&](Vec3d point) {
+            const double K_FLOOR { (*K_SUPPORT)->floor_height(point) };
+            if (std::abs(point.m_y - K_FLOOR) <= .002) {
+                point.m_y = K_FLOOR;
+            }
+            return point;
+        };
         for (const auto& proposal : *K_PROPOSALS) {
             CHECK(proposal.m_horizontal_distance <= K_SPEED / 120 + 1e-5);
+            const CapsuleSweep K_SWEEP { K_QUERY(previous), K_QUERY(proposal.m_raw_feet), .25, 1.7 };
+            const auto K_MOTION = probe_step_motion(**K_SUPPORT, *K_SOURCE, K_SWEEP);
+            REQUIRE(K_MOTION);
+            if (K_MOTION->m_state == ClearanceState::CLEAR_DIAGNOSTIC) {
+                // Piecewise-quadratic minimum is independent of the interval proof.
+                CHECK(minimum_corner_distance_squared(K_SWEEP, K_HEIGHT) >= .0625 - 1e-12);
+                CHECK(std::min(K_SWEEP.m_start_feet.m_y, K_SWEEP.m_end_feet.m_y) >= 0);
+                proved_corners +=
+                    proposal.m_straight_probe.m_state == ClearanceState::UNSUPPORTED_FLOOR ? 1uz
+                                                                                           : 0uz;
+            }
+            previous = proposal.m_raw_feet;
             if (proposal.m_raw_feet.m_y > .01 && proposal.m_raw_feet.m_y < K_HEIGHT - .01) {
                 rejected_corner = true;
                 CHECK(proposal.m_straight_probe.m_state == ClearanceState::UNSUPPORTED_FLOOR);
@@ -227,6 +423,9 @@ TEST_CASE("bounded Jolt step proposals retain rejection and respect tick travel"
             CHECK(K_PROPOSALS->back().m_raw_feet.m_y == Catch::Approx(0).margin(.002));
         } else {
             CHECK(rejected_corner);
+            if (K_SPEED == 3) {
+                CHECK(proved_corners > 0uz);
+            }
             CHECK(K_PROPOSALS->back().m_raw_feet.m_x > 4.5);
             CHECK(K_PROPOSALS->back().m_raw_feet.m_y == Catch::Approx(K_HEIGHT).margin(.002));
         }

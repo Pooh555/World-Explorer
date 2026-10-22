@@ -94,6 +94,9 @@ class CanonicalCollisionMesh {
     Result<ClearanceProbe> probe_transition(const SceneState& current,
                                             const CapsuleSweep& sweep,
                                             const std::stop_token& stop = {}) const;
+    Result<ClearanceProbe> probe_motion(const SceneState& current,
+                                        const CapsuleSweep& sweep,
+                                        const std::stop_token& stop = {}) const;
 
   private:
     friend Result<std::shared_ptr<const CanonicalCollisionMesh>> cook_synthetic_collision(

@@ -632,6 +632,133 @@ Result<void> CollisionSupport::validate_source(const SceneState& source,
 
 namespace {
 
+struct Interval {
+    double m_low {}, m_high {};
+};
+
+struct StepGeometry {
+    double m_lower {}, m_upper {}, m_boundary {};
+};
+
+struct StepPositionRange {
+    Interval m_x, m_feet_y;
+};
+
+double round_down(double value) {
+    return std::nextafter(value, -std::numeric_limits<double>::infinity());
+}
+
+double round_up(double value) {
+    return std::nextafter(value, std::numeric_limits<double>::infinity());
+}
+
+Interval add_interval(Interval a, Interval b) {
+    return { round_down(a.m_low + b.m_low), round_up(a.m_high + b.m_high) };
+}
+
+Interval subtract_interval(Interval a, Interval b) {
+    return add_interval(a, { -b.m_high, -b.m_low });
+}
+
+Interval multiply_interval(Interval a, Interval b) {
+    const std::array<double, 4uz> K_PRODUCTS {
+        a.m_low * b.m_low, a.m_low * b.m_high, a.m_high * b.m_low, a.m_high * b.m_high };
+    return { round_down(*std::min_element(K_PRODUCTS.begin(), K_PRODUCTS.end())),
+            round_up(*std::max_element(K_PRODUCTS.begin(), K_PRODUCTS.end())) };
+}
+
+Interval square_positive_interval(Interval value) {
+    const double K_LOW { std::max(0., value.m_low) };
+    const double K_HIGH { std::max(0., value.m_high) };
+    return { std::max(0., round_down(K_LOW * K_LOW)), round_up(K_HIGH * K_HIGH) };
+}
+
+Interval motion_interval(double a, double b, double first, double last) {
+    if (a == b) {
+        return { a, b };
+    }
+    return add_interval({ a, a },
+                        multiply_interval({ first, last }, subtract_interval({ b, b }, { a, a })));
+}
+
+// Distance from the capsule's lowest core center to the upper solid quadrant.
+// Raising a core center cannot make it closer, so the upper core adds no case.
+Interval
+step_distance_squared(const StepPositionRange& point, const StepGeometry& step, double radius) {
+    const auto K_DX = subtract_interval({ step.m_boundary, step.m_boundary }, point.m_x);
+    const auto K_DY = subtract_interval(add_interval(point.m_feet_y, { radius, radius }),
+                                        { step.m_upper, step.m_upper });
+    return add_interval(square_positive_interval(K_DX), square_positive_interval(K_DY));
+}
+
+bool step_endpoint_supported(Vec3d feet, const StepGeometry& step, double radius) {
+    if (feet.m_y == step.m_lower || (feet.m_x >= step.m_boundary && feet.m_y == step.m_upper)) {
+        return true;
+    }
+    const auto K_FLOOR_GAP = subtract_interval({ feet.m_y, feet.m_y }, { step.m_lower, step.m_lower });
+    if (K_FLOOR_GAP.m_low >= 0 && K_FLOOR_GAP.m_high <= .01) {
+        return true;
+    }
+    const auto K_CORE_Y = add_interval({ feet.m_y, feet.m_y }, { radius, radius });
+    const auto K_DISTANCE =
+        step_distance_squared({ { feet.m_x, feet.m_x }, { feet.m_y, feet.m_y } }, step, radius);
+    const auto K_CONTACT_RADIUS = add_interval({ radius, radius }, { .01, .01 });
+    return K_CORE_Y.m_low >= step.m_upper &&
+           K_DISTANCE.m_high <= square_positive_interval(K_CONTACT_RADIUS).m_low;
+}
+
+bool clear_step_solid(const CapsuleSweep& sweep, const StepGeometry& step) {
+    if (std::min(sweep.m_start_feet.m_y, sweep.m_end_feet.m_y) >= step.m_upper) {
+        return true;
+    }
+
+    struct Domain {
+        double m_first {}, m_last {};
+        std::size_t m_depth {};
+    };
+
+    std::array<Domain, 18uz> pending {};
+    pending[0uz] = { 0, 1, 0uz };
+    std::size_t count { 1uz }, visited {};
+    const auto K_RADIUS = square_positive_interval({ sweep.m_radius, sweep.m_radius });
+    while (count != 0uz) {
+        const auto K_DOMAIN = pending[--count];
+        if (++visited > 512uz) {
+            return false;
+        }
+        const auto K_DISTANCE = step_distance_squared(
+            { motion_interval(
+                 sweep.m_start_feet.m_x, sweep.m_end_feet.m_x, K_DOMAIN.m_first, K_DOMAIN.m_last),
+             motion_interval(
+                 sweep.m_start_feet.m_y, sweep.m_end_feet.m_y, K_DOMAIN.m_first, K_DOMAIN.m_last) },
+            step,
+            sweep.m_radius);
+        if (K_DISTANCE.m_low >= K_RADIUS.m_high) {
+            continue;
+        }
+        if (K_DISTANCE.m_high < K_RADIUS.m_low || K_DOMAIN.m_depth == 16uz) {
+            return false;
+        }
+        const double K_MIDDLE { (K_DOMAIN.m_first + K_DOMAIN.m_last) / 2 };
+        pending[count++] = { K_MIDDLE, K_DOMAIN.m_last, K_DOMAIN.m_depth + 1uz };
+        pending[count++] = { K_DOMAIN.m_first, K_MIDDLE, K_DOMAIN.m_depth + 1uz };
+    }
+    return true;
+}
+
+bool core_box_may_touch(const std::array<Interval, 3uz>& core,
+                        const std::array<Interval, 3uz>& box,
+                        double radius) {
+    double squared {};
+    for (std::size_t axis { 0uz }; axis < 3uz; ++axis) {
+        const double K_GAP { std::max({ 0.,
+                                      round_down(box[axis].m_low - core[axis].m_high),
+                                      round_down(core[axis].m_low - box[axis].m_high) }) };
+        squared = std::max(0., round_down(squared + std::max(0., round_down(K_GAP * K_GAP))));
+    }
+    return squared <= round_up(radius * radius);
+}
+
 Result<ClearanceProbe> probe_step_segment(const CollisionSupport& support,
                                           const CapsuleSweep& sweep,
                                           const std::stop_token& stop) {
@@ -852,6 +979,116 @@ Result<ClearanceProbe> probe_step_transition(const CollisionSupport& support,
         if (K_PROBE->m_state != ClearanceState::CLEAR_DIAGNOSTIC) {
             result.m_state = K_PROBE->m_state;
             return result;
+        }
+    }
+    return result;
+}
+
+Result<ClearanceProbe> probe_step_motion(const CollisionSupport& support,
+                                         const SceneState& source,
+                                         const CapsuleSweep& sweep,
+                                         const std::stop_token& stop) {
+    const auto K_VALID = support.validate_source(source, stop);
+    if (!K_VALID) {
+        return std::unexpected(K_VALID.error());
+    }
+    if (support.m_format_version != 4U || !finite(sweep.m_start_feet) ||
+        !finite(sweep.m_end_feet) || !std::isfinite(sweep.m_radius) ||
+        !std::isfinite(sweep.m_height) || sweep.m_radius < .05 || sweep.m_radius > 1 ||
+        sweep.m_height < 2 * sweep.m_radius + .01 || sweep.m_height > 3) {
+        return fail(ErrorCode::INVALID_ARGUMENT, "Invalid bounded V4 capsule motion");
+    }
+    const double K_LOWER_FLOOR { support.m_origin.m_y };
+    const double K_UPPER_FLOOR { K_LOWER_FLOOR + support.m_step_height };
+    const StepGeometry K_STEP { K_LOWER_FLOOR, K_UPPER_FLOOR, support.m_step_boundary_x };
+    if (!support.m_step_clearance ||
+        std::min(sweep.m_start_feet.m_y, sweep.m_end_feet.m_y) < K_LOWER_FLOOR ||
+        !step_endpoint_supported(sweep.m_start_feet, K_STEP, sweep.m_radius) ||
+        !step_endpoint_supported(sweep.m_end_feet, K_STEP, sweep.m_radius)) {
+        return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
+    }
+    const std::array<double, 3uz> K_BASE {
+        support.m_origin.m_x, support.m_origin.m_y, support.m_origin.m_z };
+    const std::array<double, 3uz> K_LOW {
+        round_down(std::min(sweep.m_start_feet.m_x, sweep.m_end_feet.m_x) - sweep.m_radius),
+        std::min(sweep.m_start_feet.m_y, sweep.m_end_feet.m_y),
+        round_down(std::min(sweep.m_start_feet.m_z, sweep.m_end_feet.m_z) - sweep.m_radius) };
+    const std::array<double, 3uz> K_HIGH {
+        round_up(std::max(sweep.m_start_feet.m_x, sweep.m_end_feet.m_x) + sweep.m_radius),
+        round_up(std::max(sweep.m_start_feet.m_y, sweep.m_end_feet.m_y) + sweep.m_height),
+        round_up(std::max(sweep.m_start_feet.m_z, sweep.m_end_feet.m_z) + sweep.m_radius) };
+    std::array<std::size_t, 3uz> first {}, last {};
+    for (std::size_t axis { 0uz }; axis < 3uz; ++axis) {
+        const auto K_FROM_INTERVAL =
+            subtract_interval({ K_LOW[axis], K_LOW[axis] }, { K_BASE[axis], K_BASE[axis] });
+        const auto K_TO_INTERVAL =
+            subtract_interval({ K_HIGH[axis], K_HIGH[axis] }, { K_BASE[axis], K_BASE[axis] });
+        const double K_FROM { axis == 1uz && K_LOW[axis] == K_BASE[axis]
+                                 ? 0.
+                                 : round_down(K_FROM_INTERVAL.m_low / support.m_cell_size) };
+        const double K_TO { round_up(K_TO_INTERVAL.m_high / support.m_cell_size) };
+        if (!std::isfinite(K_FROM) || !std::isfinite(K_TO) || K_FROM < 0 ||
+            K_TO >= static_cast<double>(support.m_dimensions[axis])) {
+            return ClearanceProbe { ClearanceState::UNKNOWN, 0uz };
+        }
+        first[axis] = static_cast<std::size_t>(std::floor(K_FROM));
+        last[axis] = static_cast<std::size_t>(std::floor(K_TO));
+    }
+    const bool K_CLEAR_SOLID { clear_step_solid(sweep, K_STEP) };
+    if (stop.stop_requested()) {
+        return fail(ErrorCode::CANCELLED, "Step motion proof cancelled");
+    }
+    if (!K_CLEAR_SOLID) {
+        return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
+    }
+    const auto K_BOTTOM = add_interval({ K_LOW[1uz], K_LOW[1uz] }, { sweep.m_radius, sweep.m_radius });
+    const auto K_TOP =
+        subtract_interval(add_interval({ std::max(sweep.m_start_feet.m_y, sweep.m_end_feet.m_y),
+                                        std::max(sweep.m_start_feet.m_y, sweep.m_end_feet.m_y) },
+                                       { sweep.m_height, sweep.m_height }),
+                          { sweep.m_radius, sweep.m_radius });
+    const std::array<Interval, 3uz> K_CORE {
+        { { std::min(sweep.m_start_feet.m_x, sweep.m_end_feet.m_x),
+          std::max(sweep.m_start_feet.m_x, sweep.m_end_feet.m_x) },
+         { K_BOTTOM.m_low, K_TOP.m_high },
+         { std::min(sweep.m_start_feet.m_z, sweep.m_end_feet.m_z),
+          std::max(sweep.m_start_feet.m_z, sweep.m_end_feet.m_z) } } };
+    const auto K_COORDINATE = [&](std::size_t axis, std::size_t index) {
+        const double K_INDEX { static_cast<double>(index) };
+        return add_interval(
+            { K_BASE[axis], K_BASE[axis] },
+            multiply_interval({ K_INDEX, K_INDEX }, { support.m_cell_size, support.m_cell_size }));
+    };
+    ClearanceProbe result { ClearanceState::CLEAR_DIAGNOSTIC, 0uz };
+    const auto K_NX = support.m_dimensions[0uz], K_NY = support.m_dimensions[1uz];
+    for (std::size_t z { first[2uz] }; z <= last[2uz]; ++z) {
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Step motion cell checks cancelled");
+        }
+        for (std::size_t x { first[0uz] }; x <= last[0uz]; ++x) {
+            if (!support.m_floors[x + K_NX * z]) {
+                return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, result.m_checked_cells };
+            }
+            const double K_FLOOR { x < support.m_step_boundary_cell ? K_LOWER_FLOOR : K_UPPER_FLOOR };
+            for (std::size_t y { first[1uz] }; y <= last[1uz]; ++y) {
+                const std::array<Interval, 3uz> K_BOX {
+                    { { K_COORDINATE(0uz, x).m_low, K_COORDINATE(0uz, x + 1uz).m_high },
+                     { std::max(K_FLOOR, K_COORDINATE(1uz, y).m_low),
+                      K_COORDINATE(1uz, y + 1uz).m_high },
+                     { K_COORDINATE(2uz, z).m_low, K_COORDINATE(2uz, z + 1uz).m_high } } };
+                if (K_BOX[1uz].m_high < K_BOX[1uz].m_low ||
+                    !core_box_may_touch(K_CORE, K_BOX, sweep.m_radius)) {
+                    continue;
+                }
+                ++result.m_checked_cells;
+                const auto K_STATE = support.m_cells[x + K_NX * (y + K_NY * z)];
+                if (K_STATE != SpaceState::FREE) {
+                    return ClearanceProbe { K_STATE == SpaceState::OCCUPIED
+                                               ? ClearanceState::OCCUPIED
+                                               : ClearanceState::UNKNOWN,
+                                           result.m_checked_cells };
+                }
+            }
         }
     }
     return result;

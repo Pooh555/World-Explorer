@@ -89,3 +89,46 @@ support and canonical input and records raw 3-unit/s ascent/descent and
 `proposal_only` is true. The native bundle adds small markers above raw feet
 to a separate synthetic source copy; they never enter the collision cook.
 Use `we_viewer --scene .../proposals.wexplore --source-view` to inspect it.
+
+`probe_step_motion` is an additional V4 straight-sweep proof; the existing
+ordinary and five-segment queries keep their original meanings. It requires
+the same explicit clearance profile and the controller's bounded dimensions
+(radius 0.05–1, height at least `2*radius+0.01` and at most 3). It validates the
+complete source context and does not grant a clock, velocity or controller
+capability.
+
+Let `L`/`H` be the admitted lower/upper floor, `b` the riser X and `r` the
+capsule radius. The selected step solid is the union of `y <= L` and
+`x >= b, y <= H`. The lowest capsule-core center is `(x, feet.y+r, z)`;
+higher core centers cannot be closer to either downward solid. Thus the entire
+straight sweep must have `feet.y >= L` and
+`max(b-x,0)^2 + max(feet.y+r-H,0)^2 >= r^2` for every segment parameter.
+The implementation bounds this expression with outward-rounded interval
+operations and bisects unresolved parameter intervals. Maximum depth is 16,
+with 512 visited intervals; an unresolved proof returns `UNSUPPORTED_FLOOR`.
+Exact upper-floor contact is handled directly when both feet heights are at
+least `H`. No penetration tolerance or Jolt padding is added to this geometry
+test. Exact tangencies that interval rounding cannot certify remain blocked.
+
+Each endpoint must also be within the existing synthetic 0.01 contact band:
+near the lower floor, or above the upper edge with core-to-solid distance at
+most `r+0.01`. This does not certify continuous grounding or stair timing.
+Every touched projected tile still needs selected whole-tile floor support.
+Grid bounds are rounded outward. Each candidate cell is clipped at that tile's
+floor; an empty clipped cell contributes no traversable space. Unknown and
+occupied cells block unless the distance from an enclosing swept-core box to
+the clipped cell proves the radius cannot touch it. These cell checks remain
+conservative at diagonal paths and seams. Source changes, invalid dimensions
+and cancellation return errors without modifying inputs.
+
+`CanonicalCollisionMesh::probe_motion` exposes that proof through the same
+immutable source owner. `we_collision_fixture NEW_DIRECTORY --step-motion`
+adds `step-motion.json` (`SYNTHETIC_STEP_MOTION_V1`) and `motion.wexplore`.
+The trace retains the raw proposal and original probe fields, adds motion
+clearance/cell counts, and includes an additional 10-unit/s ascent. It uses
+the same explicit 0.002 floor-contact normalization for query copies only.
+Markers now distinguish the new motion-probe result; the raw rows remain
+speculative, with false walking/measured flags. Previous fixture modes and
+their serialized outputs are retained. Endpoint support, descending/high-speed
+chords, safe slow-step continuation and actual shared-session movement still
+require their controller checks before V4 creation can be enabled.
