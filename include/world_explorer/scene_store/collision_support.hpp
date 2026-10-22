@@ -37,6 +37,7 @@ constexpr std::size_t K_COLLISION_SUPPORT_DOCUMENT_BYTES { 1024uz * 1024uz };
 
 // Immutable, admitted synthetic support. X varies fastest, then Y, then Z.
 // Floor flags use X then Z and require one source triangle to cover a full tile.
+// V4 clearance requires an explicit profile for labels clipped above the floor.
 class CollisionSupport {
     struct AdmissionToken { };
 
@@ -111,6 +112,10 @@ class CollisionSupport {
                                                           const SceneState&,
                                                           const CapsuleSweep&,
                                                           const std::stop_token&);
+    friend Result<ClearanceProbe> probe_step_transition(const CollisionSupport&,
+                                                        const SceneState&,
+                                                        const CapsuleSweep&,
+                                                        const std::stop_token&);
 
     SceneId m_scene;
     WorldEpoch m_epoch;
@@ -119,6 +124,7 @@ class CollisionSupport {
     Vec3d m_floor_gradient;
     double m_step_boundary_x {}, m_step_height {};
     std::size_t m_step_boundary_cell {};
+    bool m_step_clearance {};
     double m_cell_size {};
     std::array<std::size_t, 3uz> m_dimensions {};
     std::vector<SpaceState> m_cells;
@@ -143,6 +149,12 @@ Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
                                                const SceneState& source,
                                                const CapsuleSweep& sweep,
                                                const std::stop_token& stop = {});
+// V4-only conservative lift/cross/descent certificate. It does not move a
+// controller or establish measured walking support.
+Result<ClearanceProbe> probe_step_transition(const CollisionSupport& support,
+                                             const SceneState& source,
+                                             const CapsuleSweep& sweep,
+                                             const std::stop_token& stop = {});
 std::string_view clearance_label(ClearanceState state);
 
 }  // namespace world_explorer

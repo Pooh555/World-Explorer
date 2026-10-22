@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-21 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-22 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: IN_PROGRESS.** No full Q/P/N/E
 gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
@@ -360,21 +360,24 @@ focus/dialog pauses and terminal correction/stop pass. V1/V2 fixture and
 inspection bytes remain identical. Measured walking stays disabled; steps and
 transitions between planes are outside the current profile.
 
-[Selected step admission](validation/2026-10-21-collision-step-admission.md) now
-adds a bounded V4 synthetic geometry profile: two exact source-bound floor
-levels, one positive-X riser, paired landing support and a separate canonical
-cook. The 0.30 boundary and just-above case are checked at source admission.
-The V4 clearance probe deliberately blocks even static spawn: step movement,
-mixed slopes and shared-session validation remain unimplemented. V1–V3 and all
-real-scene rejection rules remain. No real geometry or walking gate advances.
+[Selected step clearance](validation/2026-10-22-step-certificate.md) now checks
+explicitly opted-in V4 static/same-landing capsule envelopes and a conservative
+five-segment lift/cross/descent certificate against selected floor tiles and explicit
+free/occupied/unknown cells. Exact 0.30-bounded geometry and just-above
+rejection remain from [V4 admission](validation/2026-10-21-collision-step-admission.md).
+Legacy V4 documents retain geometry-only behavior. The certificate is not a
+per-tick Jolt path: V4 controller creation and shared CLI/native capsule
+sessions remain blocked. V1–V3 and the arbitrary-scale real
+scene retain prior behavior. No measured geometry or walking gate advances.
 
-Next, extend [V4 step admission](protocols/collision_steps.md) with an explicit
-full-capsule transition path: lift before the riser, horizontal crossing and
-supported descent, with each swept envelope checked against source-bound floors,
-occupied and unknown cells. Add 0.30 ascent/descent, just-above rejection,
-mixed-slope transitions and corners to the shared CLI/native session. Do not
-enable V4 controller spawn until those checks and a native replay pass. Review
-plan §§4.8/5.1 and the [inclined support](protocols/collision_ramps.md),
+Next, instrument a bounded Jolt step attempt in `tests/unit/collision_step_tests.cpp`
+and run `build/dev/we_core_tests '[collision-step]'`, recording each 120 Hz
+proposal against the [V4 certificate](protocols/collision_steps.md). Integrate
+the proven path into the controller without skipping velocity/time or accepting
+an unsupported intermediate pose. Add 0.30 ascent/descent, short crossing,
+mixed-slope transition and corner cases to the shared CLI/native session;
+capture a native replay before enabling V4 controller spawn. Recheck plan
+§§4.8/5.1 and the [inclined support](protocols/collision_ramps.md),
 [session](protocols/capsule_session.md) and
 [controller](protocols/kinematic_capsule.md) contracts. The dated M3 local exit
 review follows that validation before A0.

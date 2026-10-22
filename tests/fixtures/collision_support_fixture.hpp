@@ -240,7 +240,8 @@ inline nlohmann::json collision_ramp_document(const SceneState& source,
     return document;
 }
 
-inline nlohmann::json collision_step_document(const SceneState& source, double height) {
+inline nlohmann::json
+collision_step_document(const SceneState& source, double height, bool with_clearance = false) {
     auto document = collision_document(source);
     document["schema"] = "SYNTHETIC_COLLISION_SUPPORT_V4";
     document["walls"] = nlohmann::json::array();
@@ -264,6 +265,9 @@ inline nlohmann::json collision_step_document(const SceneState& source, double h
                           { "pose_revision", riser.m_pose_revision.m_value },
                           { "chunk_sha256", scene_chunk_content_hash(riser) },
                           { "triangles", { 0U, 1U } } } } };
+    if (with_clearance) {
+        document["step"]["clearance_profile"] = "CLIPPED_ABOVE_SELECTED_FLOOR_V1";
+    }
     return document;
 }
 

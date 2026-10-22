@@ -72,5 +72,7 @@ clearance and false measured-collision/walking flags. It writes no assets.
 `we_collision_fixture NEW_DIRECTORY --capsule` now also emits `session-wall.json`,
 `session-unknown.json` and `session-unsupported.json`, bound to the original inputs.
 [V3 inclined support](collision_ramps.md) now admits a single source-proven
-plane through this same workflow. Step transitions, measured reconstruction,
-Q5/N2 and platform qualification remain unverified.
+plane through this same workflow. The separate [V4 step clearance
+certificate](collision_steps.md) has no controller/session replay yet. Step
+movement, measured reconstruction, Q5/N2 and platform qualification remain
+unverified.

@@ -44,8 +44,11 @@ proposed vertical displacement beyond 0.002 units is unsupported, while smaller
 floor-contact rounding is normalized to the admitted plane.
 [V3 inclined support](collision_ramps.md) supplies tangent vertical velocity,
 proves plane-relative clearance and normalizes bounded contact rounding to the
-capsule/plane contact height. General floor transitions, stairs, real
-reconstruction and N2 qualification remain pending.
+capsule/plane contact height. The [V4 step contract](collision_steps.md) can
+certify a conservative lift/cross/descent path independently, but controller
+creation still rejects V4 because no per-tick transition follows that path yet.
+General floor transitions, stairs, real reconstruction and N2 qualification
+remain pending.
 
 `we_collision_fixture NEW_DIRECTORY --capsule` is a development fixture tool.
 It writes the existing V2 source/support/request, reloads their pinned bytes,

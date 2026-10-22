@@ -1,5 +1,7 @@
 # Validation index
 
+- [Synthetic step clearance certificate](2026-10-22-step-certificate.md): explicit V4 clearance profile, conservative lift/cross/descent envelopes, legacy byte preservation, CPU/sanitizer and native diagnostic checks; controller step movement remains blocked.
+
 - [Selected synthetic step admission](2026-10-21-collision-step-admission.md): exact source-bound lower/upper landings and riser, 0.30 boundary rejection, canonical cook, CPU and native visual checks; V4 movement remains blocked.
 
 - [Source-bound synthetic ramps](2026-10-21-collision-ramp.md): strict 45° single-plane support, complete capsule-envelope checks, native ascent/wall sliding and legacy byte preservation; steps and measured walking remain unqualified.

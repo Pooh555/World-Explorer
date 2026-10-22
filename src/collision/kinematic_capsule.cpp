@@ -86,6 +86,10 @@ SyntheticCapsuleController::create(std::shared_ptr<const JoltStaticCollision> sh
     if (!K_VALID) {
         return std::unexpected(K_VALID.error());
     }
+    if (shape->m_cook->parameters().m_format_version == 4U) {
+        return fail(ErrorCode::WOULD_BLOCK,
+                    "Synthetic step controller motion has not been certified");
+    }
     const auto K_FEET = collision_detail::checked_vec(feet, shape->m_impl->m_precision_tolerance);
     if (!K_FEET) {
         return std::unexpected(K_FEET.error());

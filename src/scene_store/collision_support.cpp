@@ -209,7 +209,15 @@ admit_collision_support(const SceneState& source,
         }
         if (K_V4) {
             const auto& step = K_DOCUMENT.at("step");
-            fields(step, { "boundary_x", "height", "riser" });
+            if (step.contains("clearance_profile")) {
+                fields(step, { "boundary_x", "height", "riser", "clearance_profile" });
+                if (step.at("clearance_profile") != "CLIPPED_ABOVE_SELECTED_FLOOR_V1") {
+                    throw std::runtime_error("Unsupported synthetic step clearance profile");
+                }
+                support->m_step_clearance = true;
+            } else {
+                fields(step, { "boundary_x", "height", "riser" });
+            }
             const auto K_BOUNDARY = integer(step.at("boundary_x"));
             support->m_step_height = real(step.at("height"));
             if (K_BOUNDARY == 0 || K_BOUNDARY >= support->m_dimensions[0uz] ||
@@ -622,6 +630,76 @@ Result<void> CollisionSupport::validate_source(const SceneState& source,
     return {};
 }
 
+namespace {
+
+Result<ClearanceProbe> probe_step_segment(const CollisionSupport& support,
+                                          const CapsuleSweep& sweep,
+                                          const std::stop_token& stop) {
+    const auto K_ORIGIN = support.origin();
+    const auto K_SIZE = support.cell_size();
+    const auto K_DIMENSIONS = support.dimensions();
+    const auto K_DOWN = -std::numeric_limits<double>::infinity();
+    const auto K_UP = std::numeric_limits<double>::infinity();
+    const std::array<double, 3uz> K_LOW {
+        std::nextafter(std::min(sweep.m_start_feet.m_x, sweep.m_end_feet.m_x) - sweep.m_radius,
+                       K_DOWN),
+        std::min(sweep.m_start_feet.m_y, sweep.m_end_feet.m_y),
+        std::nextafter(std::min(sweep.m_start_feet.m_z, sweep.m_end_feet.m_z) - sweep.m_radius,
+                       K_DOWN) };
+    const std::array<double, 3uz> K_HIGH {
+        std::nextafter(std::max(sweep.m_start_feet.m_x, sweep.m_end_feet.m_x) + sweep.m_radius,
+                       K_UP),
+        std::nextafter(std::max(sweep.m_start_feet.m_y, sweep.m_end_feet.m_y) + sweep.m_height,
+                       K_UP),
+        std::nextafter(std::max(sweep.m_start_feet.m_z, sweep.m_end_feet.m_z) + sweep.m_radius,
+                       K_UP) };
+    const std::array<double, 3uz> K_BASE { K_ORIGIN.m_x, K_ORIGIN.m_y, K_ORIGIN.m_z };
+    std::array<std::size_t, 3uz> first {}, last {};
+    for (std::size_t axis { 0uz }; axis < 3uz; ++axis) {
+        const double K_LOWER { axis == 1uz && K_LOW[axis] == K_BASE[axis]
+                                  ? 0.
+                                  : std::nextafter((K_LOW[axis] - K_BASE[axis]) / K_SIZE, K_DOWN) };
+        const double K_UPPER { std::nextafter((K_HIGH[axis] - K_BASE[axis]) / K_SIZE, K_UP) };
+        if (!std::isfinite(K_LOWER) || !std::isfinite(K_UPPER) || K_LOWER < 0 ||
+            K_UPPER >= static_cast<double>(K_DIMENSIONS[axis])) {
+            return ClearanceProbe { ClearanceState::UNKNOWN, 0uz };
+        }
+        first[axis] = static_cast<std::size_t>(std::floor(K_LOWER));
+        last[axis] = static_cast<std::size_t>(std::floor(K_UPPER));
+    }
+    ClearanceProbe result { ClearanceState::CLEAR_DIAGNOSTIC, 0uz };
+    const auto K_CELLS = support.cells();
+    const auto K_FLOORS = support.floors();
+    const auto K_NX = K_DIMENSIONS[0uz], K_NY = K_DIMENSIONS[1uz];
+    for (std::size_t z { first[2uz] }; z <= last[2uz]; ++z) {
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Step clearance probe cancelled");
+        }
+        for (std::size_t x { first[0uz] }; x <= last[0uz]; ++x) {
+            if (!K_FLOORS[x + K_NX * z] ||
+                K_LOW[1uz] <
+                    support.floor_height({ K_ORIGIN.m_x + (static_cast<double>(x) + .5) * K_SIZE,
+                                          0,
+                                          K_ORIGIN.m_z + (static_cast<double>(z) + .5) * K_SIZE })) {
+                return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, result.m_checked_cells };
+            }
+            for (std::size_t y { first[1uz] }; y <= last[1uz]; ++y) {
+                const auto K_STATE = K_CELLS[x + K_NX * (y + K_NY * z)];
+                ++result.m_checked_cells;
+                if (K_STATE != SpaceState::FREE) {
+                    return ClearanceProbe { K_STATE == SpaceState::OCCUPIED
+                                               ? ClearanceState::OCCUPIED
+                                               : ClearanceState::UNKNOWN,
+                                           result.m_checked_cells };
+                }
+            }
+        }
+    }
+    return result;
+}
+
+}  // namespace
+
 Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
                                                const SceneState& source,
                                                const CapsuleSweep& sweep,
@@ -636,9 +714,15 @@ Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
         return fail(ErrorCode::INVALID_ARGUMENT, "Invalid diagnostic capsule dimensions or sweep");
     }
     if (support.m_format_version == 4U) {
-        // The V4 source proof only admits selected geometry. A straight feet
-        // segment cannot certify the vertical lift around a step riser.
-        return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
+        // Ordinary V4 sweeps remain on one landing. The riser needs the
+        // separate, fully checked lift/cross/descent certificate below.
+        if (!support.m_step_clearance ||
+            sweep.m_start_feet.m_y != support.floor_height(sweep.m_start_feet) ||
+            sweep.m_end_feet.m_y != support.floor_height(sweep.m_end_feet) ||
+            sweep.m_start_feet.m_y != sweep.m_end_feet.m_y) {
+            return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
+        }
+        return probe_step_segment(support, sweep, stop);
     }
     const bool K_V3 { support.m_format_version == 3U };
     double lower_height {}, upper_height { sweep.m_height };
@@ -711,6 +795,63 @@ Result<ClearanceProbe> probe_collision_support(const CollisionSupport& support,
                                            result.m_checked_cells };
                 }
             }
+        }
+    }
+    return result;
+}
+
+Result<ClearanceProbe> probe_step_transition(const CollisionSupport& support,
+                                             const SceneState& source,
+                                             const CapsuleSweep& sweep,
+                                             const std::stop_token& stop) {
+    const auto K_VALID = support.validate_source(source, stop);
+    if (!K_VALID) {
+        return std::unexpected(K_VALID.error());
+    }
+    if (support.m_format_version != 4U || !finite(sweep.m_start_feet) ||
+        !finite(sweep.m_end_feet) || !std::isfinite(sweep.m_radius) ||
+        !std::isfinite(sweep.m_height) || sweep.m_radius <= 0 || sweep.m_height <= 0 ||
+        sweep.m_radius > sweep.m_height / 2) {
+        return fail(ErrorCode::INVALID_ARGUMENT, "Invalid V4 capsule transition");
+    }
+    if (!support.m_step_clearance) {
+        return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
+    }
+    const bool K_ASCEND { sweep.m_start_feet.m_x < support.m_step_boundary_x &&
+                         sweep.m_end_feet.m_x > support.m_step_boundary_x };
+    const bool K_DESCEND { sweep.m_start_feet.m_x > support.m_step_boundary_x &&
+                          sweep.m_end_feet.m_x < support.m_step_boundary_x };
+    constexpr double K_RISER_GAP { .01 };
+    const double K_LEFT { support.m_step_boundary_x - sweep.m_radius - K_RISER_GAP };
+    const double K_RIGHT { support.m_step_boundary_x + sweep.m_radius + K_RISER_GAP };
+    if ((!K_ASCEND && !K_DESCEND) ||
+        sweep.m_start_feet.m_y != support.floor_height(sweep.m_start_feet) ||
+        sweep.m_end_feet.m_y != support.floor_height(sweep.m_end_feet) ||
+        (K_ASCEND && (sweep.m_start_feet.m_x > K_LEFT || sweep.m_end_feet.m_x < K_RIGHT)) ||
+        (K_DESCEND && (sweep.m_start_feet.m_x < K_RIGHT || sweep.m_end_feet.m_x > K_LEFT))) {
+        return ClearanceProbe { ClearanceState::UNSUPPORTED_FLOOR, 0uz };
+    }
+    const double K_HIGH_Y { support.m_origin.m_y + support.m_step_height };
+    const Vec3d K_BEFORE {
+        K_ASCEND ? K_LEFT : K_RIGHT, sweep.m_start_feet.m_y, sweep.m_end_feet.m_z };
+    const Vec3d K_AFTER { K_ASCEND ? K_RIGHT : K_LEFT, sweep.m_end_feet.m_y, sweep.m_end_feet.m_z };
+    const Vec3d K_BEFORE_HIGH { K_BEFORE.m_x, K_HIGH_Y, K_BEFORE.m_z };
+    const Vec3d K_AFTER_HIGH { K_AFTER.m_x, K_HIGH_Y, K_AFTER.m_z };
+    const std::array<Vec3d, 6uz> K_PATH {
+        sweep.m_start_feet, K_BEFORE, K_BEFORE_HIGH, K_AFTER_HIGH, K_AFTER, sweep.m_end_feet };
+    ClearanceProbe result { ClearanceState::CLEAR_DIAGNOSTIC, 0uz };
+    for (std::size_t segment { 0uz }; segment + 1uz < K_PATH.size(); ++segment) {
+        const auto K_PROBE = probe_step_segment(
+            support,
+            { K_PATH[segment], K_PATH[segment + 1uz], sweep.m_radius, sweep.m_height },
+            stop);
+        if (!K_PROBE) {
+            return std::unexpected(K_PROBE.error());
+        }
+        result.m_checked_cells += K_PROBE->m_checked_cells;
+        if (K_PROBE->m_state != ClearanceState::CLEAR_DIAGNOSTIC) {
+            result.m_state = K_PROBE->m_state;
+            return result;
         }
     }
     return result;
