@@ -413,28 +413,33 @@ all 39,373 vertices/49,213 triangles and zero Vulkan errors. Its manifest is
 unchanged; the inspected output remains fragmented, arbitrary-scale and
 unwalkable. No solve, fusion, bake or export is rerun.
 
-[The dated M3 exit review](validation/2026-10-23-m3-exit-review.md) keeps M3
-**IN_PROGRESS**: plan §5.1 step 2's quality-based keyframe selection/preflight
-is not implemented. `workers/worker.py` still emits `timestamp_sampling_v1` and
-explicitly lists blur/exposure/motion/cut selection as pending. Metadata/storage
-preflight and distinct-image checks do not fill that gap. The dependency refresh
-and exact LLVM 23.1.1 scope check have now resolved the prior inventory/tool gaps;
-they do not complete this missing workflow or any full Q/P/N/E gate.
+[The M3 exit review](validation/2026-10-23-m3-exit-review.md) remains open.
+The [candidate keyframe slice](validation/2026-10-23-frame-selection.md) adds an
+explicit quality profile, bounded thumbnail metrics/tracks, rejection ledger,
+native admission, shared decode ownership and an unqualified viewer label.
+Legacy timestamp sampling remains the default. Synthetic acceptance and real
+FFmpeg/native integration run, but the fixed candidate fails on `sample_1`:
+63 candidates yield one seed, one low-motion rejection, two low-texture
+rejections and 59 tracking breaks; no decode completion or new scene is published.
+Its static selected-frame reference loses feature support. The 155 protected
+media/result/bake files remain unchanged. M3 stays **IN_PROGRESS**; A0–A6 remain
+NOT_STARTED and M4 has not begun.
 
-Next executable step: add failing bounded frame-quality/selection tests in
-`tests/integration/worker_frame_quality_test.py`, then implement the versioned
-policy/decision ledger and integrate it through `workers/worker.py` and the
-shared decode/admission path. Start from plan §5.1 step 2 and the current
-`DecodeIntegrationTests` in `tests/integration/worker_pipeline_test.py`; exercise
-both suites with `python3 -m unittest discover -s tests/integration -p
-'worker_*quality*_test.py' -v` and the pipeline suite explicitly. Bind original
-PTS/source/calibration/image identities, metric/recipe/threshold versions,
-selected/rejected reasons, cancellation and finite/byte/count limits. Preserve
-legacy timestamp-sampling manifests and every retained image/job; use a separate
-explicit candidate profile for local real validation. Do not retroactively tune
-selection to make sample_2 pass or weaken the unchanged registration threshold.
-Revisit the five-item review only after the missing software path and actual
-local integration are verified. A0–A6 stay NOT_STARTED; M4 has not begun.
+Next executable step: add a development fixture for gradual/subpixel motion,
+feature turnover and low-texture intervals to
+`tests/integration/worker_frame_quality_test.py`. Implement a separately
+versioned tracker that maintains correspondences through intervening candidates,
+with explicit displacement/coverage semantics and conservative cut/lens handling;
+retain candidate v1 and its failure. Run `python3 -m unittest discover -s
+tests/integration -p 'worker_frame_quality_test.py' -v`, then validate a fresh
+explicit real-video job through `decode_video`, including failure preservation
+and native ledger admission. Do not relax coverage/registration thresholds,
+reselect hard sample_2 frames to force 90%, or replace retained sampling jobs.
+Before the five-item M3 exit review, resolve visual lens/coverage diagnostics and
+refresh selected runtime receipts for the changed viewer/CLI binaries: the
+current default inventory check passes, while `--local-evidence` now exits 2
+(`Current runtime payload differs`). The earlier 23 October refresh remains
+historical. Quality, measured geometry/walking and A/platform gates stay open.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
 clearance. `sample_1` has no independent distance/up reference: ADR 020 permits
 a local M3 software exit without it, while Q5/N2 and A1 scale evidence stay open.

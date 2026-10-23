@@ -7,6 +7,7 @@ import argparse
 import contextlib
 import hashlib
 import importlib.metadata
+import importlib.util
 import json
 import math
 import os
@@ -338,6 +339,7 @@ def validate_request(request: dict) -> dict:
         "pose_python",
         "appearance_python",
         "pose_recipe",
+        "frame_selection",
     }
     if set(request) - allowed or request.get("schema_version") != 1:
         raise WorkerError("BAD_INPUT", "Unknown request fields or schema version")
@@ -386,6 +388,11 @@ def validate_request(request: dict) -> dict:
         or not 0.1 <= sample_fps <= 4
     ):
         raise WorkerError("BAD_INPUT", "sample_fps must be in [0.1, 4]")
+    selection = request.get("frame_selection", "timestamp_sampling_v1")
+    if selection not in ("timestamp_sampling_v1", "quality_keyframes_candidate_v1"):
+        raise WorkerError("BAD_INPUT", "Unknown frame selection profile")
+    if selection == "quality_keyframes_candidate_v1" and sample_fps < 2:
+        raise WorkerError("BAD_INPUT", "Quality candidates require 2..4 sample_fps")
     if source.stat().st_size > limits["max_source_bytes"]:
         raise WorkerError("RESOURCE_LIMIT", "Source exceeds configured byte limit")
     return request | {
@@ -662,6 +669,9 @@ class Job:
         }
 
     def decode(self, directory: Path, inspection: dict) -> dict:
+        quality_profile = (
+            self.request.get("frame_selection") == "quality_keyframes_candidate_v1"
+        )
         probe = executable("ffprobe")
         data = json.loads(
             self.command(
@@ -714,10 +724,15 @@ class Job:
             previous_pts = pts
             instant = pts * time_base
             if next_time is None or instant >= next_time:
-                if len(selected) == self.limits["max_frames"]:
+                candidate_limit = (
+                    min(480, self.limits["max_frames"] * 4)
+                    if quality_profile
+                    else self.limits["max_frames"]
+                )
+                if len(selected) == candidate_limit:
                     raise WorkerError(
                         "RESOURCE_LIMIT",
-                        "Keyframe budget exceeded; trim video or lower sample_fps",
+                        "Frame/candidate budget exceeded; trim video or lower sample_fps",
                     )
                 selected.append(
                     {
@@ -736,6 +751,9 @@ class Job:
                 "BAD_INPUT",
                 "At least three distinct timestamped keyframes are required",
             )
+        ledger = None
+        if quality_profile:
+            selected, ledger = self.select_quality(directory, inspection, selected)
         (directory / "images").mkdir()
         expression = "+".join(f"eq(n\\,{frame['source_index']})" for frame in selected)
         ffmpeg = executable("ffmpeg")
@@ -787,7 +805,7 @@ class Job:
             raise WorkerError(
                 "INSUFFICIENT_PARALLAX", "Fewer than three distinct decoded images"
             )
-        return {
+        result = {
             "frames": selected,
             "source_frame_count": len(frames),
             "duplicate_images": duplicates,
@@ -800,6 +818,146 @@ class Job:
                 "blur/exposure/motion/cut selection requires M3 qualification"
             ],
         }
+        if ledger is not None:
+            selected_iter = iter(selected)
+            for decision in ledger["decisions"]:
+                if decision["selected"]:
+                    decision["frame"] = next(selected_iter)
+            atomic_json(directory / "quality.json", ledger)
+            result |= {
+                "selection": "quality_keyframes_candidate_v1",
+                "source_sha256": self.source_hash,
+                "quality_ledger": "quality.json",
+                "quality_ledger_sha256": sha256(directory / "quality.json"),
+                "diagnostics_pending": [
+                    "candidate thresholds unqualified; visual lens changes and 3D coverage unresolved"
+                ],
+            }
+        return result
+
+    def select_quality(
+        self, directory: Path, inspection: dict, candidates: list[dict]
+    ) -> tuple[list[dict], dict]:
+        # Load only the repository-owned helper, including when imported by a host
+        # with a different sys.path. Its bytes also enter the job recipe identity.
+        specification = importlib.util.spec_from_file_location(
+            "we_frame_quality", ROOT / "frame_quality.py"
+        )
+        implementation_sha256 = sha256(ROOT / "frame_quality.py")
+        quality = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(quality)
+
+        deadline = time.monotonic() + self.limits["stage_timeout_seconds"]
+
+        def check_cancelled() -> None:
+            if CANCELLED.is_set():
+                raise WorkerError("CANCELLED", "Quality selection cancelled")
+            if time.monotonic() > deadline:
+                raise WorkerError(
+                    "RESOURCE_LIMIT", "Quality analysis deadline exceeded"
+                )
+
+        expression = "+".join(
+            f"eq(n\\,{frame['source_index']})" for frame in candidates
+        )
+        thumbnail_path = directory / "candidates.gray"
+        thumbnail_bytes = len(candidates) * 96 * 64
+        if thumbnail_bytes > self.limits["max_output_bytes"]:
+            raise WorkerError("RESOURCE_LIMIT", "Quality thumbnail budget exceeded")
+        self.command(
+            [
+                executable("ffmpeg"),
+                "-nostdin",
+                "-v",
+                "error",
+                "-protocol_whitelist",
+                "file,pipe",
+                "-threads",
+                str(self.limits["cpu_threads"]),
+                "-i",
+                str(self.source),
+                "-map",
+                "0:v:0",
+                "-an",
+                "-sn",
+                "-dn",
+                "-vf",
+                f"select={expression},scale=96:64:flags=area,format=gray",
+                "-fps_mode",
+                "passthrough",
+                "-threads",
+                "1",
+                "-f",
+                "rawvideo",
+                str(thumbnail_path),
+            ],
+            directory,
+        )
+        if thumbnail_path.stat().st_size != thumbnail_bytes:
+            raise WorkerError("DECODE_FAILED", "Quality thumbnail count mismatch")
+        if sha256(self.source) != self.source_hash:
+            raise WorkerError(
+                "BAD_INPUT", "Source changed during quality thumbnail decode"
+            )
+        data = thumbnail_path.read_bytes()
+        decisions = quality.analyze(
+            [data[offset : offset + 6144] for offset in range(0, len(data), 6144)],
+            check_cancelled,
+        )
+        if sha256(ROOT / "frame_quality.py") != implementation_sha256:
+            raise WorkerError(
+                "BAD_INPUT", "Quality implementation changed during analysis"
+            )
+        for frame, decision in zip(candidates, decisions):
+            decision["frame"] = {
+                key: value for key, value in frame.items() if key != "file"
+            }
+        width, height = inspection["stream"]["width"], inspection["stream"]["height"]
+        if inspection["rotation_degrees"] % 180:
+            width, height = height, width
+        ledger = {
+            "schema_version": 1,
+            "source_sha256": self.source_hash,
+            "profile": quality.PROFILE,
+            "policy": quality.policy(),
+            "policy_sha256": canonical_hash(quality.policy()),
+            "implementation_sha256": implementation_sha256,
+            "sample_fps": self.request["sample_fps"],
+            "candidate_limit": min(480, self.limits["max_frames"] * 4),
+            "thumbnails": {
+                "file": "candidates.gray",
+                "sha256": sha256(thumbnail_path),
+                "bytes": thumbnail_bytes,
+                "format": "GRAY8",
+                "transform": "FFmpeg display rotation then area resize; analysis only",
+                "display_width": width,
+                "display_height": height,
+                "scale_x": 96 / width,
+                "scale_y": 64 / height,
+                "offset_x": (96 / width - 1) / 2,
+                "offset_y": (64 / height - 1) / 2,
+            },
+            "decisions": decisions,
+        }
+        # Preserve a diagnostic ledger even on failure; stage_run never commits it.
+        atomic_json(directory / "quality.json", ledger)
+        if any(
+            entry["reason"] in ("tracking_break", "suspected_cut")
+            for entry in decisions
+        ):
+            raise WorkerError(
+                "INSUFFICIENT_PARALLAX",
+                "Candidate tracking break/cut; inspect quality.json and split into calibrated segments",
+            )
+        selected = [entry["frame"].copy() for entry in decisions if entry["selected"]]
+        if not 3 <= len(selected) <= self.limits["max_frames"]:
+            raise WorkerError(
+                "INSUFFICIENT_PARALLAX",
+                "Quality selection requires 3..max_frames retained keyframes",
+            )
+        for index, frame in enumerate(selected):
+            frame["file"] = f"images/{index + 1:06d}.png"
+        return selected, ledger
 
     def poses(
         self,

@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cmath>
 #include <fstream>
 #include <limits>
 #include <map>
@@ -114,6 +115,167 @@ std::int64_t nanoseconds(SourceTimestamp value) {
         throw std::invalid_argument("Offline timestamp exceeds the 1200-second decode profile");
     }
     return K_RESULT;
+}
+
+double quality_number(const nlohmann::json& value, double minimum, double maximum) {
+    if (!value.is_number()) {
+        throw std::invalid_argument("Expected numeric quality metric");
+    }
+    const auto K_VALUE = value.get<double>();
+    if (!std::isfinite(K_VALUE) || K_VALUE < minimum || K_VALUE > maximum) {
+        throw std::invalid_argument("Quality metric exceeds its finite range");
+    }
+    return K_VALUE;
+}
+
+std::pair<std::uint32_t, std::uint32_t> png_dimensions(const std::filesystem::path& path);
+
+Result<void>
+validate_quality(const std::filesystem::path& root,
+                 const nlohmann::json& metadata,
+                 const std::map<std::string, std::pair<std::uint64_t, std::string>>& assets,
+                 const std::string& source,
+                 const std::stop_token& stop) {
+    constexpr std::string_view K_POLICY_SHA {
+        "cdf0f819989e98fbcc222ee3187a8d8a8d11d967c60003d4b35ddfb2047c39f1" };
+    if (metadata.at("source_sha256") != source || metadata.at("quality_ledger") != "quality.json") {
+        throw std::invalid_argument("Quality source/ledger identity mismatch");
+    }
+    const auto K_BYTES = bounded_file(contained(root, "quality.json"));
+    const auto K_DIGEST = sha256(std::as_bytes(std::span(K_BYTES)));
+    const auto K_ENTRY = assets.find("quality.json");
+    if (K_ENTRY == assets.end() || K_ENTRY->second != std::pair { K_BYTES.size(), K_DIGEST } ||
+        metadata.at("quality_ledger_sha256") != K_DIGEST) {
+        throw std::invalid_argument("Quality ledger checksum/size mismatch");
+    }
+    const auto K_LEDGER = parse(K_BYTES);
+    const auto K_POLICY = K_LEDGER.at("policy").dump();
+    if (K_LEDGER.at("schema_version") != 1 || K_LEDGER.at("source_sha256") != source ||
+        K_LEDGER.at("profile") != "quality_keyframes_candidate_v1" ||
+        K_LEDGER.at("policy_sha256") != K_POLICY_SHA ||
+        sha256(std::as_bytes(std::span(K_POLICY))) != K_POLICY_SHA ||
+        !digest_valid(K_LEDGER.at("implementation_sha256").get<std::string>())) {
+        throw std::invalid_argument("Unsupported quality policy/provenance");
+    }
+    const auto& decisions = K_LEDGER.at("decisions");
+    const auto K_LIMIT = unsigned_value(K_LEDGER.at("candidate_limit"));
+    if (!decisions.is_array() || decisions.size() < 3uz || decisions.size() > 480uz ||
+        decisions.size() > K_LIMIT || K_LIMIT > 480 || metadata.at("frames").size() < 3uz) {
+        throw std::invalid_argument("Quality candidate count exceeds profile");
+    }
+    const auto K_FPS = quality_number(K_LEDGER.at("sample_fps"), 2, 4);
+    const auto& thumbnails = K_LEDGER.at("thumbnails");
+    const auto K_THUMBNAIL_BYTES = decisions.size() * 6144uz;
+    const auto K_THUMBNAIL_ENTRY = assets.find("candidates.gray");
+    if (thumbnails.at("file") != "candidates.gray" || thumbnails.at("format") != "GRAY8" ||
+        unsigned_value(thumbnails.at("bytes")) != K_THUMBNAIL_BYTES ||
+        K_THUMBNAIL_ENTRY == assets.end() || K_THUMBNAIL_ENTRY->second.first != K_THUMBNAIL_BYTES ||
+        thumbnails.at("sha256") != K_THUMBNAIL_ENTRY->second.second) {
+        throw std::invalid_argument("Quality thumbnail inventory mismatch");
+    }
+    const auto K_WIDTH_COUNT = unsigned_value(thumbnails.at("display_width"));
+    const auto K_HEIGHT_COUNT = unsigned_value(thumbnails.at("display_height"));
+    if (K_WIDTH_COUNT == 0 || K_HEIGHT_COUNT == 0 || K_WIDTH_COUNT > 8192 ||
+        K_HEIGHT_COUNT > 8192 || K_WIDTH_COUNT * K_HEIGHT_COUNT > 4096uz * 4096uz) {
+        throw std::invalid_argument("Quality display dimensions exceed profile");
+    }
+    const auto K_WIDTH = static_cast<double>(K_WIDTH_COUNT);
+    const auto K_HEIGHT = static_cast<double>(K_HEIGHT_COUNT);
+    if (quality_number(thumbnails.at("scale_x"), 0, 96) != 96 / K_WIDTH ||
+        quality_number(thumbnails.at("scale_y"), 0, 64) != 64 / K_HEIGHT ||
+        quality_number(thumbnails.at("offset_x"), -.5, 48) != (96 / K_WIDTH - 1) / 2 ||
+        quality_number(thumbnails.at("offset_y"), -.5, 32) != (64 / K_HEIGHT - 1) / 2) {
+        throw std::invalid_argument("Quality analysis transform mismatch");
+    }
+    std::ifstream input(contained(root, "candidates.gray"), std::ios::binary);
+    std::array<char, 6144uz> pixels {};
+    Sha256Builder thumbnail_hash;
+    std::size_t selected {};
+    std::uint64_t previous_index {};
+    std::int64_t previous_time {};
+    const std::set<std::string> K_REASONS { "seed",
+                                           "motion_coverage",
+                                           "repeated",
+                                           "exposure",
+                                           "blur_or_texture",
+                                           "exposure_change",
+                                           "low_motion" };
+    for (std::size_t index { 0uz }; index < decisions.size(); ++index) {
+        if (stop.stop_requested()) {
+            return fail(ErrorCode::CANCELLED, "Quality admission cancelled");
+        }
+        const auto& decision = decisions[index];
+        const auto& frame = decision.at("frame");
+        const auto K_INDEX = unsigned_value(frame.at("source_index"));
+        const auto K_PTS = unsigned_value(frame.at("pts"));
+        if (K_PTS > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())) {
+            throw std::invalid_argument("Quality PTS exceeds int64");
+        }
+        const auto K_TIME = nanoseconds(
+            timestamp(static_cast<std::int64_t>(K_PTS), frame.at("time_base").get<std::string>()));
+        const auto K_PREFIX = source.substr(0uz, 16uz);
+        if (K_INDEX >= unsigned_value(metadata.at("source_frame_count")) ||
+            (index && (K_INDEX <= previous_index || K_TIME <= previous_time ||
+                       static_cast<double>(K_TIME - previous_time) + 1 < 1e9 / K_FPS)) ||
+            frame.at("frame_id") != K_PREFIX + "-" + std::to_string(K_INDEX) ||
+            frame.at("calibration_id") != K_PREFIX + "-lens-0" ||
+            unsigned_value(frame.at("capture_time_ns")) != static_cast<std::uint64_t>(K_TIME)) {
+            throw std::invalid_argument("Quality candidate identity/order mismatch");
+        }
+        previous_index = K_INDEX;
+        previous_time = K_TIME;
+        const auto K_REASON = decision.at("reason").get<std::string>();
+        const auto K_SELECTED = decision.at("selected").get<bool>();
+        if (!K_REASONS.contains(K_REASON) ||
+            K_SELECTED != (K_REASON == "seed" || K_REASON == "motion_coverage") ||
+            (K_REASON == "seed" && selected != 0uz)) {
+            throw std::invalid_argument("Invalid quality decision reason");
+        }
+        const auto& metrics = decision.at("metrics");
+        const auto K_MEAN = quality_number(metrics.at("mean_luma"), 0, 255);
+        const auto K_BLUR = quality_number(metrics.at("laplacian_variance"), 0, 1040400);
+        const auto K_CLIPPED = quality_number(metrics.at("clipped_fraction"), 0, 1);
+        const auto K_DISPLACEMENT =
+            quality_number(metrics.at("displacement_px"), 0, std::sqrt(72.0));
+        (void)quality_number(metrics.at("histogram_distance"), 0, 1);
+        if (unsigned_value(metrics.at("feature_count")) > 12 ||
+            unsigned_value(metrics.at("tracked_cells")) > 12) {
+            throw std::invalid_argument("Quality feature count exceeds grid");
+        }
+        if (K_SELECTED && (K_MEAN < 12 || K_MEAN > 243 || K_BLUR < 25 || K_CLIPPED > .8 ||
+                           unsigned_value(metrics.at("feature_count")) < 4 ||
+                           (K_REASON == "motion_coverage" &&
+                            (selected == 0uz || K_DISPLACEMENT < 1.5 ||
+                             unsigned_value(metrics.at("tracked_cells")) < 4)))) {
+            throw std::invalid_argument("Selected quality metrics contradict the frozen policy");
+        }
+        input.read(pixels.data(), static_cast<std::streamsize>(pixels.size()));
+        const auto K_PIXELS = std::as_bytes(std::span(pixels));
+        if (input.gcount() != static_cast<std::streamsize>(pixels.size()) ||
+            decision.at("thumbnail_sha256") != sha256(K_PIXELS)) {
+            throw std::invalid_argument("Quality candidate thumbnail mismatch");
+        }
+        thumbnail_hash.update(K_PIXELS);
+        if (K_SELECTED) {
+            if (selected >= metadata.at("frames").size() ||
+                metadata.at("frames")[selected] != frame) {
+                throw std::invalid_argument("Quality selection differs from admitted frames");
+            }
+            if (png_dimensions(contained(root, frame.at("file").get<std::string>())) !=
+                std::pair { static_cast<std::uint32_t>(K_WIDTH_COUNT),
+                           static_cast<std::uint32_t>(K_HEIGHT_COUNT) }) {
+                throw std::invalid_argument("Quality analysis grid differs from selected image");
+            }
+            ++selected;
+        } else if (frame.contains("file") || frame.contains("sha256")) {
+            throw std::invalid_argument("Rejected quality candidate claims a selected image");
+        }
+    }
+    if (selected != metadata.at("frames").size() || input.peek() != std::char_traits<char>::eof() ||
+        thumbnail_hash.finish() != K_THUMBNAIL_ENTRY->second.second) {
+        throw std::invalid_argument("Quality thumbnail/selection totals mismatch");
+    }
+    return {};
 }
 
 std::pair<std::uint32_t, std::uint32_t> png_dimensions(const std::filesystem::path& path) {
@@ -253,7 +415,8 @@ Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConf
         }
         const auto K_METADATA = parse(K_RESULT_BYTES);
         if ((K_METADATA.at("selection") != "timestamp_sampling_v1" &&
-             K_METADATA.at("selection") != "native_rgb_journal_v1") ||
+             K_METADATA.at("selection") != "native_rgb_journal_v1" &&
+             K_METADATA.at("selection") != "quality_keyframes_candidate_v1") ||
             K_METADATA.at("crop") != "none" || K_METADATA.at("resize") != "none") {
             return fail(ErrorCode::UNSUPPORTED_OPERATION, "Unsupported decode replay profile");
         }
@@ -270,6 +433,13 @@ Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConf
         if (K_SOURCE_COUNT == 0 || K_SOURCE_COUNT > 36000 || !frames.is_array() || frames.empty() ||
             frames.size() > 120) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Decode frame count exceeds profile");
+        }
+        if (K_METADATA.at("selection") == "quality_keyframes_candidate_v1") {
+            const auto K_QUALITY = validate_quality(
+                state->m_root, K_METADATA, assets, state->m_config.m_source_sha256, stop);
+            if (!K_QUALITY) {
+                return std::unexpected(K_QUALITY.error());
+            }
         }
         std::set<std::uint64_t> frame_ids;
         std::set<std::string> names;

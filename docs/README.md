@@ -5,6 +5,7 @@ Read by task; do not load the entire directory for routine work.
 | Need | Source |
 |---|---|
 | Resume development | [Progress](progress.md) → [requirements](requirements.md) → relevant code/evidence |
+| Inspect experimental keyframe selection | [Candidate selection](protocols/frame_selection.md); bounded diagnostics, checked ledger, explicit opt-in and unqualified thresholds |
 | Agent execution rules | [Runbook](execution_prompt.md), repository [AGENTS.md](../AGENTS.md) |
 | Product, thresholds, architecture, roadmap | [Technical plan](technical_plan.md); controlling specification |
 | M3 development exit and deferred Q5/N2 evidence | [Plan §8.3](technical_plan.md#83-m3-local-development-exit-and-deferred-reconstruction-qualification), [ADR 020](adr/020-m3-development-exit.md); no measurement required for internet-sourced `sample_1`, measured geometry/walking gates remain open |

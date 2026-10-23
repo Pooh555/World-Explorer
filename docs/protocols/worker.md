@@ -113,8 +113,11 @@ a hard crash requires checking that the recorded process has exited before remov
 Different recipes get different identities. Full optimizer resume is not claimed.
 
 Decode preserves original PTS/time base, frame IDs, display rotation and color
-metadata. Uniform timestamp sampling is the implemented selector, not a qualified
-blur/overlap/cut detector. Orthogonal rotations and SDR are accepted; HDR fails with
+metadata. Uniform timestamp sampling remains the default. The explicit
+[candidate quality selector](frame_selection.md) records bounded blur/exposure,
+feature-track/coverage, repetition and suspected-cut diagnostics; it is
+unqualified and does not silently replace existing recipes.
+Orthogonal rotations and SDR are accepted; HDR fails with
 an explicit conversion requirement. Sources are local files only; FFmpeg protocols
 are restricted to file/pipe. Local filesystem URLs are not a remote transport.
 

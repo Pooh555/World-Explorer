@@ -1,8 +1,11 @@
 # Decoded frame source
 
 `open_decoded_frame_source` returns the project-owned `frame_source` interface.
-Its current profile replays PNG images from a committed `timestamp_sampling_v1`
-decode stage; it does not rerun the source-video decode or reconstruction.
+It replays PNG images from committed `timestamp_sampling_v1`,
+`quality_keyframes_candidate_v1` and `native_rgb_journal_v1` decode stages;
+it does not rerun source-video decode or reconstruction. The optional
+[quality candidate profile](frame_selection.md) adds checked diagnostics and
+provenance; its thresholds and real-video selection remain unqualified.
 An explicit source SHA-256 supplies the capture identity. The CLI hashes the
 selected local video. The legacy stage records only a 16-digit source prefix in
 external frame/calibration IDs; this adapter checks that prefix and the caller's

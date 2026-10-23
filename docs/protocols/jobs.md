@@ -151,8 +151,11 @@ rejected for `pose_action: adopt_completed`; schema 1 remains unchanged.
 
 Decode uses a separate owned job and immutable `decode-request.json`. Parameters
 are explicit: finite sample rate [0.1, 4], 3–120 selected frames, 1–4 CPU threads,
-positive output bytes ≤32 GiB. Current timestamp sampling defaults to 3 fps; it
-does not implement the planned blur/exposure/cut/coverage selection. Source,
+positive output bytes ≤32 GiB. Timestamp sampling defaults to 3 fps. Optional
+`decode.frame_selection: "quality_keyframes_candidate_v1"` explicitly selects
+the [unqualified quality candidate profile](frame_selection.md), requires 2–4
+candidates/s and binds the selector helper bytes in owned parameters. Omitting
+the field or selecting `timestamp_sampling_v1` keeps the legacy behavior. Source,
 selected inspection, worker and parameters bind ownership. START requires video
 batch capacity and the requested byte/frame limits. The returned bounded artifact
 must belong to that decode job; all inventory bytes, catalog IDs/timestamps and

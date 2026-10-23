@@ -10,12 +10,15 @@ struct RetainedVideoDecode {
     std::string m_completion_sha256;
 };
 
+enum class FrameSelection : std::uint8_t { TIMESTAMP_SAMPLING_V1, QUALITY_KEYFRAMES_CANDIDATE_V1 };
+
 struct AutomaticVideoDecode {
     std::filesystem::path m_job_directory;
     WorkerConfiguration m_worker;
     double m_sample_fps { 3 };
     std::uint32_t m_max_frames { 120 }, m_cpu_threads { 4 };
     std::uint64_t m_max_output_bytes { 32ULL * 1024 * 1024 * 1024 };
+    FrameSelection m_frame_selection { FrameSelection::TIMESTAMP_SAMPLING_V1 };
 };
 
 struct VideoDecodeRequest {
@@ -30,7 +33,8 @@ struct DecodedVideo {
     DecodedFrameCatalog m_catalog;
 };
 
-// Explicit bounded timestamp selection, immutable requests and owned output.
+// Explicit bounded selection, immutable requests and owned output. Candidate
+// quality thresholds are unqualified and never selected implicitly.
 // Worker capabilities gate START; final inventory/source/metadata are checked.
 // No solver/optimizer runs. Compatible worker stages are cached on restart.
 Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,

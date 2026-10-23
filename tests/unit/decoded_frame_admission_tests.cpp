@@ -204,6 +204,107 @@ SourceReset next_reset(FrameSource& source) {
     return std::get<SourceReset>(*K_EVENT);
 }
 
+void quality_fixture(AdmissionFixture& fixture) {
+    const auto K_POLICY = nlohmann::json::parse(R"policy(
+{
+  "metric_version": "gray96_harris_patch_v1",
+  "threshold_version": "candidate_1",
+  "qualification": "UNQUALIFIED",
+  "analysis_width": 96,
+  "analysis_height": 64,
+  "thresholds": {
+    "min_laplacian_variance": 25,
+    "min_mean": 12,
+    "max_mean": 243,
+    "max_clipped_fraction": 0.8,
+    "max_exposure_change": 55,
+    "min_corner_eigenvalue": 100,
+    "max_patch_error": 18,
+    "ambiguity_ratio": 1.1,
+    "ambiguity_margin": 0.5,
+    "forward_backward_pixels": 1,
+    "search_radius": 6,
+    "min_tracked_cells": 4,
+    "min_displacement_px": 1.5,
+    "cut_histogram_distance": 0.65
+  },
+  "coverage": "tracked cells in a 4x3 image grid; no 3D coverage claim",
+  "lens_change_detection": "dimension_metadata_only"
+})policy");
+    const auto K_POLICY_BYTES = K_POLICY.dump();
+    const auto K_POLICY_HASH = sha256(std::as_bytes(std::span(K_POLICY_BYTES)));
+    auto frame = fixture.m_metadata["frames"][0uz];
+    fixture.m_metadata["frames"] = nlohmann::json::array();
+    auto decisions = nlohmann::json::array();
+    std::string thumbnails;
+    for (std::size_t index { 0uz }; index < 4uz; ++index) {
+        const auto K_SOURCE_INDEX = index * 5uz;
+        frame["source_index"] = K_SOURCE_INDEX;
+        frame["frame_id"] =
+            fixture.m_source.substr(0uz, 16uz) + "-" + std::to_string(K_SOURCE_INDEX);
+        frame["pts"] = K_SOURCE_INDEX;
+        frame["time_base"] = "1/10";
+        frame["capture_time_ns"] = index * 500000000uz;
+        frame.erase("file");
+        frame.erase("sha256");
+        const bool K_SELECTED { index != 1uz };
+        if (K_SELECTED) {
+            const auto K_FILE = "images/selected-" + std::to_string(index) + ".png";
+            std::filesystem::copy_file(fixture.m_stage / "images/first.png",
+                                       fixture.m_stage / K_FILE);
+            frame["file"] = K_FILE;
+            frame["sha256"] = sha256_file(fixture.m_stage / K_FILE, 4096uz).value();
+            fixture.m_metadata["frames"].push_back(frame);
+        }
+        const std::string K_PIXELS(6144uz, static_cast<char>('m' + (index == 1uz ? 0uz : index)));
+        thumbnails += K_PIXELS;
+        decisions.push_back({ { "frame", frame },
+                             { "selected", K_SELECTED },
+                             { "reason",
+                              index == 0uz ? "seed"
+                              : K_SELECTED ? "motion_coverage"
+                                           : "repeated" },
+                             { "thumbnail_sha256", sha256(std::as_bytes(std::span(K_PIXELS))) },
+                             { "metrics",
+                              { { "mean_luma", 127.0 },
+                               { "laplacian_variance", 100.0 },
+                               { "clipped_fraction", 0.0 },
+                               { "feature_count", 12 },
+                               { "tracked_cells", index == 0uz ? 0 : 4 },
+                               { "displacement_px", index == 0uz ? 0.0 : 2.0 },
+                               { "histogram_distance", 0.0 } } } });
+    }
+    write_bytes(fixture.m_stage / "candidates.gray", thumbnails);
+    const nlohmann::json K_LEDGER { { "schema_version", 1 },
+                                   { "source_sha256", fixture.m_source },
+                                   { "profile", "quality_keyframes_candidate_v1" },
+                                   { "policy", K_POLICY },
+                                   { "policy_sha256", K_POLICY_HASH },
+                                   { "implementation_sha256", std::string(64uz, 'c') },
+                                   { "sample_fps", 2.0 },
+                                   { "candidate_limit", 480 },
+                                   { "thumbnails",
+                                    { { "file", "candidates.gray" },
+                                     { "format", "GRAY8" },
+                                     { "bytes", thumbnails.size() },
+                                     { "sha256", sha256(std::as_bytes(std::span(thumbnails))) },
+                                     { "display_width", 2 },
+                                     { "display_height", 1 },
+                                     { "scale_x", 48.0 },
+                                     { "scale_y", 64.0 },
+                                     { "offset_x", 23.5 },
+                                     { "offset_y", 31.5 } } },
+                                   { "decisions", decisions } };
+    write_json(fixture.m_stage / "quality.json", K_LEDGER);
+    fixture.m_metadata["selection"] = "quality_keyframes_candidate_v1";
+    fixture.m_metadata["source_frame_count"] = 16;
+    fixture.m_metadata["source_sha256"] = fixture.m_source;
+    fixture.m_metadata["quality_ledger"] = "quality.json";
+    fixture.m_metadata["quality_ledger_sha256"] =
+        sha256_file(fixture.m_stage / "quality.json", 65536uz).value();
+    fixture.publish();
+}
+
 FramePacket next_frame(FrameSource& source) {
     const auto K_EVENT = source.read_next({});
     REQUIRE(K_EVENT);
@@ -243,6 +344,156 @@ void reject_and_repair(ErrorCode code, Mutation mutate, const std::stop_token& s
 }
 
 }  // namespace
+
+TEST_CASE("candidate quality replay binds ledger thumbnails and original selected observations",
+          "[decoded_admission][quality]") {
+    AdmissionFixture fixture;
+    quality_fixture(fixture);
+    const auto K_BEFORE = snapshot(fixture.m_root);
+    const auto K_CATALOG = inspect_decoded_frame_source(fixture.config());
+    INFO((K_CATALOG ? "admitted" : K_CATALOG.error().m_message));
+    REQUIRE(K_CATALOG);
+    REQUIRE(K_CATALOG->m_observations.size() == 3uz);
+    auto source = open_decoded_frame_source(fixture.config());
+    REQUIRE(source);
+    CHECK(next_reset(**source).m_epoch.m_value == 0);
+    for (const auto& observation : K_CATALOG->m_observations) {
+        CHECK(next_frame(**source).m_id == observation.m_id);
+    }
+    CHECK(snapshot(fixture.m_root) == K_BEFORE);
+}
+
+TEST_CASE("rehashed quality ledger cannot alter provenance policy decisions or finite bounds",
+          "[decoded_admission][quality]") {
+    const auto K_FIELD = GENERATE(0,
+                                  1,
+                                  2,
+                                  3,
+                                  4,
+                                  5,
+                                  6,
+                                  7,
+                                  8,
+                                  9,
+                                  10,
+                                  11,
+                                  12,
+                                  13,
+                                  14,
+                                  15,
+                                  16,
+                                  17,
+                                  18,
+                                  19,
+                                  20,
+                                  21,
+                                  22,
+                                  23,
+                                  24,
+                                  25,
+                                  26,
+                                  27,
+                                  28);
+    CAPTURE(K_FIELD);
+    reject_and_repair(
+        ErrorCode::INVALID_DATA, [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig&) {
+            quality_fixture(fixture);
+            auto ledger = read_json(fixture.m_stage / "quality.json");
+            if (K_FIELD == 0) {
+                ledger["source_sha256"] = std::string(64uz, 'd');
+            }
+            if (K_FIELD == 1) {
+                ledger["policy"]["thresholds"]["min_displacement_px"] = .1;
+            }
+            if (K_FIELD == 2) {
+                ledger["policy_sha256"] = std::string(64uz, '0');
+            }
+            if (K_FIELD == 3) {
+                ledger["implementation_sha256"] = "invalid";
+            }
+            if (K_FIELD == 4) {
+                ledger["candidate_limit"] = 3;
+            }
+            if (K_FIELD == 5) {
+                ledger["sample_fps"] = 1.0;
+            }
+            if (K_FIELD == 6) {
+                ledger["thumbnails"]["bytes"] = 10000000;
+            }
+            if (K_FIELD == 7) {
+                ledger["thumbnails"]["file"] = "../escape";
+            }
+            if (K_FIELD == 8) {
+                ledger["thumbnails"]["offset_x"] = 0.0;
+            }
+            if (K_FIELD == 9) {
+                ledger["decisions"][0]["frame"]["source_index"] = 1;
+            }
+            if (K_FIELD == 10) {
+                ledger["decisions"][1]["frame"]["pts"] = 0;
+            }
+            if (K_FIELD == 11) {
+                ledger["decisions"][1]["frame"]["calibration_id"] = "other-lens";
+            }
+            if (K_FIELD == 12) {
+                ledger["decisions"][0]["selected"] = false;
+            }
+            if (K_FIELD == 13) {
+                ledger["decisions"][0]["reason"] = "suspected_cut";
+            }
+            if (K_FIELD == 14) {
+                ledger["decisions"][2]["frame"]["sha256"] = std::string(64uz, '0');
+            }
+            if (K_FIELD == 15) {
+                ledger["decisions"][1]["frame"]["file"] = "images/first.png";
+            }
+            if (K_FIELD == 16) {
+                ledger["decisions"][0]["metrics"]["mean_luma"] = -1;
+            }
+            if (K_FIELD == 17) {
+                ledger["decisions"][0]["metrics"]["clipped_fraction"] = 1.1;
+            }
+            if (K_FIELD == 18) {
+                ledger["decisions"][0]["metrics"]["feature_count"] = 12.5;
+            }
+            if (K_FIELD == 19) {
+                ledger["decisions"][0]["metrics"]["tracked_cells"] = 13;
+            }
+            if (K_FIELD == 20) {
+                ledger["decisions"][0]["thumbnail_sha256"] = std::string(64uz, '0');
+            }
+            if (K_FIELD == 21) {
+                write_bytes(fixture.m_stage / "candidates.gray", std::string(24576uz, 'x'));
+            }
+            if (K_FIELD == 22) {
+                ledger["decisions"][0]["metrics"]["displacement_px"] = 100;
+            }
+            if (K_FIELD == 23) {
+                ledger["decisions"][0]["metrics"]["histogram_distance"] = "nan";
+            }
+            if (K_FIELD == 24) {
+                ledger["decisions"][0]["metrics"]["laplacian_variance"] = 0.0;
+            }
+            if (K_FIELD == 25) {
+                ledger["decisions"][2]["metrics"]["displacement_px"] = 0.0;
+            }
+            if (K_FIELD == 26) {
+                ledger["decisions"][0]["reason"] = "motion_coverage";
+            }
+            if (K_FIELD == 27) {
+                ledger["thumbnails"]["display_width"] = 2.5;
+            }
+            if (K_FIELD == 28) {
+                ledger["thumbnails"]["display_width"] = 4;
+                ledger["thumbnails"]["scale_x"] = 24.0;
+                ledger["thumbnails"]["offset_x"] = 11.5;
+            }
+            write_json(fixture.m_stage / "quality.json", ledger);
+            fixture.m_metadata["quality_ledger_sha256"] =
+                sha256_file(fixture.m_stage / "quality.json", 65536).value();
+            fixture.publish();
+        });
+}
 
 TEST_CASE("decoded source configuration and cancellation reject without caller writes",
           "[decoded_admission][config]") {

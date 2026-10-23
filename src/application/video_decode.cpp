@@ -57,6 +57,8 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
                                   const WorkerEventCallback& observed) {
     try {
         const auto& config = request.m_configuration;
+        const auto K_QUALITY =
+            config.m_frame_selection == FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1;
         if (stop.stop_requested()) {
             return fail(ErrorCode::CANCELLED, "Video decode cancelled");
         }
@@ -66,7 +68,9 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
             !config.m_worker.m_framed_protocol || !std::isfinite(config.m_sample_fps) ||
             config.m_sample_fps < .1 || config.m_sample_fps > 4 || config.m_max_frames < 3 ||
             config.m_max_frames > 120 || !config.m_cpu_threads || config.m_cpu_threads > 4 ||
-            !config.m_max_output_bytes || config.m_max_output_bytes > 32ULL * 1024 * 1024 * 1024) {
+            !config.m_max_output_bytes || config.m_max_output_bytes > 32ULL * 1024 * 1024 * 1024 ||
+            (config.m_frame_selection != FrameSelection::TIMESTAMP_SAMPLING_V1 && !K_QUALITY) ||
+            (K_QUALITY && config.m_sample_fps < 2)) {
             return fail(ErrorCode::INVALID_ARGUMENT, "Invalid explicit video decode configuration");
         }
         const auto K_PREFLIGHT =
@@ -84,6 +88,9 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
             std::filesystem::canonical(request.m_inspection.m_stage).parent_path().parent_path();
         auto protected_paths = request.m_outputs;
         protected_paths.insert(protected_paths.end(), { K_VIDEO, K_SCRIPT, K_INSPECTION_JOB });
+        if (K_QUALITY) {
+            protected_paths.push_back(K_SCRIPT.parent_path() / "frame_quality.py");
+        }
         if (std::filesystem::path(config.m_worker.m_python).has_parent_path()) {
             protected_paths.emplace_back(
                 std::filesystem::weakly_canonical(config.m_worker.m_python));
@@ -105,10 +112,19 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
         if (!K_SCRIPT_HASH) {
             return std::unexpected(K_SCRIPT_HASH.error());
         }
-        const nlohmann::json K_PARAMETERS { { "sample_fps", config.m_sample_fps },
-                                           { "max_frames", config.m_max_frames },
-                                           { "cpu_threads", config.m_cpu_threads },
-                                           { "max_output_bytes", config.m_max_output_bytes } };
+        nlohmann::json parameters { { "sample_fps", config.m_sample_fps },
+                                   { "max_frames", config.m_max_frames },
+                                   { "cpu_threads", config.m_cpu_threads },
+                                   { "max_output_bytes", config.m_max_output_bytes } };
+        if (K_QUALITY) {
+            const auto K_HELPER =
+                sha256_file(K_SCRIPT.parent_path() / "frame_quality.py", 1024uz * 1024uz, stop);
+            if (!K_HELPER) {
+                return std::unexpected(K_HELPER.error());
+            }
+            parameters["frame_selection"] = "quality_keyframes_candidate_v1";
+            parameters["selection_implementation_sha256"] = *K_HELPER;
+        }
         const nlohmann::json K_OWNER {
             { "schema_version", 1 },
             { "role", "video_decode" },
@@ -118,7 +134,7 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
             { "worker_sha256", *K_SCRIPT_HASH },
             { "worker_script", K_SCRIPT.string() },
             { "python", config.m_worker.m_python },
-            { "parameters", K_PARAMETERS } };
+            { "parameters", parameters } };
         auto lock = job_detail::open_owned_job(K_DIRECTORY,
                                                { ".we-decode-owner.json", ".we-decode.lock" },
                                                K_OWNER,
@@ -138,23 +154,28 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
             return fail(ErrorCode::WOULD_BLOCK,
                         "Decode worker lock exists; verify its process is gone before recovery");
         }
-        const nlohmann::json K_WORKER_REQUEST { { "schema_version", 1 },
-                                               { "source", K_VIDEO.string() },
-                                               { "job_dir", K_DIRECTORY.string() },
-                                               { "stop_after", "decode" },
-                                               { "sample_fps", config.m_sample_fps },
-                                               { "limits",
-                                                { { "max_frames", config.m_max_frames },
-                                                 { "cpu_threads", config.m_cpu_threads },
-                                                 { "max_output_bytes", config.m_max_output_bytes } } } };
+        nlohmann::json worker_request { { "schema_version", 1 },
+                                       { "source", K_VIDEO.string() },
+                                       { "job_dir", K_DIRECTORY.string() },
+                                       { "stop_after", "decode" },
+                                       { "sample_fps", config.m_sample_fps },
+                                       { "limits",
+                                        { { "max_frames", config.m_max_frames },
+                                         { "cpu_threads", config.m_cpu_threads },
+                                         { "max_output_bytes", config.m_max_output_bytes } } } };
+        if (K_QUALITY) {
+            worker_request["frame_selection"] = "quality_keyframes_candidate_v1";
+        }
         const auto K_PUBLISHED = job_detail::publish_owned_json(
-            K_DIRECTORY / "decode-request.json", K_WORKER_REQUEST, stop);
+            K_DIRECTORY / "decode-request.json", worker_request, stop);
         if (!K_PUBLISHED) {
             return std::unexpected(K_PUBLISHED.error());
         }
         if (log) {
-            log("Decoding selected video frames locally (timestamp sampling; diagnostics "
-                "unqualified).\n");
+            log(K_QUALITY
+                    ? "Decoding local quality candidates (thresholds unqualified).\n"
+                    : "Decoding selected video frames locally (timestamp sampling; diagnostics "
+                      "unqualified).\n");
         }
         std::stop_source cancellation;
         std::stop_callback forward(stop, [&] {
@@ -218,6 +239,31 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
             adopt_video_decode({ K_STAGE, *K_DIGEST }, K_PREFLIGHT->m_source_sha256, stop);
         if (!K_CHECKED) {
             return std::unexpected(K_CHECKED.error());
+        }
+        const auto K_METADATA =
+            job_detail::read_json(artifact.m_path, K_WORKER_MESSAGE_LIMIT, artifact.m_sha256);
+        if (!K_METADATA ||
+            K_METADATA->at("selection") !=
+                (K_QUALITY ? "quality_keyframes_candidate_v1" : "timestamp_sampling_v1")) {
+            return fail(ErrorCode::INVALID_DATA,
+                        "Worker returned a different frame selection profile");
+        }
+        if (K_QUALITY) {
+            const auto K_LEDGER =
+                job_detail::read_json(K_STAGE / "quality.json",
+                                      K_WORKER_MESSAGE_LIMIT,
+                                      K_METADATA->at("quality_ledger_sha256").get<std::string>());
+            const auto K_HELPER =
+                sha256_file(K_SCRIPT.parent_path() / "frame_quality.py", 1024uz * 1024uz, stop);
+            if (!K_HELPER) {
+                return std::unexpected(K_HELPER.error());
+            }
+            if (!K_LEDGER || K_LEDGER->at("implementation_sha256") != *K_HELPER ||
+                parameters.at("selection_implementation_sha256") != *K_HELPER ||
+                K_LEDGER->at("sample_fps") != config.m_sample_fps) {
+                return fail(ErrorCode::INVALID_DATA,
+                            "Quality implementation/rate changed during decode");
+            }
         }
         const auto K_DIVISOR =
             std::gcd(K_PREFLIGHT->m_time_base_numerator, K_PREFLIGHT->m_time_base_denominator);

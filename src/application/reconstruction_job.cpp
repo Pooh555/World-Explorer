@@ -137,7 +137,11 @@ Result<void> validate_job(const ReconstructionJob& job) {
                 !std::isfinite(decode.m_sample_fps) || decode.m_sample_fps < .1 ||
                 decode.m_sample_fps > 4 || decode.m_max_frames < 3 || decode.m_max_frames > 120 ||
                 !decode.m_cpu_threads || decode.m_cpu_threads > 4 || !decode.m_max_output_bytes ||
-                decode.m_max_output_bytes > 32ULL * 1024 * 1024 * 1024) {
+                decode.m_max_output_bytes > 32ULL * 1024 * 1024 * 1024 ||
+                (decode.m_frame_selection != FrameSelection::TIMESTAMP_SAMPLING_V1 &&
+                 decode.m_frame_selection != FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1) ||
+                (decode.m_frame_selection == FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1 &&
+                 decode.m_sample_fps < 2)) {
                 return fail(ErrorCode::INVALID_ARGUMENT, "Invalid automatic decode action");
             }
             read_only.push_back(decode.m_worker.m_script);
@@ -450,7 +454,9 @@ Result<ReconstructionJob> read_reconstruction_job(const std::filesystem::path& r
                 job.m_selected_decode =
                     RetainedVideoDecode { K_LOCAL_PATH(decode, "stage"),
                                          decode.at("completion_sha256").get<std::string>() };
-            } else if (decode.at("action") == "decode" && decode.size() == 8) {
+            } else if (decode.at("action") == "decode" &&
+                       (decode.size() == 8 ||
+                        (decode.size() == 9 && decode.contains("frame_selection")))) {
                 AutomaticVideoDecode config_decode;
                 config_decode.m_job_directory = K_LOCAL_PATH(decode, "job_directory");
                 config_decode.m_worker = { K_LOCAL_PATH(decode, "worker_script"),
@@ -459,6 +465,16 @@ Result<ReconstructionJob> read_reconstruction_job(const std::filesystem::path& r
                     return fail(ErrorCode::INVALID_DATA, "Invalid frame selection rate");
                 }
                 config_decode.m_sample_fps = decode.at("sample_fps").get<double>();
+                const auto K_SELECTION =
+                    decode.value("frame_selection", std::string("timestamp_sampling_v1"));
+                if (K_SELECTION != "timestamp_sampling_v1" &&
+                    K_SELECTION != "quality_keyframes_candidate_v1") {
+                    return fail(ErrorCode::INVALID_DATA, "Unknown frame selection profile");
+                }
+                config_decode.m_frame_selection =
+                    K_SELECTION == "timestamp_sampling_v1"
+                        ? FrameSelection::TIMESTAMP_SAMPLING_V1
+                        : FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1;
                 config_decode.m_max_frames =
                     static_cast<std::uint32_t>(K_INTEGER(decode, "max_frames", 120));
                 config_decode.m_cpu_threads =

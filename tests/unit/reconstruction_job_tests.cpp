@@ -912,7 +912,27 @@ TEST_CASE("fresh reconstruction requests require explicit stages resources and d
     REQUIRE(K_PARSED);
     REQUIRE(K_PARSED->m_fresh_poses);
     REQUIRE(K_PARSED->m_automatic_decode);
+    if (K_PARSED->m_automatic_decode) {
+        CHECK(K_PARSED->m_automatic_decode->m_frame_selection ==
+              FrameSelection::TIMESTAMP_SAMPLING_V1);
+    }
     REQUIRE(reconstruct(*K_PARSED, {}, {}));
+    SECTION("explicit candidate selection") {
+        config["decode"]["frame_selection"] = "quality_keyframes_candidate_v1";
+        save_json(K_REQUEST, config);
+        const auto K_CANDIDATE = read_reconstruction_job(K_REQUEST);
+        REQUIRE(K_CANDIDATE);
+        REQUIRE(K_CANDIDATE->m_automatic_decode);
+        if (K_CANDIDATE->m_automatic_decode) {
+            CHECK(K_CANDIDATE->m_automatic_decode->m_frame_selection ==
+                  FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1);
+        }
+        config["decode"]["frame_selection"] = "unknown";
+    }
+    SECTION("candidate requires at least two candidates per second") {
+        config["decode"]["frame_selection"] = "quality_keyframes_candidate_v1";
+        config["decode"]["sample_fps"] = 1.0;
+    }
     SECTION("unknown decode option") {
         config["decode"]["remote"] = true;
     }

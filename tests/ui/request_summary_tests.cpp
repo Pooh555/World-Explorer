@@ -133,6 +133,13 @@ TEST_CASE("review shows fresh frame pose storage and resource choices without ru
     CHECK_FALSE(std::filesystem::exists(fixture.job.m_pose_job));
     CHECK_FALSE(std::filesystem::exists(decode.m_job_directory));
     CHECK_FALSE(std::filesystem::exists(fixture.job.m_scene_output));
+    config["decode"]["frame_selection"] = "quality_keyframes_candidate_v1";
+    config["decode"]["sample_fps"] = 3.0;
+    test::save_reconstruction_json(K_REQUEST, config);
+    const auto K_CANDIDATE = viewer::review_reconstruction_request(K_REQUEST);
+    REQUIRE(K_CANDIDATE);
+    CHECK(row(*K_CANDIDATE, "Selected frames") ==
+          "Candidate quality selection (unqualified): 3 candidates/s, at most 40 keyframes");
 }
 
 TEST_CASE("review rejects malformed oversized and cancelled requests without writes", "[review]") {

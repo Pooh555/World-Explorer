@@ -1,5 +1,7 @@
 # Validation index
 
+- [Candidate frame selection](2026-10-23-frame-selection.md): explicit bounded diagnostics, native ledger admission and shared decode; synthetic path passes, real sample_1 tracking fails without publication; legacy data preserved, M3 remains open.
+
 - [M3 local software exit review](2026-10-23-m3-exit-review.md): IN_PROGRESS; remaining timestamp-only keyframe selection prevents exit; five checklist items and all unqualified Q/P/N/E targets mapped.
 
 - [M3 selected dependency refresh](2026-10-23-m3-dependency-refresh.md): fresh loader/import/viewer/owner evidence, current default/local consistency, 257 retained gaps, 65 audit tests and exact workspace LLVM 23.1.1 tooling; no full gate upgrade.
