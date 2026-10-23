@@ -80,6 +80,10 @@ class FrameQualityTests(unittest.TestCase):
     shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required"
 )
 class QualityDecodeTests(unittest.TestCase):
+    @staticmethod
+    def selection_policy() -> dict:
+        return quality.policy()
+
     def setUp(self):
         worker.CANCELLED.clear()
         self.addCleanup(worker.CANCELLED.clear)
@@ -126,7 +130,7 @@ class QualityDecodeTests(unittest.TestCase):
         stage = Path(result["output"])
         decoded = json.loads((stage / "result.json").read_text())
         ledger = json.loads((stage / "quality.json").read_text())
-        self.assertEqual(decoded["selection"], quality.PROFILE)
+        self.assertEqual(decoded["selection"], self.request["frame_selection"])
         self.assertEqual(
             [frame["source_index"] for frame in decoded["frames"]], [0, 2, 4, 6]
         )
@@ -134,7 +138,7 @@ class QualityDecodeTests(unittest.TestCase):
             decoded["quality_ledger_sha256"], worker.sha256(stage / "quality.json")
         )
         self.assertEqual(
-            ledger["policy_sha256"], worker.canonical_hash(quality.policy())
+            ledger["policy_sha256"], worker.canonical_hash(self.selection_policy())
         )
         self.assertEqual(
             [entry["frame"] for entry in ledger["decisions"] if entry["selected"]],

@@ -2,7 +2,8 @@
 
 `open_decoded_frame_source` returns the project-owned `frame_source` interface.
 It replays PNG images from committed `timestamp_sampling_v1`,
-`quality_keyframes_candidate_v1` and `native_rgb_journal_v1` decode stages;
+`quality_keyframes_candidate_v1`, `quality_keyframes_candidate_v2` and
+`native_rgb_journal_v1` decode stages;
 it does not rerun source-video decode or reconstruction. The optional
 [quality candidate profile](frame_selection.md) adds checked diagnostics and
 provenance; its thresholds and real-video selection remain unqualified.

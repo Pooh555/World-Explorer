@@ -139,7 +139,13 @@ TEST_CASE("review shows fresh frame pose storage and resource choices without ru
     const auto K_CANDIDATE = viewer::review_reconstruction_request(K_REQUEST);
     REQUIRE(K_CANDIDATE);
     CHECK(row(*K_CANDIDATE, "Selected frames") ==
-          "Candidate quality selection (unqualified): 3 candidates/s, at most 40 keyframes");
+          "Candidate quality selection v1 (unqualified): 3 candidates/s, at most 40 keyframes");
+    config["decode"]["frame_selection"] = "quality_keyframes_candidate_v2";
+    test::save_reconstruction_json(K_REQUEST, config);
+    const auto K_TRACKING = viewer::review_reconstruction_request(K_REQUEST);
+    REQUIRE(K_TRACKING);
+    CHECK(row(*K_TRACKING, "Selected frames") ==
+          "Candidate quality selection v2 (unqualified): 3 candidates/s, at most 40 keyframes");
 }
 
 TEST_CASE("review rejects malformed oversized and cancelled requests without writes", "[review]") {

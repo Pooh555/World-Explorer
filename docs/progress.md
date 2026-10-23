@@ -414,32 +414,34 @@ unchanged; the inspected output remains fragmented, arbitrary-scale and
 unwalkable. No solve, fusion, bake or export is rerun.
 
 [The M3 exit review](validation/2026-10-23-m3-exit-review.md) remains open.
-The [candidate keyframe slice](validation/2026-10-23-frame-selection.md) adds an
-explicit quality profile, bounded thumbnail metrics/tracks, rejection ledger,
-native admission, shared decode ownership and an unqualified viewer label.
-Legacy timestamp sampling remains the default. Synthetic acceptance and real
-FFmpeg/native integration run, but the fixed candidate fails on `sample_1`:
-63 candidates yield one seed, one low-motion rejection, two low-texture
-rejections and 59 tracking breaks; no decode completion or new scene is published.
-Its static selected-frame reference loses feature support. The 155 protected
-media/result/bake files remain unchanged. M3 stays **IN_PROGRESS**; A0–A6 remain
-NOT_STARTED and M4 has not begun.
+[Persistent candidate tracking](validation/2026-10-23-frame-tracking.md) now
+selects 24 of 63 real sample_1 candidates, passes shared native decode/restart
+and frame admission, and publishes 24/24 poses through one exhaustive-guided
+recovery. Sequential initialization failed first; all attempts are retained.
+The selected frames and registration thresholds are unchanged by recovery.
+V1's failure remains historical; timestamp sampling remains the default.
+The new map is arbitrary-scale with geometry unavailable. All 230 protected
+media/result/bake/v1-evidence files are unchanged. M3 stays **IN_PROGRESS**;
+A0–A6 remain NOT_STARTED and M4 has not begun.
 
-Next executable step: add a development fixture for gradual/subpixel motion,
-feature turnover and low-texture intervals to
-`tests/integration/worker_frame_quality_test.py`. Implement a separately
-versioned tracker that maintains correspondences through intervening candidates,
-with explicit displacement/coverage semantics and conservative cut/lens handling;
-retain candidate v1 and its failure. Run `python3 -m unittest discover -s
-tests/integration -p 'worker_frame_quality_test.py' -v`, then validate a fresh
-explicit real-video job through `decode_video`, including failure preservation
-and native ledger admission. Do not relax coverage/registration thresholds,
-reselect hard sample_2 frames to force 90%, or replace retained sampling jobs.
-Before the five-item M3 exit review, resolve visual lens/coverage diagnostics and
-refresh selected runtime receipts for the changed viewer/CLI binaries: the
-current default inventory check passes, while `--local-evidence` now exits 2
-(`Current runtime payload differs`). The earlier 23 October refresh remains
-historical. Quality, measured geometry/walking and A/platform gates stay open.
+Next executable step: recheck plan §5.1 steps 2–3, then add synthetic focal/zoom
+change and camera-forward-motion ambiguity cases to
+`tests/integration/worker_frame_tracking_test.py`. Implement explicit visual
+lens/calibration-change suspicion or rejection in a new versioned profile;
+retain published v2 (`candidate_2_2`) and its native admission. Current lens
+change handling is dimension metadata only, and image-grid coverage is not
+3D coverage. Run `python3 -m unittest discover -s tests/integration -p
+'worker_frame_*test.py' -v`, then exercise the new path locally before reviewing
+the five-item M3 exit. Preserve actual uncertainties and unsupported cases.
+
+Reuse `artifacts/validation/m3-frame-tracking-20261023/guided-recovery.map`
+with `prepare-poses`; its durable reopen preserves all four asset/manifest files.
+Do not rerun the completed solve or spend another recovery on this unchanged
+24-frame attempt. Preserve its failed sequential model and all earlier ledgers.
+No unchanged fit, dense, fusion, bake or sample_2 retry is needed. Before M3 exit,
+refresh selected runtime receipts for changed viewer/CLI binaries: default
+inventory passes, while `--local-evidence` still exits 2 (`Current runtime payload
+differs`). Quality, measured geometry/walking and A/platform gates remain open.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
 clearance. `sample_1` has no independent distance/up reference: ADR 020 permits
 a local M3 software exit without it, while Q5/N2 and A1 scale evidence stay open.

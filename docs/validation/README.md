@@ -1,5 +1,7 @@
 # Validation index
 
+- [Persistent candidate tracking](2026-10-23-frame-tracking.md): bounded renewal/subpixel/affine history, 24/63 real selections, native decode/restart and 24/24 guided-pose recovery; durable map reload, preserved failures and data; M3 lens/calibration handling and exit review remain open.
+
 - [Candidate frame selection](2026-10-23-frame-selection.md): explicit bounded diagnostics, native ledger admission and shared decode; synthetic path passes, real sample_1 tracking fails without publication; legacy data preserved, M3 remains open.
 
 - [M3 local software exit review](2026-10-23-m3-exit-review.md): IN_PROGRESS; remaining timestamp-only keyframe selection prevents exit; five checklist items and all unqualified Q/P/N/E targets mapped.

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numeric>
+#include <string_view>
 
 namespace world_explorer {
 
@@ -57,8 +58,13 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
                                   const WorkerEventCallback& observed) {
     try {
         const auto& config = request.m_configuration;
-        const auto K_QUALITY =
-            config.m_frame_selection == FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1;
+        const auto K_TRACKING =
+            config.m_frame_selection == FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V2;
+        const auto K_QUALITY = K_TRACKING || config.m_frame_selection ==
+                                                 FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1;
+        const std::string_view K_SELECTION { K_TRACKING  ? "quality_keyframes_candidate_v2"
+                                            : K_QUALITY ? "quality_keyframes_candidate_v1"
+                                                        : "timestamp_sampling_v1" };
         if (stop.stop_requested()) {
             return fail(ErrorCode::CANCELLED, "Video decode cancelled");
         }
@@ -84,12 +90,14 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
         const auto K_DIRECTORY = std::filesystem::weakly_canonical(config.m_job_directory);
         const auto K_VIDEO = std::filesystem::canonical(request.m_video);
         const auto K_SCRIPT = std::filesystem::canonical(config.m_worker.m_script);
+        const auto K_HELPER_PATH =
+            K_SCRIPT.parent_path() / (K_TRACKING ? "frame_tracking.py" : "frame_quality.py");
         const auto K_INSPECTION_JOB =
             std::filesystem::canonical(request.m_inspection.m_stage).parent_path().parent_path();
         auto protected_paths = request.m_outputs;
         protected_paths.insert(protected_paths.end(), { K_VIDEO, K_SCRIPT, K_INSPECTION_JOB });
         if (K_QUALITY) {
-            protected_paths.push_back(K_SCRIPT.parent_path() / "frame_quality.py");
+            protected_paths.push_back(K_HELPER_PATH);
         }
         if (std::filesystem::path(config.m_worker.m_python).has_parent_path()) {
             protected_paths.emplace_back(
@@ -117,12 +125,11 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
                                    { "cpu_threads", config.m_cpu_threads },
                                    { "max_output_bytes", config.m_max_output_bytes } };
         if (K_QUALITY) {
-            const auto K_HELPER =
-                sha256_file(K_SCRIPT.parent_path() / "frame_quality.py", 1024uz * 1024uz, stop);
+            const auto K_HELPER = sha256_file(K_HELPER_PATH, 1024uz * 1024uz, stop);
             if (!K_HELPER) {
                 return std::unexpected(K_HELPER.error());
             }
-            parameters["frame_selection"] = "quality_keyframes_candidate_v1";
+            parameters["frame_selection"] = K_SELECTION;
             parameters["selection_implementation_sha256"] = *K_HELPER;
         }
         const nlohmann::json K_OWNER {
@@ -164,7 +171,7 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
                                          { "cpu_threads", config.m_cpu_threads },
                                          { "max_output_bytes", config.m_max_output_bytes } } } };
         if (K_QUALITY) {
-            worker_request["frame_selection"] = "quality_keyframes_candidate_v1";
+            worker_request["frame_selection"] = K_SELECTION;
         }
         const auto K_PUBLISHED = job_detail::publish_owned_json(
             K_DIRECTORY / "decode-request.json", worker_request, stop);
@@ -242,9 +249,7 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
         }
         const auto K_METADATA =
             job_detail::read_json(artifact.m_path, K_WORKER_MESSAGE_LIMIT, artifact.m_sha256);
-        if (!K_METADATA ||
-            K_METADATA->at("selection") !=
-                (K_QUALITY ? "quality_keyframes_candidate_v1" : "timestamp_sampling_v1")) {
+        if (!K_METADATA || K_METADATA->at("selection") != K_SELECTION) {
             return fail(ErrorCode::INVALID_DATA,
                         "Worker returned a different frame selection profile");
         }
@@ -253,8 +258,7 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
                 job_detail::read_json(K_STAGE / "quality.json",
                                       K_WORKER_MESSAGE_LIMIT,
                                       K_METADATA->at("quality_ledger_sha256").get<std::string>());
-            const auto K_HELPER =
-                sha256_file(K_SCRIPT.parent_path() / "frame_quality.py", 1024uz * 1024uz, stop);
+            const auto K_HELPER = sha256_file(K_HELPER_PATH, 1024uz * 1024uz, stop);
             if (!K_HELPER) {
                 return std::unexpected(K_HELPER.error());
             }

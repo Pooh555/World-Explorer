@@ -44,7 +44,7 @@ struct DecodedFrameCatalog {
 // Used image bytes still require checksum verification before consumption.
 Result<DecodedFrameCatalog> inspect_decoded_frame_source(DecodedSourceConfig config,
                                                          const std::stop_token& stop = {});
-// Replay a committed timestamp_sampling_v1, quality_keyframes_candidate_v1 or
+// Replay a committed timestamp_sampling_v1, quality_keyframes_candidate_v1/v2 or
 // native_rgb_journal_v1 decode stage. Candidate diagnostics are unqualified. This does not
 // decode or reconstruct the source video again. One cancellable decoder runs per image; callers own
 // immutable RGB8 leases. Seeking emits a reset before the next frame.

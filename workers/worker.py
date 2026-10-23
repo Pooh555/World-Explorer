@@ -389,9 +389,13 @@ def validate_request(request: dict) -> dict:
     ):
         raise WorkerError("BAD_INPUT", "sample_fps must be in [0.1, 4]")
     selection = request.get("frame_selection", "timestamp_sampling_v1")
-    if selection not in ("timestamp_sampling_v1", "quality_keyframes_candidate_v1"):
+    if selection not in (
+        "timestamp_sampling_v1",
+        "quality_keyframes_candidate_v1",
+        "quality_keyframes_candidate_v2",
+    ):
         raise WorkerError("BAD_INPUT", "Unknown frame selection profile")
-    if selection == "quality_keyframes_candidate_v1" and sample_fps < 2:
+    if selection != "timestamp_sampling_v1" and sample_fps < 2:
         raise WorkerError("BAD_INPUT", "Quality candidates require 2..4 sample_fps")
     if source.stat().st_size > limits["max_source_bytes"]:
         raise WorkerError("RESOURCE_LIMIT", "Source exceeds configured byte limit")
@@ -670,7 +674,8 @@ class Job:
 
     def decode(self, directory: Path, inspection: dict) -> dict:
         quality_profile = (
-            self.request.get("frame_selection") == "quality_keyframes_candidate_v1"
+            self.request.get("frame_selection", "timestamp_sampling_v1")
+            != "timestamp_sampling_v1"
         )
         probe = executable("ffprobe")
         data = json.loads(
@@ -825,7 +830,7 @@ class Job:
                     decision["frame"] = next(selected_iter)
             atomic_json(directory / "quality.json", ledger)
             result |= {
-                "selection": "quality_keyframes_candidate_v1",
+                "selection": self.request["frame_selection"],
                 "source_sha256": self.source_hash,
                 "quality_ledger": "quality.json",
                 "quality_ledger_sha256": sha256(directory / "quality.json"),
@@ -840,10 +845,15 @@ class Job:
     ) -> tuple[list[dict], dict]:
         # Load only the repository-owned helper, including when imported by a host
         # with a different sys.path. Its bytes also enter the job recipe identity.
-        specification = importlib.util.spec_from_file_location(
-            "we_frame_quality", ROOT / "frame_quality.py"
+        helper = ROOT / (
+            "frame_tracking.py"
+            if self.request["frame_selection"] == "quality_keyframes_candidate_v2"
+            else "frame_quality.py"
         )
-        implementation_sha256 = sha256(ROOT / "frame_quality.py")
+        specification = importlib.util.spec_from_file_location(
+            "we_frame_quality", helper
+        )
+        implementation_sha256 = sha256(helper)
         quality = importlib.util.module_from_spec(specification)
         specification.loader.exec_module(quality)
 
@@ -904,7 +914,7 @@ class Job:
             [data[offset : offset + 6144] for offset in range(0, len(data), 6144)],
             check_cancelled,
         )
-        if sha256(ROOT / "frame_quality.py") != implementation_sha256:
+        if sha256(helper) != implementation_sha256:
             raise WorkerError(
                 "BAD_INPUT", "Quality implementation changed during analysis"
             )
@@ -947,7 +957,7 @@ class Job:
         ):
             raise WorkerError(
                 "INSUFFICIENT_PARALLAX",
-                "Candidate tracking break/cut; inspect quality.json and split into calibrated segments",
+                "Candidate tracking break/suspected cut; inspect quality.json before retrying or splitting capture",
             )
         selected = [entry["frame"].copy() for entry in decisions if entry["selected"]]
         if not 3 <= len(selected) <= self.limits["max_frames"]:

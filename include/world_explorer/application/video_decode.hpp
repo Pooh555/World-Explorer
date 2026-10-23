@@ -10,7 +10,11 @@ struct RetainedVideoDecode {
     std::string m_completion_sha256;
 };
 
-enum class FrameSelection : std::uint8_t { TIMESTAMP_SAMPLING_V1, QUALITY_KEYFRAMES_CANDIDATE_V1 };
+enum class FrameSelection : std::uint8_t {
+    TIMESTAMP_SAMPLING_V1,
+    QUALITY_KEYFRAMES_CANDIDATE_V1,
+    QUALITY_KEYFRAMES_CANDIDATE_V2
+};
 
 struct AutomaticVideoDecode {
     std::filesystem::path m_job_directory;

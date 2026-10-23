@@ -2,8 +2,8 @@
 
 `timestamp_sampling_v1` remains the default. Existing requests and completed
 manifests retain their meaning. Explicit `frame_selection:
-"quality_keyframes_candidate_v1"` enables the experimental selector in a fresh
-worker/decode job. Schema-2 reconstruction requests put this optional field in
+"quality_keyframes_candidate_v1"` or `"quality_keyframes_candidate_v2"` enables
+an experimental selector in a fresh worker/decode job. Schema-2 reconstruction requests put this optional field in
 `decode`; the viewer review labels it **unqualified**. No solver, measurement or
 appearance qualification follows from successful selection.
 
@@ -21,7 +21,7 @@ Dimension changes fail and require separate calibrated captures.
 [`policy()`](../../workers/frame_quality.py) owns the versioned, unqualified
 thresholds. Analysis records Laplacian variance, mean/clipped luminance, corner
 count, histogram distance, tracked image-grid cells and median displacement.
-One minimum-eigenvalue corner per 4×3 cell is matched against the last selected
+For v1, one minimum-eigenvalue corner per 4×3 cell is matched against the last selected
 frame using mean-normalized 5×5 patches, a bounded ±6-pixel search, ambiguity
 rejection and a forward/backward check. These are thumbnail image diagnostics;
 they establish neither 3D coverage nor parallax, metric scale or lens stability.
@@ -34,6 +34,45 @@ produces `suspected_cut`. Either stops publication, retaining diagnostics for
 inspection. A tracking failure does not independently establish a camera cut.
 Visual lens changes remain unresolved; dimension metadata is the only lens
 change detector. Thresholds and this candidate recipe are not promoted defaults.
+
+## Persistent v2 tracks
+
+[`frame_tracking.py`](../../workers/frame_tracking.py) owns the current v2 policy
+(`candidate_2_2`). It preserves the four-cell and 1.5-pixel selected-frame
+minimums. A three-candidate initial window prefers spatially distributed
+features; earlier eligible frames remain `seed_candidate` recovery observations.
+Up to four separated corners per cell give at most 48 active points.
+
+Integer patch search and bounded subpixel least-squares refinement run on a
+3×3 binomial-filtered tracking image. Raw thumbnails still own image-quality
+metrics and hashes. Raw patch correlation, forward/backward consistency and
+bounded translation/affine consensus reject unrelated patch matches. Affine
+consensus tests at most 128 deterministic non-degenerate triples; its residual
+radius is 1.5 pixels and its required inlier ratio is 0.6. The refinement is a
+project implementation of forward additive image alignment; see
+[Baker and Matthews](https://publications.ri.cmu.edu/lucas-kanade-20-years-on-a-unifying-framework)
+for the general least-squares framework, not validation of this recipe.
+
+Four coherent **points** permit an intermediate reference to advance and admit
+new corners. Selection additionally requires four image-grid **cells**, adequate
+raw quality and sufficient tracked displacement. Narrow/low-texture candidates
+can carry a connection without becoming keyframes. `insufficient_tracks` means
+insufficient selection coverage; loss of a four-point connection on a usable
+candidate is a `tracking_break`. Gaps are bounded to 12 candidates. No new seed
+is created after a break.
+
+Each point retains its birth candidate and coordinates. Displacement is the
+median distance from those birth coordinates, with births reset at a selected
+keyframe. It is not asserted to be displacement from the keyframe or net camera
+motion. Point turnover connects intermediate observations; it does not prove
+direct common landmarks between selected frames. Pose solving must still check
+the unchanged registration/geometry criteria.
+
+Each decision's `tracking` record binds its selected `anchor`, last connected
+`reference`, continued-point birth interval and number of `new_points`.
+Native admission follows that state machine, bounds available points and birth
+indices, and rejects disconnected renewal, forward references and reseeding.
+The viewer review displays the selected candidate version and **unqualified**.
 
 ## Provenance, admission and failure
 

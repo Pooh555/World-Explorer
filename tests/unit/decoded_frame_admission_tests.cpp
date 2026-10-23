@@ -305,6 +305,108 @@ void quality_fixture(AdmissionFixture& fixture) {
     fixture.publish();
 }
 
+void tracking_fixture(AdmissionFixture& fixture, bool delayed_seed = false) {
+    quality_fixture(fixture);
+    auto ledger = read_json(fixture.m_stage / "quality.json");
+    ledger["policy"] = nlohmann::json::parse(R"tracking(
+{
+  "metric_version": "gray96_persistent_affine_v2",
+  "threshold_version": "candidate_2_2",
+  "qualification": "UNQUALIFIED",
+  "analysis_width": 96,
+  "analysis_height": 64,
+  "thresholds": {
+    "min_laplacian_variance": 25,
+    "min_mean": 12,
+    "max_mean": 243,
+    "max_clipped_fraction": 0.8,
+    "max_exposure_change": 55,
+    "min_corner_eigenvalue": 100,
+    "max_patch_rms": 18,
+    "ambiguity_ratio": 1.1,
+    "ambiguity_margin": 0.5,
+    "forward_backward_pixels": 1,
+    "search_radius": 6,
+    "min_tracked_cells": 4,
+    "min_continued_tracks": 4,
+    "min_displacement_px": 1.5,
+    "cut_histogram_distance": 0.65,
+    "points_per_cell": 4,
+    "point_separation": 4,
+    "seed_window": 3,
+    "max_tracking_gap": 12,
+    "refinement_iterations": 8,
+    "refinement_tolerance": 0.01,
+    "motion_consensus_radius": 1.5,
+    "min_motion_consensus_ratio": 0.6,
+    "max_affine_models": 128,
+    "min_affine_triangle_determinant": 16,
+    "min_affine_jacobian_determinant": 0.25,
+    "max_affine_jacobian_determinant": 4,
+    "min_raw_patch_correlation": 0.6
+  },
+  "coverage": "tracked cells in a 4x3 image grid; no 3D coverage claim",
+  "displacement_reference": "point birth since last selected keyframe; not net camera motion",
+  "tracking_prefilter": "binomial_3x3_edge_replicate",
+  "lens_change_detection": "dimension_metadata_only"
+})tracking");
+    const auto K_POLICY_BYTES = ledger["policy"].dump();
+    ledger["policy_sha256"] = sha256(std::as_bytes(std::span(K_POLICY_BYTES)));
+    ledger["profile"] = "quality_keyframes_candidate_v2";
+    for (std::size_t index { 0uz }; index < 4uz; ++index) {
+        auto& row = ledger["decisions"][index];
+        auto& metrics = row["metrics"];
+        const auto K_SEED = delayed_seed ? 1uz : 0uz;
+        const auto K_IS_SEED = index == K_SEED;
+        const auto K_PRESEED = index < K_SEED;
+        const auto K_SELECTED = K_IS_SEED || index >= 2uz;
+        row["selected"] = K_SELECTED;
+        row["reason"] = K_PRESEED    ? "seed_candidate"
+                        : K_IS_SEED  ? "seed"
+                        : K_SELECTED ? "motion_coverage"
+                                     : "repeated";
+        metrics["feature_cells"] = K_PRESEED ? 4 : 12;
+        metrics["feature_count"] = K_PRESEED ? 4 : 12;
+        metrics["track_count"] = K_PRESEED || K_IS_SEED ? 0 : 4;
+        metrics["tracked_cells"] = K_PRESEED || K_IS_SEED ? 0 : 4;
+        metrics["displacement_px"] = K_SELECTED && !K_IS_SEED ? 2.0 : 0.0;
+        const auto K_ANCHOR =
+            index <= K_SEED ? nlohmann::json(nullptr) : nlohmann::json(index == 3uz ? 2uz : K_SEED);
+        const auto K_REFERENCE =
+            index <= K_SEED ? nlohmann::json(nullptr) : nlohmann::json(index - 1uz);
+        row["tracking"] = { { "anchor", K_ANCHOR },
+                           { "reference", K_REFERENCE },
+                           { "birth_first", K_ANCHOR },
+                           { "birth_last", K_ANCHOR },
+                           { "new_points", K_SELECTED ? 12 : 0 } };
+        if (!delayed_seed && index == 1uz) {
+            metrics["tracked_cells"] = 3;
+            row["tracking"]["new_points"] = 4;
+        }
+        if (!K_SELECTED) {
+            row["frame"].erase("file");
+            row["frame"].erase("sha256");
+        } else if (delayed_seed && K_IS_SEED) {
+            std::filesystem::copy_file(fixture.m_stage / "images/first.png",
+                                       fixture.m_stage / "images/delayed.png");
+            row["frame"]["file"] = "images/delayed.png";
+            row["frame"]["sha256"] =
+                sha256_file(fixture.m_stage / "images/delayed.png", 4096uz).value();
+        }
+    }
+    fixture.m_metadata["frames"] = nlohmann::json::array();
+    for (const auto& row : ledger["decisions"]) {
+        if (row["selected"] == true) {
+            fixture.m_metadata["frames"].push_back(row["frame"]);
+        }
+    }
+    write_json(fixture.m_stage / "quality.json", ledger);
+    fixture.m_metadata["selection"] = "quality_keyframes_candidate_v2";
+    fixture.m_metadata["quality_ledger_sha256"] =
+        sha256_file(fixture.m_stage / "quality.json", 65536uz).value();
+    fixture.publish();
+}
+
 FramePacket next_frame(FrameSource& source) {
     const auto K_EVENT = source.read_next({});
     REQUIRE(K_EVENT);
@@ -361,6 +463,83 @@ TEST_CASE("candidate quality replay binds ledger thumbnails and original selecte
         CHECK(next_frame(**source).m_id == observation.m_id);
     }
     CHECK(snapshot(fixture.m_root) == K_BEFORE);
+}
+
+TEST_CASE("persistent quality admission follows connected references and a bounded seed window",
+          "[decoded_admission][tracking]") {
+    const auto K_DELAYED = GENERATE(false, true);
+    AdmissionFixture fixture;
+    tracking_fixture(fixture, K_DELAYED);
+    const auto K_BEFORE = snapshot(fixture.m_root);
+    const auto K_CATALOG = inspect_decoded_frame_source(fixture.config());
+    INFO((K_CATALOG ? "admitted" : K_CATALOG.error().m_message));
+    REQUIRE(K_CATALOG);
+    CHECK(K_CATALOG->m_observations.size() == 3uz);
+    CHECK(snapshot(fixture.m_root) == K_BEFORE);
+}
+
+TEST_CASE("rehashed persistent histories cannot invent references births or point renewals",
+          "[decoded_admission][tracking]") {
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    CAPTURE(K_FIELD);
+    reject_and_repair(ErrorCode::INVALID_DATA,
+                      [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig&) {
+                          tracking_fixture(fixture);
+                          auto ledger = read_json(fixture.m_stage / "quality.json");
+                          if (K_FIELD == 0) {
+                              ledger["decisions"][0]["tracking"]["reference"] = 0;
+                          }
+                          if (K_FIELD == 1) {
+                              ledger["decisions"][0]["tracking"]["anchor"] = 0;
+                          }
+                          if (K_FIELD == 2) {
+                              ledger["decisions"][2]["tracking"]["reference"] = 0;
+                          }
+                          if (K_FIELD == 3) {
+                              ledger["decisions"][3]["tracking"]["anchor"] = 0;
+                          }
+                          if (K_FIELD == 4) {
+                              ledger["decisions"][2]["tracking"]["birth_first"] = 2;
+                          }
+                          if (K_FIELD == 5) {
+                              ledger["decisions"][3]["tracking"]["birth_last"] = 0;
+                          }
+                          if (K_FIELD == 6) {
+                              ledger["decisions"][0]["tracking"]["birth_last"] = 0;
+                          }
+                          if (K_FIELD == 7) {
+                              ledger["decisions"][1]["tracking"]["new_points"] = 49;
+                          }
+                          if (K_FIELD == 8) {
+                              ledger["decisions"][0]["tracking"]["new_points"] = 11;
+                          }
+                          if (K_FIELD == 9) {
+                              ledger["decisions"][2]["metrics"]["track_count"] = 9;
+                          }
+                          if (K_FIELD == 10) {
+                              ledger["decisions"][1]["reason"] = "seed_candidate";
+                          }
+                          if (K_FIELD == 11) {
+                              ledger["decisions"][1]["reason"] = "insufficient_tracks";
+                              ledger["decisions"][1]["metrics"]["tracked_cells"] = 4;
+                          }
+                          if (K_FIELD == 12) {
+                              ledger["decisions"][2]["metrics"]["feature_cells"] = 3;
+                          }
+                          if (K_FIELD == 13) {
+                              ledger["decisions"][2].erase("tracking");
+                          }
+                          if (K_FIELD == 14) {
+                              ledger["decisions"][2]["tracking"]["birth_first"] = -1;
+                          }
+                          if (K_FIELD == 15) {
+                              ledger["decisions"][2]["tracking"]["reference"] = 2;
+                          }
+                          write_json(fixture.m_stage / "quality.json", ledger);
+                          fixture.m_metadata["quality_ledger_sha256"] =
+                              sha256_file(fixture.m_stage / "quality.json", 65536uz).value();
+                          fixture.publish();
+                      });
 }
 
 TEST_CASE("rehashed quality ledger cannot alter provenance policy decisions or finite bounds",

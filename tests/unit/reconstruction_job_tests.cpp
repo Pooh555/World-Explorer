@@ -929,6 +929,18 @@ TEST_CASE("fresh reconstruction requests require explicit stages resources and d
         }
         config["decode"]["frame_selection"] = "unknown";
     }
+    SECTION("persistent candidate selection") {
+        config["decode"]["frame_selection"] = "quality_keyframes_candidate_v2";
+        save_json(K_REQUEST, config);
+        const auto K_TRACKING = read_reconstruction_job(K_REQUEST);
+        REQUIRE(K_TRACKING);
+        REQUIRE(K_TRACKING->m_automatic_decode);
+        if (K_TRACKING->m_automatic_decode) {
+            CHECK(K_TRACKING->m_automatic_decode->m_frame_selection ==
+                  FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V2);
+        }
+        config["decode"]["sample_fps"] = 1.0;
+    }
     SECTION("candidate requires at least two candidates per second") {
         config["decode"]["frame_selection"] = "quality_keyframes_candidate_v1";
         config["decode"]["sample_fps"] = 1.0;

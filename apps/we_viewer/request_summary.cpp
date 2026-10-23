@@ -145,15 +145,20 @@ Result<request_summary> review_reconstruction_request(const std::filesystem::pat
         }
         if (job.m_automatic_decode) {
             const auto& config = *job.m_automatic_decode;
-            K_ADD("Selected frames",
-                  config.m_frame_selection == FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1
-                      ? std::format("Candidate quality selection (unqualified): {} candidates/s, "
-                                    "at most {} keyframes",
-                                    config.m_sample_fps,
-                                    config.m_max_frames)
-                      : std::format("Timestamp sampling: {} frames/s, at most {} frames",
-                                    config.m_sample_fps,
-                                    config.m_max_frames));
+            K_ADD(
+                "Selected frames",
+                config.m_frame_selection != FrameSelection::TIMESTAMP_SAMPLING_V1
+                    ? std::format("Candidate quality selection v{} (unqualified): {} candidates/s, "
+                                  "at most {} keyframes",
+                                  config.m_frame_selection ==
+                                          FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V2
+                                      ? 2
+                                      : 1,
+                                  config.m_sample_fps,
+                                  config.m_max_frames)
+                    : std::format("Timestamp sampling: {} frames/s, at most {} frames",
+                                  config.m_sample_fps,
+                                  config.m_max_frames));
             K_ADD("Decoded output cap", std::format("{} bytes", config.m_max_output_bytes));
             K_ADD("Decode CPU threads", std::to_string(config.m_cpu_threads));
         } else if (job.m_fresh_poses) {

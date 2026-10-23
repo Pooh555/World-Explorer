@@ -130,14 +130,85 @@ double quality_number(const nlohmann::json& value, double minimum, double maximu
 
 std::pair<std::uint32_t, std::uint32_t> png_dimensions(const std::filesystem::path& path);
 
+struct QualityTrackState {
+    std::optional<std::size_t> m_anchor, m_reference, m_first_seed_candidate;
+    std::size_t m_available {};
+};
+
+void validate_track_history(const nlohmann::json& decision,
+                            std::size_t index,
+                            QualityTrackState& state) {
+    const auto& history = decision.at("tracking");
+    const auto& metrics = decision.at("metrics");
+    const auto K_COUNT = unsigned_value(metrics.at("track_count"));
+    const auto K_CELLS = unsigned_value(metrics.at("tracked_cells"));
+    const auto K_FEATURE_CELLS = unsigned_value(metrics.at("feature_cells"));
+    const auto K_REASON = decision.at("reason").get<std::string>();
+    const auto K_SELECTED = decision.at("selected").get<bool>();
+    const auto K_NEW = unsigned_value(history.at("new_points"));
+    if (K_COUNT > state.m_available || K_NEW > 48uz || K_CELLS > K_COUNT ||
+        K_FEATURE_CELLS > 12uz || K_FEATURE_CELLS > unsigned_value(metrics.at("feature_count")) ||
+        (K_SELECTED && K_FEATURE_CELLS < 4uz)) {
+        throw std::invalid_argument("Invalid persistent feature/track cell counts");
+    }
+    if (K_COUNT == 0) {
+        if (!history.at("birth_first").is_null() || !history.at("birth_last").is_null()) {
+            throw std::invalid_argument("Empty persistent tracks claim point births");
+        }
+    } else if (!state.m_anchor || !state.m_reference ||
+               unsigned_value(history.at("birth_first")) < *state.m_anchor ||
+               unsigned_value(history.at("birth_first")) >
+                   unsigned_value(history.at("birth_last")) ||
+               unsigned_value(history.at("birth_last")) > *state.m_reference) {
+        throw std::invalid_argument("Persistent point births exceed their connected history");
+    }
+    if ((K_SELECTED && K_NEW != unsigned_value(metrics.at("feature_count"))) ||
+        (!K_SELECTED && (K_COUNT + K_NEW > 48uz || (K_COUNT < 4uz && K_NEW != 0)))) {
+        throw std::invalid_argument("Persistent point renewal is unbounded or disconnected");
+    }
+    if (!state.m_anchor) {
+        if (!history.at("anchor").is_null() || !history.at("reference").is_null() || K_COUNT != 0 ||
+            K_CELLS != 0 || metrics.at("displacement_px") != 0 ||
+            (K_REASON != "seed" && K_REASON != "seed_candidate" && K_REASON != "exposure" &&
+             K_REASON != "blur_or_texture")) {
+            throw std::invalid_argument("Persistent tracking invents an initial reference");
+        }
+        if (K_REASON == "seed" || K_REASON == "seed_candidate") {
+            if (!state.m_first_seed_candidate) {
+                state.m_first_seed_candidate = index;
+            }
+            if (index - *state.m_first_seed_candidate >= 3uz) {
+                throw std::invalid_argument("Persistent seed exceeds lookahead window");
+            }
+        }
+    } else {
+        if (K_REASON == "seed" || K_REASON == "seed_candidate" ||
+            unsigned_value(history.at("anchor")) != *state.m_anchor || !state.m_reference ||
+            unsigned_value(history.at("reference")) != *state.m_reference ||
+            *state.m_reference >= index || (K_SELECTED && index - *state.m_reference > 12uz) ||
+            (K_REASON == "insufficient_tracks" && (K_CELLS >= 4uz || K_COUNT < 4uz))) {
+            throw std::invalid_argument("Persistent tracking history is disconnected or stale");
+        }
+    }
+    if (K_SELECTED) {
+        state.m_anchor = state.m_reference = index;
+        state.m_available = static_cast<std::size_t>(K_NEW);
+    } else if (K_COUNT >= 4uz) {
+        state.m_reference = index;
+        state.m_available = static_cast<std::size_t>(K_COUNT + K_NEW);
+    }
+}
+
 Result<void>
 validate_quality(const std::filesystem::path& root,
                  const nlohmann::json& metadata,
                  const std::map<std::string, std::pair<std::uint64_t, std::string>>& assets,
                  const std::string& source,
                  const std::stop_token& stop) {
-    constexpr std::string_view K_POLICY_SHA {
-        "cdf0f819989e98fbcc222ee3187a8d8a8d11d967c60003d4b35ddfb2047c39f1" };
+    const auto K_TRACKING = metadata.at("selection") == "quality_keyframes_candidate_v2";
+    const std::string_view K_POLICY_SHA {
+        K_TRACKING ? "15dd3f26902aecee0a24daa66714afa048c0d5c14ae3e9c680da7a66b668589f"
+                   : "cdf0f819989e98fbcc222ee3187a8d8a8d11d967c60003d4b35ddfb2047c39f1" };
     if (metadata.at("source_sha256") != source || metadata.at("quality_ledger") != "quality.json") {
         throw std::invalid_argument("Quality source/ledger identity mismatch");
     }
@@ -151,7 +222,7 @@ validate_quality(const std::filesystem::path& root,
     const auto K_LEDGER = parse(K_BYTES);
     const auto K_POLICY = K_LEDGER.at("policy").dump();
     if (K_LEDGER.at("schema_version") != 1 || K_LEDGER.at("source_sha256") != source ||
-        K_LEDGER.at("profile") != "quality_keyframes_candidate_v1" ||
+        K_LEDGER.at("profile") != metadata.at("selection") ||
         K_LEDGER.at("policy_sha256") != K_POLICY_SHA ||
         sha256(std::as_bytes(std::span(K_POLICY))) != K_POLICY_SHA ||
         !digest_valid(K_LEDGER.at("implementation_sha256").get<std::string>())) {
@@ -193,6 +264,7 @@ validate_quality(const std::filesystem::path& root,
     std::size_t selected {};
     std::uint64_t previous_index {};
     std::int64_t previous_time {};
+    QualityTrackState track_state;
     const std::set<std::string> K_REASONS { "seed",
                                            "motion_coverage",
                                            "repeated",
@@ -226,7 +298,9 @@ validate_quality(const std::filesystem::path& root,
         previous_time = K_TIME;
         const auto K_REASON = decision.at("reason").get<std::string>();
         const auto K_SELECTED = decision.at("selected").get<bool>();
-        if (!K_REASONS.contains(K_REASON) ||
+        if ((!K_REASONS.contains(K_REASON) &&
+             !(K_TRACKING &&
+               (K_REASON == "seed_candidate" || K_REASON == "insufficient_tracks"))) ||
             K_SELECTED != (K_REASON == "seed" || K_REASON == "motion_coverage") ||
             (K_REASON == "seed" && selected != 0uz)) {
             throw std::invalid_argument("Invalid quality decision reason");
@@ -236,9 +310,11 @@ validate_quality(const std::filesystem::path& root,
         const auto K_BLUR = quality_number(metrics.at("laplacian_variance"), 0, 1040400);
         const auto K_CLIPPED = quality_number(metrics.at("clipped_fraction"), 0, 1);
         const auto K_DISPLACEMENT =
-            quality_number(metrics.at("displacement_px"), 0, std::sqrt(72.0));
+            quality_number(metrics.at("displacement_px"),
+                           0,
+                           K_TRACKING ? std::hypot(96.0, 64.0) : std::sqrt(72.0));
         (void)quality_number(metrics.at("histogram_distance"), 0, 1);
-        if (unsigned_value(metrics.at("feature_count")) > 12 ||
+        if (unsigned_value(metrics.at("feature_count")) > (K_TRACKING ? 48uz : 12uz) ||
             unsigned_value(metrics.at("tracked_cells")) > 12) {
             throw std::invalid_argument("Quality feature count exceeds grid");
         }
@@ -248,6 +324,9 @@ validate_quality(const std::filesystem::path& root,
                             (selected == 0uz || K_DISPLACEMENT < 1.5 ||
                              unsigned_value(metrics.at("tracked_cells")) < 4)))) {
             throw std::invalid_argument("Selected quality metrics contradict the frozen policy");
+        }
+        if (K_TRACKING) {
+            validate_track_history(decision, index, track_state);
         }
         input.read(pixels.data(), static_cast<std::streamsize>(pixels.size()));
         const auto K_PIXELS = std::as_bytes(std::span(pixels));
@@ -416,7 +495,8 @@ Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConf
         const auto K_METADATA = parse(K_RESULT_BYTES);
         if ((K_METADATA.at("selection") != "timestamp_sampling_v1" &&
              K_METADATA.at("selection") != "native_rgb_journal_v1" &&
-             K_METADATA.at("selection") != "quality_keyframes_candidate_v1") ||
+             K_METADATA.at("selection") != "quality_keyframes_candidate_v1" &&
+             K_METADATA.at("selection") != "quality_keyframes_candidate_v2") ||
             K_METADATA.at("crop") != "none" || K_METADATA.at("resize") != "none") {
             return fail(ErrorCode::UNSUPPORTED_OPERATION, "Unsupported decode replay profile");
         }
@@ -434,7 +514,8 @@ Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConf
             frames.size() > 120) {
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Decode frame count exceeds profile");
         }
-        if (K_METADATA.at("selection") == "quality_keyframes_candidate_v1") {
+        if (K_METADATA.at("selection") == "quality_keyframes_candidate_v1" ||
+            K_METADATA.at("selection") == "quality_keyframes_candidate_v2") {
             const auto K_QUALITY = validate_quality(
                 state->m_root, K_METADATA, assets, state->m_config.m_source_sha256, stop);
             if (!K_QUALITY) {
