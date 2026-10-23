@@ -1,8 +1,8 @@
 # Current handoff
 
-Updated 2026-10-23 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-24 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
-gate is certified. **A0/AP0: IN_PROGRESS (CPU contract slice).** A1–A6/AP1–AP9:
+gate is certified. **A0/AP0: IN_PROGRESS (CPU graph/receipt contracts).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
 [ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
@@ -42,22 +42,25 @@ M1–M6 order/thresholds remain; native/reference release evidence is due by M6.
 
 ## Current A0 work
 
-[Asset dependency admission](validation/2026-10-23-asset-dependencies.md) now
-implements a native `asset_catalog` CPU contract. It validates a bounded closed
-DAG, exact selected revisions/content hashes and epoch/pose context, canonical
-identity/order and inherited manual actions. Distinct semantic product IDs do
-not collapse when bytes match. Six fixtures/102 assertions pass in C++26, C++23
-and native ASan/UBSan/LSan; full suites pass 498/498 and 473/473. The
-[protocol](protocols/asset_dependencies.md) distinguishes declaration validation
-from file/rights admission. No persistent catalog, worker, automatic asset,
-completion/PBR output or viewer feature is implemented by this slice.
+[Asset dependency admission](validation/2026-10-23-asset-dependencies.md) validates
+a bounded closed DAG, exact revision/context, canonical identity and transitive
+manual ancestry. The [byte-receipt slice](validation/2026-10-24-asset-receipts.md)
+adds strict file admission into privately owned snapshots and immutable owned
+publication, unchanged replay, cancellation and controlled process-crash recovery.
+Recipes/manual actions are opaque hash-bound bytes; no rights or semantic
+approval follows. The [receipt protocol](protocols/asset_receipts.md) records
+bounds, operation scope and recovery limits. No mutable catalog, worker, asset
+production, completion/PBR output or viewer feature is implemented by this slice.
 
-Next executable step: add bounded schema-1 file/receipt admission around this
-contract, binding actual upstream bytes and an independently selected context,
-then owned immutable publication/replay/cancellation fixtures. Keep recipe/rights,
-resource/installation locks and spatial evidence/manual-ancestry masks explicit
-as remaining A0 work; do not label graph admission AP0 completion. Follow plan
-§§11.3–11.4/11.7. The 8 GiB host remains contracts-only for this work; H_AP24/H_AP48
+Next executable step: define and implement bounded semantic recipe admission,
+binding exact code/environment/model/input and rights receipts with explicit
+resource/installation budgets and a contracts-only refusal policy for this host.
+First read plan §§11.3–11.4/11.7 and the existing recipe/dependency interfaces;
+add synthetic accept/reject/change-invalidation fixtures around the owned byte
+receipt path. Unknown installation/model costs must refuse provisioning. Spatial
+evidence/manual-ancestry masks, asset/instance schemas, capture/evaluation freezes
+and trusted manual-action journaling remain A0 work; do not label byte binding
+AP0 completion. The 8 GiB host remains contracts-only for this work; H_AP24/H_AP48
 are proposed profiles, and unknown model/environment sizes block provisioning.
 No model installation, inference or implicit download occurs. A1 still needs its
 own consented independently scaled real pilot, held-out/empty-background and

@@ -1,5 +1,7 @@
 # Validation index
 
+- [A0 byte-bound receipts](2026-10-24-asset-receipts.md): bounded native file admission, privately owned snapshots, immutable publication/replay, cancellation and controlled process-crash recovery; synthetic CPU scope, A0/AP0 remain IN_PROGRESS.
+
 - [A0 dependency contract](2026-10-23-asset-dependencies.md): new CPU asset-catalog DAG admission, deterministic cross-language identity, stale selection and manual ancestry checks, exact budgets and sanitizers; A0/AP0 remain IN_PROGRESS, no asset output or inference qualification.
 
 - [M3 local development exit](2026-10-23-m3-development-exit.md): five-item §8.3 review closes the Linux/NVIDIA software milestone; retains v3 rejection, all measured/full gates and source/rights gaps; A0 follows.

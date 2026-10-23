@@ -9,11 +9,11 @@ Read by task; do not load the entire directory for routine work.
 | Agent execution rules | [Runbook](execution_prompt.md), repository [AGENTS.md](../AGENTS.md) |
 | Product, thresholds, architecture, roadmap | [Technical plan](technical_plan.md); controlling specification |
 | M3 development exit and deferred Q5/N2 evidence | [Plan §8.3](technical_plan.md#83-m3-local-development-exit-and-deferred-reconstruction-qualification), [ADR 020](adr/020-m3-development-exit.md); no measurement required for internet-sourced `sample_1`, measured geometry/walking gates remain open |
-| Planned reusable objects, completed environments and PBR assets | [Plan §11](technical_plan.md#11-offline-asset-production-track), [assets-before-platforms decision](adr/019-assets-before-platforms.md); A0–A5 after M3/before M4, all new capabilities NOT_STARTED |
+| Planned reusable objects, completed environments and PBR assets | [Plan §11](technical_plan.md#11-offline-asset-production-track), [assets-before-platforms decision](adr/019-assets-before-platforms.md); A0 contracts IN_PROGRESS after M3/before M4; A1–A6 product work NOT_STARTED |
 | Asset-pipeline candidate evidence, licenses and connection experiments | [Dated research assessment](research/offline_asset_pipeline.md); external facts only, no installed recipe or qualification |
 | Write/update documentation | [Documentation protocol](protocols/documentation.md) |
 | Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [depth](protocols/depth.md), [dense inputs](protocols/dense_inputs.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/camera/handoff](protocols/viewer.md) |
-| Inspect initial A0 contracts | [Asset dependency graph](protocols/asset_dependencies.md); bounded CPU revision/manual-ancestry validation, with file/publication/recipe admission still pending |
+| Inspect initial A0 contracts | [Asset dependency graph](protocols/asset_dependencies.md), [byte-bound receipts](protocols/asset_receipts.md); bounded CPU admission and immutable retry/publication, with semantic recipe/rights admission pending |
 | Organize outputs / add a local video | [Artifact layout and request helper](protocols/artifacts.md) |
 | Qualify the isolated local dense backend | [Dense development experiments](../workers/dense/README.md), [separate resized inputs](protocols/dense_inputs.md#separate-resized-profile); partial producer qualification; owned fresh-depth integration is listed below |
 | Export checked depth for visibility/fusion preparation | [Pose-admitted visibility receipt](protocols/depth.md#pose-admitted-visibility-export); immutable depth/RGB cache, no fused geometry |

@@ -2,8 +2,9 @@
 
 This is the first implemented A0 contract, owned by native `asset_catalog`:
 [`dependency_graph.hpp`](../../include/world_explorer/asset_catalog/dependency_graph.hpp).
-It is a CPU library, not an asset producer, persistent catalog, JSON file loader,
-worker recipe, export format or viewer feature. Existing scene/worker schemas
+It is a CPU graph contract, with a separate implemented
+[byte receipt adapter](asset_receipts.md). It is not an asset producer, mutable
+catalog, worker recipe, export format or viewer feature. Existing scene/worker schemas
 are unchanged. A0 and AP0 remain **IN_PROGRESS**, not qualified.
 
 ## Identity, bounds and admission
@@ -28,7 +29,8 @@ edges total. Excess is `RESOURCE_EXHAUSTED`, checked before constructing derived
 adjacency/hash records. Each node declares a valid recipe SHA-256 and optionally
 a manual-action SHA-256. The function validates these declarations; it neither
 opens files nor proves their content, source rights, evidence classes or completeness.
-Actual recipe/input/receipt admission and immutable publication remain A0 work.
+The receipt adapter binds these declarations to owned file bytes and immutable
+publication; semantic recipe/rights admission remains A0 work.
 
 Manual ancestry is exactly the transitive closure of declared manual actions.
 An action on a node or manual ancestry on any parent requires its

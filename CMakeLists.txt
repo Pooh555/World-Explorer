@@ -121,7 +121,7 @@ add_library(core src/core/hash.cpp src/core/file_lock.cpp src/core/asset_files.c
 we_target(core)
 target_link_libraries(core PRIVATE OpenSSL::Crypto PUBLIC Threads::Threads)
 
-add_library(asset_catalog src/asset_catalog/dependency_graph.cpp)
+add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp)
 we_target(asset_catalog)
 target_link_libraries(asset_catalog PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 
@@ -392,6 +392,9 @@ install(DIRECTORY workers/ DESTINATION share/world-explorer/workers PATTERN "__p
 install(DIRECTORY "${WE_WIRE_DIRECTORY}/python/" DESTINATION share/world-explorer/workers/wire_bindings PATTERN "__pycache__" EXCLUDE)
 
 if(BUILD_TESTING)
+  add_executable(we_asset_receipt_probe tests/fixtures/asset_receipt_probe.cpp)
+  we_target(we_asset_receipt_probe)
+  target_link_libraries(we_asset_receipt_probe PRIVATE asset_catalog)
   add_executable(we_collision_fixture tests/fixtures/collision_fixture.cpp)
   we_target(we_collision_fixture)
   target_link_libraries(we_collision_fixture PRIVATE collision nlohmann_json::nlohmann_json)
@@ -407,10 +410,12 @@ if(BUILD_TESTING)
   file(GLOB WE_CORE_TESTS CONFIGURE_DEPENDS tests/unit/*_tests.cpp)
 
   add_executable(we_core_tests ${WE_CORE_TESTS})
+  add_dependencies(we_core_tests we_asset_receipt_probe)
   we_target(we_core_tests)
   target_link_libraries(we_core_tests PRIVATE application asset_catalog collision map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
   target_include_directories(we_core_tests SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
   target_compile_definitions(we_core_tests PRIVATE WE_TEST_WIRE_BINDINGS="${WE_WIRE_DIRECTORY}/python")
+  target_compile_definitions(we_core_tests PRIVATE WE_TEST_ASSET_RECEIPT_PROBE="$<TARGET_FILE:we_asset_receipt_probe>")
   catch_discover_tests(we_core_tests PROPERTIES LABELS "cpu")
 
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
