@@ -37,12 +37,12 @@ bytes now have identities and independent synthetic parity. Training environment
 remain unchanged; model/dataset/transitive rights and Q2/Q3 qualification remain
 pending.
 
-The [current selected-component inventory](dependency-audit-20261016.json) records
-source/archive/notice gaps for 84 components across seven profiles. Its
+The [current selected-component inventory](dependency-audit-m3-preflight-20261023.json) records
+257 source/archive/notice gaps for 86 components across seven profiles. Its
 [offline checker](../tools/check_dependency_manifest.py) rejects stale or incomplete
-evidence; pass `--manifest third_party/dependency-audit-20261016.json` for the
-current inventory. The checker's default remains the historical 2026-10-14
-snapshot. All five native development archive hashes pass; their selected notices
+evidence; its default selects this inventory. Default and `--local-evidence`
+checks pass; strict closure exits 3 with all gaps retained. All five native
+development archive hashes pass; their selected notices
 match, with one explicitly recorded first-line trailing-space normalization in
 JSON. The supplemental [Triton 3.0.0 source notice](notices/triton-3.0.0-LICENSE.txt)
 traces the exact tag commit; installed-wheel notice/source binding and embedded
@@ -55,16 +55,19 @@ recaptures both rebuilt development executables and the empty native viewer.
 That capture's full `--local-evidence` check passed; strict closure exited 3 for
 253 explicit source and rights gaps. Subsequent
 [resident-upload builds](../docs/validation/2026-10-16-m2-resident-reuse.md)
-invalidate the recorded executable bytes: the current check exits 2. Fresh loader
-and native viewer observations remain due; these historical receipts are retained.
+invalidated that capture's executable bytes; those receipts remain historical.
+The [calibration-preflight refresh](../docs/validation/2026-10-23-calibration-preflight.md)
+captures current loader/viewer bytes and owner associations, retaining and
+rechecking four unchanged import observations from the earlier 23 October refresh.
 
-The [runtime supplement](runtime-audit-20261016.json) records fifteen selected
+The [runtime supplement](runtime-audit-m3-preflight-20261023.json) records fifteen selected
 Linux loader contexts, 213 ELF fingerprints, 123 system package owners and 96
-notice files. Its [selection](runtime-selection-20261014.json) pins roots and
+notice files. Its [selection](runtime-selection-m3-preflight-20261023.json) pins roots and
 explicit extension library paths. The existing local inventory check now rehashes
 those ELF/notice/interpreter bytes against the raw receipt. This observes controlled
-loader contexts; actual Python imports, lazy GPU/ICD/provider/codec loading,
-original archives and source/bundled rights remain unqualified.
+loader contexts. Fixed Python imports have the separate
+[mapping supplement](../docs/protocols/backend_bindings.md); lazy GPU/ICD/provider/codec
+loading, original archives and source/bundled rights remain unqualified.
 [Runtime protocol](../docs/protocols/runtime_dependencies.md).
 
 `workers/gsplat/fit.py` adapts initialization/settings from the pinned gsplat

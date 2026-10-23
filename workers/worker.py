@@ -393,6 +393,7 @@ def validate_request(request: dict) -> dict:
         "timestamp_sampling_v1",
         "quality_keyframes_candidate_v1",
         "quality_keyframes_candidate_v2",
+        "quality_keyframes_candidate_v3",
     ):
         raise WorkerError("BAD_INPUT", "Unknown frame selection profile")
     if selection != "timestamp_sampling_v1" and sample_fps < 2:
@@ -838,6 +839,11 @@ class Job:
                     "candidate thresholds unqualified; visual lens changes and 3D coverage unresolved"
                 ],
             }
+            if self.request["frame_selection"] == "quality_keyframes_candidate_v3":
+                result["lens_change_detection"] = "ambiguous_image_scale_preflight"
+                result["diagnostics_pending"] = [
+                    "candidate thresholds unqualified; no fixed-intrinsics or 3D coverage guarantee"
+                ]
         return result
 
     def select_quality(
@@ -845,15 +851,32 @@ class Job:
     ) -> tuple[list[dict], dict]:
         # Load only the repository-owned helper, including when imported by a host
         # with a different sys.path. Its bytes also enter the job recipe identity.
+        calibration = (
+            self.request["frame_selection"] == "quality_keyframes_candidate_v3"
+        )
         helper = ROOT / (
-            "frame_tracking.py"
-            if self.request["frame_selection"] == "quality_keyframes_candidate_v2"
-            else "frame_quality.py"
+            "frame_calibration.py"
+            if calibration
+            else (
+                "frame_tracking.py"
+                if self.request["frame_selection"] == "quality_keyframes_candidate_v2"
+                else "frame_quality.py"
+            )
+        )
+        implementation_files = (
+            {
+                name: sha256(ROOT / name)
+                for name in ("frame_calibration.py", "frame_tracking.py")
+            }
+            if calibration
+            else None
         )
         specification = importlib.util.spec_from_file_location(
             "we_frame_quality", helper
         )
-        implementation_sha256 = sha256(helper)
+        implementation_sha256 = (
+            canonical_hash(implementation_files) if calibration else sha256(helper)
+        )
         quality = importlib.util.module_from_spec(specification)
         specification.loader.exec_module(quality)
 
@@ -914,7 +937,14 @@ class Job:
             [data[offset : offset + 6144] for offset in range(0, len(data), 6144)],
             check_cancelled,
         )
-        if sha256(helper) != implementation_sha256:
+        current_files = (
+            {name: sha256(ROOT / name) for name in implementation_files}
+            if calibration
+            else None
+        )
+        if (
+            canonical_hash(current_files) if calibration else sha256(helper)
+        ) != implementation_sha256:
             raise WorkerError(
                 "BAD_INPUT", "Quality implementation changed during analysis"
             )
@@ -949,8 +979,18 @@ class Job:
             },
             "decisions": decisions,
         }
+        if calibration:
+            ledger["implementation_files"] = implementation_files
         # Preserve a diagnostic ledger even on failure; stage_run never commits it.
         atomic_json(directory / "quality.json", ledger)
+        if calibration and any(
+            entry["calibration"]["status"] == "ambiguous_scale_change"
+            for entry in decisions
+        ):
+            raise WorkerError(
+                "CALIBRATION_REQUIRED",
+                "Ambiguous image-scale change (zoom or forward motion); single-calibration decode refused; inspect quality.json",
+            )
         if any(
             entry["reason"] in ("tracking_break", "suspected_cut")
             for entry in decisions

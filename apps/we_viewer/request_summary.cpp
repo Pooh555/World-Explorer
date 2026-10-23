@@ -151,6 +151,9 @@ Result<request_summary> review_reconstruction_request(const std::filesystem::pat
                     ? std::format("Candidate quality selection v{} (unqualified): {} candidates/s, "
                                   "at most {} keyframes",
                                   config.m_frame_selection ==
+                                          FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V3
+                                      ? 3
+                                  : config.m_frame_selection ==
                                           FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V2
                                       ? 2
                                       : 1,

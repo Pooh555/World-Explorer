@@ -2,8 +2,9 @@
 
 `timestamp_sampling_v1` remains the default. Existing requests and completed
 manifests retain their meaning. Explicit `frame_selection:
-"quality_keyframes_candidate_v1"` or `"quality_keyframes_candidate_v2"` enables
-an experimental selector in a fresh worker/decode job. Schema-2 reconstruction requests put this optional field in
+"quality_keyframes_candidate_v1"`, `"quality_keyframes_candidate_v2"` or
+`"quality_keyframes_candidate_v3"` enables an experimental selector in a fresh
+worker/decode job. Schema-2 reconstruction requests put this optional field in
 `decode`; the viewer review labels it **unqualified**. No solver, measurement or
 appearance qualification follows from successful selection.
 
@@ -32,8 +33,8 @@ grid coverage select subsequent frames. Explicit rejection reasons are
 Insufficient tracks produce `tracking_break`; a large histogram change also
 produces `suspected_cut`. Either stops publication, retaining diagnostics for
 inspection. A tracking failure does not independently establish a camera cut.
-Visual lens changes remain unresolved; dimension metadata is the only lens
-change detector. Thresholds and this candidate recipe are not promoted defaults.
+For v1/v2, dimension metadata is the only lens-change detector. Thresholds and
+these candidate recipes are not promoted defaults.
 
 ## Persistent v2 tracks
 
@@ -73,6 +74,43 @@ Each decision's `tracking` record binds its selected `anchor`, last connected
 Native admission follows that state machine, bounds available points and birth
 indices, and rejects disconnected renewal, forward references and reseeding.
 The viewer review displays the selected candidate version and **unqualified**.
+
+## Conservative v3 calibration preflight
+
+[`frame_calibration.py`](../../workers/frame_calibration.py), policy
+`candidate_3_0`, observes the same v2 point correspondences and preserves its
+selection decisions. It fits a centered least-squares 2D similarity between
+connected observations. Assessment requires at least eight points in four
+source-image cells, spans of 40×24 analysis pixels, scale in [0.5, 2], and RMS
+residual at most 0.5 pixels. The scale ratio is symmetric: expansion and
+contraction both trigger at a pairwise ratio of 1.04, or a connected cumulative
+ratio of 1.1. Thresholds are frozen before the real development run.
+
+An alarm is **ambiguous**, not an identified lens change. For a frontoparallel
+plane, pinhole image scale depends on focal length divided by depth: zoom and
+forward camera motion can produce identical pixels. Other camera/scene motion
+can also trigger this conservative test. Any alarm raises `CALIBRATION_REQUIRED`
+before RGB publication or pose solving; partial thumbnails/ledger remain. No
+new calibration group is invented. Automatic lens segmentation and calibrated
+multi-lens admission are unsupported by this profile.
+
+Each decision adds `calibration`: reference, support point/cell counts, spans,
+fitted scale/RMS, chain start and cumulative log scale. Statuses are
+`unassessed` before a tracking reference, `insufficient_support` when assessment
+conditions fail, `assessed` when the 2D test has no alarm, or
+`ambiguous_scale_change`. A chain extends only through an assessed reference;
+unsupported intervals do not certify intrinsics. A completed v3 job may contain
+unsupported intervals. Neither `assessed` nor absence of alarms proves fixed
+intrinsics, camera translation, 3D coverage or capture eligibility under Q1.
+
+The native consumer checks support/count/reference bounds, finite values,
+eligibility, chain arithmetic and both alarm thresholds. Rehashing a ledger
+cannot admit an alarm under an `assessed` label. It validates declared diagnostic
+consistency, not an independent refit from thumbnails. V3's implementation hash
+is the SHA-256 of canonical sorted compact JSON mapping `frame_calibration.py`
+and `frame_tracking.py` to their SHA-256 values (`implementation_files`). Both
+files are pinned before/after analysis and protected from output overlap. V1/v2
+retain their single-helper hash convention and exact policy digests.
 
 ## Provenance, admission and failure
 

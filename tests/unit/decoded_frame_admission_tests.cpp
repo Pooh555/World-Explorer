@@ -7,6 +7,7 @@
 
 #include <array>
 #include <atomic>
+#include <cmath>
 #include <fstream>
 #include <limits>
 #include <map>
@@ -407,6 +408,64 @@ void tracking_fixture(AdmissionFixture& fixture, bool delayed_seed = false) {
     fixture.publish();
 }
 
+void calibration_fixture(AdmissionFixture& fixture) {
+    tracking_fixture(fixture);
+    auto ledger = read_json(fixture.m_stage / "quality.json");
+    auto& policy = ledger["policy"];
+    policy["metric_version"] = "gray96_persistent_scale_preflight_v3";
+    policy["threshold_version"] = "candidate_3_0";
+    policy["lens_change_detection"] = "ambiguous_image_scale_preflight";
+    policy["calibration_preflight"] = {
+        { "model", "centered_least_squares_similarity" },
+        { "min_points", 8 },
+        { "min_cells", 4 },
+        { "min_span_x", 40 },
+        { "min_span_y", 24 },
+        { "min_scale", .5 },
+        { "max_scale", 2 },
+        { "max_rms_px", .5 },
+        { "max_pair_scale_ratio", 1.04 },
+        { "max_chain_scale_ratio", 1.1 },
+        { "alarm", "reject_single_calibration_job; zoom_or_forward_motion_ambiguous" },
+        { "unsupported", "insufficient_support; no fixed_intrinsics_claim" } };
+    const auto K_POLICY = policy.dump();
+    ledger["policy_sha256"] = sha256(std::as_bytes(std::span(K_POLICY)));
+    ledger["profile"] = "quality_keyframes_candidate_v3";
+    ledger["implementation_files"] = { { "frame_calibration.py", std::string(64uz, 'c') },
+                                      { "frame_tracking.py", std::string(64uz, 'd') } };
+    const auto K_FILES = ledger["implementation_files"].dump();
+    ledger["implementation_sha256"] = sha256(std::as_bytes(std::span(K_FILES)));
+    for (std::size_t index { 0uz }; index < 4uz; ++index) {
+        auto& row = ledger["decisions"][index];
+        row["metrics"]["track_count"] = index ? 8 : 0;
+        row["calibration"] = {
+            { "reference", row["tracking"]["reference"] },
+            { "status",
+             index == 0uz   ? "unassessed"
+             : index == 1uz ? "insufficient_support"
+                            : "assessed" },
+            { "support_points", index ? 8 : 0 },
+            { "support_cells",
+             index == 0uz   ? 0
+             : index == 1uz ? 3
+                            : 4 },
+            { "span_x", index ? 60.0 : 0.0 },
+            { "span_y", index ? 40.0 : 0.0 },
+            { "scale", index ? nlohmann::json(1.01) : nlohmann::json(nullptr) },
+            { "rms_px", index ? nlohmann::json(0.0) : nlohmann::json(nullptr) },
+            { "chain_start", index >= 2uz ? nlohmann::json(1) : nlohmann::json(nullptr) },
+            { "cumulative_log_scale",
+             index >= 2uz ? nlohmann::json(static_cast<double>(index - 1uz) * std::log(1.01))
+                          : nlohmann::json(nullptr) } };
+    }
+    fixture.m_metadata["selection"] = "quality_keyframes_candidate_v3";
+    fixture.m_metadata["lens_change_detection"] = "ambiguous_image_scale_preflight";
+    write_json(fixture.m_stage / "quality.json", ledger);
+    fixture.m_metadata["quality_ledger_sha256"] =
+        sha256_file(fixture.m_stage / "quality.json", 65536uz).value();
+    fixture.publish();
+}
+
 FramePacket next_frame(FrameSource& source) {
     const auto K_EVENT = source.read_next({});
     REQUIRE(K_EVENT);
@@ -670,6 +729,96 @@ TEST_CASE("rehashed quality ledger cannot alter provenance policy decisions or f
             write_json(fixture.m_stage / "quality.json", ledger);
             fixture.m_metadata["quality_ledger_sha256"] =
                 sha256_file(fixture.m_stage / "quality.json", 65536).value();
+            fixture.publish();
+        });
+}
+
+TEST_CASE("calibration preflight admits bounded assessed and unsupported intervals without writes",
+          "[decoded_admission][calibration]") {
+    AdmissionFixture fixture;
+    calibration_fixture(fixture);
+    const auto K_BEFORE = snapshot(fixture.m_root);
+    const auto K_CATALOG = inspect_decoded_frame_source(fixture.config());
+    INFO((K_CATALOG ? "admitted" : K_CATALOG.error().m_message));
+    REQUIRE(K_CATALOG);
+    CHECK(K_CATALOG->m_observations.size() == 3uz);
+    CHECK(snapshot(fixture.m_root) == K_BEFORE);
+}
+
+TEST_CASE("rehashed calibration records cannot hide scale alarms or invent assessment history",
+          "[decoded_admission][calibration]") {
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17);
+    CAPTURE(K_FIELD);
+    reject_and_repair(
+        ErrorCode::INVALID_DATA, [K_FIELD](AdmissionFixture& fixture, DecodedSourceConfig&) {
+            calibration_fixture(fixture);
+            auto ledger = read_json(fixture.m_stage / "quality.json");
+            auto& observation = ledger["decisions"][2]["calibration"];
+            if (K_FIELD == 0) {
+                observation["reference"] = 2;
+            }
+            if (K_FIELD == 1) {
+                observation["support_points"] = 9;
+            }
+            if (K_FIELD == 2) {
+                observation["support_cells"] = 9;
+            }
+            if (K_FIELD == 3) {
+                observation["span_x"] = -1;
+            }
+            if (K_FIELD == 4) {
+                observation["scale"] = "nan";
+            }
+            if (K_FIELD == 5) {
+                observation["rms_px"] = nullptr;
+            }
+            if (K_FIELD == 6) {
+                observation["cumulative_log_scale"] = 0.0;
+            }
+            if (K_FIELD == 7) {
+                observation["chain_start"] = 0;
+            }
+            if (K_FIELD == 8) {
+                observation["scale"] = 1.05;
+                observation["cumulative_log_scale"] = std::log(1.05);
+            }
+            if (K_FIELD == 9) {
+                for (std::size_t index { 1uz }; index < 4uz; ++index) {
+                    auto& row = ledger["decisions"][index]["calibration"];
+                    row["status"] = "assessed";
+                    row["support_cells"] = 4;
+                    row["scale"] = 1.035;
+                    row["chain_start"] = 0;
+                    row["cumulative_log_scale"] = static_cast<double>(index) * std::log(1.035);
+                }
+            }
+            if (K_FIELD == 10) {
+                observation["rms_px"] = 1.0;
+            }
+            if (K_FIELD == 11) {
+                ledger["decisions"][1]["calibration"]["chain_start"] = 0;
+            }
+            if (K_FIELD == 12) {
+                fixture.m_metadata["lens_change_detection"] = "dimension_metadata_only";
+            }
+            if (K_FIELD == 13) {
+                ledger["implementation_files"].erase("frame_tracking.py");
+            }
+            if (K_FIELD == 14) {
+                ledger["implementation_files"]["frame_tracking.py"] = std::string(64uz, '0');
+            }
+            if (K_FIELD == 15) {
+                ledger["decisions"][2].erase("calibration");
+            }
+            if (K_FIELD == 16) {
+                observation["status"] = "ambiguous_scale_change";
+            }
+            if (K_FIELD == 17) {
+                observation["support_cells"] = 3;
+            }
+            write_json(fixture.m_stage / "quality.json", ledger);
+            fixture.m_metadata["quality_ledger_sha256"] =
+                sha256_file(fixture.m_stage / "quality.json", 65536uz).value();
             fixture.publish();
         });
 }

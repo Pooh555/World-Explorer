@@ -13,7 +13,8 @@ struct RetainedVideoDecode {
 enum class FrameSelection : std::uint8_t {
     TIMESTAMP_SAMPLING_V1,
     QUALITY_KEYFRAMES_CANDIDATE_V1,
-    QUALITY_KEYFRAMES_CANDIDATE_V2
+    QUALITY_KEYFRAMES_CANDIDATE_V2,
+    QUALITY_KEYFRAMES_CANDIDATE_V3
 };
 
 struct AutomaticVideoDecode {

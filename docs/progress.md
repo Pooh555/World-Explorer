@@ -413,38 +413,45 @@ all 39,373 vertices/49,213 triangles and zero Vulkan errors. Its manifest is
 unchanged; the inspected output remains fragmented, arbitrary-scale and
 unwalkable. No solve, fusion, bake or export is rerun.
 
-[The M3 exit review](validation/2026-10-23-m3-exit-review.md) remains open.
-[Persistent candidate tracking](validation/2026-10-23-frame-tracking.md) now
-selects 24 of 63 real sample_1 candidates, passes shared native decode/restart
-and frame admission, and publishes 24/24 poses through one exhaustive-guided
-recovery. Sequential initialization failed first; all attempts are retained.
-The selected frames and registration thresholds are unchanged by recovery.
-V1's failure remains historical; timestamp sampling remains the default.
-The new map is arbitrary-scale with geometry unavailable. All 230 protected
-media/result/bake/v1-evidence files are unchanged. M3 stays **IN_PROGRESS**;
-A0–A6 remain NOT_STARTED and M4 has not begun.
+[Persistent candidate tracking](validation/2026-10-23-frame-tracking.md) retains
+its 24/63 selection and completed 24/24 guided-pose map. The new
+[calibration preflight](validation/2026-10-23-calibration-preflight.md) adds an
+explicit v3 profile: coherent scale changes are ambiguous between zoom and
+camera/scene motion, so an alarm refuses the single-calibration decode. Synthetic
+zoom/forward-motion ambiguity, gradual zoom, native accept/restart/reject and
+rehashed native history checks pass. Timestamp sampling remains the default;
+v1/v2 policy digests and behavior remain supported.
 
-Next executable step: recheck plan §5.1 steps 2–3, then add synthetic focal/zoom
-change and camera-forward-motion ambiguity cases to
-`tests/integration/worker_frame_tracking_test.py`. Implement explicit visual
-lens/calibration-change suspicion or rejection in a new versioned profile;
-retain published v2 (`candidate_2_2`) and its native admission. Current lens
-change handling is dimension metadata only, and image-grid coverage is not
-3D coverage. Run `python3 -m unittest discover -s tests/integration -p
-'worker_frame_*test.py' -v`, then exercise the new path locally before reviewing
-the five-item M3 exit. Preserve actual uncertainties and unsupported cases.
+Real sample_1 v3 **rejects**: 23 ambiguous-scale observations, 34 intervals with
+insufficient support, four assessed and two unassessed. All 63 v2 decisions and
+thumbnail bytes are identical; its 24 frames are provisional in the failed v3
+attempt. The ledger is retained and no new RGB completion or pose solve occurs.
+This is not confirmed zoom or fixed-intrinsics certification. Automatic lens
+segmentation is unsupported. All 378 protected media/result files are unchanged.
+The retained map stays arbitrary-scale with geometry unavailable. M3 remains
+**IN_PROGRESS**; A0–A6 remain NOT_STARTED and M4 has not begun.
+
+Next executable step: complete a new dated five-item plan §8.3 software exit
+review against §5.1 and the current evidence. Explicitly assess v3's conservative
+rejection and unsupported intervals; do not infer lens stability, 3D coverage or
+Q1 eligibility. Record any remaining software gap before closing M3. Once the
+local checklist actually passes, start A0 contracts/rights/resource profiles,
+then the real visible A1 pilot; no platform qualification before A0–A5.
+Current runtime inventory is refreshed: default and `--local-evidence` pass;
+strict closure still retains 257 source/rights gaps. The refreshed empty native
+viewer runs 900 frames with zero Vulkan errors. Development checks pass 492/492,
+explicit C++23 467/467, and seven native sanitizer cases/18,567 assertions.
 
 Reuse `artifacts/validation/m3-frame-tracking-20261023/guided-recovery.map`
 with `prepare-poses`; its durable reopen preserves all four asset/manifest files.
-Do not rerun the completed solve or spend another recovery on this unchanged
-24-frame attempt. Preserve its failed sequential model and all earlier ledgers.
-No unchanged fit, dense, fusion, bake or sample_2 retry is needed. Before M3 exit,
-refresh selected runtime receipts for changed viewer/CLI binaries: default
-inventory passes, while `--local-evidence` still exits 2 (`Current runtime payload
-differs`). Quality, measured geometry/walking and A/platform gates remain open.
-All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
-clearance. `sample_1` has no independent distance/up reference: ADR 020 permits
-a local M3 software exit without it, while Q5/N2 and A1 scale evidence stay open.
+Do not rerun the completed solve or spend another recovery on the unchanged
+24-frame attempt. Preserve failed sequential models and every earlier ledger.
+Do not tune frozen v3 thresholds to force sample_1 admission. No unchanged fit,
+dense, fusion, bake or sample_2 retry is needed. All **5,184** retained real cells
+remain unknown; `FRONT_DIAGNOSTIC` is not clearance. Quality, measured
+geometry/walking and asset/platform gates remain open. ADR 020 permits a local
+M3 software exit without sample_1's unavailable independent distance/up
+reference; Q5/N2 and A1 scale evidence stay open.
 
 [Typed depth-space admission](validation/2026-10-20-depth-space-admission.md) now
 reloads the exact terminal/ledger/native bundle into an immutable owner, checks

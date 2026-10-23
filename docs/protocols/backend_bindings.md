@@ -1,9 +1,12 @@
 # Observed Linux backend and viewer mappings
 
-The [current summary](../../third_party/backend-bindings-m3-20261023.json) supplements the
+The [current summary](../../third_party/backend-bindings-m3-preflight-20261023.json) supplements the
 [loader audit](runtime_dependencies.md) with actual fixed backend imports and an
 empty native viewer. Its five observations preserve profile, native/sandbox
 context, module versions, CUDA availability, exclusions and mapped ELF hashes.
+The [latest refresh](../validation/2026-10-23-calibration-preflight.md) observes
+the rebuilt viewer and rechecks four unchanged import receipts from the earlier
+23 October refresh; those imports are not rerun.
 Raw receipts retain local module paths, file identities and owned process IDs;
 public records omit those details. No source archive or redistribution rights are
 established by a mapped-file observation.
@@ -11,9 +14,9 @@ established by a mapped-file observation.
 From the repository root:
 
 ```sh
-python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-m3-20261023.json
-python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-m3-20261023.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json --local-evidence
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-m3-preflight-20261023.json
+python3 tools/check_backend_bindings.py --summary third_party/backend-bindings-m3-preflight-20261023.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-preflight-20261023.json --local-evidence
 ```
 
 Default checks bind the observer/baseline source, complete profile/node inventories,

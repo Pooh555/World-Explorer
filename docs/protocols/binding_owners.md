@@ -1,6 +1,6 @@
 # Installed ownership of newly observed libraries
 
-[Current owner summary](../../third_party/binding-owners-m3-20261023.json) associates the
+[Current owner summary](../../third_party/binding-owners-m3-preflight-20261023.json) associates the
 **137 `baseline_unseen` ELF files** from the [mapping supplement](backend_bindings.md)
 with installed worker distributions or system packages. The preceding loader and
 mapping receipts remain historical, independently bound records. This supplement
@@ -11,14 +11,14 @@ From the repository root, using a fresh ignored output:
 
 ```sh
 python3 tools/audit_binding_owners.py \
-  --mapping third_party/backend-bindings-m3-20261023.json \
-  --selection third_party/runtime-selection-m3-20261023.json \
+  --mapping third_party/backend-bindings-m3-preflight-20261023.json \
+  --selection third_party/runtime-selection-m3-preflight-20261023.json \
   --output artifacts/binding-owners/run-001.json
 python3 tools/audit_binding_owners.py \
-  --summary third_party/binding-owners-m3-20261023.json
+  --summary third_party/binding-owners-m3-preflight-20261023.json
 python3 tools/audit_binding_owners.py \
-  --summary third_party/binding-owners-m3-20261023.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json
+  --summary third_party/binding-owners-m3-preflight-20261023.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-preflight-20261023.json
 ```
 
 Capture requires Linux and the selected Arch package database. It hashes exactly

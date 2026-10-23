@@ -945,6 +945,18 @@ TEST_CASE("fresh reconstruction requests require explicit stages resources and d
         config["decode"]["frame_selection"] = "quality_keyframes_candidate_v1";
         config["decode"]["sample_fps"] = 1.0;
     }
+    SECTION("explicit calibration preflight selection") {
+        config["decode"]["frame_selection"] = "quality_keyframes_candidate_v3";
+        save_json(K_REQUEST, config);
+        const auto K_CALIBRATION = read_reconstruction_job(K_REQUEST);
+        REQUIRE(K_CALIBRATION);
+        REQUIRE(K_CALIBRATION->m_automatic_decode);
+        if (K_CALIBRATION->m_automatic_decode) {
+            CHECK(K_CALIBRATION->m_automatic_decode->m_frame_selection ==
+                  FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V3);
+        }
+        config["decode"]["sample_fps"] = 1.0;
+    }
     SECTION("unknown decode option") {
         config["decode"]["remote"] = true;
     }
@@ -992,6 +1004,22 @@ TEST_CASE("fresh reconstruction requests require explicit stages resources and d
     }
     SECTION("scene overlaps intent") {
         config["scene_output"] = "fresh poses.plan";
+    }
+    SECTION("v1 selector helper is a protected input") {
+        config["decode"]["frame_selection"] = "quality_keyframes_candidate_v1";
+        config["scene_output"] = "frame_quality.py";
+    }
+    SECTION("v2 selector helper is a protected input") {
+        config["decode"]["frame_selection"] = "quality_keyframes_candidate_v2";
+        config["scene_output"] = "frame_tracking.py";
+    }
+    SECTION("v3 selector helper is a protected input") {
+        config["decode"]["frame_selection"] = "quality_keyframes_candidate_v3";
+        config["scene_output"] = "frame_calibration.py";
+    }
+    SECTION("v3 imported tracker is a protected input") {
+        config["decode"]["frame_selection"] = "quality_keyframes_candidate_v3";
+        config["scene_output"] = "frame_tracking.py";
     }
     SECTION("legacy decode selection has different meaning") {
         config["decode_stage"] = "poses/stages/decode-" + fixture.poses.decode_key;

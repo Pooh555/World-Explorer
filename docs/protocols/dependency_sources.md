@@ -1,6 +1,6 @@
 # Selected dependency source and notice gaps
 
-The current dated [inventory](../../third_party/dependency-audit-m3-20261023.json) separates
+The current dated [inventory](../../third_party/dependency-audit-m3-preflight-20261023.json) separates
 native development archives, three installed worker profiles, observed Linux
 system/build packages, unresolved release-vcpkg declarations and metric models.
 Each component retains version, source evidence, archive availability, notice
@@ -12,18 +12,18 @@ The inventory retains the pinned
 [Jolt 5.3.0 source and notice](../research/jolt_dependency.md) and every component,
 comparison and gap from the [21 October inventory](../../third_party/dependency-audit-jolt-20261021.json).
 Release-vcpkg remains a declaration, not a built package. The checker's default
-selects the [23 October refresh](../validation/2026-10-23-m3-dependency-refresh.md),
-which recaptures loader, all five mapping contexts and owner associations for
-the rebuilt viewer/CLI. Its 86 components retain 257 source/rights gaps;
+selects the [calibration-preflight refresh](../validation/2026-10-23-calibration-preflight.md),
+which recaptures loader/viewer and owner associations for the rebuilt viewer/CLI,
+and rechecks four unchanged import observations. Its 86 components retain 257 source/rights gaps;
 `rights_qualified` stays false. Earlier dated receipts remain immutable and
 are not current-byte passes.
 
 Run from the repository root:
 
 ```sh
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json --local-evidence --require-closure
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-preflight-20261023.json
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-preflight-20261023.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-preflight-20261023.json --local-evidence --require-closure
 ```
 
 The first command needs only tracked inputs. It checks bound bytes, selected

@@ -18,6 +18,7 @@ MAX_CANDIDATES: Final = 480
 PROFILE: Final = "quality_keyframes_candidate_v2"
 _WIDTH: Final = 96
 _HEIGHT: Final = 64
+_Track = tuple[int, float, float, float, float]
 
 
 def policy() -> dict:
@@ -380,7 +381,14 @@ def _tracking_image(image: bytes) -> bytes:
     )
 
 
-def analyze(images: Sequence[bytes], check_cancelled: Callable[[], None]) -> list[dict]:
+def analyze(
+    images: Sequence[bytes],
+    check_cancelled: Callable[[], None],
+    *,
+    observe: (
+        Callable[[int, int | None, Sequence[_Track], Sequence[_Track]], None] | None
+    ) = None,
+) -> list[dict]:
     """Keep bounded point histories; never reseed across a lost connection."""
     if not 1 <= len(images) <= MAX_CANDIDATES or any(
         len(image) != _WIDTH * _HEIGHT for image in images
@@ -456,6 +464,8 @@ def analyze(images: Sequence[bytes], check_cancelled: Callable[[], None]) -> lis
             else []
         )
         cells = len({_cell(x, y) for _, _, _, x, y in continued})
+        if observe is not None:
+            observe(index, reference, tracks, continued)
         displacement = (
             median([math.hypot(x - bx, y - by) for _, bx, by, x, y in continued])
             if continued

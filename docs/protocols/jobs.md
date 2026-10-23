@@ -152,8 +152,8 @@ rejected for `pose_action: adopt_completed`; schema 1 remains unchanged.
 Decode uses a separate owned job and immutable `decode-request.json`. Parameters
 are explicit: finite sample rate [0.1, 4], 3–120 selected frames, 1–4 CPU threads,
 positive output bytes ≤32 GiB. Timestamp sampling defaults to 3 fps. Optional
-`decode.frame_selection: "quality_keyframes_candidate_v1"` or
-`"quality_keyframes_candidate_v2"` explicitly selects
+`decode.frame_selection: "quality_keyframes_candidate_v1"`,
+`"quality_keyframes_candidate_v2"` or `"quality_keyframes_candidate_v3"` selects
 the [unqualified quality candidate profile](frame_selection.md), requires 2–4
 candidates/s and binds the selector helper bytes in owned parameters. Omitting
 the field or selecting `timestamp_sampling_v1` keeps the legacy behavior. Source,

@@ -8,14 +8,16 @@ import worker_frame_quality_test as fixtures
 import frame_tracking as tracking
 
 
-def smooth_frame(offset: float, *, occlusion: bool = False, angle: float = 0) -> bytes:
+def smooth_frame(
+    offset: float, *, occlusion: bool = False, angle: float = 0, scale: float = 1
+) -> bytes:
     """Sample a continuous, asymmetric texture at a known subpixel translation."""
     pixels = bytearray()
     cosine, sine = math.cos(angle), math.sin(angle)
     for y in range(64):
         for x in range(96):
-            shifted = (x - 48) * cosine - (y - 32) * sine + 48 + offset
-            warped_y = (x - 48) * sine + (y - 32) * cosine + 32
+            shifted = ((x - 48) * cosine - (y - 32) * sine) / scale + 48 + offset
+            warped_y = ((x - 48) * sine + (y - 32) * cosine) / scale + 32
             value = (
                 128
                 + 32 * math.sin(0.47 * shifted + 0.2 * warped_y)

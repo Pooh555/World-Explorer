@@ -199,16 +199,68 @@ void validate_track_history(const nlohmann::json& decision,
     }
 }
 
+void validate_calibration(const nlohmann::json& decisions, std::size_t index) {
+    const auto& decision = decisions[index];
+    const auto& observation = decision.at("calibration");
+    const auto& reference = observation.at("reference");
+    const auto K_COUNT = unsigned_value(observation.at("support_points"));
+    const auto K_CELLS = unsigned_value(observation.at("support_cells"));
+    const auto K_SPAN_X = quality_number(observation.at("span_x"), 0, 96);
+    const auto K_SPAN_Y = quality_number(observation.at("span_y"), 0, 64);
+    const auto& scale = observation.at("scale");
+    const auto& rms = observation.at("rms_px");
+    const auto& start = observation.at("chain_start");
+    const auto& cumulative = observation.at("cumulative_log_scale");
+    if (reference != decision.at("tracking").at("reference") ||
+        K_COUNT != unsigned_value(decision.at("metrics").at("track_count")) || K_CELLS > 12 ||
+        K_CELLS > K_COUNT || (K_COUNT == 0) != (K_CELLS == 0) ||
+        (!K_COUNT && (K_SPAN_X != 0 || K_SPAN_Y != 0)) || scale.is_null() != rms.is_null()) {
+        throw std::invalid_argument("Calibration support/reference mismatch");
+    }
+    const auto K_SCALE = scale.is_null() ? 0.0 : quality_number(scale, 0, 16);
+    const auto K_RMS = rms.is_null() ? 0.0 : quality_number(rms, 0, 256);
+    const auto K_SUPPORTED = !reference.is_null() && K_COUNT >= 8 && K_CELLS >= 4 &&
+                             K_SPAN_X >= 40 && K_SPAN_Y >= 24 && !scale.is_null() &&
+                             K_SCALE >= .5 && K_SCALE <= 2 && K_RMS <= .5;
+    if (!K_SUPPORTED) {
+        if (observation.at("status") !=
+                (reference.is_null() ? "unassessed" : "insufficient_support") ||
+            !start.is_null() || !cumulative.is_null() ||
+            (reference.is_null() && (K_COUNT || !scale.is_null()))) {
+            throw std::invalid_argument("Unsupported calibration interval claims an assessment");
+        }
+        return;
+    }
+    const auto K_REFERENCE = unsigned_value(reference);
+    if (K_REFERENCE >= index) {
+        throw std::invalid_argument("Calibration reference is not a prior observation");
+    }
+    const auto& prior = decisions[K_REFERENCE].at("calibration");
+    const auto K_CONNECTED = prior.at("status") == "assessed";
+    const auto K_PAIR = std::log(K_SCALE);
+    const auto K_EXPECTED =
+        K_PAIR + (K_CONNECTED ? quality_number(prior.at("cumulative_log_scale"), -1, 1) : 0.0);
+    if (observation.at("status") != "assessed" ||
+        start != (K_CONNECTED ? prior.at("chain_start") : reference) ||
+        std::abs(quality_number(cumulative, -1, 1) - K_EXPECTED) > 1e-12 ||
+        std::abs(K_PAIR) >= std::log(1.04) || std::abs(K_EXPECTED) >= std::log(1.1)) {
+        throw std::invalid_argument("Calibration scale alarm or inconsistent connected history");
+    }
+}
+
 Result<void>
 validate_quality(const std::filesystem::path& root,
                  const nlohmann::json& metadata,
                  const std::map<std::string, std::pair<std::uint64_t, std::string>>& assets,
                  const std::string& source,
                  const std::stop_token& stop) {
-    const auto K_TRACKING = metadata.at("selection") == "quality_keyframes_candidate_v2";
+    const auto K_CALIBRATION = metadata.at("selection") == "quality_keyframes_candidate_v3";
+    const auto K_TRACKING =
+        K_CALIBRATION || metadata.at("selection") == "quality_keyframes_candidate_v2";
     const std::string_view K_POLICY_SHA {
-        K_TRACKING ? "15dd3f26902aecee0a24daa66714afa048c0d5c14ae3e9c680da7a66b668589f"
-                   : "cdf0f819989e98fbcc222ee3187a8d8a8d11d967c60003d4b35ddfb2047c39f1" };
+        K_CALIBRATION ? "8e47890cb3173d4d9ec1607b1b63b7959b19268ae46896a24bf1e25cbc51b1ae"
+        : K_TRACKING  ? "15dd3f26902aecee0a24daa66714afa048c0d5c14ae3e9c680da7a66b668589f"
+                      : "cdf0f819989e98fbcc222ee3187a8d8a8d11d967c60003d4b35ddfb2047c39f1" };
     if (metadata.at("source_sha256") != source || metadata.at("quality_ledger") != "quality.json") {
         throw std::invalid_argument("Quality source/ledger identity mismatch");
     }
@@ -227,6 +279,20 @@ validate_quality(const std::filesystem::path& root,
         sha256(std::as_bytes(std::span(K_POLICY))) != K_POLICY_SHA ||
         !digest_valid(K_LEDGER.at("implementation_sha256").get<std::string>())) {
         throw std::invalid_argument("Unsupported quality policy/provenance");
+    }
+    if (K_CALIBRATION) {
+        const auto& files = K_LEDGER.at("implementation_files");
+        if (!files.is_object() || files.size() != 2uz ||
+            !digest_valid(files.at("frame_calibration.py").get<std::string>()) ||
+            !digest_valid(files.at("frame_tracking.py").get<std::string>()) ||
+            metadata.at("lens_change_detection") != "ambiguous_image_scale_preflight") {
+            throw std::invalid_argument("Calibration implementation/profile identity mismatch");
+        }
+        const auto K_FILES = files.dump();
+        if (sha256(std::as_bytes(std::span(K_FILES))) !=
+            K_LEDGER.at("implementation_sha256").get<std::string>()) {
+            throw std::invalid_argument("Calibration implementation bundle checksum mismatch");
+        }
     }
     const auto& decisions = K_LEDGER.at("decisions");
     const auto K_LIMIT = unsigned_value(K_LEDGER.at("candidate_limit"));
@@ -327,6 +393,9 @@ validate_quality(const std::filesystem::path& root,
         }
         if (K_TRACKING) {
             validate_track_history(decision, index, track_state);
+        }
+        if (K_CALIBRATION) {
+            validate_calibration(decisions, index);
         }
         input.read(pixels.data(), static_cast<std::streamsize>(pixels.size()));
         const auto K_PIXELS = std::as_bytes(std::span(pixels));
@@ -496,7 +565,8 @@ Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConf
         if ((K_METADATA.at("selection") != "timestamp_sampling_v1" &&
              K_METADATA.at("selection") != "native_rgb_journal_v1" &&
              K_METADATA.at("selection") != "quality_keyframes_candidate_v1" &&
-             K_METADATA.at("selection") != "quality_keyframes_candidate_v2") ||
+             K_METADATA.at("selection") != "quality_keyframes_candidate_v2" &&
+             K_METADATA.at("selection") != "quality_keyframes_candidate_v3") ||
             K_METADATA.at("crop") != "none" || K_METADATA.at("resize") != "none") {
             return fail(ErrorCode::UNSUPPORTED_OPERATION, "Unsupported decode replay profile");
         }
@@ -515,7 +585,8 @@ Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConf
             return fail(ErrorCode::RESOURCE_EXHAUSTED, "Decode frame count exceeds profile");
         }
         if (K_METADATA.at("selection") == "quality_keyframes_candidate_v1" ||
-            K_METADATA.at("selection") == "quality_keyframes_candidate_v2") {
+            K_METADATA.at("selection") == "quality_keyframes_candidate_v2" ||
+            K_METADATA.at("selection") == "quality_keyframes_candidate_v3") {
             const auto K_QUALITY = validate_quality(
                 state->m_root, K_METADATA, assets, state->m_config.m_source_sha256, stop);
             if (!K_QUALITY) {

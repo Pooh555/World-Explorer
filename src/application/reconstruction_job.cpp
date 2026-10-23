@@ -140,12 +140,27 @@ Result<void> validate_job(const ReconstructionJob& job) {
                 decode.m_max_output_bytes > 32ULL * 1024 * 1024 * 1024 ||
                 (decode.m_frame_selection != FrameSelection::TIMESTAMP_SAMPLING_V1 &&
                  decode.m_frame_selection != FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1 &&
-                 decode.m_frame_selection != FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V2) ||
+                 decode.m_frame_selection != FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V2 &&
+                 decode.m_frame_selection != FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V3) ||
                 (decode.m_frame_selection != FrameSelection::TIMESTAMP_SAMPLING_V1 &&
                  decode.m_sample_fps < 2)) {
                 return fail(ErrorCode::INVALID_ARGUMENT, "Invalid automatic decode action");
             }
             read_only.push_back(decode.m_worker.m_script);
+            if (decode.m_frame_selection != FrameSelection::TIMESTAMP_SAMPLING_V1) {
+                const auto K_HELPERS =
+                    std::filesystem::weakly_canonical(decode.m_worker.m_script).parent_path();
+                read_only.push_back(
+                    K_HELPERS /
+                    (decode.m_frame_selection == FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1
+                         ? "frame_quality.py"
+                     : decode.m_frame_selection == FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V2
+                         ? "frame_tracking.py"
+                         : "frame_calibration.py"));
+                if (decode.m_frame_selection == FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V3) {
+                    read_only.push_back(K_HELPERS / "frame_tracking.py");
+                }
+            }
             if (std::filesystem::path(decode.m_worker.m_python).has_parent_path()) {
                 read_only.emplace_back(decode.m_worker.m_python);
             }
@@ -470,14 +485,17 @@ Result<ReconstructionJob> read_reconstruction_job(const std::filesystem::path& r
                     decode.value("frame_selection", std::string("timestamp_sampling_v1"));
                 if (K_SELECTION != "timestamp_sampling_v1" &&
                     K_SELECTION != "quality_keyframes_candidate_v1" &&
-                    K_SELECTION != "quality_keyframes_candidate_v2") {
+                    K_SELECTION != "quality_keyframes_candidate_v2" &&
+                    K_SELECTION != "quality_keyframes_candidate_v3") {
                     return fail(ErrorCode::INVALID_DATA, "Unknown frame selection profile");
                 }
                 config_decode.m_frame_selection =
                     K_SELECTION == "timestamp_sampling_v1" ? FrameSelection::TIMESTAMP_SAMPLING_V1
                     : K_SELECTION == "quality_keyframes_candidate_v1"
                         ? FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V1
-                        : FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V2;
+                    : K_SELECTION == "quality_keyframes_candidate_v2"
+                        ? FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V2
+                        : FrameSelection::QUALITY_KEYFRAMES_CANDIDATE_V3;
                 config_decode.m_max_frames =
                     static_cast<std::uint32_t>(K_INTEGER(decode, "max_frames", 120));
                 config_decode.m_cpu_threads =
