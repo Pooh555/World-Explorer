@@ -1,6 +1,6 @@
 # Installed ownership of newly observed libraries
 
-[Current owner summary](../../third_party/binding-owners-repair-20261020.json) associates the
+[Current owner summary](../../third_party/binding-owners-m3-20261023.json) associates the
 **137 `baseline_unseen` ELF files** from the [mapping supplement](backend_bindings.md)
 with installed worker distributions or system packages. The preceding loader and
 mapping receipts remain historical, independently bound records. This supplement
@@ -11,14 +11,14 @@ From the repository root, using a fresh ignored output:
 
 ```sh
 python3 tools/audit_binding_owners.py \
-  --mapping third_party/backend-bindings-repair-20261020.json \
-  --selection third_party/runtime-selection-repair-20261020.json \
+  --mapping third_party/backend-bindings-m3-20261023.json \
+  --selection third_party/runtime-selection-m3-20261023.json \
   --output artifacts/binding-owners/run-001.json
 python3 tools/audit_binding_owners.py \
-  --summary third_party/binding-owners-repair-20261020.json
+  --summary third_party/binding-owners-m3-20261023.json
 python3 tools/audit_binding_owners.py \
-  --summary third_party/binding-owners-repair-20261020.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json
+  --summary third_party/binding-owners-m3-20261023.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json
 ```
 
 Capture requires Linux and the selected Arch package database. It hashes exactly
@@ -68,9 +68,10 @@ The [runtime refresh](../validation/2026-10-15-runtime-refresh.md) now supplies
 those fresh observations. Active full local checking passes with its new records;
 the old summaries and raw receipts remain available with their historical scope.
 
-The [current audit refresh](../validation/2026-10-20-native-inventory-repair.md)
+The [current audit refresh](../validation/2026-10-23-m3-dependency-refresh.md)
 records 137 targets in 16 installed groups with 30 notices and freshly binds the
-package-query-tool bytes. Current local recapture checks all associations. The
-preceding [broader observation](../validation/2026-10-16-packing-runtime-refresh.md)
+package-query-tool bytes. Local recapture checks all associations. Earlier
+receipts retain their original scopes. The preceding
+[broader observation](../validation/2026-10-16-packing-runtime-refresh.md)
 retains its 160-target/31-group/41-notice scope. Archive/terms gaps stay explicit;
 no native platform or redistribution qualification follows.

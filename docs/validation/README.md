@@ -1,5 +1,9 @@
 # Validation index
 
+- [M3 local software exit review](2026-10-23-m3-exit-review.md): IN_PROGRESS; remaining timestamp-only keyframe selection prevents exit; five checklist items and all unqualified Q/P/N/E targets mapped.
+
+- [M3 selected dependency refresh](2026-10-23-m3-dependency-refresh.md): fresh loader/import/viewer/owner evidence, current default/local consistency, 257 retained gaps, 65 audit tests and exact workspace LLVM 23.1.1 tooling; no full gate upgrade.
+
 - [Native selected-step acceptance](2026-10-23-step-native.md): unlocked local Linux replay passes 12 input assertions with zero Vulkan errors; negative startup checks and current retained-real mesh viewing pass, M3 exit review remains due.
 
 - [Synthetic step controller integration](2026-10-23-step-controller.md): transactional phase/clock, selected landing, slow ascent/descent and shared CLI; CPU/sanitizer checks pass, native input blocked by locked desktop, acceptance remains open.

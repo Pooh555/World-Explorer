@@ -1,30 +1,31 @@
 # Selected Linux runtime dependency receipts
 
-[Selection](../../third_party/runtime-selection-repair-20261020.json) pins fifteen local
+[Selection](../../third_party/runtime-selection-m3-20261023.json) pins fifteen local
 ELF roots: viewer/CLI, FFmpeg/ffprobe, system Python, three worker interpreter
 entries and seven selected worker extensions. The
-[current summary](../../third_party/runtime-audit-repair-20261020.json) records normalized paths,
+[current summary](../../third_party/runtime-audit-m3-20261023.json) records normalized paths,
 byte identities, DT_NEEDED/RPATH/RUNPATH/SONAME metadata, loader resolutions,
 dependency edges, system ownership/notices and local interpreter metadata.
 The full raw receipt and command outputs stay ignored under `artifacts/`.
-The [source gap inventory](../../third_party/dependency-audit-repair-20261020.json) binds
+The [source gap inventory](../../third_party/dependency-audit-m3-20261023.json) binds
 this supplement; original wheel, source, model and rights gaps remain open.
-The [20 October refresh](../validation/2026-10-20-native-inventory-repair.md)
-recaptures the rebuilt viewer/CLI, loader graph, all five import/viewer mapping
-contexts and installed owners/notices with the current audit sources. Default and
-local inventory checks pass; strict closure still exits 3 for 253 gaps. The
-[input-timing records](../validation/2026-10-16-m2-input-latency.md) and earlier
+The [23 October refresh](../validation/2026-10-23-m3-dependency-refresh.md)
+recaptures the rebuilt viewer/CLI, loader graph, all five import/viewer contexts
+and installed owners/notices. Default and local checks pass; strict closure
+retains 257 gaps across the same seven profiles/86 components as the earlier
+[Jolt source inventory](../../third_party/dependency-audit-jolt-20261021.json).
+Earlier receipts remain historical. The [input-timing records](../validation/2026-10-16-m2-input-latency.md) and earlier
 receipts remain historical; they are not current-byte passes.
 
 Run from the repository root with a new output name:
 
 ```sh
 python3 tools/audit_runtime_dependencies.py \
-  --selection third_party/runtime-selection-repair-20261020.json \
+  --selection third_party/runtime-selection-m3-20261023.json \
   --output artifacts/runtime-audit/run-001.json --require-resolved
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-repair-20261020.json --local-evidence --require-closure
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json --local-evidence --require-closure
 ```
 
 Capture requires Linux ELF64 x86-64, the selected GNU readelf/glibc loader and

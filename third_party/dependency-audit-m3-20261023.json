@@ -1,0 +1,4043 @@
+{
+  "backend_bindings_summary": "third_party/backend-bindings-m3-20261023.json",
+  "binding_owners_summary": "third_party/binding-owners-m3-20261023.json",
+  "comparisons": [
+    {
+      "left": "artifacts/validation/dependency-closure-20261014/triton-init.py",
+      "right": ".venv-train/lib/python3.10/site-packages/triton/__init__.py",
+      "scope": "One installed Python source file equals exact tagged source; not a wheel/source build attestation"
+    },
+    {
+      "left": "artifacts/validation/dependency-closure-20261014/triton-LICENSE",
+      "right": "third_party/notices/triton-3.0.0-LICENSE.txt",
+      "scope": "Exact source notice bytes retained"
+    }
+  ],
+  "date": "2026-10-23",
+  "inputs": [
+    {
+      "archive": true,
+      "bytes": 1197623,
+      "kind": "local",
+      "path": ".deps/catch2.tar.gz",
+      "sha256": "18b3f70ac80fccc340d8c6ff0f339b2ae64944782f8d2fca2bd705cf47cadb79"
+    },
+    {
+      "archive": true,
+      "bytes": 2299918,
+      "kind": "local",
+      "path": ".deps/flatbuffers.tar.gz",
+      "sha256": "b9c2df49707c57a48fc0923d52b8c73beb72d675f9d44b2211e4569be40a7421"
+    },
+    {
+      "archive": true,
+      "bytes": 1846599,
+      "kind": "local",
+      "path": ".deps/imgui.tar.gz",
+      "sha256": "8e1bbc76c71d74fef2fb85db7e7ca8eba13d6a86623c54992b60162db554ffdb"
+    },
+    {
+      "archive": true,
+      "bytes": 18819244,
+      "kind": "local",
+      "path": ".deps/jolt-5.3.0.tar.gz",
+      "sha256": "e7f9621e480646c434150e1fbe3a9410f4ec4b04ffe54791e0678326b741b918"
+    },
+    {
+      "archive": true,
+      "bytes": 9678593,
+      "kind": "local",
+      "path": ".deps/json.tar.gz",
+      "sha256": "4b92eb0c06d10683f7447ce9406cb97cd4b453be18d7279320f7b2f025c10187"
+    },
+    {
+      "archive": true,
+      "bytes": 904653,
+      "kind": "local",
+      "path": ".deps/vma-3.1.0.tar.gz",
+      "sha256": "ae134ecc37c55634f108e926f85d5d887b670360e77cd107affaf3a9539595f2"
+    },
+    {
+      "bytes": 2028,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/filelock-3.32.3.dist-info/METADATA",
+      "sha256": "2d80f43bd905689145c00b3133bc95895d654ced70a96a1802e9237e0d66599f"
+    },
+    {
+      "bytes": 1088,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/filelock-3.32.3.dist-info/licenses/LICENSE",
+      "sha256": "608c89d5060ae9921adccf3236695bc654a9946e12323ef6c021dfa04e294d48"
+    },
+    {
+      "bytes": 10561,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/fsspec-2026.7.0.dist-info/METADATA",
+      "sha256": "88b1657585de14e3bb82aa5278aa9595b30aa4ca74ead073d8950615c808099d"
+    },
+    {
+      "bytes": 1513,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/fsspec-2026.7.0.dist-info/licenses/LICENSE",
+      "sha256": "2dc35496ce53a7307915c008a844aad53e772b49b34cdd00445067691407ec94"
+    },
+    {
+      "bytes": 2871,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/jinja2-3.1.6.dist-info/METADATA",
+      "sha256": "68c5548fb67c4132a13898d9b31ec50c6bea2abdd915d921f214355c3a6499c8"
+    },
+    {
+      "bytes": 1475,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/jinja2-3.1.6.dist-info/licenses/LICENSE.txt",
+      "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b"
+    },
+    {
+      "bytes": 5650,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/lightning_utilities-0.15.2.dist-info/METADATA",
+      "sha256": "9665528f6216f50700c0497cdd651afde870b5c13815952800c900a34a1a4c42"
+    },
+    {
+      "bytes": 11349,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/lightning_utilities-0.15.2.dist-info/licenses/LICENSE",
+      "sha256": "a41e2fae9915ae56028f8dbd0bf27995f1907613cbcd2d81a61b010ad34e9fe9"
+    },
+    {
+      "bytes": 2690,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/markupsafe-3.0.3.dist-info/METADATA",
+      "sha256": "12b4cc61a7fa288cf7667ee3f213786d9619db57fb33ff6f934afbcb5c12ec81"
+    },
+    {
+      "bytes": 1475,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/markupsafe-3.0.3.dist-info/licenses/LICENSE.txt",
+      "sha256": "489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea"
+    },
+    {
+      "bytes": 1537,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/mpmath-1.3.0.dist-info/LICENSE",
+      "sha256": "c26cae81da4508e5e249985777a33821f183223ebb74d7f8cfbf90fe7eef2fb7"
+    },
+    {
+      "bytes": 8630,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/mpmath-1.3.0.dist-info/METADATA",
+      "sha256": "44b66ea444b9c0d19ae94815d356bf047ae6b680c19268b5c265687cd6a81406"
+    },
+    {
+      "bytes": 1763,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/networkx-3.4.2.dist-info/LICENSE.txt",
+      "sha256": "5b433b90f755eb9bbd06feff1d1a4f5f232c5208a185694199e45fa95d762792"
+    },
+    {
+      "bytes": 6349,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/networkx-3.4.2.dist-info/METADATA",
+      "sha256": "2e5265dda876ef3c44fefa9e9553499bc564c89a16c95e38bdaf9babc556d1d7"
+    },
+    {
+      "bytes": 47721,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/numpy-1.26.4.dist-info/LICENSE.txt",
+      "sha256": "1107b0c831e918d4f1dbc28a33190c77215ef278d4a4c4009572088770d4334a"
+    },
+    {
+      "bytes": 61041,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/numpy-1.26.4.dist-info/METADATA",
+      "sha256": "b09734a7fed44e84b4c8161934ce532dff1e779ec6822d415644d117f6381070"
+    },
+    {
+      "bytes": 1018,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/numpy/core/include/numpy/random/LICENSE.txt",
+      "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
+    },
+    {
+      "bytes": 1593,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/numpy/ma/LICENSE",
+      "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
+    },
+    {
+      "bytes": 3511,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/numpy/random/LICENSE.md",
+      "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
+    },
+    {
+      "bytes": 3281,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/packaging-25.0.dist-info/METADATA",
+      "sha256": "5b611a609c38fefc3d616bf45d20aec98fb7d53f245daca9e2c30fc85c7ac282"
+    },
+    {
+      "bytes": 197,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/packaging-25.0.dist-info/licenses/LICENSE",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "bytes": 10174,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/packaging-25.0.dist-info/licenses/LICENSE.APACHE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "bytes": 1344,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/packaging-25.0.dist-info/licenses/LICENSE.BSD",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "bytes": 9023,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/pillow-11.3.0.dist-info/METADATA",
+      "sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73"
+    },
+    {
+      "bytes": 66498,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/pillow-11.3.0.dist-info/licenses/LICENSE",
+      "sha256": "2c40a7d8894126ff7a993a752505b915694aafe7a620889ef368acbf54b87144"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools-75.8.0.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 6670,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools-75.8.0.dist-info/METADATA",
+      "sha256": "8a38c979e7476630c10f727747d74b73a3735b054b00c83797f06a8521332e49"
+    },
+    {
+      "bytes": 7634,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/autocommand-2.2.2.dist-info/LICENSE",
+      "sha256": "ade78d04982d69972d444a8e14a94f87a2334dd3855cc80348ea8e240aa0df2d"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/backports.tarfile-1.2.0.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 11358,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/inflect-7.3.1.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/jaraco.collections-5.1.0.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/jaraco.context-5.3.0.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/jaraco.functools-4.0.1.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/jaraco.text-3.12.1.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1053,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/more_itertools-10.3.0.dist-info/LICENSE",
+      "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46"
+    },
+    {
+      "bytes": 197,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/packaging-24.2.dist-info/LICENSE",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "bytes": 10174,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/packaging-24.2.dist-info/LICENSE.APACHE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "bytes": 1344,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/packaging-24.2.dist-info/LICENSE.BSD",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "bytes": 1089,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/platformdirs-4.2.2.dist-info/licenses/LICENSE",
+      "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6"
+    },
+    {
+      "bytes": 1072,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/tomli-2.0.1.dist-info/LICENSE",
+      "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+    },
+    {
+      "bytes": 1130,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/typeguard-4.3.0.dist-info/LICENSE",
+      "sha256": "6163f7987dfb38d6bc320ce2b70b2f02b862bc41126516d552ef1cd43247e758"
+    },
+    {
+      "bytes": 13936,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/typing_extensions-4.12.2.dist-info/LICENSE",
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "bytes": 1107,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/wheel-0.43.0.dist-info/LICENSE.txt",
+      "sha256": "30c23618679108f3e8ea1d2a658c7ca417bdfc891c98ef1a89fa4ff0c9828654"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/_vendor/zipp-3.19.2.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 493,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/config/NOTICE",
+      "sha256": "2dddf08818297a3b89d43d95ff659d8da85741108c9136dfa3a4d856c0623bd8"
+    },
+    {
+      "bytes": 18737,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/setuptools/config/_validate_pyproject/NOTICE",
+      "sha256": "09c9bcea95ca086f8bc5bed174e40bc835b297d40fb5f86bbbb570fe0a5581a7"
+    },
+    {
+      "bytes": 12816,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/sympy-1.14.0.dist-info/METADATA",
+      "sha256": "b756c2fbfd5be05ac5bdb0ebca61f55618f30f633ed92d88a5687429313a7595"
+    },
+    {
+      "bytes": 7885,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/sympy-1.14.0.dist-info/licenses/LICENSE",
+      "sha256": "07a5e9819f727b4986ad2829c7a29a6320d42575f720eb24d71b7fef573a0286"
+    },
+    {
+      "bytes": 1075,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/sympy/parsing/latex/LICENSE.txt",
+      "sha256": "007bc30a58fa40a996e772047120de4eaf31f5110e4f9c3b5f93fcdfbe2eaca1"
+    },
+    {
+      "bytes": 483736,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/torch-2.4.1+cpu.dist-info/LICENSE",
+      "sha256": "605a7dd8648cf774e407b2fef9a09ce4271bc45b692e18d5bd047b268c2d8768"
+    },
+    {
+      "bytes": 25373,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/torch-2.4.1+cpu.dist-info/METADATA",
+      "sha256": "03c747e217a76a8cb173860987ec3f4197ea21d97fbd1caef6bcba1d8b14dc22"
+    },
+    {
+      "bytes": 23632,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/torch-2.4.1+cpu.dist-info/NOTICE",
+      "sha256": "c2cc7bf0caec7652c2b460a8a470bea1677f241e4ab8e431df34cf17f5a9fec0"
+    },
+    {
+      "bytes": 22017,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/torchmetrics-1.8.2.dist-info/METADATA",
+      "sha256": "961f64f02aef800de886a5da9fe510ff739c3a164816dc8f7895cea8c3124ccb"
+    },
+    {
+      "bytes": 11352,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/torchmetrics-1.8.2.dist-info/licenses/LICENSE",
+      "sha256": "fa31f433f5b4bc1fb730fb9c678f90182d93bf76b6d98ba4d00f40454ac8b832"
+    },
+    {
+      "bytes": 1517,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/torchvision-0.19.1+cpu.dist-info/LICENSE",
+      "sha256": "6502f676851cfe25f8af75531dfb32375b7325b73c37e7b43741fa422893e71d"
+    },
+    {
+      "bytes": 6006,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/torchvision-0.19.1+cpu.dist-info/METADATA",
+      "sha256": "13bbb2546108281ce16eacecde942bf0cc33c5d352762cedce4341b3f2527dbb"
+    },
+    {
+      "bytes": 3310,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/typing_extensions-4.16.0.dist-info/METADATA",
+      "sha256": "b05084ca1d50879865178d9fff9fabeab61bdfb1f361bfbde95421ffc8f9be46"
+    },
+    {
+      "bytes": 13936,
+      "kind": "local",
+      "path": ".venv-metrics/lib/python3.10/site-packages/typing_extensions-4.16.0.dist-info/licenses/LICENSE",
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "bytes": 2028,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/filelock-3.32.3.dist-info/METADATA",
+      "sha256": "2d80f43bd905689145c00b3133bc95895d654ced70a96a1802e9237e0d66599f"
+    },
+    {
+      "bytes": 1088,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/filelock-3.32.3.dist-info/licenses/LICENSE",
+      "sha256": "608c89d5060ae9921adccf3236695bc654a9946e12323ef6c021dfa04e294d48"
+    },
+    {
+      "bytes": 10561,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/fsspec-2026.7.0.dist-info/METADATA",
+      "sha256": "88b1657585de14e3bb82aa5278aa9595b30aa4ca74ead073d8950615c808099d"
+    },
+    {
+      "bytes": 1513,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/fsspec-2026.7.0.dist-info/licenses/LICENSE",
+      "sha256": "2dc35496ce53a7307915c008a844aad53e772b49b34cdd00445067691407ec94"
+    },
+    {
+      "bytes": 1129,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/gsplat-1.5.3+pt24cu124.dist-info/METADATA",
+      "sha256": "64f2445baf103064fa92a07ecb9e0725ee761ca0c24fc1bc2936b6d222d74fa3"
+    },
+    {
+      "bytes": 11345,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/gsplat-1.5.3+pt24cu124.dist-info/licenses/LICENSE",
+      "sha256": "96a4f89293c0df19880da9b0e35f67589f5885ea61b224ef16bb2bd599a8a44d"
+    },
+    {
+      "bytes": 2865,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/gsplat/cuda/csrc/third_party/glm/copying.txt",
+      "sha256": "62d2d642c7d054d4fb4c9b42faad617d6c88fcd91e317f8035aa9f277cc159c3"
+    },
+    {
+      "bytes": 7348,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/jaxtyping-0.3.7.dist-info/METADATA",
+      "sha256": "1349570d090f75d2b5e95bb03d053fab0216329f73be7cf0050a7670eedd8576"
+    },
+    {
+      "bytes": 2279,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/jaxtyping-0.3.7.dist-info/licenses/LICENSE",
+      "sha256": "2ef67751f7ae1fa8d1765c494d591767fa68dc1e12ab043dd0fbbfbc1ffda5bc"
+    },
+    {
+      "bytes": 1130,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/jaxtyping/_typeguard/LICENSE",
+      "sha256": "6163f7987dfb38d6bc320ce2b70b2f02b862bc41126516d552ef1cd43247e758"
+    },
+    {
+      "bytes": 2871,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/jinja2-3.1.6.dist-info/METADATA",
+      "sha256": "68c5548fb67c4132a13898d9b31ec50c6bea2abdd915d921f214355c3a6499c8"
+    },
+    {
+      "bytes": 1475,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/jinja2-3.1.6.dist-info/licenses/LICENSE.txt",
+      "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b"
+    },
+    {
+      "bytes": 7410,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/markdown_it_py-4.2.0.dist-info/METADATA",
+      "sha256": "72c36ff516755443b1ecb61e17b2567a990230b49a504b0eb0c42d5f82448a9c"
+    },
+    {
+      "bytes": 1078,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/markdown_it_py-4.2.0.dist-info/licenses/LICENSE",
+      "sha256": "4a2260d6e2cd0f5a151a1e86dbfe7d3ed552b1e2beabf9941c1ba5c49cbce484"
+    },
+    {
+      "bytes": 1073,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/markdown_it_py-4.2.0.dist-info/licenses/LICENSE.markdown-it",
+      "sha256": "792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473"
+    },
+    {
+      "bytes": 2690,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/markupsafe-3.0.3.dist-info/METADATA",
+      "sha256": "12b4cc61a7fa288cf7667ee3f213786d9619db57fb33ff6f934afbcb5c12ec81"
+    },
+    {
+      "bytes": 1475,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/markupsafe-3.0.3.dist-info/licenses/LICENSE.txt",
+      "sha256": "489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea"
+    },
+    {
+      "bytes": 2338,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/mdurl-0.1.2.dist-info/LICENSE",
+      "sha256": "7c605df6e28667a9603118e98274f64a49ce3eed0d26fccce9534a345e0ef955"
+    },
+    {
+      "bytes": 1638,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/mdurl-0.1.2.dist-info/METADATA",
+      "sha256": "b53b29d48f499367053fda3c81e7ce27d2558380ebbf83e66023b02eb7ddd25d"
+    },
+    {
+      "bytes": 1537,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/mpmath-1.3.0.dist-info/LICENSE",
+      "sha256": "c26cae81da4508e5e249985777a33821f183223ebb74d7f8cfbf90fe7eef2fb7"
+    },
+    {
+      "bytes": 8630,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/mpmath-1.3.0.dist-info/METADATA",
+      "sha256": "44b66ea444b9c0d19ae94815d356bf047ae6b680c19268b5c265687cd6a81406"
+    },
+    {
+      "bytes": 1763,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/networkx-3.4.2.dist-info/LICENSE.txt",
+      "sha256": "5b433b90f755eb9bbd06feff1d1a4f5f232c5208a185694199e45fa95d762792"
+    },
+    {
+      "bytes": 6349,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/networkx-3.4.2.dist-info/METADATA",
+      "sha256": "2e5265dda876ef3c44fefa9e9553499bc564c89a16c95e38bdaf9babc556d1d7"
+    },
+    {
+      "bytes": 5381,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/ninja-1.13.2.dist-info/METADATA",
+      "sha256": "9628f3ee4355eb4805e7afdb4b01e20129fb76dfb76e6f8c4ce86150842d611c"
+    },
+    {
+      "bytes": 10273,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/ninja-1.13.2.dist-info/licenses/LICENSE_Apache_20",
+      "sha256": "73ba74dfaa520b49a401b5d21459a8523a146f3b7518a833eea5efa85130bf68"
+    },
+    {
+      "bytes": 47721,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/numpy-1.26.4.dist-info/LICENSE.txt",
+      "sha256": "1107b0c831e918d4f1dbc28a33190c77215ef278d4a4c4009572088770d4334a"
+    },
+    {
+      "bytes": 61041,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/numpy-1.26.4.dist-info/METADATA",
+      "sha256": "b09734a7fed44e84b4c8161934ce532dff1e779ec6822d415644d117f6381070"
+    },
+    {
+      "bytes": 1018,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/numpy/core/include/numpy/random/LICENSE.txt",
+      "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
+    },
+    {
+      "bytes": 1593,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/numpy/ma/LICENSE",
+      "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
+    },
+    {
+      "bytes": 3511,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/numpy/random/LICENSE.md",
+      "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cublas_cu12-12.4.2.65.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1506,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cublas_cu12-12.4.2.65.dist-info/METADATA",
+      "sha256": "ebd319a1e30b0af5b5d240cdd16657c5e325805c5da09ae4246a9f2d49ff0f42"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cuda_cupti_cu12-12.4.99.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1552,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cuda_cupti_cu12-12.4.99.dist-info/METADATA",
+      "sha256": "5f07bccaeb2269d0b67dcbc481aeea1b86cfe09d61f9c22aa7cefddaeb1dd6c1"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cuda_nvrtc_cu12-12.4.99.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1506,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cuda_nvrtc_cu12-12.4.99.dist-info/METADATA",
+      "sha256": "da0b2d3b538382ed2a861d507c9508aba7efb1caa78cf72594bfa83a3b7e44e8"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cuda_runtime_cu12-12.4.99.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1506,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cuda_runtime_cu12-12.4.99.dist-info/METADATA",
+      "sha256": "604e585b12231ba539bf6c333cd98aefad048a79af922b56265c2fb61e2ed323"
+    },
+    {
+      "bytes": 18174,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cudnn_cu12-9.1.0.70.dist-info/License.txt",
+      "sha256": "49cf79bdb35734b52fe6203013b3bd759f81e998cd32aa2c65c51db9a88c61d2"
+    },
+    {
+      "bytes": 1570,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cudnn_cu12-9.1.0.70.dist-info/METADATA",
+      "sha256": "575bc4ecda950190d417aa63b4ee6e85bf5ab8805ef6a7d18bfb51deb6082b71"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cufft_cu12-11.2.0.44.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1503,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cufft_cu12-11.2.0.44.dist-info/METADATA",
+      "sha256": "9bff06506ca89c866ff4d2e41443524f0ed7f2b832bd8a085641d9caf7fd4b49"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_curand_cu12-10.3.5.119.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1507,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_curand_cu12-10.3.5.119.dist-info/METADATA",
+      "sha256": "60da6c3cdf1ba927d015a7da43ffb8f1aa1ea78f85742c8ab13242ccd5429146"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cusolver_cu12-11.6.0.99.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1625,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cusolver_cu12-11.6.0.99.dist-info/METADATA",
+      "sha256": "7e3f93aa3e277f162473e48ee41d8acb6bf4cecb2aad34249f5ce0aae7a02465"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cusparse_cu12-12.3.0.142.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1550,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_cusparse_cu12-12.3.0.142.dist-info/METADATA",
+      "sha256": "73a03e04fdc43649d1339cb3eceb15d54a34ecccf24867dde9c88f885137668f"
+    },
+    {
+      "bytes": 1735,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_nccl_cu12-2.20.5.dist-info/License.txt",
+      "sha256": "f769fa2d363213f599366da46e2a8d650c86eaae845aec4d44b2f5fd01d4ec59"
+    },
+    {
+      "bytes": 1834,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_nccl_cu12-2.20.5.dist-info/METADATA",
+      "sha256": "4348e1a6c7e3316c75f5e08064d07bf4ecb5f25eb3dee882f9f27489d1974427"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_nvjitlink_cu12-12.4.99.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1517,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_nvjitlink_cu12-12.4.99.dist-info/METADATA",
+      "sha256": "ee19aeba5c205d996a44a4044b6f6e4647a35e8dd69a229db3f52c25e7ad10e6"
+    },
+    {
+      "bytes": 59262,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_nvtx_cu12-12.4.99.dist-info/License.txt",
+      "sha256": "ad6f5853fba0ca0d159d0f58d49ae49830c2f8c93f7a92648b9ce90adb4c6ccd"
+    },
+    {
+      "bytes": 1659,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/nvidia_nvtx_cu12-12.4.99.dist-info/METADATA",
+      "sha256": "25041aee459254aae0490bd4fff4c83d8d47508c517870c6d400d149eba737c6"
+    },
+    {
+      "bytes": 3281,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/packaging-25.0.dist-info/METADATA",
+      "sha256": "5b611a609c38fefc3d616bf45d20aec98fb7d53f245daca9e2c30fc85c7ac282"
+    },
+    {
+      "bytes": 197,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/packaging-25.0.dist-info/licenses/LICENSE",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "bytes": 10174,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/packaging-25.0.dist-info/licenses/LICENSE.APACHE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "bytes": 1344,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/packaging-25.0.dist-info/licenses/LICENSE.BSD",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "bytes": 9023,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/pillow-11.3.0.dist-info/METADATA",
+      "sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73"
+    },
+    {
+      "bytes": 66498,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/pillow-11.3.0.dist-info/licenses/LICENSE",
+      "sha256": "2c40a7d8894126ff7a993a752505b915694aafe7a620889ef368acbf54b87144"
+    },
+    {
+      "bytes": 10760,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/pycolmap-3.12.6.dist-info/METADATA",
+      "sha256": "f105b22529eea87dd468384469be7fb7edd4d7eef51d666cb4a69c8241a9c75c"
+    },
+    {
+      "bytes": 1909,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/pycolmap-3.12.6.dist-info/licenses/COPYING.txt",
+      "sha256": "ab30dabb4f0a6731f980108f57aa160cc8f5cebae6984e01a5d109df99669233"
+    },
+    {
+      "bytes": 2527,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/pygments-2.21.0.dist-info/METADATA",
+      "sha256": "1dde075570136774c706bf0009183a793fe0ee262e4a5590cc6eff8453eedd43"
+    },
+    {
+      "bytes": 1331,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/pygments-2.21.0.dist-info/licenses/LICENSE",
+      "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17"
+    },
+    {
+      "bytes": 18445,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/rich-15.0.0.dist-info/METADATA",
+      "sha256": "fad34fc603fac4481bf81f8dd629492fc302c0ec31909c86644751512afb2e3b"
+    },
+    {
+      "bytes": 1056,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/rich-15.0.0.dist-info/licenses/LICENSE",
+      "sha256": "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15"
+    },
+    {
+      "bytes": 46845,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/scipy-1.15.3.dist-info/LICENSE.txt",
+      "sha256": "828cb9a7369c0a9f633ce7c10023f8d822f0f76b54ce25c723361d45b088879a"
+    },
+    {
+      "bytes": 61956,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/scipy-1.15.3.dist-info/METADATA",
+      "sha256": "c75caf32b67a13a9fc16aacf993a8bb883b7a69744ffe77cbbd4f3bfbad28f3d"
+    },
+    {
+      "bytes": 1514,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/scipy/_lib/_uarray/LICENSE",
+      "sha256": "c80c39b5fce06ba4897e14e0b0a88b54458334d951eb1361402ffad2cfb863b4"
+    },
+    {
+      "bytes": 1498,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/scipy/fft/_pocketfft/LICENSE.md",
+      "sha256": "c254b2b5fd30ae3c89d36ba061730563b9760fca04f1b746a1b2c3157da2c789"
+    },
+    {
+      "bytes": 1892,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/scipy/sparse/linalg/_eigen/arpack/COPYING",
+      "sha256": "0926566f9f406178d1214f8cc796e166b1213dd7c05e0c5b461a8b8ac9e50bbe"
+    },
+    {
+      "bytes": 1635,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/scipy/spatial/qhull_src/COPYING.txt",
+      "sha256": "34db0c0c4f931861d720555c9cd7a2e228d1290ba29af0f2ee80c41bb2038afb"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools-75.8.0.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 6670,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools-75.8.0.dist-info/METADATA",
+      "sha256": "8a38c979e7476630c10f727747d74b73a3735b054b00c83797f06a8521332e49"
+    },
+    {
+      "bytes": 7634,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/autocommand-2.2.2.dist-info/LICENSE",
+      "sha256": "ade78d04982d69972d444a8e14a94f87a2334dd3855cc80348ea8e240aa0df2d"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/backports.tarfile-1.2.0.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 11358,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/inflect-7.3.1.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/jaraco.collections-5.1.0.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/jaraco.context-5.3.0.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/jaraco.functools-4.0.1.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/jaraco.text-3.12.1.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 1053,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/more_itertools-10.3.0.dist-info/LICENSE",
+      "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46"
+    },
+    {
+      "bytes": 197,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/packaging-24.2.dist-info/LICENSE",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "bytes": 10174,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/packaging-24.2.dist-info/LICENSE.APACHE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "bytes": 1344,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/packaging-24.2.dist-info/LICENSE.BSD",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "bytes": 1089,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/platformdirs-4.2.2.dist-info/licenses/LICENSE",
+      "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6"
+    },
+    {
+      "bytes": 1072,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/tomli-2.0.1.dist-info/LICENSE",
+      "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+    },
+    {
+      "bytes": 1130,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/typeguard-4.3.0.dist-info/LICENSE",
+      "sha256": "6163f7987dfb38d6bc320ce2b70b2f02b862bc41126516d552ef1cd43247e758"
+    },
+    {
+      "bytes": 13936,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/typing_extensions-4.12.2.dist-info/LICENSE",
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "bytes": 1107,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/wheel-0.43.0.dist-info/LICENSE.txt",
+      "sha256": "30c23618679108f3e8ea1d2a658c7ca417bdfc891c98ef1a89fa4ff0c9828654"
+    },
+    {
+      "bytes": 1023,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/_vendor/zipp-3.19.2.dist-info/LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "bytes": 493,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/config/NOTICE",
+      "sha256": "2dddf08818297a3b89d43d95ff659d8da85741108c9136dfa3a4d856c0623bd8"
+    },
+    {
+      "bytes": 18737,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/setuptools/config/_validate_pyproject/NOTICE",
+      "sha256": "09c9bcea95ca086f8bc5bed174e40bc835b297d40fb5f86bbbb570fe0a5581a7"
+    },
+    {
+      "bytes": 12816,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/sympy-1.14.0.dist-info/METADATA",
+      "sha256": "b756c2fbfd5be05ac5bdb0ebca61f55618f30f633ed92d88a5687429313a7595"
+    },
+    {
+      "bytes": 7885,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/sympy-1.14.0.dist-info/licenses/LICENSE",
+      "sha256": "07a5e9819f727b4986ad2829c7a29a6320d42575f720eb24d71b7fef573a0286"
+    },
+    {
+      "bytes": 1075,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/sympy/parsing/latex/LICENSE.txt",
+      "sha256": "007bc30a58fa40a996e772047120de4eaf31f5110e4f9c3b5f93fcdfbe2eaca1"
+    },
+    {
+      "bytes": 483736,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/torch-2.4.1+cu124.dist-info/LICENSE",
+      "sha256": "605a7dd8648cf774e407b2fef9a09ce4271bc45b692e18d5bd047b268c2d8768"
+    },
+    {
+      "bytes": 26820,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/torch-2.4.1+cu124.dist-info/METADATA",
+      "sha256": "9b7822fa34b9aaaed6dfb823a91e2928a7255ad9db590e1c195090e59e085bbd"
+    },
+    {
+      "bytes": 23632,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/torch-2.4.1+cu124.dist-info/NOTICE",
+      "sha256": "c2cc7bf0caec7652c2b460a8a470bea1677f241e4ab8e431df34cf17f5a9fec0"
+    },
+    {
+      "bytes": 1517,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/torchvision-0.19.1+cu124.dist-info/LICENSE",
+      "sha256": "6502f676851cfe25f8af75531dfb32375b7325b73c37e7b43741fa422893e71d"
+    },
+    {
+      "bytes": 6008,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/torchvision-0.19.1+cu124.dist-info/METADATA",
+      "sha256": "aee279b3109c38d0e12569b3d6029c9858ac1cdb0c41a8824401b3c3aae7747f"
+    },
+    {
+      "bytes": 1325,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/triton-3.0.0.dist-info/METADATA",
+      "sha256": "e2dc9cf2c01b2e03cf75134dcc6179d43e508dc3be73c2f1b467561c328c9ef1"
+    },
+    {
+      "bytes": 1347,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/triton/__init__.py",
+      "sha256": "ded80ef47a6837162e4f6b2f74ab59c991d89b620d337d1abff9e56b39925e3b"
+    },
+    {
+      "bytes": 3310,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/typing_extensions-4.16.0.dist-info/METADATA",
+      "sha256": "b05084ca1d50879865178d9fff9fabeab61bdfb1f361bfbde95421ffc8f9be46"
+    },
+    {
+      "bytes": 13936,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/typing_extensions-4.16.0.dist-info/licenses/LICENSE",
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "bytes": 17643,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/wadler_lindig-0.1.7.dist-info/METADATA",
+      "sha256": "83659a4fe5e6a3a96abda2af32163a27769bb6e807e8babcd1fe37c54b87fa16"
+    },
+    {
+      "bytes": 11357,
+      "kind": "local",
+      "path": ".venv-train/lib/python3.10/site-packages/wadler_lindig-0.1.7.dist-info/licenses/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "bytes": 47755,
+      "kind": "local",
+      "path": ".venv-worker/lib/python3.12/site-packages/numpy-2.2.6.dist-info/LICENSE.txt",
+      "sha256": "c002bd26de7dc7aa464250a0de063d58fe55974452e4389e5c21c350a820bf06"
+    },
+    {
+      "bytes": 62026,
+      "kind": "local",
+      "path": ".venv-worker/lib/python3.12/site-packages/numpy-2.2.6.dist-info/METADATA",
+      "sha256": "22d648f53848429464ca643b40d73b49a920d47876fc77c395d4dca4e834904a"
+    },
+    {
+      "bytes": 1018,
+      "kind": "local",
+      "path": ".venv-worker/lib/python3.12/site-packages/numpy/_core/include/numpy/random/LICENSE.txt",
+      "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
+    },
+    {
+      "bytes": 1593,
+      "kind": "local",
+      "path": ".venv-worker/lib/python3.12/site-packages/numpy/ma/LICENSE",
+      "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
+    },
+    {
+      "bytes": 3511,
+      "kind": "local",
+      "path": ".venv-worker/lib/python3.12/site-packages/numpy/random/LICENSE.md",
+      "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
+    },
+    {
+      "bytes": 9023,
+      "kind": "local",
+      "path": ".venv-worker/lib/python3.12/site-packages/pillow-11.3.0.dist-info/METADATA",
+      "sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73"
+    },
+    {
+      "bytes": 66498,
+      "kind": "local",
+      "path": ".venv-worker/lib/python3.12/site-packages/pillow-11.3.0.dist-info/licenses/LICENSE",
+      "sha256": "2c40a7d8894126ff7a993a752505b915694aafe7a620889ef368acbf54b87144"
+    },
+    {
+      "bytes": 11907,
+      "kind": "local",
+      "path": ".venv-worker/lib/python3.12/site-packages/pycolmap-4.2.1.dist-info/METADATA",
+      "sha256": "1d16f320752cecdfbc7f4fd7f2589f428b2546c3803daebd78eda5c5579dd973"
+    },
+    {
+      "bytes": 1909,
+      "kind": "local",
+      "path": ".venv-worker/lib/python3.12/site-packages/pycolmap-4.2.1.dist-info/licenses/COPYING.txt",
+      "sha256": "ab30dabb4f0a6731f980108f57aa160cc8f5cebae6984e01a5d109df99669233"
+    },
+    {
+      "bytes": 1689,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/ffmpeg-version.log",
+      "sha256": "68d83057b5db53316f2f08774a5289be631ffa91cf35c708a4103fca50cc34d4"
+    },
+    {
+      "bytes": 54615,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/glslang-system-notice",
+      "sha256": "17e70c676e1521ff3e4686f04a2053d93a7e28a33be8de7ec37ab0ff72feb677"
+    },
+    {
+      "bytes": 10175,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/openssl-system-notice",
+      "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+    },
+    {
+      "bytes": 884,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/sdl3-system-notice",
+      "sha256": "1c040b8271b37e5076359f8fd54240e371114112924d2df81ef87c7d6a1dfdfd"
+    },
+    {
+      "bytes": 14186,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/system-packages.log",
+      "sha256": "34cd64fb3cae30a7cfda1137ec44168383826e8d834c2d988403875718575f78"
+    },
+    {
+      "bytes": 1132,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/triton-LICENSE",
+      "sha256": "92640fb97222fd0a698ff28ce0c3782c172623f8d6c609b557636a80f28fb946"
+    },
+    {
+      "bytes": 1347,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/triton-init.py",
+      "sha256": "ded80ef47a6837162e4f6b2f74ab59c991d89b620d337d1abff9e56b39925e3b"
+    },
+    {
+      "bytes": 23490,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/triton-setup.py",
+      "sha256": "17f7e32b04162172370f884dd9fb01510a128cf6c96615aa0ca727dae47e38d7"
+    },
+    {
+      "bytes": 345,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/triton-tag.json",
+      "sha256": "814c17755aa137c74cd3798688db6c7fd9bd80ec32606b045cd68289e5b7fe1c"
+    },
+    {
+      "bytes": 1084,
+      "kind": "local",
+      "path": "artifacts/validation/dependency-closure-20261014/vulkan-headers-system-notice",
+      "sha256": "1ca3502222d967f3be5751c55f6b7ee735b5383909c3b501495f54b216dbf227"
+    },
+    {
+      "bytes": 3223016,
+      "kind": "local",
+      "path": "artifacts/validation/m2-vma-runtime-20261016/runtime.json",
+      "sha256": "01ff4f1c891e35f22793709caf2e038e007f73bd7532f82d22b26827fc92024a"
+    },
+    {
+      "bytes": 23849,
+      "kind": "local",
+      "path": "artifacts/validation/m2-vma-runtime-20261016/viewer-native-vma.json",
+      "sha256": "41f8894e50ccb52110b021a101703a214653b04ce90832f05ac8360d16e79458"
+    },
+    {
+      "bytes": 4260484,
+      "kind": "local",
+      "path": "artifacts/validation/metric-identity-20261014/evaluation-metrics.json",
+      "sha256": "28c7227425c810245e4b340af2a8d5a107ae87355b348c97da6da00b5470cbf8"
+    },
+    {
+      "bytes": 266401,
+      "kind": "local",
+      "path": "artifacts/validation/worker-identity-20261013/poses-release.json",
+      "sha256": "497537df30b2a9c01a314b1e78f96a5b9f8c560a7f6b7ba47abbc192492afb51"
+    },
+    {
+      "bytes": 5132917,
+      "kind": "local",
+      "path": "artifacts/validation/worker-identity-20261013/training-release.json",
+      "sha256": "f4f2fed0c788216a33537ab2e6802536a0264e6333ddabb624231b3f0b62f6c9"
+    },
+    {
+      "bytes": 4872,
+      "kind": "tracked",
+      "path": "cmake/dependencies.cmake",
+      "sha256": "d93edafebde9fa5ee607a3c620a86a8a3ab4d591b3310914c07631a6ddcc2d24"
+    },
+    {
+      "bytes": 99980,
+      "kind": "tracked",
+      "path": "third_party/backend-bindings-20261015.json",
+      "sha256": "2f15958705976ebad9ac342eeaa2fa08024cffb18f5bdb7e8d1a3f13348f5ba2"
+    },
+    {
+      "bytes": 100001,
+      "kind": "tracked",
+      "path": "third_party/backend-bindings-acquire-20261016.json",
+      "sha256": "db9225be107a4ad71e8d07b29af9b6ed5de7c9b2b14a4642467d167cb14ad315"
+    },
+    {
+      "bytes": 100016,
+      "kind": "tracked",
+      "path": "third_party/backend-bindings-m3-20261023.json",
+      "sha256": "ad12990809f5c848f9f6a27c2863cf51e10da5df9445e06669690e360c8a0a00"
+    },
+    {
+      "bytes": 108211,
+      "kind": "tracked",
+      "path": "third_party/backend-bindings-packing-20261016.json",
+      "sha256": "62b10fdd76c188b21b3c19d2b73ab001a04286565f5076a975648d7f9615543d"
+    },
+    {
+      "bytes": 100062,
+      "kind": "tracked",
+      "path": "third_party/backend-bindings-refresh-20261015.json",
+      "sha256": "f17411105897c70710aaa190b8d342f33c174d9f67808add214d3c0dd5f04235"
+    },
+    {
+      "bytes": 89629,
+      "kind": "tracked",
+      "path": "third_party/backend-bindings-vma-20261016.json",
+      "sha256": "1ced5a292fbc26fb6d48508aea24dc95b3f42c875a04ab5fd772fe80ded18efe"
+    },
+    {
+      "bytes": 56508,
+      "kind": "tracked",
+      "path": "third_party/binding-owners-20261015.json",
+      "sha256": "fa8e07762276bb6fb8e7844e33570268be29371c79739b82102efa175d3d984a"
+    },
+    {
+      "bytes": 56515,
+      "kind": "tracked",
+      "path": "third_party/binding-owners-acquire-20261016.json",
+      "sha256": "ab20ed2886070007ec39d773471fe65b9c67b6b4c0757de1b20d9355ab7210a0"
+    },
+    {
+      "bytes": 56541,
+      "kind": "tracked",
+      "path": "third_party/binding-owners-m3-20261023.json",
+      "sha256": "6a1ebfe88fd559283d63839b4e8209509f353ebf86f7a012d3e856d6ec7889b1"
+    },
+    {
+      "bytes": 69869,
+      "kind": "tracked",
+      "path": "third_party/binding-owners-packing-20261016.json",
+      "sha256": "b7cebd26cd9f2265a32d5350601b39c42051fd38542e2c893d04ff0691d6e7f0"
+    },
+    {
+      "bytes": 56545,
+      "kind": "tracked",
+      "path": "third_party/binding-owners-refresh-20261015.json",
+      "sha256": "806f224c7e5fe5c97edfcf0f45469459b437958f78ff6620c199b3bd908f16d1"
+    },
+    {
+      "bytes": 1338,
+      "kind": "tracked",
+      "path": "third_party/notices/catch2-LICENSE.txt",
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+    },
+    {
+      "bytes": 11358,
+      "kind": "tracked",
+      "path": "third_party/notices/flatbuffers-LICENSE.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "bytes": 11345,
+      "kind": "tracked",
+      "path": "third_party/notices/gsplat-LICENSE.txt",
+      "sha256": "96a4f89293c0df19880da9b0e35f67589f5885ea61b224ef16bb2bd599a8a44d"
+    },
+    {
+      "bytes": 1083,
+      "kind": "tracked",
+      "path": "third_party/notices/imgui-LICENSE.txt",
+      "sha256": "c80c5789748d955c4a650562baa0d750494e2c7128c2ca66aaebe2e3c4e198bf"
+    },
+    {
+      "bytes": 1052,
+      "kind": "tracked",
+      "path": "third_party/notices/jolt-5.3.0-LICENSE.txt",
+      "sha256": "800abe35d64ad9defd636ff1ee8c961e06f0ebca3ef8d10083e8aa0e8ef86ac3"
+    },
+    {
+      "bytes": 1075,
+      "kind": "tracked",
+      "path": "third_party/notices/json-LICENSE.txt",
+      "sha256": "c0d068392ea65358b798b8c165103560f06e9e3b38c4ab4e2d8810a7b931af86"
+    },
+    {
+      "bytes": 1132,
+      "kind": "tracked",
+      "path": "third_party/notices/triton-3.0.0-LICENSE.txt",
+      "sha256": "92640fb97222fd0a698ff28ce0c3782c172623f8d6c609b557636a80f28fb946"
+    },
+    {
+      "bytes": 1099,
+      "kind": "tracked",
+      "path": "third_party/notices/vma-LICENSE.txt",
+      "sha256": "f56ab0392925231e34dd008a7670bb5c5ead490203bc9e125de3106fef642a27"
+    },
+    {
+      "bytes": 448755,
+      "kind": "tracked",
+      "path": "third_party/runtime-audit-20261014.json",
+      "sha256": "c08e86dab78ae10fd437fbf2b44d5f13969595bac5982d1f23bb5d034ffb6ca3"
+    },
+    {
+      "bytes": 448744,
+      "kind": "tracked",
+      "path": "third_party/runtime-audit-20261015.json",
+      "sha256": "1808e6d4b3cb8565bac8bf754bbce15f1dd32979b270316392d154f6e20bb789"
+    },
+    {
+      "bytes": 448662,
+      "kind": "tracked",
+      "path": "third_party/runtime-audit-20261016.json",
+      "sha256": "5e8ce0cc28b99323b6e70ebcbb685fffc5982424dd2ea64b60f3917b600a1977"
+    },
+    {
+      "bytes": 599602,
+      "kind": "tracked",
+      "path": "third_party/runtime-audit-acquire-20261016.json",
+      "sha256": "ac2b13fcf055e0c6741dfc0b01c2396ad0468dfdfc48778400f1cbd563ea625f"
+    },
+    {
+      "bytes": 599653,
+      "kind": "tracked",
+      "path": "third_party/runtime-audit-m3-20261023.json",
+      "sha256": "dd8aff763f795d7eac5e73cc69b33f72aff43a58caf84c425e1ff0488f1c3537"
+    },
+    {
+      "bytes": 599602,
+      "kind": "tracked",
+      "path": "third_party/runtime-audit-packing-20261016.json",
+      "sha256": "e62440518c951d31ef9917762c0e15bc2c8da056e474ad6676d72d8a5be9f842"
+    },
+    {
+      "bytes": 7381,
+      "kind": "tracked",
+      "path": "third_party/runtime-selection-20261014.json",
+      "sha256": "b474a78226070b729fb64c38c42b36385f17510e725488f9058faee9be509cbd"
+    },
+    {
+      "bytes": 7381,
+      "kind": "tracked",
+      "path": "third_party/runtime-selection-20261016.json",
+      "sha256": "3964575dde857fab89155d682970d78e32faa0e29f10eb47425e4cfaaae43954"
+    },
+    {
+      "bytes": 7381,
+      "kind": "tracked",
+      "path": "third_party/runtime-selection-acquire-20261016.json",
+      "sha256": "7a6aa1cd87ff1b96895fc62a9945cfcdb15875f600d09f4e565f336d5da88ce5"
+    },
+    {
+      "bytes": 7381,
+      "kind": "tracked",
+      "path": "third_party/runtime-selection-m3-20261023.json",
+      "sha256": "a00c24d32f95a626ff43cfc9dd1f9a4027019d704eedc910420dfe9355e1591f"
+    },
+    {
+      "bytes": 7381,
+      "kind": "tracked",
+      "path": "third_party/runtime-selection-packing-20261016.json",
+      "sha256": "8106e51c01136c099e27547af3b67004d88f089c9833f99b648b2428eb54e4a2"
+    },
+    {
+      "bytes": 166,
+      "kind": "tracked",
+      "path": "vcpkg-configuration.json",
+      "sha256": "19a3d9bbfcb9fca64f6413c113461cfee80608a08e91261a306eba8a1a2dc691"
+    },
+    {
+      "bytes": 424,
+      "kind": "tracked",
+      "path": "vcpkg.json",
+      "sha256": "0fd83c4b0cb1400b523e20544bdb5cbaf414be533e9bd12b03f1387db6963c1e"
+    },
+    {
+      "bytes": 903,
+      "kind": "tracked",
+      "path": "workers/gsplat/local-environment.txt",
+      "sha256": "72710b2ac119a08a24f170e20b1695cafc9070587eae094ce6c9845882346aa3"
+    },
+    {
+      "bytes": 27789,
+      "kind": "tracked",
+      "path": "workers/identity/local-development-20261013.json",
+      "sha256": "5747620efc12b9893d2986180514905805575fc32ec924681dc717a5453a0e54"
+    },
+    {
+      "bytes": 11505,
+      "kind": "tracked",
+      "path": "workers/identity/metric-evaluation-cpu-20261014.json",
+      "sha256": "9921e66a36f1a07c724e3df897cebc9185f2c6dd3c34ac56eba5ff617c35842f"
+    },
+    {
+      "bytes": 509,
+      "kind": "tracked",
+      "path": "workers/metrics/evaluation-environment.txt",
+      "sha256": "9f053a0bd66053c61de856aab4275678d5ae1aa484d4bedeb51a88e764810900"
+    },
+    {
+      "bytes": 22265,
+      "kind": "tracked",
+      "path": "workers/metrics/evaluation-lock.txt",
+      "sha256": "9340a2ff469fd8bf5a25db6f9cfd6ef679d54cb16a70a9f23c18e27610956b87"
+    },
+    {
+      "bytes": 113,
+      "kind": "tracked",
+      "path": "workers/pose-requirements.txt",
+      "sha256": "a721af6f6990ea76663fc13a43cc5f598f2d8db358a1d48d77971e3c3074bd0f"
+    }
+  ],
+  "parent_commit": "eb626d3c5fc212b247a38b1347361b6711e29740",
+  "profiles": [
+    {
+      "components": [
+        {
+          "archive": {
+            "path": ".deps/catch2.tar.gz",
+            "sha256": "18b3f70ac80fccc340d8c6ff0f339b2ae64944782f8d2fca2bd705cf47cadb79",
+            "status": "LOCAL_SHA256_VERIFIED"
+          },
+          "gaps": [
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "catch2",
+          "notice": {
+            "archive_sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+            "comparison": "EXACT",
+            "member": "Catch2-3.8.1/LICENSE.txt",
+            "path": "third_party/notices/catch2-LICENSE.txt",
+            "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+            "status": "ARCHIVE_BYTES_MATCH_RETAINED"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "TAG_ARCHIVE_HASH_BOUND",
+            "url": "https://codeload.github.com/catchorg/Catch2/tar.gz/refs/tags/v3.8.1"
+          },
+          "version": "3.8.1"
+        },
+        {
+          "archive": {
+            "path": ".deps/flatbuffers.tar.gz",
+            "sha256": "b9c2df49707c57a48fc0923d52b8c73beb72d675f9d44b2211e4569be40a7421",
+            "status": "LOCAL_SHA256_VERIFIED"
+          },
+          "gaps": [
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "flatbuffers",
+          "notice": {
+            "archive_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+            "comparison": "EXACT",
+            "member": "flatbuffers-25.2.10/LICENSE",
+            "path": "third_party/notices/flatbuffers-LICENSE.txt",
+            "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+            "status": "ARCHIVE_BYTES_MATCH_RETAINED"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "TAG_ARCHIVE_HASH_BOUND",
+            "url": "https://codeload.github.com/google/flatbuffers/tar.gz/refs/tags/v25.2.10"
+          },
+          "version": "25.2.10"
+        },
+        {
+          "archive": {
+            "path": ".deps/imgui.tar.gz",
+            "sha256": "8e1bbc76c71d74fef2fb85db7e7ca8eba13d6a86623c54992b60162db554ffdb",
+            "status": "LOCAL_SHA256_VERIFIED"
+          },
+          "gaps": [
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "imgui",
+          "notice": {
+            "archive_sha256": "c80c5789748d955c4a650562baa0d750494e2c7128c2ca66aaebe2e3c4e198bf",
+            "comparison": "EXACT",
+            "member": "imgui-1.91.9b/LICENSE.txt",
+            "path": "third_party/notices/imgui-LICENSE.txt",
+            "sha256": "c80c5789748d955c4a650562baa0d750494e2c7128c2ca66aaebe2e3c4e198bf",
+            "status": "ARCHIVE_BYTES_MATCH_RETAINED"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "TAG_ARCHIVE_HASH_BOUND",
+            "url": "https://codeload.github.com/ocornut/imgui/tar.gz/refs/tags/v1.91.9b"
+          },
+          "version": "1.91.9b"
+        },
+        {
+          "archive": {
+            "path": ".deps/jolt-5.3.0.tar.gz",
+            "sha256": "e7f9621e480646c434150e1fbe3a9410f4ec4b04ffe54791e0678326b741b918",
+            "status": "LOCAL_SHA256_VERIFIED"
+          },
+          "gaps": [
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "jolt53",
+          "notice": {
+            "archive_sha256": "800abe35d64ad9defd636ff1ee8c961e06f0ebca3ef8d10083e8aa0e8ef86ac3",
+            "comparison": "EXACT",
+            "member": "JoltPhysics-5.3.0/LICENSE",
+            "path": "third_party/notices/jolt-5.3.0-LICENSE.txt",
+            "sha256": "800abe35d64ad9defd636ff1ee8c961e06f0ebca3ef8d10083e8aa0e8ef86ac3",
+            "status": "ARCHIVE_BYTES_MATCH_RETAINED"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "TAG_ARCHIVE_HASH_BOUND",
+            "url": "https://codeload.github.com/jrouwe/JoltPhysics/tar.gz/refs/tags/v5.3.0"
+          },
+          "version": "5.3.0"
+        },
+        {
+          "archive": {
+            "path": ".deps/json.tar.gz",
+            "sha256": "4b92eb0c06d10683f7447ce9406cb97cd4b453be18d7279320f7b2f025c10187",
+            "status": "LOCAL_SHA256_VERIFIED"
+          },
+          "gaps": [
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "json",
+          "notice": {
+            "archive_sha256": "46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603",
+            "comparison": "REMOVE_ONE_FIRST_LINE_TRAILING_SPACE",
+            "member": "json-3.12.0/LICENSE.MIT",
+            "path": "third_party/notices/json-LICENSE.txt",
+            "sha256": "c0d068392ea65358b798b8c165103560f06e9e3b38c4ab4e2d8810a7b931af86",
+            "status": "ARCHIVE_BYTES_MATCH_RETAINED"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "TAG_ARCHIVE_HASH_BOUND",
+            "url": "https://codeload.github.com/nlohmann/json/tar.gz/refs/tags/v3.12.0"
+          },
+          "version": "3.12.0"
+        },
+        {
+          "archive": {
+            "path": ".deps/vma-3.1.0.tar.gz",
+            "sha256": "ae134ecc37c55634f108e926f85d5d887b670360e77cd107affaf3a9539595f2",
+            "status": "LOCAL_SHA256_VERIFIED"
+          },
+          "gaps": [
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "vma",
+          "notice": {
+            "archive_sha256": "f56ab0392925231e34dd008a7670bb5c5ead490203bc9e125de3106fef642a27",
+            "comparison": "EXACT",
+            "member": "VulkanMemoryAllocator-3.1.0/LICENSE.txt",
+            "path": "third_party/notices/vma-LICENSE.txt",
+            "sha256": "f56ab0392925231e34dd008a7670bb5c5ead490203bc9e125de3106fef642a27",
+            "status": "ARCHIVE_BYTES_MATCH_RETAINED"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "TAG_ARCHIVE_HASH_BOUND",
+            "url": "https://codeload.github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/tar.gz/refs/tags/v3.1.0"
+          },
+          "version": "3.1.0"
+        }
+      ],
+      "id": "native-development-archives",
+      "kind": "native-archives"
+    },
+    {
+      "components": [
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "d6b0b20dec7f82ac19ad5b2edb479c72a24624cb355ca6ce6a285734cafeabe0",
+            "metadata_sha256": "2d80f43bd905689145c00b3133bc95895d654ced70a96a1802e9237e0d66599f",
+            "record_sha256": "977b6b42d26c24d999d1babdcd700a9cb146c085a61de15f7b252e2e441aee04"
+          },
+          "name": "filelock",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "fc80e6d227182319328f6dd1a9ba37fad107f03772638481bd1fefe3c4291e62",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Documentation, https://py-filelock.readthedocs.io",
+              "Homepage, https://github.com/tox-dev/py-filelock",
+              "Source, https://github.com/tox-dev/py-filelock",
+              "Tracker, https://github.com/tox-dev/py-filelock/issues"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "3.32.3"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "4814475eaea5a57b27be1e72776b839eac52082a177a4aadf2d3fd348246d341",
+            "metadata_sha256": "88b1657585de14e3bb82aa5278aa9595b30aa4ca74ead073d8950615c808099d",
+            "record_sha256": "bf8970ef32f4fa1da4c23e55e648fbcd3980d3d67f14268a514a5973514fd2a0"
+          },
+          "name": "fsspec",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "6353cad46819c90ed70f738ad0d5f0f7e4946c5dc3852fe6692d9a89aa440019",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Changelog, https://filesystem-spec.readthedocs.io/en/latest/changelog.html",
+              "Documentation, https://filesystem-spec.readthedocs.io/en/latest/",
+              "Homepage, https://github.com/fsspec/filesystem_spec"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "2026.7.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "abe98ac3dd1125329987690c7a5418314ad110ba00bacac9e54fc39aedecc091",
+            "metadata_sha256": "64f2445baf103064fa92a07ecb9e0725ee761ca0c24fc1bc2936b6d222d74fa3",
+            "record_sha256": "b102c7f867720e63a39f177646c3f019541ab2b2c8a2f8db149c6da1c0c3a739"
+          },
+          "name": "gsplat",
+          "notice": {
+            "files": 2,
+            "inventory_sha256": "9f5164224267a0a4e21d79e5162fb79467abee44fa84e67ca0d258aee921e6d5",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://github.com/nerfstudio-project/gsplat"
+            ],
+            "notice": "third_party/notices/gsplat-LICENSE.txt",
+            "selected_checkout": "937e29912570c372bed6747a5c9bf85fed877bae",
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.5.3+pt24cu124"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "348b1a8af75e219644976f09449aeeed48f4477460715a6a653d6f92042bfbe5",
+            "metadata_sha256": "1349570d090f75d2b5e95bb03d053fab0216329f73be7cf0050a7670eedd8576",
+            "record_sha256": "235ea62d76c2ebbe5d2d9b2d0c67c0cc71d932bcfdceec16c8fee5e160393dab"
+          },
+          "name": "jaxtyping",
+          "notice": {
+            "files": 2,
+            "inventory_sha256": "bb212b96815514cb27c09c51579acbd89651a28ca0b5e3aed9a118a5cdbbbe91",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "repository, https://github.com/patrick-kidger/jaxtyping"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "0.3.7"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "f1bc27b95cbcce9cbf8c2b66984d31a5263f057ec03e0605060f8f3c700e06e8",
+            "metadata_sha256": "68c5548fb67c4132a13898d9b31ec50c6bea2abdd915d921f214355c3a6499c8",
+            "record_sha256": "4551b3fb657b85a9f01e961c0f8a235da65d758149b619400211964b3ac02bdc"
+          },
+          "name": "jinja2",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "c6ba6409a5aeccf9b293faa0cc235ed07efe30d5c462b4e9fa56602b58989405",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Changes, https://jinja.palletsprojects.com/changes/",
+              "Chat, https://discord.gg/pallets",
+              "Documentation, https://jinja.palletsprojects.com/",
+              "Donate, https://palletsprojects.com/donate",
+              "Source, https://github.com/pallets/jinja/"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "3.1.6"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "18f1076f99294069f69f6e51ad065ce37cb2078d031814742f35c174e197675f",
+            "metadata_sha256": "72c36ff516755443b1ecb61e17b2567a990230b49a504b0eb0c42d5f82448a9c",
+            "record_sha256": "48b2d9d60eb24ba1e2603474c4ee01212e85a9afad256bdfda7c6c7a86e1fdb1"
+          },
+          "name": "markdown-it-py",
+          "notice": {
+            "files": 2,
+            "inventory_sha256": "b16019580045846fbced89dec2812918ad5a393d89fc2ef6e599096960c1d802",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Documentation, https://markdown-it-py.readthedocs.io",
+              "Homepage, https://github.com/executablebooks/markdown-it-py"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "4.2.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "d31a38aeb70dbaa27c9846ee758e0decd5ba740fa152aa35f29a0875ed6e8794",
+            "metadata_sha256": "12b4cc61a7fa288cf7667ee3f213786d9619db57fb33ff6f934afbcb5c12ec81",
+            "record_sha256": "494795404f6325705a427772276c3b02a2f728f33066b38325aa08f98ff54a76"
+          },
+          "name": "markupsafe",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "df51e10cd2129518b0062262b88dc2a6c6493bc20219998961cc5c56d689c818",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Donate, https://palletsprojects.com/donate",
+              "Documentation, https://markupsafe.palletsprojects.com/",
+              "Changes, https://markupsafe.palletsprojects.com/page/changes/",
+              "Source, https://github.com/pallets/markupsafe/",
+              "Chat, https://discord.gg/pallets"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "3.0.3"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "afd6c4f78b36a0548a1d93d833ff1bb405a59c1c6fa1e6fba07b36011cbaa4d8",
+            "metadata_sha256": "b53b29d48f499367053fda3c81e7ce27d2558380ebbf83e66023b02eb7ddd25d",
+            "record_sha256": "9a1b05128e711beabd7684e116fcf408ce8cff7ef10e7e8b359b248924fe529c"
+          },
+          "name": "mdurl",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "e931ad8d39eca2bec1572386a79bd2507b940b73d5d172f621f1f5cd0bece3a3",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Homepage, https://github.com/executablebooks/mdurl"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "0.1.2"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "0f3a79a0e3204a44c7d3227f8804f81c27e663e2a4269f930171dbf1a4a45dc8",
+            "metadata_sha256": "44b66ea444b9c0d19ae94815d356bf047ae6b680c19268b5c265687cd6a81406",
+            "record_sha256": "09cbd04e87d0c5ab64aab08291b31883e4ea27e8d2c640710e0beb1995e86b9b"
+          },
+          "name": "mpmath",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "e614cc897d12f0afeb651353d41926bd0cf47aea6e07c0ddcdf9c0de35883c90",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Source, https://github.com/fredrik-johansson/mpmath",
+              "Tracker, https://github.com/fredrik-johansson/mpmath/issues",
+              "Documentation, http://mpmath.org/doc/current/",
+              "http://mpmath.org/"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.3.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "35acfc6ad28131442f237db11bfc7c9f74e2f62a4cb011242a1c231a41bc756b",
+            "metadata_sha256": "2e5265dda876ef3c44fefa9e9553499bc564c89a16c95e38bdaf9babc556d1d7",
+            "record_sha256": "221ae0a94c75acd963f62b9909b58a2827a8cdfba8f0adcfb4141b598b201779"
+          },
+          "name": "networkx",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "7eff255e95363c0d46744456bd0d34a42de26abf28c0895105b82737222cbee1",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Homepage, https://networkx.org/",
+              "Bug Tracker, https://github.com/networkx/networkx/issues",
+              "Documentation, https://networkx.org/documentation/stable/",
+              "Source Code, https://github.com/networkx/networkx"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "3.4.2"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "91cd6ada9b4824d1930d46637cd74d544c3a91710bf0a3fe4d702766e966ec5d",
+            "metadata_sha256": "9628f3ee4355eb4805e7afdb4b01e20129fb76dfb76e6f8c4ce86150842d611c",
+            "record_sha256": "ef04a430763122dafbb01479a572962b1bf7f57e03b38eb90c494ed04a3cafea"
+          },
+          "name": "ninja",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "a940a09cd914e898914b7fe500e0eb2c0c5968ac95fd11431bbd76186fb3b88b",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Bug Tracker, https://github.com/scikit-build/ninja-python-distributions/issues",
+              "Documentation, https://github.com/scikit-build/ninja-python-distributions#readme",
+              "Download, https://github.com/ninja-build/ninja/releases",
+              "Homepage, http://ninja-build.org/",
+              "Mailing list, https://groups.google.com/forum/#!forum/scikit-build",
+              "Source Code, https://github.com/scikit-build/ninja-python-distributions"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.13.2"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "73c6903822983dd96435bf9cbd24ade82faa7f97bc1543f30a763900637cdecf",
+            "metadata_sha256": "b09734a7fed44e84b4c8161934ce532dff1e779ec6822d415644d117f6381070",
+            "record_sha256": "8cc123ac0bfcb4f5fb144e8263987697d11012d75051ab0a2fea492bad93eceb"
+          },
+          "name": "numpy",
+          "notice": {
+            "files": 4,
+            "inventory_sha256": "1ffb2535910e436925d8024ef00fa10191f26de99f70c8694fb254ccadf51745",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Homepage, https://numpy.org",
+              "Documentation, https://numpy.org/doc/",
+              "Source, https://github.com/numpy/numpy",
+              "Download, https://pypi.org/project/numpy/#files",
+              "Tracker, https://github.com/numpy/numpy/issues",
+              "Release notes, https://numpy.org/doc/stable/release",
+              "https://numpy.org"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.26.4"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "4947f563b7cb45441020a109f3a04e5b9de0364b6e443a3fd118d41add992098",
+            "metadata_sha256": "ebd319a1e30b0af5b5d240cdd16657c5e325805c5da09ae4246a9f2d49ff0f42",
+            "record_sha256": "b03ec23c7134d2836e5ae13ab82d9bb4114163e10fdf0787463d145d4d728cd5"
+          },
+          "name": "nvidia-cublas-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "3fb8e0bb87f9b9336a50f32fc55d627077f9f0b3df6e42e7910e9f7ab7ce6951",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "12.4.2.65"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "f9c1dd7d7fea1725219031ec988498a34a481676cf9b97143e001f7fc1659afb",
+            "metadata_sha256": "5f07bccaeb2269d0b67dcbc481aeea1b86cfe09d61f9c22aa7cefddaeb1dd6c1",
+            "record_sha256": "4360a059c6a82a06a33a12037190b1734748c79710888943638bc39e3ad2a55c"
+          },
+          "name": "nvidia-cuda-cupti-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "f076f3a1203379c6da1c9d9201d272c61b9474812f9f2509d4624f6c5737329f",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "12.4.99"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "609b151013e973e07f54ca403cc1d575e6da057840a6fa17579a67d2f637980a",
+            "metadata_sha256": "da0b2d3b538382ed2a861d507c9508aba7efb1caa78cf72594bfa83a3b7e44e8",
+            "record_sha256": "d2591c4d31b5c7d7fde36eb2fcbefd3ab83c6a891a5dc72c218dc109d3bb676d"
+          },
+          "name": "nvidia-cuda-nvrtc-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "99154da2d302582c8e2cdb4f7ca85186ba7c0a176f7c4bc5b14bc2bae9b8eee7",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "12.4.99"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "d093db988d609f3096e39de24faabd03fd70fed8484f5af43a929fe02044bf37",
+            "metadata_sha256": "604e585b12231ba539bf6c333cd98aefad048a79af922b56265c2fb61e2ed323",
+            "record_sha256": "a000721434e677cbc0afb5294d3a16100bf024ce023c5fa4f6e3ab7eff5d14d7"
+          },
+          "name": "nvidia-cuda-runtime-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "8f1ef89cdefda5c0f181862ef6d398569dfd2a6f944bbee7992ea85abd270086",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "12.4.99"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "442b0cc15c6cce525b91fe901118a95cab3cc980d59befa21bfa0ee084efdf4c",
+            "metadata_sha256": "575bc4ecda950190d417aa63b4ee6e85bf5ab8805ef6a7d18bfb51deb6082b71",
+            "record_sha256": "5245de63babbeeb2311f657c2faa8ed27d51c8d9c103eb25c83ad9cfc6e06b3a"
+          },
+          "name": "nvidia-cudnn-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "5dc114d714617f2e23229462991a9ec2d8ff5545daf5a9d542e2cea8a9f651df",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "9.1.0.70"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "ed9d81e5b36a788df8796cdc74be0225875745a51b9fafc654b1b6803e9d471d",
+            "metadata_sha256": "9bff06506ca89c866ff4d2e41443524f0ed7f2b832bd8a085641d9caf7fd4b49",
+            "record_sha256": "5ce4a4a9bfb832f75fb690988a8cfc27a5e1eff5928a8bd29a68206f097df1b8"
+          },
+          "name": "nvidia-cufft-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "652a3b13f02dbbc9ef3d546fc6ef7ca8b9ef7ab86509b9963e454cb7fd0549ed",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "11.2.0.44"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "bbef2cc56d58371beedfcb45a0ee7e16086260487e72f06d617c1ff99b258b41",
+            "metadata_sha256": "60da6c3cdf1ba927d015a7da43ffb8f1aa1ea78f85742c8ab13242ccd5429146",
+            "record_sha256": "b2e64f9bee90b6c9ca42323e38942474b26826a0a70831efd114a05585ffd3fb"
+          },
+          "name": "nvidia-curand-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "da4638aed05bafcc36d672dedc6d098a7605ba7a71b6fd530dacc1fa7ca18437",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "10.3.5.119"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "f31bebc57070052425236bb378a46cd0b0dd4c53fc833307085a99470e680971",
+            "metadata_sha256": "7e3f93aa3e277f162473e48ee41d8acb6bf4cecb2aad34249f5ce0aae7a02465",
+            "record_sha256": "76447301e852c64f8b1792290836712e2c6f993c1e3339b9df62629827d240e4"
+          },
+          "name": "nvidia-cusolver-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "b880544a58d6f26ba41320b2da25d15121e3d522923c9bc649cd4ad09f77b3be",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "11.6.0.99"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "ecd9d6735993413849765ca19c7040d69efed6792832bb0ec71f4e3f389c8565",
+            "metadata_sha256": "73a03e04fdc43649d1339cb3eceb15d54a34ecccf24867dde9c88f885137668f",
+            "record_sha256": "01489a28812ac598664d4de5e9f7d93720b112bcc4c3617565352a78869ace58"
+          },
+          "name": "nvidia-cusparse-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "9cda98ab7e6bed8a1a88434e33b3a71f9725447e44bce3f160d0b215c77cb8b8",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "12.3.0.142"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "1312fccf691906ae108893de69a808fbfdf5ec8c2c63b81a7cda2cb4099c2492",
+            "metadata_sha256": "4348e1a6c7e3316c75f5e08064d07bf4ecb5f25eb3dee882f9f27489d1974427",
+            "record_sha256": "c29a0efa119ab781a4454a02e477b482e4f271334b9869889e2630f5560bd4a2"
+          },
+          "name": "nvidia-nccl-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "143815155dcf71bd680b7657279740b888d77a49f7dabd4f4cbaab16eb824e10",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "2.20.5"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "d4b7051e8d2c0b6084f477593f10f6baa84e4ca1979dc078aeb8167879e6030b",
+            "metadata_sha256": "ee19aeba5c205d996a44a4044b6f6e4647a35e8dd69a229db3f52c25e7ad10e6",
+            "record_sha256": "196b09826f7cf8e5aad9f10c810e0235b87d4d3b73db6c79280a3241419884f0"
+          },
+          "name": "nvidia-nvjitlink-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "ab181a676c68582794506948189d4ec61894c554a4b8dbcdd4f3f001ae1f8ac9",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "12.4.99"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "e98cbbdefabe95633b30a83de19cc7527426c34086bb082c80320ee2a6bd539d",
+            "metadata_sha256": "25041aee459254aae0490bd4fff4c83d8d47508c517870c6d400d149eba737c6",
+            "record_sha256": "8ddf2aebd7681c212d819f55fcf32a73d6ae5af08b41fb024d97f5ad7972f5df"
+          },
+          "name": "nvidia-nvtx-cu12",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "8271e515cd1dbdeaf26a39db4fba461323db6e4ef7d87d7e4f813c63a634873e",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://developer.nvidia.com/cuda-zone"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "12.4.99"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "9447cba6f69bf838f514fb3570a976dc11db67b94945d0c69f9f8eef9bd90392",
+            "metadata_sha256": "5b611a609c38fefc3d616bf45d20aec98fb7d53f245daca9e2c30fc85c7ac282",
+            "record_sha256": "10dc179c6b9e79f584a8f368bb5bb73bd11e4e5765bb9cfd085fe16867985985"
+          },
+          "name": "packaging",
+          "notice": {
+            "files": 3,
+            "inventory_sha256": "553f95c27616dfe1f187ddeee18a0bea16f93e0dda9af6fdb4dabc690b475097",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Documentation, https://packaging.pypa.io/",
+              "Source, https://github.com/pypa/packaging"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "25.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "9d804e5222c43c53a10a98116a8c3c00e340a0a7fa9723f78b01fc5a305e4991",
+            "metadata_sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73",
+            "record_sha256": "783a9d304f7aa7057e36f4d2dff3356f97207c55b21aa64812e4b25fd49e2c1e"
+          },
+          "name": "pillow",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "d05aad23e88eb4c61a0f82a2afe5e72b7967ab62af07218ca2a8ee1ff9cdfebd",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Changelog, https://github.com/python-pillow/Pillow/releases",
+              "Documentation, https://pillow.readthedocs.io",
+              "Funding, https://tidelift.com/subscription/pkg/pypi-pillow?utm_source=pypi-pillow&utm_medium=pypi",
+              "Homepage, https://python-pillow.github.io",
+              "Mastodon, https://fosstodon.org/@pillow",
+              "Release notes, https://pillow.readthedocs.io/en/stable/releasenotes/index.html",
+              "Source, https://github.com/python-pillow/Pillow"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "11.3.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "999e4ed3506926ff23e9557e7f828ab4d5ddb66df2f8f52d2e8483b3773f4305",
+            "metadata_sha256": "f105b22529eea87dd468384469be7fb7edd4d7eef51d666cb4a69c8241a9c75c",
+            "record_sha256": "2b18b85eb178466a1dfc2f47aa876fa051f618fb3e4473a0814a41fa30d41570"
+          },
+          "name": "pycolmap",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "65efe707d76eaa52e76182743b7d319ea59a6199a4962e5e2b231742f419b3bc",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Repository, https://github.com/colmap/colmap"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "3.12.6"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "697b2eaf413a98d9fffa6388b56faebe2030cd6d9baf4ac99266f07d81cb94be",
+            "metadata_sha256": "1dde075570136774c706bf0009183a793fe0ee262e4a5590cc6eff8453eedd43",
+            "record_sha256": "e252a0bde70e4c8edb590bac71e72aa1d09d4267035d398a4cb7e5366b37f841"
+          },
+          "name": "pygments",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "6907ea3bfbcd4ae9c94f75b3cdbbc83bae4e305f516e5e762a9b79a5ffccc83a",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Homepage, https://pygments.org",
+              "Documentation, https://pygments.org/docs",
+              "Source, https://github.com/pygments/pygments",
+              "Bug Tracker, https://github.com/pygments/pygments/issues",
+              "Changelog, https://github.com/pygments/pygments/blob/master/CHANGES"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "2.21.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "39054aa3422176f32523fed58c3aacee255d5839ab3bd3ff6bf3a0ebb8e31820",
+            "metadata_sha256": "fad34fc603fac4481bf81f8dd629492fc302c0ec31909c86644751512afb2e3b",
+            "record_sha256": "1b725253b1bd316b53169a3a0b35d03d6c81bad9009ddae73d8645fb3cd3f292"
+          },
+          "name": "rich",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "56d991b4c066b156831476fa0220b95dec57d61f476963c4d1bf409278340bfb",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Documentation, https://rich.readthedocs.io/en/latest/",
+              "Homepage, https://github.com/Textualize/rich"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "15.0.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "ae0b0db6814dd6f62c2bfc85248fb8ec0ee258b7a6ae4533ee7a2332921b11d7",
+            "metadata_sha256": "c75caf32b67a13a9fc16aacf993a8bb883b7a69744ffe77cbbd4f3bfbad28f3d",
+            "record_sha256": "cdb5b36a168f9580b58a363ab6a08f4b51c4fdc645c61abc744a07ed6d7b4c8d"
+          },
+          "name": "scipy",
+          "notice": {
+            "files": 5,
+            "inventory_sha256": "5a9f000c103a5918996b2e4983d202c2ebb72a94aadd5c1dfd0555e8bea24eeb",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "homepage, https://scipy.org/",
+              "documentation, https://docs.scipy.org/doc/scipy/",
+              "source, https://github.com/scipy/scipy",
+              "download, https://github.com/scipy/scipy/releases",
+              "tracker, https://github.com/scipy/scipy/issues"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.15.3"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "dc2ac16016588536bf1ed533576e6c3afc38be13c1cb9af272e127ccd5ae22fc",
+            "metadata_sha256": "8a38c979e7476630c10f727747d74b73a3735b054b00c83797f06a8521332e49",
+            "record_sha256": "15ce9369bd4bc75e806dc14ef6a0c3d6c9e21e44c8668fbd102a1b18d80fa23d"
+          },
+          "name": "setuptools",
+          "notice": {
+            "files": 21,
+            "inventory_sha256": "44fcfa222c0278a2080b61203bbb83e6b61e53a45b8e088a9116a4193637706c",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Source, https://github.com/pypa/setuptools",
+              "Documentation, https://setuptools.pypa.io/",
+              "Changelog, https://setuptools.pypa.io/en/stable/history.html"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "75.8.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "0909db5c6b0112d3cdeb6842d4c3898e47a175145915b1359585dfa63a22a4cb",
+            "metadata_sha256": "b756c2fbfd5be05ac5bdb0ebca61f55618f30f633ed92d88a5687429313a7595",
+            "record_sha256": "3d4288eaf90307ab78734e02808fed7dd9f143d901194372524220573d4fc96b"
+          },
+          "name": "sympy",
+          "notice": {
+            "files": 2,
+            "inventory_sha256": "16c24eef0445ab1ea94233d2970c29e06bc69acec4dd5e3ac39ce1e16e3dd640",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Source, https://github.com/sympy/sympy",
+              "https://sympy.org"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.14.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "7d660db26dbeb2cb938b326f00cbc2b6df7755eed36beca0ce56a3775b5f9057",
+            "metadata_sha256": "9b7822fa34b9aaaed6dfb823a91e2928a7255ad9db590e1c195090e59e085bbd",
+            "record_sha256": "40ef79cf13d10f0ab7dcdaf60e4a6b3c677f176da393eb8f62e5f198333670cd"
+          },
+          "name": "torch",
+          "notice": {
+            "files": 2,
+            "inventory_sha256": "ca9b131211ae797c93f9efa6b4c1c6f9d5c3d7c724950bd5be905c4075a0174e",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://pytorch.org/"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "2.4.1+cu124"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "ed1845b86bea3131de8e44272674f7ba2b129c073fc68dad81813207362f98b2",
+            "metadata_sha256": "aee279b3109c38d0e12569b3d6029c9858ac1cdb0c41a8824401b3c3aae7747f",
+            "record_sha256": "1e85fc3e8b5d260a2cd26866b7739507b8a3a1cefe4685ee1359d4f9d01c1f84"
+          },
+          "name": "torchvision",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "7b82870e12b1a5a88d96b250af2b826e666eb61e45cb3f9dafd3ff7b8db26202",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://github.com/pytorch/vision"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "0.19.1+cu124"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "embedded_selected_files": [
+            {
+              "bytes": 663040,
+              "path": "lib/python3.10/site-packages/triton/backends/nvidia/bin/cuobjdump",
+              "record_check": "MATCH",
+              "sha256": "14b28512b4cb7bf6205a66ae923f81f25903ad6ea297805b5965f64b45ff6f5b"
+            },
+            {
+              "bytes": 50683112,
+              "path": "lib/python3.10/site-packages/triton/backends/nvidia/bin/nvdisasm",
+              "record_check": "MATCH",
+              "sha256": "af0a3b5be57130ecf050a310767d354a4c730b30a3bf3b88c100dc3c9bcbebea"
+            },
+            {
+              "bytes": 30314080,
+              "path": "lib/python3.10/site-packages/triton/backends/nvidia/bin/ptxas",
+              "record_check": "MATCH",
+              "sha256": "94dda54a1673940d56d3072c64ef7aacb125a1e64394586e10f77a7a5ff0ff87"
+            },
+            {
+              "bytes": 1048458,
+              "path": "lib/python3.10/site-packages/triton/backends/nvidia/include/cuda.h",
+              "record_check": "MATCH",
+              "sha256": "dbd3ae3677ecf076f6b2a0971d42b2dd5b9d5f1ccdf34e74774a16fc2df7cac1"
+            }
+          ],
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "INSTALLED_NOTICE_ABSENT",
+            "TRANSITIVE_RIGHTS_UNREVIEWED",
+            "EMBEDDED_NVIDIA_TOOLS_AND_HEADERS_TERMS_UNREVIEWED",
+            "LLVM_AMD_AND_BUILD_DEPENDENCY_NOTICES_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "d30f695bf5524a920dedf64915e4d42be76ddbd589afe4abfe5c4b33b7a754e7",
+            "metadata_sha256": "e2dc9cf2c01b2e03cf75134dcc6179d43e508dc3be73c2f1b467561c328c9ef1",
+            "record_sha256": "752de0c494afa0fec7f9ceb7a0525077d51304f7382761444f69eeb407114ff0"
+          },
+          "name": "triton",
+          "notice": {
+            "files": 0,
+            "inventory_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "status": "NO_INSTALLED_NOTICE",
+            "supplemental_source_notice": "third_party/notices/triton-3.0.0-LICENSE.txt",
+            "supplemental_source_sha256": "92640fb97222fd0a698ff28ce0c3782c172623f8d6c609b557636a80f28fb946"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://github.com/triton-lang/triton/"
+            ],
+            "notice_url": "https://raw.githubusercontent.com/triton-lang/triton/55a4ab051c88ba2baa031e520a339d3fded6468f/LICENSE",
+            "selected_tag": "v3.0.0",
+            "status": "INSTALLED_METADATA_ONLY",
+            "tag_commit": "55a4ab051c88ba2baa031e520a339d3fded6468f"
+          },
+          "version": "3.0.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "9c6059c2f900198d446df2111f10b336ed4b006874f8f76e0025d0a7b910db94",
+            "metadata_sha256": "b05084ca1d50879865178d9fff9fabeab61bdfb1f361bfbde95421ffc8f9be46",
+            "record_sha256": "9e07fea845cac76293d927afa7157a14ecba39b318bc8af236b8de530b7656c1"
+          },
+          "name": "typing-extensions",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "f3743edbe4b2283f68164de26a3b0f1601a4427699610a59ebaa64ecbcd57c3f",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Bug Tracker, https://github.com/python/typing_extensions/issues",
+              "Changes, https://github.com/python/typing_extensions/blob/main/CHANGELOG.md",
+              "Documentation, https://typing-extensions.readthedocs.io/",
+              "Home, https://github.com/python/typing_extensions",
+              "Q & A, https://github.com/python/typing/discussions",
+              "Repository, https://github.com/python/typing_extensions"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "4.16.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "fd3ea0384ebdecdc12620cb7e9b8befbcf0df53c44693bda8a66ea1d3110aa4e",
+            "metadata_sha256": "83659a4fe5e6a3a96abda2af32163a27769bb6e807e8babcd1fe37c54b87fa16",
+            "record_sha256": "34a3fabd5064fec98c7b22b577efc531439f6cef01f265bb6b2c4afab8c1c3c7"
+          },
+          "name": "wadler-lindig",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "90e3b0a1ea28d75c03352d72d79854c73872431290ba41813aedc90f80599506",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "repository, https://github.com/patrick-kidger/wadler_lindig"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "0.1.7"
+        }
+      ],
+      "id": "training",
+      "kind": "worker",
+      "receipt": "artifacts/validation/worker-identity-20261013/training-release.json",
+      "requirements": "workers/gsplat/local-environment.txt",
+      "selection": "workers/identity/local-development-20261013.json"
+    },
+    {
+      "components": [
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "b14c0f05fe05c21a7f65086a8b7e86cf72626c899dffc1f59b7de2e446d59f08",
+            "metadata_sha256": "22d648f53848429464ca643b40d73b49a920d47876fc77c395d4dca4e834904a",
+            "record_sha256": "57a6ce5815ae3486c9773a8c91c4b733a342b284a7d56305c1211bdb2aaa4fa6"
+          },
+          "name": "numpy",
+          "notice": {
+            "files": 4,
+            "inventory_sha256": "6658eaf064698d62a8d3e4695fd805055760215fa5764424787fa14d7a96f70c",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "homepage, https://numpy.org",
+              "documentation, https://numpy.org/doc/",
+              "source, https://github.com/numpy/numpy",
+              "download, https://pypi.org/project/numpy/#files",
+              "tracker, https://github.com/numpy/numpy/issues",
+              "release notes, https://numpy.org/doc/stable/release"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "2.2.6"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "3aebf07673e5a1b0fa129adbbc28dfeba94fc00925b57cba1ad817a196df9189",
+            "metadata_sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73",
+            "record_sha256": "5950f5575759239d32ed1b7e67f3706febe5dee3fb365fcd5f35327c5b83c936"
+          },
+          "name": "pillow",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "b135076be3e2c6d24749d1ce43204a1812f02fb7fd841df439644f827df8142d",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Changelog, https://github.com/python-pillow/Pillow/releases",
+              "Documentation, https://pillow.readthedocs.io",
+              "Funding, https://tidelift.com/subscription/pkg/pypi-pillow?utm_source=pypi-pillow&utm_medium=pypi",
+              "Homepage, https://python-pillow.github.io",
+              "Mastodon, https://fosstodon.org/@pillow",
+              "Release notes, https://pillow.readthedocs.io/en/stable/releasenotes/index.html",
+              "Source, https://github.com/python-pillow/Pillow"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "11.3.0"
+        },
+        {
+          "archive": {
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "08444ffa575233c0c3673aa3cfc5b850287198bcb422a2e2f1bff2b77548ba7c",
+            "metadata_sha256": "1d16f320752cecdfbc7f4fd7f2589f428b2546c3803daebd78eda5c5579dd973",
+            "record_sha256": "6af065861757aab0d39556a2179cd72fda7969140c42eb04eebfa6eebd90361b"
+          },
+          "name": "pycolmap",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "2268efdbf227545e8ad549cbde5bae0accfb843eebe077af84833d47d3c36b6b",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Repository, https://github.com/colmap/colmap"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "4.2.1"
+        }
+      ],
+      "id": "poses",
+      "kind": "worker",
+      "receipt": "artifacts/validation/worker-identity-20261013/poses-release.json",
+      "requirements": "workers/pose-requirements.txt",
+      "selection": "workers/identity/local-development-20261013.json"
+    },
+    {
+      "components": [
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "d6b0b20dec7f82ac19ad5b2edb479c72a24624cb355ca6ce6a285734cafeabe0",
+            "metadata_sha256": "2d80f43bd905689145c00b3133bc95895d654ced70a96a1802e9237e0d66599f",
+            "record_sha256": "977b6b42d26c24d999d1babdcd700a9cb146c085a61de15f7b252e2e441aee04"
+          },
+          "name": "filelock",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "fc80e6d227182319328f6dd1a9ba37fad107f03772638481bd1fefe3c4291e62",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Documentation, https://py-filelock.readthedocs.io",
+              "Homepage, https://github.com/tox-dev/py-filelock",
+              "Source, https://github.com/tox-dev/py-filelock",
+              "Tracker, https://github.com/tox-dev/py-filelock/issues"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "3.32.3"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "4814475eaea5a57b27be1e72776b839eac52082a177a4aadf2d3fd348246d341",
+            "metadata_sha256": "88b1657585de14e3bb82aa5278aa9595b30aa4ca74ead073d8950615c808099d",
+            "record_sha256": "bf8970ef32f4fa1da4c23e55e648fbcd3980d3d67f14268a514a5973514fd2a0"
+          },
+          "name": "fsspec",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "6353cad46819c90ed70f738ad0d5f0f7e4946c5dc3852fe6692d9a89aa440019",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Changelog, https://filesystem-spec.readthedocs.io/en/latest/changelog.html",
+              "Documentation, https://filesystem-spec.readthedocs.io/en/latest/",
+              "Homepage, https://github.com/fsspec/filesystem_spec"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "2026.7.0"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "f1bc27b95cbcce9cbf8c2b66984d31a5263f057ec03e0605060f8f3c700e06e8",
+            "metadata_sha256": "68c5548fb67c4132a13898d9b31ec50c6bea2abdd915d921f214355c3a6499c8",
+            "record_sha256": "4551b3fb657b85a9f01e961c0f8a235da65d758149b619400211964b3ac02bdc"
+          },
+          "name": "jinja2",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "c6ba6409a5aeccf9b293faa0cc235ed07efe30d5c462b4e9fa56602b58989405",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Changes, https://jinja.palletsprojects.com/changes/",
+              "Chat, https://discord.gg/pallets",
+              "Documentation, https://jinja.palletsprojects.com/",
+              "Donate, https://palletsprojects.com/donate",
+              "Source, https://github.com/pallets/jinja/"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "3.1.6"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "a9440898ebcd4e9dbd5020b6d490ff825a9072b43628d77e01a7f2ce3c95292e",
+            "metadata_sha256": "9665528f6216f50700c0497cdd651afde870b5c13815952800c900a34a1a4c42",
+            "record_sha256": "4db47328866c178613ff73e24c2df8233771fadb654ca76b46a272c29bf1b56e"
+          },
+          "name": "lightning-utilities",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "671a7b7d28c29df92e5b32aa79ac475a818d03c4a97654a87f6c14ecc7899941",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Bug Tracker, https://github.com/Lightning-AI/utilities/issues",
+              "Documentation, https://dev-toolbox.rtfd.io/en/latest/",
+              "Source Code, https://github.com/Lightning-AI/utilities",
+              "https://github.com/Lightning-AI/utilities"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "0.15.2"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "d31a38aeb70dbaa27c9846ee758e0decd5ba740fa152aa35f29a0875ed6e8794",
+            "metadata_sha256": "12b4cc61a7fa288cf7667ee3f213786d9619db57fb33ff6f934afbcb5c12ec81",
+            "record_sha256": "494795404f6325705a427772276c3b02a2f728f33066b38325aa08f98ff54a76"
+          },
+          "name": "markupsafe",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "df51e10cd2129518b0062262b88dc2a6c6493bc20219998961cc5c56d689c818",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Donate, https://palletsprojects.com/donate",
+              "Documentation, https://markupsafe.palletsprojects.com/",
+              "Changes, https://markupsafe.palletsprojects.com/page/changes/",
+              "Source, https://github.com/pallets/markupsafe/",
+              "Chat, https://discord.gg/pallets"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "3.0.3"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "0f3a79a0e3204a44c7d3227f8804f81c27e663e2a4269f930171dbf1a4a45dc8",
+            "metadata_sha256": "44b66ea444b9c0d19ae94815d356bf047ae6b680c19268b5c265687cd6a81406",
+            "record_sha256": "09cbd04e87d0c5ab64aab08291b31883e4ea27e8d2c640710e0beb1995e86b9b"
+          },
+          "name": "mpmath",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "e614cc897d12f0afeb651353d41926bd0cf47aea6e07c0ddcdf9c0de35883c90",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Source, https://github.com/fredrik-johansson/mpmath",
+              "Tracker, https://github.com/fredrik-johansson/mpmath/issues",
+              "Documentation, http://mpmath.org/doc/current/",
+              "http://mpmath.org/"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.3.0"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "35acfc6ad28131442f237db11bfc7c9f74e2f62a4cb011242a1c231a41bc756b",
+            "metadata_sha256": "2e5265dda876ef3c44fefa9e9553499bc564c89a16c95e38bdaf9babc556d1d7",
+            "record_sha256": "221ae0a94c75acd963f62b9909b58a2827a8cdfba8f0adcfb4141b598b201779"
+          },
+          "name": "networkx",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "7eff255e95363c0d46744456bd0d34a42de26abf28c0895105b82737222cbee1",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Homepage, https://networkx.org/",
+              "Bug Tracker, https://github.com/networkx/networkx/issues",
+              "Documentation, https://networkx.org/documentation/stable/",
+              "Source Code, https://github.com/networkx/networkx"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "3.4.2"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "c93c302bec5910f6a6676fc063baca8653b5e6627b7d707f5a7045f20a74b97b",
+            "metadata_sha256": "b09734a7fed44e84b4c8161934ce532dff1e779ec6822d415644d117f6381070",
+            "record_sha256": "313b671b4a7e18b8f0e710eaaedde1c0a7e0bce92193f61cad475984711aeb22"
+          },
+          "name": "numpy",
+          "notice": {
+            "files": 4,
+            "inventory_sha256": "1ffb2535910e436925d8024ef00fa10191f26de99f70c8694fb254ccadf51745",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Homepage, https://numpy.org",
+              "Documentation, https://numpy.org/doc/",
+              "Source, https://github.com/numpy/numpy",
+              "Download, https://pypi.org/project/numpy/#files",
+              "Tracker, https://github.com/numpy/numpy/issues",
+              "Release notes, https://numpy.org/doc/stable/release",
+              "https://numpy.org"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.26.4"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "9447cba6f69bf838f514fb3570a976dc11db67b94945d0c69f9f8eef9bd90392",
+            "metadata_sha256": "5b611a609c38fefc3d616bf45d20aec98fb7d53f245daca9e2c30fc85c7ac282",
+            "record_sha256": "10dc179c6b9e79f584a8f368bb5bb73bd11e4e5765bb9cfd085fe16867985985"
+          },
+          "name": "packaging",
+          "notice": {
+            "files": 3,
+            "inventory_sha256": "553f95c27616dfe1f187ddeee18a0bea16f93e0dda9af6fdb4dabc690b475097",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Documentation, https://packaging.pypa.io/",
+              "Source, https://github.com/pypa/packaging"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "25.0"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "9d804e5222c43c53a10a98116a8c3c00e340a0a7fa9723f78b01fc5a305e4991",
+            "metadata_sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73",
+            "record_sha256": "783a9d304f7aa7057e36f4d2dff3356f97207c55b21aa64812e4b25fd49e2c1e"
+          },
+          "name": "pillow",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "d05aad23e88eb4c61a0f82a2afe5e72b7967ab62af07218ca2a8ee1ff9cdfebd",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Changelog, https://github.com/python-pillow/Pillow/releases",
+              "Documentation, https://pillow.readthedocs.io",
+              "Funding, https://tidelift.com/subscription/pkg/pypi-pillow?utm_source=pypi-pillow&utm_medium=pypi",
+              "Homepage, https://python-pillow.github.io",
+              "Mastodon, https://fosstodon.org/@pillow",
+              "Release notes, https://pillow.readthedocs.io/en/stable/releasenotes/index.html",
+              "Source, https://github.com/python-pillow/Pillow"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "11.3.0"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "dc2ac16016588536bf1ed533576e6c3afc38be13c1cb9af272e127ccd5ae22fc",
+            "metadata_sha256": "8a38c979e7476630c10f727747d74b73a3735b054b00c83797f06a8521332e49",
+            "record_sha256": "15ce9369bd4bc75e806dc14ef6a0c3d6c9e21e44c8668fbd102a1b18d80fa23d"
+          },
+          "name": "setuptools",
+          "notice": {
+            "files": 21,
+            "inventory_sha256": "44fcfa222c0278a2080b61203bbb83e6b61e53a45b8e088a9116a4193637706c",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Source, https://github.com/pypa/setuptools",
+              "Documentation, https://setuptools.pypa.io/",
+              "Changelog, https://setuptools.pypa.io/en/stable/history.html"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "75.8.0"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "3d57c2560bffa3ff7cb7cac367eb20aca8175142d6189534774ea8c7687db064",
+            "metadata_sha256": "b756c2fbfd5be05ac5bdb0ebca61f55618f30f633ed92d88a5687429313a7595",
+            "record_sha256": "603d06c5fd216e08c69e62cd64206143a7cd6755a976b358d7b08c396f82572f"
+          },
+          "name": "sympy",
+          "notice": {
+            "files": 2,
+            "inventory_sha256": "16c24eef0445ab1ea94233d2970c29e06bc69acec4dd5e3ac39ce1e16e3dd640",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Source, https://github.com/sympy/sympy",
+              "https://sympy.org"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.14.0"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "8a61c3b569b3492514ec26d43739b3c1bb44d4c9f778ce0c98e721fdca227114",
+            "metadata_sha256": "03c747e217a76a8cb173860987ec3f4197ea21d97fbd1caef6bcba1d8b14dc22",
+            "record_sha256": "24706b6bf5c80af2c95604cbbe4d029fc7ff9fba1111c30b60b707050a429fc7"
+          },
+          "name": "torch",
+          "notice": {
+            "files": 2,
+            "inventory_sha256": "8bcae68f0b0c2e72f6a141ec3331a64a6723f3f72b3e6e0125e5daa21540c56b",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://pytorch.org/"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "2.4.1+cpu"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "28d53d47932a3f4edea16bc4413cd209f0c941143ec0ed8a32eaf2fe4c3e7f4e",
+            "metadata_sha256": "961f64f02aef800de886a5da9fe510ff739c3a164816dc8f7895cea8c3124ccb",
+            "record_sha256": "0b79c8983e7347cc7d3f3d94c4965c57d3bbc517876f4a4c78b4678e60f1b95f"
+          },
+          "name": "torchmetrics",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "7557c55626dfc16fe210a926b075c6024d200b3c818472470987ad0efea390d8",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Bug Tracker, https://github.com/Lightning-AI/torchmetrics/issues",
+              "Documentation, https://torchmetrics.rtfd.io/en/latest/",
+              "Source Code, https://github.com/Lightning-AI/torchmetrics",
+              "https://github.com/Lightning-AI/torchmetrics"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "1.8.2"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "9b6e589b0063611e970e138d78817d54c50b6404ee70f6b96482264452b4a006",
+            "metadata_sha256": "13bbb2546108281ce16eacecde942bf0cc33c5d352762cedce4341b3f2527dbb",
+            "record_sha256": "1109e73f8695de7bac47ac3927cddca01d73e21886194ce0597ea1b246a6bfab"
+          },
+          "name": "torchvision",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "61d2d560aeb09fbc7e9e2ab6f90071ef7ce749dc1098bdbc2c9c720500aab6eb",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "https://github.com/pytorch/vision"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "0.19.1+cpu"
+        },
+        {
+          "archive": {
+            "installer_lock": "workers/metrics/evaluation-lock.txt",
+            "qualification": "Allowed archive hashes retained; selected original wheel bytes unavailable",
+            "sha256": null,
+            "status": "ORIGINAL_WHEEL_UNAVAILABLE"
+          },
+          "gaps": [
+            "ORIGINAL_WHEEL_UNAVAILABLE",
+            "WHEEL_SOURCE_BINDING_UNVERIFIED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "installed": {
+            "installed_files_sha256": "9c6059c2f900198d446df2111f10b336ed4b006874f8f76e0025d0a7b910db94",
+            "metadata_sha256": "b05084ca1d50879865178d9fff9fabeab61bdfb1f361bfbde95421ffc8f9be46",
+            "record_sha256": "9e07fea845cac76293d927afa7157a14ecba39b318bc8af236b8de530b7656c1"
+          },
+          "name": "typing-extensions",
+          "notice": {
+            "files": 1,
+            "inventory_sha256": "f3743edbe4b2283f68164de26a3b0f1601a4427699610a59ebaa64ecbcd57c3f",
+            "status": "INSTALLED_RECORD_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "declared_upstream": [
+              "Bug Tracker, https://github.com/python/typing_extensions/issues",
+              "Changes, https://github.com/python/typing_extensions/blob/main/CHANGELOG.md",
+              "Documentation, https://typing-extensions.readthedocs.io/",
+              "Home, https://github.com/python/typing_extensions",
+              "Q & A, https://github.com/python/typing/discussions",
+              "Repository, https://github.com/python/typing_extensions"
+            ],
+            "status": "INSTALLED_METADATA_ONLY"
+          },
+          "version": "4.16.0"
+        }
+      ],
+      "id": "metrics-cpu",
+      "kind": "worker",
+      "receipt": "artifacts/validation/metric-identity-20261014/evaluation-metrics.json",
+      "requirements": "workers/metrics/evaluation-environment.txt",
+      "selection": "workers/identity/metric-evaluation-cpu-20261014.json"
+    },
+    {
+      "components": [
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "sdl3",
+          "notice": {
+            "declared_license": "Zlib",
+            "evidence": "artifacts/validation/dependency-closure-20261014/sdl3-system-notice",
+            "sha256": "1c040b8271b37e5076359f8fd54240e371114112924d2df81ef87c7d6a1dfdfd",
+            "status": "SELECTED_LOCAL_NOTICE_BYTES"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://www.libsdl.org"
+          },
+          "version": "3.4.18-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "vulkan-headers",
+          "notice": {
+            "declared_license": "Apache-2.0 OR MIT",
+            "evidence": "artifacts/validation/dependency-closure-20261014/vulkan-headers-system-notice",
+            "sha256": "1ca3502222d967f3be5751c55f6b7ee735b5383909c3b501495f54b216dbf227",
+            "status": "SELECTED_LOCAL_NOTICE_BYTES"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://www.vulkan.org/"
+          },
+          "version": "1:1.4.363.0-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "COMPLETE_SYSTEM_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "vulkan-icd-loader",
+          "notice": {
+            "declared_license": "Apache-2.0",
+            "status": "PACKAGE_METADATA_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://www.vulkan.org/"
+          },
+          "version": "1.4.363.0-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "openssl",
+          "notice": {
+            "declared_license": "Apache-2.0",
+            "evidence": "artifacts/validation/dependency-closure-20261014/openssl-system-notice",
+            "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
+            "status": "SELECTED_LOCAL_NOTICE_BYTES"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://www.openssl.org"
+          },
+          "version": "3.6.5-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "COMPLETE_SYSTEM_NOTICES_UNAVAILABLE",
+            "GPL_ENABLED_FFMPEG_DIFFERS_FROM_PROPOSED_LGPL_RELEASE_PROFILE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "ffmpeg",
+          "notice": {
+            "declared_license": "GPL-3.0-only",
+            "status": "PACKAGE_METADATA_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://ffmpeg.org"
+          },
+          "version": "2:9.0.2-2"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "COMPLETE_SYSTEM_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "shaderc",
+          "notice": {
+            "declared_license": "Apache-2.0",
+            "status": "PACKAGE_METADATA_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://github.com/google/shaderc"
+          },
+          "version": "2026.4-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "glslang",
+          "notice": {
+            "declared_license": "BSD-3-Clause",
+            "evidence": "artifacts/validation/dependency-closure-20261014/glslang-system-notice",
+            "sha256": "17e70c676e1521ff3e4686f04a2053d93a7e28a33be8de7ec37ab0ff72feb677",
+            "status": "SELECTED_LOCAL_NOTICE_BYTES"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://github.com/KhronosGroup/glslang"
+          },
+          "version": "1:1.4.363.0-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "COMPLETE_SYSTEM_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "spirv-tools",
+          "notice": {
+            "declared_license": "Apache-2.0",
+            "status": "PACKAGE_METADATA_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://www.khronos.org/spirv/"
+          },
+          "version": "1:1.4.363.0-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "COMPLETE_SYSTEM_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "gcc-libs",
+          "notice": {
+            "declared_license": "GPL-3.0-or-later WITH GCC-exception-3.1  GFDL-1.3-or-later",
+            "status": "PACKAGE_METADATA_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://gcc.gnu.org"
+          },
+          "version": "16.2.1+r23+gd564253eb6c8-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "COMPLETE_SYSTEM_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "python",
+          "notice": {
+            "declared_license": "PSF-2.0",
+            "status": "PACKAGE_METADATA_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://www.python.org/"
+          },
+          "version": "3.14.8-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "COMPLETE_SYSTEM_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "cmake",
+          "notice": {
+            "declared_license": "BSD-3-Clause",
+            "status": "PACKAGE_METADATA_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://www.cmake.org/"
+          },
+          "version": "4.4.4-1"
+        },
+        {
+          "archive": {
+            "status": "SYSTEM_PACKAGE_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "SYSTEM_SOURCE_AND_BINARY_ARCHIVES_UNAVAILABLE",
+            "SYSTEM_TRANSITIVE_GRAPH_UNRESOLVED",
+            "COMPLETE_SYSTEM_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "ninja",
+          "notice": {
+            "declared_license": "Apache-2.0",
+            "status": "PACKAGE_METADATA_ONLY"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "OS_PACKAGE_METADATA_ONLY",
+            "url": "https://ninja-build.org/"
+          },
+          "version": "1.13.2-3"
+        }
+      ],
+      "evidence": "artifacts/validation/dependency-closure-20261014/system-packages.log",
+      "id": "native-system-and-build-tools",
+      "kind": "system-observation"
+    },
+    {
+      "components": [
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "catch2",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": null
+        },
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "flatbuffers",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": "25.2.10"
+        },
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "features": [
+            "sdl3-binding",
+            "vulkan-binding"
+          ],
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "imgui",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": null
+        },
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "joltphysics",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": "5.3.0"
+        },
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "nlohmann-json",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": null
+        },
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "openssl",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": null
+        },
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "sdl3",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": null
+        },
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "shaderc",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": null
+        },
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "vulkan",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": null
+        },
+        {
+          "archive": {
+            "status": "RESOLVED_PORT_ARCHIVES_UNAVAILABLE"
+          },
+          "gaps": [
+            "RELEASE_GRAPH_NOT_RESOLVED_OR_BUILT",
+            "RESOLVED_ARCHIVES_AND_NOTICES_UNAVAILABLE",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "vulkan-memory-allocator",
+          "notice": {
+            "status": "RESOLVED_PORT_NOTICES_UNAVAILABLE"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "baseline": "ce613c41372b23b1f51333815feb3edd87ef8a8b",
+            "registry": "https://github.com/microsoft/vcpkg",
+            "status": "IMMUTABLE_REGISTRY_DECLARATION_ONLY"
+          },
+          "version": null
+        }
+      ],
+      "id": "release-vcpkg-declaration",
+      "kind": "release-declaration"
+    },
+    {
+      "components": [
+        {
+          "archive": {
+            "bytes": 244408911,
+            "sha256": "7be5be791159472b1fbf3c69796f7cb30dca7ad8466c2df70058c37116cdee02",
+            "status": "PREVIOUS_AUTHORIZED_DOWNLOAD_HASH"
+          },
+          "gaps": [
+            "MODEL_AND_DATASET_RIGHTS_UNREVIEWED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "alexnet-imagenet1k-v1",
+          "notice": {
+            "status": "MODEL_AND_DATASET_TERMS_NOT_CLEARED"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "status": "EXPLICIT_OFFICIAL_URL_RECORDED",
+            "url": "https://download.pytorch.org/models/alexnet-owt-7be5be79.pth"
+          },
+          "version": "torchvision-0.19.1"
+        },
+        {
+          "archive": {
+            "sha256": "df73285e35b22355a2df87cdb6b70b343713b667eddbda73e1977e0c860835c0",
+            "status": "INSTALLED_BYTES_ONLY"
+          },
+          "gaps": [
+            "ORIGINAL_RESOURCE_ARCHIVE_BINDING_UNVERIFIED",
+            "MODEL_AND_DATASET_RIGHTS_UNREVIEWED",
+            "TRANSITIVE_RIGHTS_UNREVIEWED"
+          ],
+          "name": "lpips-alex-linear-weights",
+          "notice": {
+            "status": "MODEL_AND_DATASET_TERMS_NOT_CLEARED"
+          },
+          "rights": "NOT_REVIEWED",
+          "source": {
+            "path": "torchmetrics/functional/image/lpips_models/alex.pth",
+            "status": "RECORD_CHECKED_PACKAGE_RESOURCE"
+          },
+          "version": "torchmetrics-1.8.2"
+        }
+      ],
+      "id": "metric-models",
+      "kind": "model"
+    }
+  ],
+  "remaining_boundaries": [
+    "Selected runtime ELF contexts captured; lazy plugins and actual Python import contexts remain unqualified",
+    "Worker interpreter/CUDA host runtime and extension build graph",
+    "Other native platforms and release-vcpkg resolution",
+    "Archive provisioning and commercial redistribution terms"
+  ],
+  "rights_qualified": false,
+  "runtime_summary": "third_party/runtime-audit-m3-20261023.json",
+  "schema_version": 1,
+  "scope": "Dated selected dependency gaps, not a complete SBOM, source build attestation or release clearance. Raw worker receipts describe historical RECORD-listed bytes; local check rehashes selected metadata/notices, not all installed payloads.",
+  "status": "IN_PROGRESS",
+  "timezone": "Asia/Hong_Kong"
+}

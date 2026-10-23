@@ -14,8 +14,13 @@ supports that review.
 [Build/style/inventory repair](validation/2026-10-20-native-inventory-repair.md)
 separates the non-Linux geometry fallback from its solver body, removes all 24
 Black failures without AST changes, and refreshes loader/import/viewer/owner
-receipts. Those default/local checks passed for that build; current runtime receipts need
-recapture after subsequent native rebuilds. The 253 source/rights gaps remain.
+receipts. Those checks remain historical. The
+[23 October selected inventory refresh](validation/2026-10-23-m3-dependency-refresh.md)
+now passes default/local checks against fresh loader, backend/viewer mapping and
+owner receipts. It retains the Jolt inventory's 257 source/rights gaps across
+86 components/seven profiles. Exact workspace LLVM 23.1.1 format/tidy and pinned
+Black checks pass without changing global compilers or worker environments.
+Use `artifacts/tools/llvm-official-23.1.1/bin` for the exact C++ style tools.
 The earlier full Windows log confirms C4702/C2220 unreachable-code failures.
 Local non-Linux branch checks pass; native Windows rerun remains pending.
 The latest Windows excerpt compiles the previously failing source after the
@@ -408,24 +413,28 @@ all 39,373 vertices/49,213 triangles and zero Vulkan errors. Its manifest is
 unchanged; the inspected output remains fragmented, arbitrary-scale and
 unwalkable. No solve, fusion, bake or export is rerun.
 
-The M3 exit review has started. Its current local dependency check exits 2:
-`Changed evidence: cmake/dependencies.cmake` (post-Jolt dependency additions).
-Raw result: `artifacts/validation/m3-exit-review-20261023/local-evidence.log`.
-Next executable step: refresh the selected dependency inventory under
-[its protocol](protocols/dependency_sources.md) and the
-[runtime receipt contract](protocols/runtime_dependencies.md), including current
-Jolt source/notice identities and rebuilt viewer/CLI observations. Inspect the
-changed graph and recapture loader/mapping/owner receipts; do not merely replace
-expected hashes. Recheck `python3 tools/check_dependency_manifest.py --manifest
-third_party/dependency-audit-repair-20261020.json --local-evidence` using the new
-selected manifest when published. Preserve all historical receipts and rights
-gaps. Then finish plan §8.3 / ADR 020's five-item review, including the exact
-LLVM 23.1.1 availability gap and explicit unqualified Q/P/N/E targets, before
-marking M3 VERIFIED or starting A0. Do not begin M4 qualification. Keep general
-mixed-slope transitions unsupported, the 17 raw proposal refusals unchanged and
-original source data immutable. Current contracts:
-[steps](protocols/collision_steps.md), [controller](protocols/kinematic_capsule.md),
-[session](protocols/capsule_session.md), plan §§4.8/5.1.
+[The dated M3 exit review](validation/2026-10-23-m3-exit-review.md) keeps M3
+**IN_PROGRESS**: plan §5.1 step 2's quality-based keyframe selection/preflight
+is not implemented. `workers/worker.py` still emits `timestamp_sampling_v1` and
+explicitly lists blur/exposure/motion/cut selection as pending. Metadata/storage
+preflight and distinct-image checks do not fill that gap. The dependency refresh
+and exact LLVM 23.1.1 scope check have now resolved the prior inventory/tool gaps;
+they do not complete this missing workflow or any full Q/P/N/E gate.
+
+Next executable step: add failing bounded frame-quality/selection tests in
+`tests/integration/worker_frame_quality_test.py`, then implement the versioned
+policy/decision ledger and integrate it through `workers/worker.py` and the
+shared decode/admission path. Start from plan §5.1 step 2 and the current
+`DecodeIntegrationTests` in `tests/integration/worker_pipeline_test.py`; exercise
+both suites with `python3 -m unittest discover -s tests/integration -p
+'worker_*quality*_test.py' -v` and the pipeline suite explicitly. Bind original
+PTS/source/calibration/image identities, metric/recipe/threshold versions,
+selected/rejected reasons, cancellation and finite/byte/count limits. Preserve
+legacy timestamp-sampling manifests and every retained image/job; use a separate
+explicit candidate profile for local real validation. Do not retroactively tune
+selection to make sample_2 pass or weaken the unchanged registration threshold.
+Revisit the five-item review only after the missing software path and actual
+local integration are verified. A0–A6 stay NOT_STARTED; M4 has not begun.
 All **5,184** retained real cells remain unknown; `FRONT_DIAGNOSTIC` is not
 clearance. `sample_1` has no independent distance/up reference: ADR 020 permits
 a local M3 software exit without it, while Q5/N2 and A1 scale evidence stay open.

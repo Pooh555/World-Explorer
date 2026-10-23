@@ -1,6 +1,6 @@
 # Selected dependency source and notice gaps
 
-The current dated [inventory](../../third_party/dependency-audit-jolt-20261021.json) separates
+The current dated [inventory](../../third_party/dependency-audit-m3-20261023.json) separates
 native development archives, three installed worker profiles, observed Linux
 system/build packages, unresolved release-vcpkg declarations and metric models.
 Each component retains version, source evidence, archive availability, notice
@@ -8,21 +8,22 @@ identity and explicit gaps. `rights_qualified` remains false. This is a selected
 dependency inventory, not a complete SBOM, source build attestation or rights
 clearance. Sources and gaps must be re-audited when selected dependencies change.
 
-The new inventory includes the pinned
-[Jolt 5.3.0 source and notice](../research/jolt_dependency.md); release-vcpkg
-remains a declaration, not a built package. The checker's default remains the
-historical 20 October inventory, which intentionally fails against changed
-dependency declarations; select this dated inventory explicitly. The
-[20 October repair](../validation/2026-10-20-native-inventory-repair.md) recaptures
-the current loader, all five mapping contexts and owner associations; earlier
-dated receipts remain historical.
+The inventory retains the pinned
+[Jolt 5.3.0 source and notice](../research/jolt_dependency.md) and every component,
+comparison and gap from the [21 October inventory](../../third_party/dependency-audit-jolt-20261021.json).
+Release-vcpkg remains a declaration, not a built package. The checker's default
+selects the [23 October refresh](../validation/2026-10-23-m3-dependency-refresh.md),
+which recaptures loader, all five mapping contexts and owner associations for
+the rebuilt viewer/CLI. Its 86 components retain 257 source/rights gaps;
+`rights_qualified` stays false. Earlier dated receipts remain immutable and
+are not current-byte passes.
 
 Run from the repository root:
 
 ```sh
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-jolt-20261021.json
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-jolt-20261021.json --local-evidence
-python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-jolt-20261021.json --local-evidence --require-closure
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json --local-evidence
+python3 tools/check_dependency_manifest.py --manifest third_party/dependency-audit-m3-20261023.json --local-evidence --require-closure
 ```
 
 The first command needs only tracked inputs. It checks bound bytes, selected
@@ -33,9 +34,9 @@ listed in `inputs`. Missing or changed evidence fails; no cache search, network,
 installation, backend import or checkpoint loading occurs. Local checks validate
 historical raw RECORD inventories against their hashes; they do not freshly hash
 every installed payload or establish source provenance from installed bytes.
-The current `--local-evidence` check fails because the prior runtime summary
-binds binaries that changed in this native build; a new runtime recapture is
-required before current loader mappings can be certified.
+The current `--local-evidence` check passes against freshly captured runtime
+and mapping receipts. Explicit older manifests still reject changed evidence;
+their failures and original qualification limits are retained.
 
 Exit **0** means the inventory is consistent, **2** means invalid/missing/stale
 evidence, and **3** means `--require-closure` found open gaps. Inventory consistency
