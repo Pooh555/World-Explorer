@@ -14,6 +14,7 @@ __all__ = [
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = {
     "core": {"core"},
+    "asset_catalog": {"core", "asset_catalog"},
     "capture": {"core", "capture"},
     "reconstruction_api": {"core", "capture", "reconstruction_api"},
     "reconstruction_adapters": {

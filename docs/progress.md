@@ -2,7 +2,8 @@
 
 Updated 2026-10-23 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
-gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
+gate is certified. **A0/AP0: IN_PROGRESS (CPU contract slice).** A1–A6/AP1–AP9:
+NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
 [ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
 exit that does not require an independent measurement for internet-sourced
@@ -38,6 +39,29 @@ assembly: first visible end-to-end in A1, locally validated through A5.
 [original planning](validation/2026-10-17-offline-asset-planning.md) retains its
 superseded after-M6 schedule. Those tasks installed/processed/uploaded nothing.
 M1–M6 order/thresholds remain; native/reference release evidence is due by M6.
+
+## Current A0 work
+
+[Asset dependency admission](validation/2026-10-23-asset-dependencies.md) now
+implements a native `asset_catalog` CPU contract. It validates a bounded closed
+DAG, exact selected revisions/content hashes and epoch/pose context, canonical
+identity/order and inherited manual actions. Distinct semantic product IDs do
+not collapse when bytes match. Six fixtures/102 assertions pass in C++26, C++23
+and native ASan/UBSan/LSan; full suites pass 498/498 and 473/473. The
+[protocol](protocols/asset_dependencies.md) distinguishes declaration validation
+from file/rights admission. No persistent catalog, worker, automatic asset,
+completion/PBR output or viewer feature is implemented by this slice.
+
+Next executable step: add bounded schema-1 file/receipt admission around this
+contract, binding actual upstream bytes and an independently selected context,
+then owned immutable publication/replay/cancellation fixtures. Keep recipe/rights,
+resource/installation locks and spatial evidence/manual-ancestry masks explicit
+as remaining A0 work; do not label graph admission AP0 completion. Follow plan
+§§11.3–11.4/11.7. The 8 GiB host remains contracts-only for this work; H_AP24/H_AP48
+are proposed profiles, and unknown model/environment sizes block provisioning.
+No model installation, inference or implicit download occurs. A1 still needs its
+own consented independently scaled real pilot, held-out/empty-background and
+changed-light evidence, actual native completed/PBR output and Godot import.
 
 ## Usable behavior and evidence
 
@@ -429,19 +453,14 @@ attempt. The ledger is retained and no new RGB completion or pose solve occurs.
 This is not confirmed zoom or fixed-intrinsics certification. Automatic lens
 segmentation is unsupported. All 378 protected media/result files are unchanged.
 The retained map stays arbitrary-scale with geometry unavailable. The [five-item review](validation/2026-10-23-m3-development-exit.md) closes M3
-for the local software profile; A0–A6 remain NOT_STARTED at this checkpoint,
+for the local software profile; A0 contract work now follows above,
 and M4 has not begun.
 
-Next executable step: start A0's additive project-owned asset contracts and
-CPU conformance fixtures for provenance/manual ancestry, exact dependency
-revisions and bounded resource declarations (plan §§11.3–11.4/11.7). Keep the
-current 8 GiB development host contracts-only; no model provisioning/inference
-or hardware qualification is authorized by a contract check. A1 must show the
-real automatic completed/PBR pilot before expansion. No M4 work starts here.
-Current runtime default and local checks pass; 257 source/rights gaps remain.
-The development evidence is 492/492 tests, explicit C++23 467/467 and seven
-native sanitizer cases/18,567 assertions. The exit review maps every open Q/P/N/E
-gate; measured geometry/walking and all asset gates remain unqualified.
+The M3 review hands off to the A0 work above; it does not close measured or
+asset gates. Current runtime default/local checks pass, with 257 source/rights
+gaps retained. The M3 implementation was checked at 492/492 development tests,
+467/467 explicit C++23 and seven native sanitizer cases/18,567 assertions;
+A0's newer CPU checks are recorded separately above.
 
 Reuse `artifacts/validation/m3-frame-tracking-20261023/guided-recovery.map`
 with `prepare-poses`; its durable reopen preserves all four asset/manifest files.
@@ -514,7 +533,7 @@ Preserve the 916-file copied/original depth jobs, 48-file cancelled fresh cache,
 152 source input files, native raw/baked/sanitizer scenes, all prior attempts,
 scratch, caches, bakes, audits and owned postprocessing jobs.
 Measured alignment/collision/walking, crash qualification and quality remain open;
-A0–A6 remain NOT_STARTED and M4 has not begun.
+A0 contract work is IN_PROGRESS; A1–A6 and M4 have not begun.
 
 The style gate now enforces one first-line `#pragma once` in all headers, braces
 around every control-flow body, and the C++ template's non-empty brace-list
@@ -548,7 +567,7 @@ sample_2 solve retry, completed refit, long-stress rerun, implicit download or
 threshold reduction. Never trim full scenes to obtain a pass. Complete room
 surface coverage, broader owned mesh processing, compressed storage,
 measured scale, collision/walking and general interchange remain open.
-A0–A6/AP gates are unstarted; M4 has not begun.
+A0/AP0 contract work is IN_PROGRESS; A1–A6/AP1–AP9 and M4 remain unstarted.
 
 Reference hardware/corpus performance, physical/native platforms, geometry,
 broader fuzzing, distribution/model/dataset rights and full gates remain pending

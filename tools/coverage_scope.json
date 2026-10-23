@@ -4,7 +4,7 @@
   "excluded_modules": {
     "render_vulkan": "GPU implementation/public device API; image and synchronization tests qualify this separately."
   },
-  "package_update_modules": ["scene_store", "map_store", "reconstruction_adapters"],
+  "package_update_modules": ["scene_store", "map_store", "reconstruction_adapters", "asset_catalog"],
   "package_update_files": [
     "src/render_core/update_sink.cpp",
     "include/world_explorer/render_core/update_sink.hpp",

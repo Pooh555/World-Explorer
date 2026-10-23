@@ -121,6 +121,10 @@ add_library(core src/core/hash.cpp src/core/file_lock.cpp src/core/asset_files.c
 we_target(core)
 target_link_libraries(core PRIVATE OpenSSL::Crypto PUBLIC Threads::Threads)
 
+add_library(asset_catalog src/asset_catalog/dependency_graph.cpp)
+we_target(asset_catalog)
+target_link_libraries(asset_catalog PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
+
 add_library(capture INTERFACE)
 target_link_libraries(capture INTERFACE core)
 
@@ -404,7 +408,7 @@ if(BUILD_TESTING)
 
   add_executable(we_core_tests ${WE_CORE_TESTS})
   we_target(we_core_tests)
-  target_link_libraries(we_core_tests PRIVATE application collision map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
+  target_link_libraries(we_core_tests PRIVATE application asset_catalog collision map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
   target_include_directories(we_core_tests SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
   target_compile_definitions(we_core_tests PRIVATE WE_TEST_WIRE_BINDINGS="${WE_WIRE_DIRECTORY}/python")
   catch_discover_tests(we_core_tests PROPERTIES LABELS "cpu")

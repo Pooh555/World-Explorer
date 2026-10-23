@@ -1,5 +1,7 @@
 # Validation index
 
+- [A0 dependency contract](2026-10-23-asset-dependencies.md): new CPU asset-catalog DAG admission, deterministic cross-language identity, stale selection and manual ancestry checks, exact budgets and sanitizers; A0/AP0 remain IN_PROGRESS, no asset output or inference qualification.
+
 - [M3 local development exit](2026-10-23-m3-development-exit.md): five-item §8.3 review closes the Linux/NVIDIA software milestone; retains v3 rejection, all measured/full gates and source/rights gaps; A0 follows.
 
 - [Conservative calibration preflight](2026-10-23-calibration-preflight.md): versioned v3 ambiguity/support ledger, native history/hash admission and helper-output protection; synthetic accept/restart/reject, real sample_1 rejection, exact v2 parity and protected map; current runtime receipts and build/style/sanitizer checks, M3 exit review remains due.
