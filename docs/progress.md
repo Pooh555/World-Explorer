@@ -1,15 +1,15 @@
 # Current handoff
 
 Updated 2026-10-23 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
-M2: VERIFIED (Linux/NVIDIA development exit); M3: IN_PROGRESS.** No full Q/P/N/E
+M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
 gate is certified. A0–A6/AP0–AP9: NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
 [ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
 exit that does not require an independent measurement for internet-sourced
 `sample_1`. This enables the M3→A0–A5 sequence after the software checklist is
 reviewed; it does not certify Q5/N2, establish real metric scale, or change A1's
-own independent-scale pilot requirements. M3 remains IN_PROGRESS until evidence
-supports that review.
+own independent-scale pilot requirements. The [completed review](validation/2026-10-23-m3-development-exit.md) now supports
+that local handoff; all full gates remain open.
 
 [Build/style/inventory repair](validation/2026-10-20-native-inventory-repair.md)
 separates the non-Linux geometry fallback from its solver body, removes all 24
@@ -428,19 +428,20 @@ thumbnail bytes are identical; its 24 frames are provisional in the failed v3
 attempt. The ledger is retained and no new RGB completion or pose solve occurs.
 This is not confirmed zoom or fixed-intrinsics certification. Automatic lens
 segmentation is unsupported. All 378 protected media/result files are unchanged.
-The retained map stays arbitrary-scale with geometry unavailable. M3 remains
-**IN_PROGRESS**; A0–A6 remain NOT_STARTED and M4 has not begun.
+The retained map stays arbitrary-scale with geometry unavailable. The [five-item review](validation/2026-10-23-m3-development-exit.md) closes M3
+for the local software profile; A0–A6 remain NOT_STARTED at this checkpoint,
+and M4 has not begun.
 
-Next executable step: complete a new dated five-item plan §8.3 software exit
-review against §5.1 and the current evidence. Explicitly assess v3's conservative
-rejection and unsupported intervals; do not infer lens stability, 3D coverage or
-Q1 eligibility. Record any remaining software gap before closing M3. Once the
-local checklist actually passes, start A0 contracts/rights/resource profiles,
-then the real visible A1 pilot; no platform qualification before A0–A5.
-Current runtime inventory is refreshed: default and `--local-evidence` pass;
-strict closure still retains 257 source/rights gaps. The refreshed empty native
-viewer runs 900 frames with zero Vulkan errors. Development checks pass 492/492,
-explicit C++23 467/467, and seven native sanitizer cases/18,567 assertions.
+Next executable step: start A0's additive project-owned asset contracts and
+CPU conformance fixtures for provenance/manual ancestry, exact dependency
+revisions and bounded resource declarations (plan §§11.3–11.4/11.7). Keep the
+current 8 GiB development host contracts-only; no model provisioning/inference
+or hardware qualification is authorized by a contract check. A1 must show the
+real automatic completed/PBR pilot before expansion. No M4 work starts here.
+Current runtime default and local checks pass; 257 source/rights gaps remain.
+The development evidence is 492/492 tests, explicit C++23 467/467 and seven
+native sanitizer cases/18,567 assertions. The exit review maps every open Q/P/N/E
+gate; measured geometry/walking and all asset gates remain unqualified.
 
 Reuse `artifacts/validation/m3-frame-tracking-20261023/guided-recovery.map`
 with `prepare-poses`; its durable reopen preserves all four asset/manifest files.

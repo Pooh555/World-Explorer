@@ -1,5 +1,7 @@
 # Validation index
 
+- [M3 local development exit](2026-10-23-m3-development-exit.md): five-item §8.3 review closes the Linux/NVIDIA software milestone; retains v3 rejection, all measured/full gates and source/rights gaps; A0 follows.
+
 - [Conservative calibration preflight](2026-10-23-calibration-preflight.md): versioned v3 ambiguity/support ledger, native history/hash admission and helper-output protection; synthetic accept/restart/reject, real sample_1 rejection, exact v2 parity and protected map; current runtime receipts and build/style/sanitizer checks, M3 exit review remains due.
 
 - [Persistent candidate tracking](2026-10-23-frame-tracking.md): bounded renewal/subpixel/affine history, 24/63 real selections, native decode/restart and 24/24 guided-pose recovery; durable map reload, preserved failures and data; M3 lens/calibration handling and exit review remain open.
