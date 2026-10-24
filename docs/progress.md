@@ -43,6 +43,11 @@ The [public-header repair](validation/2026-10-24-native-span-includes.md) addres
 the supplied GCC 13/MSVC missing-`std::span` failures with direct includes in four
 headers and a Python-only public-header CTest guard. Local C++26/C++23 builds and
 598/573 CPU tests pass; native Windows/macOS/GCC 13 CI confirmation remains due.
+The subsequent [Windows record-store log and repair](validation/2026-10-24-windows-record-lock.md)
+reaches 568/569 CTest passes, including the header guard. Its one failure hashes
+the exclusively held writer lock. The test now takes full byte snapshots before
+acquisition and after release, checks `WOULD_BLOCK` while held and successful
+retry afterward. Local suites pass; a complete native Windows rerun remains due.
 
 [ADR 019](adr/019-assets-before-platforms.md) orders M3 → A0–A5 → M4 → M5 → M6,
 then A6 engine packaging. The [asset track](technical_plan.md#11-offline-asset-production-track)

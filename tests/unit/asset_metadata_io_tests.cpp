@@ -345,7 +345,6 @@ TEST_CASE("record stores refuse foreign corrupt linked and locked output without
     const auto K_ROOT = fixture.m_directory.m_root / "records";
     const auto K_FIRST = publish_immutable_records(K_ROOT, { 1 }, 0, records(), {});
     REQUIRE(K_FIRST);
-    std::unique_ptr<FileLock> lock;
     switch (K_CASE) {
     case 0:
         write(K_ROOT / "foreign.txt", "caller data");
@@ -372,23 +371,39 @@ TEST_CASE("record stores refuse foreign corrupt linked and locked output without
         std::filesystem::create_hard_link(K_ROOT / "owner.json",
                                           fixture.m_directory.m_root / "linked-owner");
         break;
-    case 8: {
-        auto acquired = FileLock::acquire(K_ROOT / ".writer.lock");
-        REQUIRE(acquired);
-        lock = std::move(*acquired);
+    case 8:
         break;
-    }
     default:
         throw std::logic_error("Unexpected test case");
     }
     const auto K_BEFORE = tree(K_ROOT);
+    std::unique_ptr<FileLock> lock;
+    if (K_CASE == 8) {
+        // Windows denies hash readers while this exclusive handle is held.
+        // Snapshot every file before acquisition and again after release.
+        auto acquired = FileLock::acquire(K_ROOT / ".writer.lock");
+        REQUIRE(acquired);
+        lock = std::move(*acquired);
+    }
     const auto K_RESULT =
         publish_immutable_records(K_ROOT, { 2 }, 1, { { "asset-2-1", owned("new") } }, {});
-    CHECK(!K_RESULT);
+    REQUIRE(!K_RESULT);
+    if (K_CASE == 8) {
+        CHECK(K_RESULT.error().m_code == ErrorCode::WOULD_BLOCK);
+    }
+    lock.reset();
     CHECK(tree(K_ROOT) == K_BEFORE);
     if (K_CASE != 8) {
         const auto K_READ = read_immutable_records(K_ROOT);
         CHECK(!K_READ);
+    } else {
+        const auto K_READ = read_immutable_records(K_ROOT);
+        REQUIRE(K_READ);
+        CHECK(K_READ->m_commit.m_manifest_sha256 == K_FIRST->m_manifest_sha256);
+        const auto K_RETRY =
+            publish_immutable_records(K_ROOT, { 2 }, 1, { { "asset-2-1", owned("new") } }, {});
+        REQUIRE(K_RETRY);
+        CHECK(K_RETRY->m_generation == 2);
     }
 }
 
