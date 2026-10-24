@@ -272,7 +272,8 @@ Result<DecodedVideo> decode_video(const VideoDecodeRequest& request,
         }
         const auto K_METADATA =
             job_detail::read_json(artifact.m_path, K_WORKER_MESSAGE_LIMIT, artifact.m_sha256);
-        if (!K_METADATA || K_METADATA->at("selection") != K_SELECTION) {
+        if (!K_METADATA ||
+            K_METADATA->at("selection").get_ref<const std::string&>() != K_SELECTION) {
             return fail(ErrorCode::INVALID_DATA,
                         "Worker returned a different frame selection profile");
         }

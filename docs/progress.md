@@ -31,8 +31,11 @@ reports 95 CRT link mismatches: Jolt `/MTd` versus tests `/MDd`. The
 CRT setting; full native Windows build/test confirmation remains pending.
 The [24 October quality-policy repair](validation/2026-10-24-windows-quality-json.md)
 addresses the newly supplied MSVC C2666 JSON/string-view comparison failure.
-C++26/C++23 builds and 21 decoded-admission cases pass locally; full native
-Windows confirmation remains due. Relinking makes the saved runtime payload
+C++26/C++23 builds and 21 decoded-admission cases pass locally. The subsequent
+[decode-coordinator repair](validation/2026-10-24-windows-decode-json.md) addresses
+the same overload ambiguity in `video_decode.cpp`; the supplied log compiles the
+previously repaired reader and asset-catalog objects before this new failure.
+Full native Windows build/test confirmation remains due. Relinking makes the saved runtime payload
 receipt stale: default inventory passes, `--local-evidence` exits 2. Fresh runtime
 observation is required before claiming current local inventory consistency.
 
