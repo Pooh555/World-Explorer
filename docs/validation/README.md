@@ -1,5 +1,7 @@
 # Validation index
 
+- [A0 region provenance](2026-10-24-asset-region-provenance.md): complete bounded face/texel partitions, independent source identities, separate confidence/classes and declared manual lineage; synthetic CPU/oracle/sanitizer evidence, real correspondence/actions and AP0 qualification pending.
+
 - [A0 installed-component reconciliation](2026-10-24-asset-installed-components.md): explicit disjoint roots, exact closed inventories and two bounded read-only scans; synthetic CPU/sanitizer/oracle evidence, runtime/rights/inference qualification pending.
 
 - [A0 component evidence](2026-10-24-asset-component-evidence.md): bounded component/inventory/payload/terms byte binding and independent review selection, synthetic conformance/oracle/sanitizer evidence; installed roots, external rights and real asset qualification remain open.

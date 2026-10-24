@@ -2,7 +2,7 @@
 
 Updated 2026-10-24 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
-gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts and installed-tree checks).** A1–A6/AP1–AP9:
+gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts, installed trees and region provenance).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
 [ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
@@ -70,18 +70,24 @@ archive correspondence, legal authority and measured/enforced worker limits
 remain unverified; successful observations retain explicit blockers. The
 [protocol](protocols/asset_installed_components.md) defines the cooperative-filesystem
 scope and forbids treating results as execution tokens.
-No mutable catalog, worker, asset
-production, completion/PBR output or viewer feature is implemented by this slice.
+The [region-provenance slice](validation/2026-10-24-asset-region-provenance.md)
+now admits bounded complete face/texel partitions, exact source-view bindings,
+separate evidence/confidence and graph-bound declared manual lineage. Source
+correspondence and actual human actions remain unverified; the
+[protocol](protocols/asset_region_provenance.md) records these limits. No mutable
+catalog, worker, asset production, completion/PBR output or viewer feature is
+implemented by these slices.
 
-Next executable step: implement bounded versioned region-provenance records
-bound to admitted product/revision/context and explicit source-view identities.
-Recheck plan §11.4 and AP0: preserve observed/inferred/generated/manually-edited
-and unknown coverage, keep confidence separate, and bind declared manual ancestry
-to the dependency graph. Validate synthetic invalid partitions, stale bindings
-and caller-data preservation; never infer measured support from a generated mask.
-Trusted manual-action journaling, asset/instance schemas and capture/evaluation
-freezes remain A0 work. Current runtime evidence still needs recapture; installed
-observations do not establish worker/runtime closure or legal authority.
+Next executable step: implement bounded versioned asset-definition and
+scene-instance schemas from plan §11.4. Keep stable semantic IDs separate from
+content/revision hashes, reusable definition bytes separate from placement, and
+captured appearance separate from material/light semantics. Bind geometry,
+material, provenance, scale and pivot declarations to selected products; validate
+stale references, invalid transforms, duplicate IDs and caller-data preservation
+with synthetic fixtures. Recheck §§11.4–11.5 before choosing export-facing fields.
+Trusted manual-action journaling, verified source/region correspondence and
+capture/evaluation freezes remain A0 work. Current runtime evidence still needs
+recapture; installed observations do not establish runtime closure or legal rights.
 Unknown installation/model costs must refuse provisioning. Bounded tree checks
 do not complete AP0. Full installation/runtime qualification, measured budgets
 and enforced worker limits are still required. The 8 GiB host remains contracts-only; H_AP24/H_AP48
