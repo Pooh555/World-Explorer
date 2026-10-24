@@ -2,7 +2,7 @@
 
 Updated 2026-10-24 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
-gate is certified. **A0/AP0: IN_PROGRESS (CPU graph/receipt contracts).** A1–A6/AP1–AP9:
+gate is certified. **A0/AP0: IN_PROGRESS (CPU graph/receipt/recipe contracts).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
 [ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
@@ -17,7 +17,7 @@ separates the non-Linux geometry fallback from its solver body, removes all 24
 Black failures without AST changes, and refreshes loader/import/viewer/owner
 receipts. Those checks remain historical. The
 [23 October selected inventory refresh](validation/2026-10-23-m3-dependency-refresh.md)
-now passes default/local checks against fresh loader, backend/viewer mapping and
+passed default/local checks against fresh loader, backend/viewer mapping and
 owner receipts. It retains the Jolt inventory's 257 source/rights gaps across
 86 components/seven profiles. Exact workspace LLVM 23.1.1 format/tidy and pinned
 Black checks pass without changing global compilers or worker environments.
@@ -56,20 +56,26 @@ a bounded closed DAG, exact revision/context, canonical identity and transitive
 manual ancestry. The [byte-receipt slice](validation/2026-10-24-asset-receipts.md)
 adds strict file admission into privately owned snapshots and immutable owned
 publication, unchanged replay, cancellation and controlled process-crash recovery.
-Recipes/manual actions are opaque hash-bound bytes; no rights or semantic
-approval follows. The [receipt protocol](protocols/asset_receipts.md) records
-bounds, operation scope and recovery limits. No mutable catalog, worker, asset
+The [recipe-lock slice](validation/2026-10-24-asset-recipes.md) now inspects strict
+recipe fields, exact dependency/source bindings and resource/rights declarations
+from those owned bytes. Unknown installation costs, local restrictions, uncleared
+distribution and insufficient/contract-only hosts remain explicit blockers.
+Code/environment/model/config/prompt/rights payloads are not yet independently
+admitted or reconciled; every result retains unverified external bytes. The
+[recipe protocol](protocols/asset_recipes.md) records those limits. No mutable catalog, worker, asset
 production, completion/PBR output or viewer feature is implemented by this slice.
 
-Next executable step: define and implement bounded semantic recipe admission,
-binding exact code/environment/model/input and rights receipts with explicit
-resource/installation budgets and a contracts-only refusal policy for this host.
-First read plan §§11.3–11.4/11.7 and the existing recipe/dependency interfaces;
-add synthetic accept/reject/change-invalidation fixtures around the owned byte
-receipt path. Unknown installation/model costs must refuse provisioning. Spatial
+Next executable step: add bounded independently pinned component-manifest and
+terms/review receipt admission around the recipe inspector, keeping trusted review
+selection separate from self-declared rights. First read plan §§11.3–11.4/11.7
+and the existing installed-byte/dependency audit contracts; verify synthetic
+payload/checksum/review mismatches and partial/unknown inventory refusal through
+the owned receipt path. Do not install models or infer cleared rights from a hash.
+Unknown installation/model costs must refuse provisioning. Spatial
 evidence/manual-ancestry masks, asset/instance schemas, capture/evaluation freezes
 and trusted manual-action journaling remain A0 work; do not label byte binding
-AP0 completion. The 8 GiB host remains contracts-only for this work; H_AP24/H_AP48
+AP0 completion. Installed-file verification, measured budgets and enforced worker
+limits are still required. The 8 GiB host remains contracts-only; H_AP24/H_AP48
 are proposed profiles, and unknown model/environment sizes block provisioning.
 No model installation, inference or implicit download occurs. A1 still needs its
 own consented independently scaled real pilot, held-out/empty-background and

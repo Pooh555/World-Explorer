@@ -30,7 +30,8 @@ adjacency/hash records. Each node declares a valid recipe SHA-256 and optionally
 a manual-action SHA-256. The function validates these declarations; it neither
 opens files nor proves their content, source rights, evidence classes or completeness.
 The receipt adapter binds these declarations to owned file bytes and immutable
-publication; semantic recipe/rights admission remains A0 work.
+publication. The [recipe inspector](asset_recipes.md) checks declarations and
+resource arithmetic; external component/rights qualification remains A0 work.
 
 Manual ancestry is exactly the transitive closure of declared manual actions.
 An action on a node or manual ancestry on any parent requires its
@@ -58,12 +59,13 @@ It is a cache-identity component, not a complete recipe or an idempotent operati
 receipt. A context change conservatively invalidates the graph; independent reuse
 or atomic Sim(3) conversion requires separate proof, not an implicit exception.
 
-## A0 resource and rights proposal — not implemented admission
+## A0 resource and rights proposal — qualification pending
 
 The current host remains **contracts-only** for this slice. H_AP24/H_AP48 retain
 their proposed capacities and limits in [plan §11.7](../technical_plan.md#117-hardware-and-milestone-plan);
-these types/tests certify neither profile nor 8 GiB inference. Before a worker
-can run, A0 still needs a bound lock containing exact code/environment/model and
+these types/tests certify neither profile nor 8 GiB inference. The recipe inspector
+now binds a declaration lock and reports explicit blockers. Before a worker
+can run, A0 still needs verified exact code/environment/model and
 input hashes, terms/rights receipts, stage/device/time/byte/thread/queue limits,
 installation byte inventory and explicit capability/refusal policy. Unknown model
 or environment sizes block provisioning; no implicit download or remote fallback.

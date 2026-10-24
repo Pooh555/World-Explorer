@@ -1,5 +1,7 @@
 # Validation index
 
+- [A0 recipe lock inspection](2026-10-24-asset-recipes.md): bounded native recipe/dependency/source binding, rights declarations and checked resource reservations with explicit blockers; synthetic cross-language oracle and sanitizer evidence, external payload/rights/provisioning qualification pending.
+
 - [Windows decode-coordinator comparison repair](2026-10-24-windows-decode-json.md): subsequent log gets past the reader, then reports the same C2666 pattern in the coordinator; typed extraction and a remaining-use audit, with local build/stage-chain/admission evidence and native Windows confirmation pending.
 
 - [Windows quality-policy comparison repair](2026-10-24-windows-quality-json.md): typed string extraction removes the supplied MSVC C2666 ambiguity; local C++26/C++23 builds and decoded-admission checks pass, native Windows rerun and fresh runtime payload receipts remain pending.

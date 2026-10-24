@@ -2,6 +2,7 @@
 
 #include "world_explorer/asset_catalog/dependency_graph.hpp"
 
+#include <cstddef>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -21,6 +22,10 @@ class AdmittedAssetReceipt {
     const std::string& receipt_sha256() const;
     OperationId operation() const;
     std::size_t file_count() const;
+    // Independent owned copy; no filesystem access after initial admission.
+    Result<std::vector<std::byte>> copy_blob(const std::string& sha256,
+                                             std::size_t max_bytes,
+                                             const std::stop_token& stop = {}) const;
 
   private:
     struct Implementation;

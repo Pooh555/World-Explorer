@@ -211,6 +211,28 @@ std::size_t AdmittedAssetReceipt::file_count() const {
     return m_state->m_blobs.size();
 }
 
+Result<std::vector<std::byte>> AdmittedAssetReceipt::copy_blob(const std::string& digest,
+                                                               std::size_t max_bytes,
+                                                               const std::stop_token& stop) const {
+    try {
+        check_stop(stop);
+        require(digest_valid(digest) && max_bytes > 0uz && max_bytes <= K_FILE_LIMIT,
+                ErrorCode::INVALID_ARGUMENT,
+                "Invalid admitted asset blob selection/budget");
+        const auto K_FOUND = m_state->m_blobs.find(digest);
+        require(
+            K_FOUND != m_state->m_blobs.end(), ErrorCode::NOT_FOUND, "Unknown admitted asset blob");
+        require(K_FOUND->second.m_bytes.size() <= max_bytes,
+                ErrorCode::RESOURCE_EXHAUSTED,
+                "Admitted asset blob exceeds copy budget");
+        return K_FOUND->second.m_bytes;
+    } catch (const ReceiptFailure& error) {
+        return fail(error.m_code, error.what());
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Admitted asset blob copy allocation failed");
+    }
+}
+
 Result<AdmittedAssetReceipt> read_asset_receipt(const AssetReceiptSelection& selection,
                                                 const AssetDependencyContext& expected,
                                                 const std::stop_token& stop) {

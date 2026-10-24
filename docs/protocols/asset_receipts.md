@@ -44,8 +44,10 @@ buffers or framework objects retained.
 
 Recipe/action payloads are **opaque bytes** here. Hash binding does not prove
 recipe completeness, rights, actual human actions, evidence classes or successful
-execution. Those semantic schemas, trusted action journal, resource/installation
-locks and coordinator integration remain A0 work.
+execution. A separate [recipe inspector](asset_recipes.md) now checks bounded
+recipe fields and declaration/resource blockers. Trusted action journals,
+component/installed-file and rights reconciliation, evidence schemas and
+coordinator integration remain A0 work.
 
 ## Immutable publication and retry
 
