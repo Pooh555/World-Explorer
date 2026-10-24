@@ -1,0 +1,320 @@
+#include "world_explorer/asset_catalog/asset_definition.hpp"
+
+#include "recipe_json.hpp"
+#include "world_explorer/core/hash.hpp"
+
+#include <algorithm>
+#include <functional>
+#include <new>
+
+namespace world_explorer {
+namespace {
+
+using namespace asset_recipe_detail;
+
+template <class Enum> std::string label(Enum value, const std::map<Enum, std::string>& names) {
+    const auto K_FOUND = names.find(value);
+    require(K_FOUND != names.end(),
+            "Unsupported asset metadata enum",
+            ErrorCode::UNSUPPORTED_OPERATION);
+    return K_FOUND->second;
+}
+
+Json vector_json(Vec3d value) {
+    return Json::array({ value.m_x, value.m_y, value.m_z });
+}
+
+Json transform_json(const SimilarityTransform& value) {
+    return {
+        { "rotation",
+         { value.m_rotation.m_w, value.m_rotation.m_x, value.m_rotation.m_y, value.m_rotation.m_z } },
+        { "translation", vector_json(value.m_translation) },
+        { "scale", value.m_scale } };
+}
+
+}  // namespace
+
+struct AdmittedAssetDefinition::Implementation {
+    AssetDefinition m_definition;
+    AssetDefinitionRef m_reference;
+    std::string m_receipt_sha256, m_json;
+    std::vector<AssetProvenanceCoverage> m_provenance;
+};
+
+AdmittedAssetDefinition::AdmittedAssetDefinition(
+    std::shared_ptr<const Implementation> implementation)
+    : m_impl(std::move(implementation)) { }
+
+const AssetDefinition& AdmittedAssetDefinition::definition() const {
+    return m_impl->m_definition;
+}
+
+const AssetDefinitionRef& AdmittedAssetDefinition::reference() const {
+    return m_impl->m_reference;
+}
+
+const std::string& AdmittedAssetDefinition::receipt_sha256() const {
+    return m_impl->m_receipt_sha256;
+}
+
+const std::string& AdmittedAssetDefinition::canonical_json() const {
+    return m_impl->m_json;
+}
+
+const std::vector<AssetProvenanceCoverage>& AdmittedAssetDefinition::provenance() const {
+    return m_impl->m_provenance;
+}
+
+Result<AdmittedAssetDefinition>
+admit_asset_definition(const AssetDefinition& value,
+                       const AdmittedAssetReceipt& receipt,
+                       const std::vector<AssetProvenanceSelection>& selections,
+                       const AssetDependencyContext& expected,
+                       const std::stop_token& stop) {
+    try {
+        check_stop(stop);
+        const auto K_GRAPH = validate_asset_dependencies(receipt.graph(), expected, stop);
+        if (!K_GRAPH) {
+            return std::unexpected(K_GRAPH.error());
+        }
+        require(value.m_schema_version == 1,
+                "Unsupported asset definition schema",
+                ErrorCode::UNSUPPORTED_OPERATION);
+        require(value.m_context.m_world_epoch == expected.m_world_epoch &&
+                    value.m_context.m_pose_revision == expected.m_pose_revision,
+                "Stale asset definition context",
+                ErrorCode::RESYNC_REQUIRED);
+        require(value.m_asset.m_value && value.m_revision, "Missing asset identity/revision");
+        require(!value.m_sources.empty() && value.m_sources.size() <= 64uz &&
+                    !value.m_materials.empty() && value.m_materials.size() <= 16uz &&
+                    value.m_lods.size() <= 8uz && value.m_provenance.size() <= 26uz &&
+                    selections.size() <= 26uz,
+                "Asset definition count budget exceeded",
+                ErrorCode::RESOURCE_EXHAUSTED);
+        std::map<AssetProductId, std::reference_wrapper<const AssetDependencyNode>> nodes;
+        for (const auto& node : receipt.graph().m_products) {
+            nodes.emplace(node.m_product.m_product, node);
+        }
+        bool manual {};
+        const auto K_BIND = [&](const AssetRevisionRef& ref) -> Json {
+            check_stop(stop);
+            const auto K_FOUND = nodes.find(ref.m_product);
+            require(K_FOUND != nodes.end() && K_FOUND->second.get().m_product == ref,
+                    "Asset product reference is stale or missing",
+                    ErrorCode::RESYNC_REQUIRED);
+            manual = manual || K_FOUND->second.get().m_manual_ancestor;
+            return { { "product_id", ref.m_product.m_value },
+                    { "revision", ref.m_revision },
+                    { "content_sha256", ref.m_content_sha256 } };
+        };
+        const auto K_REFS = [&](const std::vector<AssetRevisionRef>& refs) {
+            auto result = Json::array();
+            std::set<AssetProductId> seen;
+            for (const auto& ref : refs) {
+                require(seen.insert(ref.m_product).second, "Duplicate asset product role");
+                result.push_back(K_BIND(ref));
+            }
+            return result;
+        };
+        K_REFS(value.m_sources);
+        const auto K_GEOMETRY = K_BIND(value.m_geometry);
+        std::map<AssetProductId, AssetRegionKind> targets {
+            { value.m_geometry.m_product, AssetRegionKind::GEOMETRY_FACES } };
+        std::vector<Json> materials;
+        std::set<AssetMaterialVariantId> variants;
+        static const std::map<AssetLightingMode, std::string> K_LIGHTING {
+            { AssetLightingMode::CAPTURED_APPEARANCE, "CAPTURED_APPEARANCE" },
+            { AssetLightingMode::ESTIMATED_PBR, "ESTIMATED_PBR" },
+            { AssetLightingMode::GENERATED_PBR, "GENERATED_PBR" } };
+        for (const auto& material : value.m_materials) {
+            require(material.m_variant.m_value && variants.insert(material.m_variant).second,
+                    "Invalid/duplicate material variant");
+            require(targets.emplace(material.m_product.m_product, AssetRegionKind::MATERIAL_TEXELS)
+                        .second,
+                    "Aliased asset output roles");
+            materials.push_back({ { "variant_id", material.m_variant.m_value },
+                                 { "product", K_BIND(material.m_product) },
+                                 { "lighting", label(material.m_lighting, K_LIGHTING) } });
+        }
+        const auto K_LODS = K_REFS(value.m_lods);
+        for (const auto& lod : value.m_lods) {
+            require(targets.emplace(lod.m_product, AssetRegionKind::GEOMETRY_FACES).second,
+                    "Aliased asset LOD");
+        }
+        Json collider = nullptr;
+        if (value.m_collider.has_value()) {
+            const auto& selected = value.m_collider.value();
+            require(targets.emplace(selected.m_product.m_product, AssetRegionKind::GEOMETRY_FACES)
+                        .second,
+                    "Aliased asset collider");
+            static const std::map<AssetColliderMode, std::string> K_MODES {
+                { AssetColliderMode::UNVERIFIED, "UNVERIFIED" },
+                { AssetColliderMode::SYNTHETIC_GAMEPLAY, "SYNTHETIC_GAMEPLAY" } };
+            collider = { { "product", K_BIND(selected.m_product) },
+                        { "mode", label(selected.m_mode, K_MODES) } };
+        }
+        Json measurement = nullptr;
+        Json meters = nullptr;
+        if (value.m_units.m_status == AssetUnitStatus::ARBITRARY) {
+            require(!value.m_units.m_measurement.has_value() &&
+                        !value.m_units.m_meters_per_unit.has_value(),
+                    "Arbitrary units claim a metric conversion");
+        } else {
+            require(value.m_units.m_status == AssetUnitStatus::DECLARED_METRIC,
+                    "Unsupported asset units",
+                    ErrorCode::UNSUPPORTED_OPERATION);
+            if (!value.m_units.m_measurement.has_value() ||
+                !value.m_units.m_meters_per_unit.has_value()) {
+                return fail(ErrorCode::INVALID_DATA, "Missing declared metric identity");
+            }
+            const auto K_METERS = value.m_units.m_meters_per_unit.value();
+            require(std::isfinite(K_METERS) && K_METERS > 0, "Invalid declared metric conversion");
+            measurement = K_BIND(value.m_units.m_measurement.value());
+            meters = K_METERS;
+        }
+        require(valid(value.m_bounds) && (value.m_bounds.m_minimum != value.m_bounds.m_maximum),
+                "Invalid asset bounds");
+        require(valid(value.m_pivot.m_asset_from_geometry) &&
+                    value.m_pivot.m_asset_from_geometry.m_scale == 1,
+                "Asset pivot must be a finite rigid transform");
+        Json action = nullptr;
+        static const std::map<AssetPivotPolicy, std::string> K_POLICIES {
+            { AssetPivotPolicy::SUPPORT_BASE_CENTER, "SUPPORT_BASE_CENTER" },
+            { AssetPivotPolicy::ATTACHMENT_ORIGIN, "ATTACHMENT_ORIGIN" },
+            { AssetPivotPolicy::STRUCTURAL_FRAME, "STRUCTURAL_FRAME" },
+            { AssetPivotPolicy::OVERRIDE, "OVERRIDE" } };
+        const auto K_POLICY = label(value.m_pivot.m_policy, K_POLICIES);
+        if (value.m_pivot.m_policy == AssetPivotPolicy::OVERRIDE) {
+            if (!value.m_pivot.m_override_action.has_value()) {
+                return fail(ErrorCode::INVALID_DATA, "Pivot override has no declared action");
+            }
+            const auto& selected_action = value.m_pivot.m_override_action.value();
+            action = K_BIND(selected_action);
+            require(nodes.at(selected_action.m_product).get().m_manual_ancestor,
+                    "Pivot override action has no declared manual ancestry");
+        } else {
+            require(!value.m_pivot.m_override_action.has_value(),
+                    "Automatic pivot has an override action");
+            require((value.m_kind == AssetKind::STRUCTURAL &&
+                     value.m_pivot.m_policy == AssetPivotPolicy::STRUCTURAL_FRAME) ||
+                        (value.m_kind == AssetKind::PROP &&
+                         value.m_pivot.m_policy != AssetPivotPolicy::STRUCTURAL_FRAME),
+                    "Asset pivot policy differs from kind");
+        }
+        static const std::map<AssetKind, std::string> K_KINDS {
+            { AssetKind::PROP, "PROP" }, { AssetKind::STRUCTURAL, "STRUCTURAL" } };
+        const auto K_KIND = label(value.m_kind, K_KINDS);
+        const auto K_RIGHTS = K_BIND(value.m_rights);
+        K_REFS(value.m_provenance);
+        require(value.m_provenance.size() == targets.size() && selections.size() == targets.size(),
+                "Missing/extra asset provenance selections");
+        std::map<AssetProductId, std::size_t> selected;
+        for (std::size_t index { 0uz }; index < selections.size(); ++index) {
+            require(selected.emplace(selections[index].m_product.m_product, index).second,
+                    "Duplicate independent provenance selection",
+                    ErrorCode::INVALID_ARGUMENT);
+        }
+        std::set<AssetProductId> covered;
+        std::vector<AssetProvenanceCoverage> coverage;
+        for (const auto& ref : value.m_provenance) {
+            const auto K_FOUND = selected.find(ref.m_product);
+            require(K_FOUND != selected.end(),
+                    "Unselected asset provenance",
+                    ErrorCode::INVALID_ARGUMENT);
+            const auto& selection = selections[K_FOUND->second];
+            require(selection.m_product == ref,
+                    "Stale provenance selection",
+                    ErrorCode::RESYNC_REQUIRED);
+            const auto K_TARGET = targets.find(selection.m_region.m_target.m_product);
+            require(K_TARGET != targets.end() &&
+                        K_TARGET->second == selection.m_region.m_domain.m_kind &&
+                        covered.insert(K_TARGET->first).second,
+                    "Missing/aliased provenance target or wrong domain");
+            const auto K_REGION = inspect_asset_region_provenance(
+                receipt, ref.m_product, selection.m_region, expected, stop);
+            if (!K_REGION) {
+                return std::unexpected(K_REGION.error());
+            }
+            if (K_TARGET->second == AssetRegionKind::MATERIAL_TEXELS) {
+                const auto& material =
+                    *std::ranges::find_if(value.m_materials, [&](const auto& item) {
+                        return item.m_product.m_product == K_TARGET->first;
+                    });
+                const auto& counts = K_REGION->m_coverage;
+                if (material.m_lighting == AssetLightingMode::CAPTURED_APPEARANCE) {
+                    require(counts[2uz] == 0 && counts[3uz] == 0 && counts[4uz] == 0,
+                            "Captured appearance contains inferred/generated/edited texels");
+                } else if (material.m_lighting == AssetLightingMode::ESTIMATED_PBR) {
+                    require(counts[3uz] == 0 && counts[4uz] == 0,
+                            "Estimated PBR contains generated/edited texels");
+                }
+            }
+            coverage.push_back({ ref, K_REGION->m_coverage, K_REGION->m_manual_ancestor_elements });
+        }
+        require(value.m_manual_ancestor == manual,
+                "Asset definition clears or invents declared manual ancestry");
+        // Every caller-owned string has been bound to a bounded admitted identity.
+        auto owned = value;
+        std::ranges::sort(owned.m_sources);
+        std::ranges::sort(owned.m_provenance);
+        std::ranges::sort(owned.m_materials, {}, &AssetMaterialBinding::m_variant);
+        std::ranges::sort(coverage, {}, [](const auto& item) {
+            return item.m_product.m_product;
+        });
+        auto sorted_sources = K_REFS(owned.m_sources);
+        auto sorted_provenance = K_REFS(owned.m_provenance);
+        std::ranges::sort(materials, {}, [](const Json& item) {
+            return integer(item.at("variant_id"));
+        });
+        const Json K_DOCUMENT {
+            { "schema_version", 1 },
+            { "asset_id", owned.m_asset.m_value },
+            { "revision", owned.m_revision },
+            { "world_epoch", expected.m_world_epoch.m_value },
+            { "pose_revision", expected.m_pose_revision.m_value },
+            { "receipt_sha256", receipt.receipt_sha256() },
+            { "kind", K_KIND },
+            { "sources", sorted_sources },
+            { "geometry", K_GEOMETRY },
+            { "materials", materials },
+            { "lods", K_LODS },
+            { "collider", collider },
+            { "units",
+             { { "status", meters.is_null() ? "ARBITRARY" : "DECLARED_METRIC" },
+              { "meters_per_unit", meters },
+              { "measurement", measurement } } },
+            { "bounds",
+             { { "minimum", vector_json(owned.m_bounds.m_minimum) },
+              { "maximum", vector_json(owned.m_bounds.m_maximum) } } },
+            { "pivot",
+             { { "policy", K_POLICY },
+              { "asset_from_geometry", transform_json(owned.m_pivot.m_asset_from_geometry) },
+              { "orientation_ambiguous", owned.m_pivot.m_orientation_ambiguous },
+              { "override_action", action } } },
+            { "provenance", sorted_provenance },
+            { "rights", K_RIGHTS },
+            { "manual_ancestor", manual } };
+        auto text = K_DOCUMENT.dump();
+        require(text.size() <= 64uz * 1024uz,
+                "Asset definition encoding exceeds budget",
+                ErrorCode::RESOURCE_EXHAUSTED);
+        const AssetDefinitionRef K_REFERENCE {
+            value.m_asset, value.m_revision, sha256(std::as_bytes(std::span(text))) };
+        check_stop(stop);
+        return AdmittedAssetDefinition(
+            std::make_shared<const AdmittedAssetDefinition::Implementation>(
+                AdmittedAssetDefinition::Implementation { std::move(owned),
+                                                         K_REFERENCE,
+                                                         receipt.receipt_sha256(),
+                                                         std::move(text),
+                                                         std::move(coverage) }));
+    } catch (const RecipeFailure& error) {
+        return fail(error.m_code, error.what());
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Asset definition allocation failed");
+    } catch (const std::exception& error) {
+        return fail(ErrorCode::BACKEND_FAILURE, error.what());
+    }
+}
+
+}  // namespace world_explorer

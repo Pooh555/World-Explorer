@@ -24,7 +24,7 @@ ALLOWED = {
         "reconstruction_adapters",
     },
     "map_store": {"core", "capture", "reconstruction_api", "map_store"},
-    "scene_store": {"core", "scene_store"},
+    "scene_store": {"core", "asset_catalog", "scene_store"},
     "collision": {"core", "scene_store", "collision"},
     "render_core": {"core", "scene_store", "render_core"},
     "render_vulkan": {"core", "scene_store", "render_core", "render_vulkan"},

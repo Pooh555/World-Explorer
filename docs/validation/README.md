@@ -1,5 +1,7 @@
 # Validation index
 
+- [A0 typed asset/instance schemas](2026-10-24-asset-schema.md): immutable reusable definitions, exact instance references, pivot/unit/lighting/provenance and declared lineage checks; synthetic canonical-byte oracle and CPU/sanitizer evidence, payload/publication/real-product qualification pending.
+
 - [A0 region provenance](2026-10-24-asset-region-provenance.md): complete bounded face/texel partitions, independent source identities, separate confidence/classes and declared manual lineage; synthetic CPU/oracle/sanitizer evidence, real correspondence/actions and AP0 qualification pending.
 
 - [A0 installed-component reconciliation](2026-10-24-asset-installed-components.md): explicit disjoint roots, exact closed inventories and two bounded read-only scans; synthetic CPU/sanitizer/oracle evidence, runtime/rights/inference qualification pending.

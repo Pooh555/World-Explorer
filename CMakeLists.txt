@@ -121,7 +121,7 @@ add_library(core src/core/hash.cpp src/core/file_lock.cpp src/core/asset_files.c
 we_target(core)
 target_link_libraries(core PRIVATE OpenSSL::Crypto PUBLIC Threads::Threads)
 
-add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp src/asset_catalog/component_evidence.cpp src/asset_catalog/installed_components.cpp src/asset_catalog/region_provenance.cpp)
+add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp src/asset_catalog/component_evidence.cpp src/asset_catalog/installed_components.cpp src/asset_catalog/region_provenance.cpp src/asset_catalog/asset_definition.cpp)
 we_target(asset_catalog)
 target_link_libraries(asset_catalog PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 
@@ -193,9 +193,9 @@ target_link_libraries(map_store PRIVATE collision nlohmann_json::nlohmann_json)
 
 add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp
   src/scene_store/world_frame.cpp src/scene_store/collision_support.cpp src/scene_store/depth_space.cpp src/scene_store/depth_space_grid.cpp src/scene_store/depth_space_evidence.cpp src/scene_store/depth_asset.cpp src/scene_store/fusion_asset.cpp src/scene_store/fusion_components.cpp
-  src/scene_store/fusion_cleanup.cpp src/scene_store/color_projection.cpp src/scene_store/baked_appearance.cpp src/scene_store/mesh_texture.cpp src/scene_store/gltf.cpp src/scene_store/gltf_import.cpp src/scene_store/gltf_png.cpp)
+  src/scene_store/fusion_cleanup.cpp src/scene_store/color_projection.cpp src/scene_store/baked_appearance.cpp src/scene_store/mesh_texture.cpp src/scene_store/gltf.cpp src/scene_store/gltf_import.cpp src/scene_store/gltf_png.cpp src/scene_store/asset_instances.cpp)
 we_target(scene_store)
-target_link_libraries(scene_store PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(scene_store PUBLIC core asset_catalog PRIVATE nlohmann_json::nlohmann_json)
 
 add_library(collision src/collision/triangle_cook.cpp src/collision/static_shape.cpp
     src/collision/kinematic_capsule.cpp)

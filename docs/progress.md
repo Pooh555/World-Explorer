@@ -2,7 +2,7 @@
 
 Updated 2026-10-24 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
-gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts, installed trees and region provenance).** A1–A6/AP1–AP9:
+gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts and typed asset/instance metadata).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
 [ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
@@ -76,15 +76,20 @@ separate evidence/confidence and graph-bound declared manual lineage. Source
 correspondence and actual human actions remain unverified; the
 [protocol](protocols/asset_region_provenance.md) records these limits. No mutable
 catalog, worker, asset production, completion/PBR output or viewer feature is
-implemented by these slices.
+implemented by those slices. The [typed asset/instance slice](validation/2026-10-24-asset-schema.md)
+now admits reusable immutable definition handles and bounded instance sets, with
+exact references, pivot/unit/material declarations, provenance and manual lineage.
+The [protocol](protocols/asset_definitions.md) distinguishes metadata admission
+from payload/rights/scale qualification and persistent revision ownership.
 
-Next executable step: implement bounded versioned asset-definition and
-scene-instance schemas from plan §11.4. Keep stable semantic IDs separate from
-content/revision hashes, reusable definition bytes separate from placement, and
-captured appearance separate from material/light semantics. Bind geometry,
-material, provenance, scale and pivot declarations to selected products; validate
-stale references, invalid transforms, duplicate IDs and caller-data preservation
-with synthetic fixtures. Recheck §§11.4–11.5 before choosing export-facing fields.
+Next executable step: add strict bounded byte readers and immutable owned
+publication for these canonical definition/instance records. Read the new protocol,
+plan §§11.3–11.5 and existing byte-receipt recovery contract. Reconstruct typed
+inputs against independently selected original receipts/provenance; verify exact
+canonical bytes/hashes, reject duplicate keys/NUL/foreign refs and conflicting
+committed ID/revisions, and preserve caller data through failure/retry/cancellation.
+Keep draft metadata separate from live scene transactions; no runtime adoption
+until actual payload validation can use the existing update path.
 Trusted manual-action journaling, verified source/region correspondence and
 capture/evaluation freezes remain A0 work. Current runtime evidence still needs
 recapture; installed observations do not establish runtime closure or legal rights.
