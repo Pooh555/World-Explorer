@@ -1,5 +1,7 @@
 # Validation index
 
+- [24 October: capture/evaluation selections](2026-10-24-capture-selections.md) — bounded role manifests, separate inference payloads, pose-fit/dependency isolation and owned history; A0/AP0 remain in progress.
+
 - [24 October: pose-bound object observations](2026-10-24-object-observations.md) — strict bounded observation/mask bytes, actual calibration/pose binding and declared evidence; A0/AP0 remain in progress.
 
 - [24 October: canonical asset metadata I/O and owned history](2026-10-24-asset-metadata-io.md) — strict independently selected bytes, immutable semantic revisions, operation intent and bounded crash/retry recovery; A0/AP0 remain in progress.

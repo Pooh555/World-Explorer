@@ -99,17 +99,27 @@ accepted/rejected evidence. Rejected dependencies retain manual ancestry; no
 segmentation, verified tracking or map transaction is implied. The
 [protocol](protocols/object_observations.md) owns fields and bounds.
 
-Next executable step: add versioned capture/evaluation selection manifests for
-A0 (plan §§11.6–11.7). Bind independently selected receipt/pose/image/observation
-identities and explicit inference versus held-out/evaluation-only roles. Reject
-role overlap, foreign/stale revisions and unbounded frame/annotation tables before
-ownership transfer; evaluation labels must not enter automatic inference or
-candidate selection. Reuse the existing receipt, object-observation and immutable
-record paths. Keep declarations distinct from verified consent, independent
-measurement and a sealed real corpus; do not rerun saved solves/fits or claim A1.
+The [capture-selection slice](validation/2026-10-24-capture-selections.md) now
+binds independently selected source/view/role/annotation tables to owned receipt
+and actual pose bytes. A separate inference-only handle excludes evaluation
+images/labels and complete receipts/pose assets; known upstream aliases and
+unselected/held-out pose-fit observations are rejected. Immutable publication
+retains exact bytes and semantic revision ownership. The
+[protocol](protocols/capture_selections.md) scopes this to selection/dependency
+conformance, not a sealed real corpus or verified consent/scale/fit history.
+
+Next executable step: implement bounded versioned manual-action receipts and an
+owned local journal (plan §§11.3–11.6), then bind it at the shared command boundary.
+Read existing declared manual ancestry and operation/crash recovery contracts.
+Record target revisions, action kind, setup/evaluation versus output-assistance
+scope and explicit time/accounting fields. Bind retries to exact operation bytes,
+reject foreign/stale targets and preserve committed history through cancellation
+and controlled crash. Do not treat a supplied JSON manual flag as a trusted act,
+allow evaluation-only actions into inference lineage, or count assisted outputs
+as automatic. Keep actor/consent/authenticity limits explicit and data local.
 Keep draft metadata separate from live scene transactions; actual payload
 validation must precede runtime adoption through the existing update path.
-Trusted manual-action journaling, verified source/region correspondence and
+Trusted manual-action journaling, verified source/region correspondence and full
 capture/evaluation freezes remain A0 work. Current runtime evidence still needs
 recapture; installed observations do not establish runtime closure or legal rights.
 Unknown installation/model costs must refuse provisioning. Bounded tree checks
