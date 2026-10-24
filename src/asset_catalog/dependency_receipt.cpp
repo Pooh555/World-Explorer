@@ -203,6 +203,10 @@ const std::string& AdmittedAssetReceipt::receipt_sha256() const {
     return m_state->m_sha256;
 }
 
+const std::filesystem::path& AdmittedAssetReceipt::source_directory() const {
+    return m_state->m_source;
+}
+
 OperationId AdmittedAssetReceipt::operation() const {
     return m_state->m_operation;
 }

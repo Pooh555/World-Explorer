@@ -21,6 +21,7 @@ class AdmittedAssetReceipt {
     const AssetDependencyGraph& graph() const;
     const std::string& receipt_sha256() const;
     OperationId operation() const;
+    const std::filesystem::path& source_directory() const;
     std::size_t file_count() const;
     // Independent owned copy; no filesystem access after initial admission.
     Result<std::vector<std::byte>> copy_blob(const std::string& sha256,

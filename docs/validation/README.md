@@ -1,5 +1,7 @@
 # Validation index
 
+- [24 October: canonical asset metadata I/O and owned history](2026-10-24-asset-metadata-io.md) — strict independently selected bytes, immutable semantic revisions, operation intent and bounded crash/retry recovery; A0/AP0 remain in progress.
+
 - [A0 typed asset/instance schemas](2026-10-24-asset-schema.md): immutable reusable definitions, exact instance references, pivot/unit/lighting/provenance and declared lineage checks; synthetic canonical-byte oracle and CPU/sanitizer evidence, payload/publication/real-product qualification pending.
 
 - [A0 region provenance](2026-10-24-asset-region-provenance.md): complete bounded face/texel partitions, independent source identities, separate confidence/classes and declared manual lineage; synthetic CPU/oracle/sanitizer evidence, real correspondence/actions and AP0 qualification pending.

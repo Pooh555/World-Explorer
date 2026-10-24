@@ -2,7 +2,7 @@
 
 Updated 2026-10-24 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
-gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts and typed asset/instance metadata).** A1–A6/AP1–AP9:
+gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts, typed metadata and owned history).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
 [ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
@@ -82,14 +82,25 @@ exact references, pivot/unit/material declarations, provenance and manual lineag
 The [protocol](protocols/asset_definitions.md) distinguishes metadata admission
 from payload/rights/scale qualification and persistent revision ownership.
 
-Next executable step: add strict bounded byte readers and immutable owned
-publication for these canonical definition/instance records. Read the new protocol,
-plan §§11.3–11.5 and existing byte-receipt recovery contract. Reconstruct typed
-inputs against independently selected original receipts/provenance; verify exact
-canonical bytes/hashes, reject duplicate keys/NUL/foreign refs and conflicting
-committed ID/revisions, and preserve caller data through failure/retry/cancellation.
-Keep draft metadata separate from live scene transactions; no runtime adoption
-until actual payload validation can use the existing update path.
+The [metadata I/O slice](validation/2026-10-24-asset-metadata-io.md) adds strict
+canonical byte decoders, independently selected receipt/provenance bindings and
+bounded owned publication. Durable operation intents, immutable blobs and a
+manifest published last preserve committed revisions through matching retry,
+cancellation and a controlled process crash. Per-directory semantic ID/revision
+conflicts are rejected. The [protocol](protocols/asset_metadata_io.md) defines
+ownership, budgets and recovery scope; no live scene update or payload qualification
+is implied.
+
+Next executable step: implement bounded versioned object-observation byte
+contracts (plan §11.4) against independently selected admitted image/calibration/
+pose/mask revisions and image-grid transforms. Keep visible/occluded/unknown
+coverage, association hypotheses and accepted/rejected evidence separate; reject
+foreign/stale references, invalid grids and over-budget masks before ownership
+transfer. Use the existing receipt/graph path and preserve caller data. Read the
+observation/map contracts first; do not infer full object extents from visible
+pixels or add automatic inference before these capture/evaluation inputs freeze.
+Keep draft metadata separate from live scene transactions; actual payload
+validation must precede runtime adoption through the existing update path.
 Trusted manual-action journaling, verified source/region correspondence and
 capture/evaluation freezes remain A0 work. Current runtime evidence still needs
 recapture; installed observations do not establish runtime closure or legal rights.

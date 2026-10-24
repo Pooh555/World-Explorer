@@ -3,8 +3,9 @@
 Native [`asset_definition.hpp`](../../include/world_explorer/asset_catalog/asset_definition.hpp)
 and [`asset_instances.hpp`](../../include/world_explorer/scene_store/asset_instances.hpp)
 implement bounded typed metadata admission and canonical JSON encoding.
-A0/AP0 remain **IN_PROGRESS**. This is not a mutable catalog, JSON decoder,
-persistent revision registry, runtime scene update, exporter or asset producer.
+A0/AP0 remain **IN_PROGRESS**. Separate [byte I/O and owned publication](asset_metadata_io.md)
+now decode these canonical records and enforce per-directory committed revision
+ownership. Neither layer is a live scene update, exporter or asset producer.
 
 ## Ownership, identity and immutable handles
 
@@ -30,9 +31,9 @@ physical measurement, material quality or runtime safety.
 A definition reference is `(asset_id, revision, sha256)`, separate from input
 product IDs. Instance sets select these exact references; two instances reuse one
 selected handle. At most one revision per asset ID is selected in a set. This
-admission layer has no global history: a future owned publisher must reject
-conflicting content for a previously committed semantic ID/revision and enforce
-transactional scene revisions/operation IDs. Draft metadata admission alone does
+admission layer has no global history. The separate owned publisher rejects
+conflicting bytes for committed semantic ID/revisions and binds operation IDs
+within its metadata directory; runtime transactions remain separate. Draft metadata admission alone does
 not authorize replacement of a committed revision.
 
 ## Definition fields and checks
