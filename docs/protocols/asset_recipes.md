@@ -69,6 +69,11 @@ Their hashes/sizes/rights remain declarations. Every result carries
 `COMPONENT_BYTES_UNVERIFIED`; self-declared permission never clears rights or
 qualifies reproducibility. Trusted review selection, payload admission and
 installed-file reconciliation remain required before provisioning/execution.
+The separate [component evidence inspector](asset_component_evidence.md) now
+binds bounded snapshot bytes and independently selected review records. Complete
+verification there replaces the byte blocker with `INSTALLED_FILES_UNVERIFIED`;
+missing independent selections add `REVIEW_NOT_SELECTED`. This never verifies an
+actual installation, legal authority or worker execution.
 
 ## Resource assessment and refusal
 

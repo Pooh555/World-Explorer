@@ -121,7 +121,7 @@ add_library(core src/core/hash.cpp src/core/file_lock.cpp src/core/asset_files.c
 we_target(core)
 target_link_libraries(core PRIVATE OpenSSL::Crypto PUBLIC Threads::Threads)
 
-add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp)
+add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp src/asset_catalog/component_evidence.cpp)
 we_target(asset_catalog)
 target_link_libraries(asset_catalog PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 

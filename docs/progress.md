@@ -2,7 +2,7 @@
 
 Updated 2026-10-24 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
-gate is certified. **A0/AP0: IN_PROGRESS (CPU graph/receipt/recipe contracts).** A1–A6/AP1–AP9:
+gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts and component evidence).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
 [ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
@@ -60,17 +60,22 @@ The [recipe-lock slice](validation/2026-10-24-asset-recipes.md) now inspects str
 recipe fields, exact dependency/source bindings and resource/rights declarations
 from those owned bytes. Unknown installation costs, local restrictions, uncleared
 distribution and insufficient/contract-only hosts remain explicit blockers.
-Code/environment/model/config/prompt/rights payloads are not yet independently
-admitted or reconciled; every result retains unverified external bytes. The
-[recipe protocol](protocols/asset_recipes.md) records those limits. No mutable catalog, worker, asset
+The [component-evidence slice](validation/2026-10-24-asset-component-evidence.md)
+now binds bounded inventory/file/archive/config/prompt/terms bytes and independently
+selected review records from a second snapshot. Self-selection cannot clear a
+review blocker. Actual installed files, archive expansion, transitive/runtime
+closure and legal authority remain unverified; all results retain the installation
+blocker. The [protocol](protocols/asset_component_evidence.md) records that scope.
+No mutable catalog, worker, asset
 production, completion/PBR output or viewer feature is implemented by this slice.
 
-Next executable step: add bounded independently pinned component-manifest and
-terms/review receipt admission around the recipe inspector, keeping trusted review
-selection separate from self-declared rights. First read plan §§11.3–11.4/11.7
-and the existing installed-byte/dependency audit contracts; verify synthetic
-payload/checksum/review mismatches and partial/unknown inventory refusal through
-the owned receipt path. Do not install models or infer cleared rights from a hash.
+Next executable step: add read-only installed-component reconciliation against
+selected manifests and explicitly selected roots, with bounded path/link/extra-file
+policy, exact hashes/sizes and cancellation. First read plan §§11.3–11.4/11.7 and
+existing worker identity/RECORD, runtime and component-evidence contracts; validate
+synthetic missing/changed/added files and caller-data preservation without worker
+imports or provisioning. Keep independent review selection separate from legal
+authority. Do not install models or infer cleared rights from a hash.
 Unknown installation/model costs must refuse provisioning. Spatial
 evidence/manual-ancestry masks, asset/instance schemas, capture/evaluation freezes
 and trusted manual-action journaling remain A0 work; do not label byte binding

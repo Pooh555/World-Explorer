@@ -1,5 +1,7 @@
 # Validation index
 
+- [A0 component evidence](2026-10-24-asset-component-evidence.md): bounded component/inventory/payload/terms byte binding and independent review selection, synthetic conformance/oracle/sanitizer evidence; installed roots, external rights and real asset qualification remain open.
+
 - [A0 recipe lock inspection](2026-10-24-asset-recipes.md): bounded native recipe/dependency/source binding, rights declarations and checked resource reservations with explicit blockers; synthetic cross-language oracle and sanitizer evidence, external payload/rights/provisioning qualification pending.
 
 - [Windows decode-coordinator comparison repair](2026-10-24-windows-decode-json.md): subsequent log gets past the reader, then reports the same C2666 pattern in the coordinator; typed extraction and a remaining-use audit, with local build/stage-chain/admission evidence and native Windows confirmation pending.

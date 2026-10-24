@@ -31,7 +31,8 @@ a manual-action SHA-256. The function validates these declarations; it neither
 opens files nor proves their content, source rights, evidence classes or completeness.
 The receipt adapter binds these declarations to owned file bytes and immutable
 publication. The [recipe inspector](asset_recipes.md) checks declarations and
-resource arithmetic; external component/rights qualification remains A0 work.
+resource arithmetic; [component evidence](asset_component_evidence.md) binds
+snapshot bytes/reviews. Installed-file and external rights qualification remain A0 work.
 
 Manual ancestry is exactly the transitive closure of declared manual actions.
 An action on a node or manual ancestry on any parent requires its
