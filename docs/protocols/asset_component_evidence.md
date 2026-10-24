@@ -56,8 +56,10 @@ the recipe's deduplicated input set, with distinct product/revision references
 retained. No component may silently replace unknown sizes or missing terms/review
 identities: incomplete evidence rejects rather than inventing costs/permission.
 
-Paths are logical installation-relative names only; they are never materialized
-or used to open files. Allowed characters are ASCII letters/digits and `._-/`;
+Paths in this inspector are logical installation-relative names only; they are
+never materialized or used to open files. Exact validated rows are retained for
+the separate [installed-tree observation](asset_installed_components.md). Allowed
+characters are ASCII letters/digits and `._-/`;
 length is 1–240 bytes, segment length at most 128. Reject absolute paths, empty/
 dot/dot-dot segments, trailing dots, Windows device names, case aliases, duplicate
 paths and file/parent collisions. Backslashes, colons, spaces and NUL are excluded.
@@ -102,6 +104,7 @@ caller data/snapshots; there is no partial publication or partial success result
 
 Only complete byte verification replaces `COMPONENT_BYTES_UNVERIFIED` with
 `INSTALLED_FILES_UNVERIFIED`. Host capacity/contracts-only and rights blockers
-remain. Actual installed roots, archive extraction, transitive/runtime closure,
+remain. Installed roots have a separate [bounded observation](asset_installed_components.md);
+archive extraction, transitive/runtime closure,
 trusted human review, measured/enforced worker limits and real inference/output
 still need separate qualification. No result clears AP0 or permits provisioning.

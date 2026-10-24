@@ -2,7 +2,7 @@
 
 Updated 2026-10-24 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
-gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts and component evidence).** A1–A6/AP1–AP9:
+gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts and installed-tree checks).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
 
 [ADR 020](adr/020-m3-development-exit.md) establishes an M3 local development
@@ -63,24 +63,28 @@ distribution and insufficient/contract-only hosts remain explicit blockers.
 The [component-evidence slice](validation/2026-10-24-asset-component-evidence.md)
 now binds bounded inventory/file/archive/config/prompt/terms bytes and independently
 selected review records from a second snapshot. Self-selection cannot clear a
-review blocker. Actual installed files, archive expansion, transitive/runtime
-closure and legal authority remain unverified; all results retain the installation
-blocker. The [protocol](protocols/asset_component_evidence.md) records that scope.
+review blocker. The [installed-tree slice](validation/2026-10-24-asset-installed-components.md)
+now reconciles explicitly selected disjoint portable roots with exact closed
+inventories, two bounded hash scans and caller-data preservation. Runtime closure,
+archive correspondence, legal authority and measured/enforced worker limits
+remain unverified; successful observations retain explicit blockers. The
+[protocol](protocols/asset_installed_components.md) defines the cooperative-filesystem
+scope and forbids treating results as execution tokens.
 No mutable catalog, worker, asset
 production, completion/PBR output or viewer feature is implemented by this slice.
 
-Next executable step: add read-only installed-component reconciliation against
-selected manifests and explicitly selected roots, with bounded path/link/extra-file
-policy, exact hashes/sizes and cancellation. First read plan §§11.3–11.4/11.7 and
-existing worker identity/RECORD, runtime and component-evidence contracts; validate
-synthetic missing/changed/added files and caller-data preservation without worker
-imports or provisioning. Keep independent review selection separate from legal
-authority. Do not install models or infer cleared rights from a hash.
-Unknown installation/model costs must refuse provisioning. Spatial
-evidence/manual-ancestry masks, asset/instance schemas, capture/evaluation freezes
-and trusted manual-action journaling remain A0 work; do not label byte binding
-AP0 completion. Installed-file verification, measured budgets and enforced worker
-limits are still required. The 8 GiB host remains contracts-only; H_AP24/H_AP48
+Next executable step: implement bounded versioned region-provenance records
+bound to admitted product/revision/context and explicit source-view identities.
+Recheck plan §11.4 and AP0: preserve observed/inferred/generated/manually-edited
+and unknown coverage, keep confidence separate, and bind declared manual ancestry
+to the dependency graph. Validate synthetic invalid partitions, stale bindings
+and caller-data preservation; never infer measured support from a generated mask.
+Trusted manual-action journaling, asset/instance schemas and capture/evaluation
+freezes remain A0 work. Current runtime evidence still needs recapture; installed
+observations do not establish worker/runtime closure or legal authority.
+Unknown installation/model costs must refuse provisioning. Bounded tree checks
+do not complete AP0. Full installation/runtime qualification, measured budgets
+and enforced worker limits are still required. The 8 GiB host remains contracts-only; H_AP24/H_AP48
 are proposed profiles, and unknown model/environment sizes block provisioning.
 No model installation, inference or implicit download occurs. A1 still needs its
 own consented independently scaled real pilot, held-out/empty-background and

@@ -1,5 +1,7 @@
 # Validation index
 
+- [A0 installed-component reconciliation](2026-10-24-asset-installed-components.md): explicit disjoint roots, exact closed inventories and two bounded read-only scans; synthetic CPU/sanitizer/oracle evidence, runtime/rights/inference qualification pending.
+
 - [A0 component evidence](2026-10-24-asset-component-evidence.md): bounded component/inventory/payload/terms byte binding and independent review selection, synthetic conformance/oracle/sanitizer evidence; installed roots, external rights and real asset qualification remain open.
 
 - [A0 recipe lock inspection](2026-10-24-asset-recipes.md): bounded native recipe/dependency/source binding, rights declarations and checked resource reservations with explicit blockers; synthetic cross-language oracle and sanitizer evidence, external payload/rights/provisioning qualification pending.

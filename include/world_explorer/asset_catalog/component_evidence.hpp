@@ -13,6 +13,12 @@ struct AssetReviewSelection {
     std::string m_reviewer;
 };
 
+struct AssetComponentFile {
+    std::string m_path;
+    std::string m_sha256;
+    std::uint64_t m_bytes {};
+};
+
 struct AssetComponentEvidence {
     AssetRecipeRole m_role;
     std::string m_component_sha256;
@@ -20,6 +26,8 @@ struct AssetComponentEvidence {
     std::uint64_t m_archive_bytes {};
     std::uint64_t m_installed_bytes {};
     bool m_review_selected {};
+    // Exact manifest spelling; INPUT bytes belong to the source snapshot instead.
+    std::vector<AssetComponentFile> m_files;
 };
 
 // Owned diagnostic result; never an installation or worker-execution token.

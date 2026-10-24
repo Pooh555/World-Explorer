@@ -161,7 +161,7 @@ inspect_asset_recipe_evidence(const AdmittedAssetReceipt& recipe_receipt,
                             "Component evidence requires known sizes and terms/review identities");
             }
             AssetComponentEvidence verified {
-                component.m_role, component.m_sha256, 0uz, 0, 0, false };
+                component.m_role, component.m_sha256, 0uz, 0, 0, false, {} };
             if (component.m_role == AssetRecipeRole::INPUT) {
                 verified.m_file_count = 1uz;
                 verified.m_installed_bytes =
@@ -203,6 +203,7 @@ inspect_asset_recipe_evidence(const AdmittedAssetReceipt& recipe_receipt,
                         require(K_PAYLOAD_SIZE(K_SHA) == K_SIZE, "Component payload size mismatch");
                     }
                     verified.m_installed_bytes = add(verified.m_installed_bytes, K_SIZE);
+                    verified.m_files.push_back({ file.at("path").get<std::string>(), K_SHA, K_SIZE });
                 }
                 for (const auto& path : paths) {
                     for (auto slash = path.find('/'); slash != path.npos;
