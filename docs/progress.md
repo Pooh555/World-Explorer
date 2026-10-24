@@ -24,11 +24,17 @@ Black checks pass without changing global compilers or worker environments.
 Use `artifacts/tools/llvm-official-23.1.1/bin` for the exact C++ style tools.
 The earlier full Windows log confirms C4702/C2220 unreachable-code failures.
 Local non-Linux branch checks pass; native Windows rerun remains pending.
-The latest Windows excerpt compiles the previously failing source after the
+The 21 October Windows excerpt compiles the previously failing source after the
 [enum-conformance repair](validation/2026-10-21-windows-jolt-enums.md), then
 reports 95 CRT link mismatches: Jolt `/MTd` versus tests `/MDd`. The
 [runtime alignment](validation/2026-10-21-windows-jolt-crt.md) follows the parent
 CRT setting; full native Windows build/test confirmation remains pending.
+The [24 October quality-policy repair](validation/2026-10-24-windows-quality-json.md)
+addresses the newly supplied MSVC C2666 JSON/string-view comparison failure.
+C++26/C++23 builds and 21 decoded-admission cases pass locally; full native
+Windows confirmation remains due. Relinking makes the saved runtime payload
+receipt stale: default inventory passes, `--local-evidence` exits 2. Fresh runtime
+observation is required before claiming current local inventory consistency.
 
 [ADR 019](adr/019-assets-before-platforms.md) orders M3 → A0–A5 → M4 → M5 → M6,
 then A6 engine packaging. The [asset track](technical_plan.md#11-offline-asset-production-track)

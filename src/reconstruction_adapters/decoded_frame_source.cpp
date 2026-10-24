@@ -275,7 +275,7 @@ validate_quality(const std::filesystem::path& root,
     const auto K_POLICY = K_LEDGER.at("policy").dump();
     if (K_LEDGER.at("schema_version") != 1 || K_LEDGER.at("source_sha256") != source ||
         K_LEDGER.at("profile") != metadata.at("selection") ||
-        K_LEDGER.at("policy_sha256") != K_POLICY_SHA ||
+        K_LEDGER.at("policy_sha256").get_ref<const std::string&>() != K_POLICY_SHA ||
         sha256(std::as_bytes(std::span(K_POLICY))) != K_POLICY_SHA ||
         !digest_valid(K_LEDGER.at("implementation_sha256").get<std::string>())) {
         throw std::invalid_argument("Unsupported quality policy/provenance");

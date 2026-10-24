@@ -1,5 +1,7 @@
 # Validation index
 
+- [Windows quality-policy comparison repair](2026-10-24-windows-quality-json.md): typed string extraction removes the supplied MSVC C2666 ambiguity; local C++26/C++23 builds and decoded-admission checks pass, native Windows rerun and fresh runtime payload receipts remain pending.
+
 - [A0 byte-bound receipts](2026-10-24-asset-receipts.md): bounded native file admission, privately owned snapshots, immutable publication/replay, cancellation and controlled process-crash recovery; synthetic CPU scope, A0/AP0 remain IN_PROGRESS.
 
 - [A0 dependency contract](2026-10-23-asset-dependencies.md): new CPU asset-catalog DAG admission, deterministic cross-language identity, stale selection and manual ancestry checks, exact budgets and sanitizers; A0/AP0 remain IN_PROGRESS, no asset output or inference qualification.
