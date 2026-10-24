@@ -5,6 +5,7 @@
 namespace world_explorer {
 
 using CaptureSelectionId = TypedId<struct capture_selection_tag>;
+using ManualActionId = TypedId<struct manual_action_tag>;
 using ObjectObservationId = TypedId<struct object_observation_tag>;
 using ObjectTrackId = TypedId<struct object_track_tag>;
 using AssetProductId = TypedId<struct asset_product_tag>;

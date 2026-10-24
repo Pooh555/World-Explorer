@@ -121,7 +121,7 @@ add_library(core src/core/hash.cpp src/core/file_lock.cpp src/core/asset_files.c
 we_target(core)
 target_link_libraries(core PRIVATE OpenSSL::Crypto nlohmann_json::nlohmann_json PUBLIC Threads::Threads)
 
-add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp src/asset_catalog/component_evidence.cpp src/asset_catalog/installed_components.cpp src/asset_catalog/region_provenance.cpp src/asset_catalog/asset_definition.cpp src/asset_catalog/definition_io.cpp)
+add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp src/asset_catalog/component_evidence.cpp src/asset_catalog/installed_components.cpp src/asset_catalog/region_provenance.cpp src/asset_catalog/asset_definition.cpp src/asset_catalog/definition_io.cpp src/asset_catalog/manual_actions.cpp)
 we_target(asset_catalog)
 target_link_libraries(asset_catalog PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 
@@ -223,7 +223,7 @@ add_library(navigation src/navigation/fly_camera.cpp)
 we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
-add_library(application src/application/commands.cpp src/application/scenes.cpp
+add_library(application src/application/commands.cpp src/application/scenes.cpp src/application/manual_actions.cpp
   src/application/depth_assets.cpp src/application/fusion_assets.cpp src/application/fusion_scene.cpp
   src/application/fusion_cleanup.cpp src/application/geometry_job.cpp src/application/mesh_job.cpp
   src/application/mesh_color_audit.cpp src/application/color_inputs.cpp src/application/mesh_texture.cpp src/application/gltf.cpp
@@ -237,7 +237,7 @@ add_library(application src/application/commands.cpp src/application/scenes.cpp
   src/application/video_inspection.cpp src/application/owned_job.cpp src/application/video_decode.cpp
   src/application/pose_job.cpp)
 we_target(application)
-target_link_libraries(application PUBLIC scene_store navigation reconstruction_adapters map_store PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(application PUBLIC scene_store navigation reconstruction_adapters map_store asset_catalog PRIVATE nlohmann_json::nlohmann_json)
 
 add_executable(we_process apps/we_process/main.cpp)
 we_target(we_process)

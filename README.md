@@ -244,9 +244,9 @@ output behavior.
 
 - **M1 and M2:** scoped Linux development exits are verified; this does not close
   the full product or release gates.
-- **M3:** active, covering reconstruction and observed geometry.
-- **A0–A5:** not started; scheduled after M3 and before M4 for the local asset
-  production track.
+- **M3:** scoped local software exit verified; measured/full gates remain open.
+- **A0:** contracts and owned metadata history are in progress. **A1–A5:** not
+  started; local asset production precedes M4.
 - **M4–M6:** native platform, reference hardware, and full release qualification
   remain ahead.
 - **A6:** engine packaging follows M6.
@@ -255,6 +255,11 @@ output behavior.
 See the [milestone handoff](docs/progress.md),
 [asset-track decision](docs/adr/019-assets-before-platforms.md), and
 [requirement matrix](docs/requirements.md) for current evidence and ordering.
+
+The [manual-action journal](docs/protocols/manual_actions.md) records bounded
+declarations through the native application API. Inspect an independently pinned
+commit with `build/dev/we_process inspect-actions JOURNAL GENERATION MANIFEST_SHA`;
+its counts/time do not authenticate human actions or qualify automatic output.
 
 ## Platform Support
 

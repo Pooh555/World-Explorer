@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-24 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-25 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
 gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts, typed metadata and owned history).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
@@ -118,18 +118,25 @@ retains exact bytes and semantic revision ownership. The
 [protocol](protocols/capture_selections.md) scopes this to selection/dependency
 conformance, not a sealed real corpus or verified consent/scale/fit history.
 
-Next executable step: implement bounded versioned manual-action receipts and an
-owned local journal (plan §§11.3–11.6), then bind it at the shared command boundary.
-Read existing declared manual ancestry and operation/crash recovery contracts.
-Record target revisions, action kind, setup/evaluation versus output-assistance
-scope and explicit time/accounting fields. Bind retries to exact operation bytes,
-reject foreign/stale targets and preserve committed history through cancellation
-and controlled crash. Do not treat a supplied JSON manual flag as a trusted act,
-allow evaluation-only actions into inference lineage, or count assisted outputs
-as automatic. Keep actor/consent/authenticity limits explicit and data local.
+The [manual-action journal slice](validation/2026-10-25-manual-actions.md) now
+records bounded declared actions through a shared native application command,
+with exact receipt/target/context binding, immutable retry/crash recovery and
+separate setup/evaluation/assistance time sums. `we_process inspect-actions`
+reads independently pinned history. The [protocol](protocols/manual_actions.md)
+keeps actor/time/authenticity limits explicit; its inference helper rejects
+setup/evaluation actions. This does not bind actual mutations or completed edits.
+
+Next executable step: bind output-assistance receipts to draft metadata mutation
+intents/results (plan §§11.3–11.6). Record exact before/after product revisions,
+command kind/parameters and selected journal action hash; validate those against
+the independently selected input receipt and expected epoch/base. Require declared
+manual ancestry on affected products and descendants, reject setup/evaluation
+actions at that boundary, and preserve pending/failed versus committed outcomes
+through exact retry/cancellation/crash. A journal declaration cannot certify a
+human act, consent, edit completion or automatic yield. Keep data local.
 Keep draft metadata separate from live scene transactions; actual payload
 validation must precede runtime adoption through the existing update path.
-Trusted manual-action journaling, verified source/region correspondence and full
+Enforced mutation/action linkage, verified source/region correspondence and full
 capture/evaluation freezes remain A0 work. Current runtime evidence still needs
 recapture; installed observations do not establish runtime closure or legal rights.
 Unknown installation/model costs must refuse provisioning. Bounded tree checks

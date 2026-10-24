@@ -37,6 +37,7 @@ ALLOWED = {
     "navigation": {"core", "navigation"},
     "application": {
         "core",
+        "asset_catalog",
         "collision",
         "capture",
         "reconstruction_api",

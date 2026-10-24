@@ -38,8 +38,10 @@ Manual ancestry is exactly the transitive closure of declared manual actions.
 An action on a node or manual ancestry on any parent requires its
 `manual_ancestor` flag. A true flag without such ancestry is also inconsistent.
 Automated descendants cannot clear a declared manual ancestor. This does not
-detect omitted/falsified external action records; the future owned action journal
-must bind actual human operations. No automatic-success classification follows
+detect omitted/falsified external action records. The [owned journal](manual_actions.md)
+now records bounded declarations and offers a scope-restricted inference binding;
+graph admission does not yet require it or bind actual output mutations/human
+operations. No automatic-success classification follows
 from a validated graph.
 
 ## Deterministic identity

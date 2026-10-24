@@ -1,5 +1,7 @@
 # Validation index
 
+- [25 October: declared manual-action journal](2026-10-25-manual-actions.md) — bounded native command, separate setup/evaluation/assistance accounting, exact retry and controlled crash recovery, inference scope binding and CLI inspection; actual mutation/human authenticity and A0/AP0 qualification remain open.
+
 - [24 October: Windows record-store observer repair](2026-10-24-windows-record-lock.md) — supplied 568/569 native CPU result fails on hashing an exclusively held lock; complete snapshots before acquisition/after release preserve every file check, with rejection/retry evidence locally and native rerun pending.
 
 - [24 October: native public-header include repair](2026-10-24-native-span-includes.md) — supplied GCC 13/MSVC missing-span failures repaired, direct-include CTest guard and local C++26/C++23 builds/full CPU suites pass; native CI reruns pending.

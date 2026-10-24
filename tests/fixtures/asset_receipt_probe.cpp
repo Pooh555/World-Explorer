@@ -1,4 +1,5 @@
 #include "world_explorer/asset_catalog/dependency_receipt.hpp"
+#include "world_explorer/asset_catalog/manual_actions.hpp"
 #include "world_explorer/core/immutable_records.hpp"
 
 #include <cstdlib>
@@ -36,6 +37,21 @@ int main(int argc, char** argv) {
     if (!K_RECEIPT) {
         std::cerr << K_RECEIPT.error().m_message << '\n';
         return 2;
+    }
+    if (std::string_view(argv[4]) == "manual-crash") {
+        const ManualActionRequest K_REQUEST { { 23 },
+                                             ManualActionKind::EDIT_MASK,
+                                             "synthetic-actor",
+                                             1000,
+                                             500,
+                                             200,
+                                             { K_RECEIPT->graph().m_products[0uz].m_product },
+                                             "synthetic declared action" };
+        const auto K_RESULT = append_manual_action(
+            K_REQUEST, *K_RECEIPT, argv[3], { 23 }, 0, K_CONTEXT, {}, [](std::size_t) {
+                std::_Exit(77);
+            });
+        return K_RESULT ? 0 : 2;
     }
     const auto K_CRASH = std::string_view(argv[4]) == "crash";
     const auto K_RESULT =

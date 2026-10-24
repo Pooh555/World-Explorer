@@ -10,6 +10,7 @@
 #include "world_explorer/application/fusion_scene.hpp"
 #include "world_explorer/application/geometry_job.hpp"
 #include "world_explorer/application/gltf.hpp"
+#include "world_explorer/application/manual_actions.hpp"
 #include "world_explorer/application/map_commands.hpp"
 #include "world_explorer/application/mesh_color_audit.hpp"
 #include "world_explorer/application/mesh_texture.hpp"
@@ -102,12 +103,44 @@ int main(int argc, char** argv) {
                    "  we_process init-map MAP_DIRECTORY\n"
                    "  we_process import-map INPUT.weposes SHA256 MAP_DIRECTORY\n"
                    "  we_process inspect-map MAP_DIRECTORY (checked restart/recovery)\n"
+                   "  we_process inspect-actions JOURNAL GENERATION MANIFEST_SHA (declared "
+                   "actions)\n"
                    "  we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE\n"
                    "  we_process fixture OUTPUT.wexplore  (synthetic diagnostic)\n"
                    "Worker overrides: --worker-script PATH --worker-python EXECUTABLE\n";
             return argc < 2 ? 2 : 0;
         }
         const std::string K_COMMAND = argv[1];
+        if (K_COMMAND == "inspect-actions") {
+            if (argc != 5) {
+                std::cerr << "Usage: we_process inspect-actions JOURNAL GENERATION MANIFEST_SHA\n";
+                return 2;
+            }
+            RecordCommit selected;
+            const std::string_view K_TEXT(argv[3uz]);
+            const auto K_PARSED = std::from_chars(
+                K_TEXT.data(), K_TEXT.data() + K_TEXT.size(), selected.m_generation);
+            if (K_PARSED.ec != std::errc {} || K_PARSED.ptr != K_TEXT.data() + K_TEXT.size()) {
+                std::cerr << "Invalid journal generation\n";
+                return 2;
+            }
+            selected.m_manifest_sha256 = argv[4uz];
+            const auto K_JOURNAL = read_manual_action_journal(argv[2uz], selected);
+            if (!K_JOURNAL) {
+                std::cerr << K_JOURNAL.error().m_message << '\n';
+                return 2;
+            }
+            const auto& accounting = K_JOURNAL->accounting();
+            std::cout << "Declared manual actions; actor/time/action completion unverified\n"
+                      << "Generation " << K_JOURNAL->commit().m_generation << '\n'
+                      << "Setup: " << accounting.m_setup_count << " actions, "
+                      << accounting.m_setup_active_ms << " active ms\n"
+                      << "Evaluation only: " << accounting.m_evaluation_count << " actions, "
+                      << accounting.m_evaluation_active_ms << " active ms\n"
+                      << "Output assistance: " << accounting.m_assistance_count << " actions, "
+                      << accounting.m_assistance_active_ms << " active ms\n";
+            return 0;
+        }
         if (K_COMMAND == "compile-fit" && argc == 4) {
             const auto K_RESULT = compile_fit_scene({ .m_input = argv[2], .m_destination = argv[3] });
             if (!K_RESULT) {
