@@ -1,5 +1,7 @@
 # Validation index
 
+- [24 October: pose-bound object observations](2026-10-24-object-observations.md) — strict bounded observation/mask bytes, actual calibration/pose binding and declared evidence; A0/AP0 remain in progress.
+
 - [24 October: canonical asset metadata I/O and owned history](2026-10-24-asset-metadata-io.md) — strict independently selected bytes, immutable semantic revisions, operation intent and bounded crash/retry recovery; A0/AP0 remain in progress.
 
 - [A0 typed asset/instance schemas](2026-10-24-asset-schema.md): immutable reusable definitions, exact instance references, pivot/unit/lighting/provenance and declared lineage checks; synthetic canonical-byte oracle and CPU/sanitizer evidence, payload/publication/real-product qualification pending.

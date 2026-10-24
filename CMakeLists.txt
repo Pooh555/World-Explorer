@@ -184,11 +184,11 @@ add_custom_command(OUTPUT "${WE_POSE_DIRECTORY}/checkpoint_generated.h"
   DEPENDS ${WE_FLATC} schemas/map/checkpoint.fbs schemas/map/poses.fbs
   VERBATIM)
 add_library(map_store src/map_store/map_store.cpp src/map_store/pose_asset.cpp
-  src/map_store/map_codec.cpp src/map_store/map_persistence.cpp
+  src/map_store/map_codec.cpp src/map_store/map_persistence.cpp src/map_store/object_observation.cpp
   "${WE_POSE_DIRECTORY}/poses_generated.h" "${WE_POSE_DIRECTORY}/checkpoint_generated.h")
 we_target(map_store)
 target_include_directories(map_store SYSTEM PRIVATE "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
-target_link_libraries(map_store PUBLIC reconstruction_api)
+target_link_libraries(map_store PUBLIC reconstruction_api asset_catalog)
 target_link_libraries(map_store PRIVATE collision nlohmann_json::nlohmann_json)
 
 add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp

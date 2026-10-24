@@ -91,14 +91,22 @@ conflicts are rejected. The [protocol](protocols/asset_metadata_io.md) defines
 ownership, budgets and recovery scope; no live scene update or payload qualification
 is implied.
 
-Next executable step: implement bounded versioned object-observation byte
-contracts (plan §11.4) against independently selected admitted image/calibration/
-pose/mask revisions and image-grid transforms. Keep visible/occluded/unknown
-coverage, association hypotheses and accepted/rejected evidence separate; reject
-foreign/stale references, invalid grids and over-budget masks before ownership
-transfer. Use the existing receipt/graph path and preserve caller data. Read the
-observation/map contracts first; do not infer full object extents from visible
-pixels or add automatic inference before these capture/evaluation inputs freeze.
+The [object-observation slice](validation/2026-10-24-object-observations.md) now
+binds strict observation/mask records to independently selected image and actual
+native pose-asset bytes. It validates current frame/calibration/pose revisions,
+contained integer-center grids, complete visibility partitions, hypotheses and
+accepted/rejected evidence. Rejected dependencies retain manual ancestry; no
+segmentation, verified tracking or map transaction is implied. The
+[protocol](protocols/object_observations.md) owns fields and bounds.
+
+Next executable step: add versioned capture/evaluation selection manifests for
+A0 (plan §§11.6–11.7). Bind independently selected receipt/pose/image/observation
+identities and explicit inference versus held-out/evaluation-only roles. Reject
+role overlap, foreign/stale revisions and unbounded frame/annotation tables before
+ownership transfer; evaluation labels must not enter automatic inference or
+candidate selection. Reuse the existing receipt, object-observation and immutable
+record paths. Keep declarations distinct from verified consent, independent
+measurement and a sealed real corpus; do not rerun saved solves/fits or claim A1.
 Keep draft metadata separate from live scene transactions; actual payload
 validation must precede runtime adoption through the existing update path.
 Trusted manual-action journaling, verified source/region correspondence and

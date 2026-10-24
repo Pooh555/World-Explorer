@@ -101,6 +101,7 @@ TEST_CASE("metadata byte readers round trip independently selected immutable rec
     CHECK(tree(K_PATH) == K_BEFORE);
     CHECK(tree(K_RECEIPT.source_directory()) == K_SOURCE);
     std::filesystem::remove_all(K_RECEIPT.source_directory());
+    fixture.m_region.m_directory.m_root.clear();
     const auto K_REOPENED = decode_asset_definition(snapshot->m_records.at("asset-42-1"),
                                                     K_DEFINITION->reference(),
                                                     K_RECEIPT,
