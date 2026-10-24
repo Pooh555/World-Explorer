@@ -260,6 +260,9 @@ The [manual-action journal](docs/protocols/manual_actions.md) records bounded
 declarations through the native application API. Inspect an independently pinned
 commit with `build/dev/we_process inspect-actions JOURNAL GENERATION MANIFEST_SHA`;
 its counts/time do not authenticate human actions or qualify automatic output.
+The shared [draft replacement command](docs/protocols/draft_mutations.md) binds
+declared assistance to exact revised product bytes and durable intent/results;
+typed payload validation and live scene adoption remain separate.
 
 ## Platform Support
 

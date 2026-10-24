@@ -208,6 +208,7 @@ std::string bind_targets(const ManualActionRequest& request,
 
 struct AdmittedManualActionJournal::Implementation {
     RecordCommit m_commit;
+    std::filesystem::path m_source;
     std::vector<ManualActionRecord> m_records;
     ManualActionAccounting m_accounting;
 };
@@ -218,6 +219,10 @@ AdmittedManualActionJournal::AdmittedManualActionJournal(
 
 const RecordCommit& AdmittedManualActionJournal::commit() const {
     return m_state->m_commit;
+}
+
+const std::filesystem::path& AdmittedManualActionJournal::source_directory() const {
+    return m_state->m_source;
 }
 
 const std::vector<ManualActionRecord>& AdmittedManualActionJournal::records() const {
@@ -307,6 +312,7 @@ read_manual_action_journal(const std::filesystem::path& directory,
                 ErrorCode::RESYNC_REQUIRED);
         auto state = std::make_shared<AdmittedManualActionJournal::Implementation>();
         state->m_commit = K_SNAPSHOT->m_commit;
+        state->m_source = std::filesystem::canonical(directory);
         state->m_records = records(*K_SNAPSHOT, stop);
         for (const auto& value : state->m_records) {
             auto& accounting = state->m_accounting;

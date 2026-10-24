@@ -85,9 +85,11 @@ target. Setup/evaluation records cannot supply inference manual ancestry through
 this API. No evaluation labels or bytes are exported. Missing actions reject;
 stale/source/target substitutions require resync. Existing graph admission still
 validates declared action hashes without requiring this journal binding. Actual
-mutation/result linkage, enforced command adoption and outcome accounting remain
-A0 integration work. A valid selected journal may contain false declarations
-from a cooperating caller; it is not signed or tamper-proof against an actor who
+mutation/result linkage now has a [draft byte replacement path](draft_mutations.md),
+with exact intents, revised dependency closure and prepared/committed history.
+Typed mutation validation, enforced adoption by inference/asset commands and
+terminal failure accounting remain A0 integration work. A valid selected journal
+may contain false declarations from a cooperating caller; it is not signed or tamper-proof against an actor who
 can replace history and its independently selected pin.
 
 The [validation](../validation/2026-10-25-manual-actions.md) covers synthetic native

@@ -124,19 +124,28 @@ with exact receipt/target/context binding, immutable retry/crash recovery and
 separate setup/evaluation/assistance time sums. `we_process inspect-actions`
 reads independently pinned history. The [protocol](protocols/manual_actions.md)
 keeps actor/time/authenticity limits explicit; its inference helper rejects
-setup/evaluation actions. This does not bind actual mutations or completed edits.
+setup/evaluation actions. A declaration alone does not authorize an edit.
 
-Next executable step: bind output-assistance receipts to draft metadata mutation
-intents/results (plan §§11.3–11.6). Record exact before/after product revisions,
-command kind/parameters and selected journal action hash; validate those against
-the independently selected input receipt and expected epoch/base. Require declared
-manual ancestry on affected products and descendants, reject setup/evaluation
-actions at that boundary, and preserve pending/failed versus committed outcomes
-through exact retry/cancellation/crash. A journal declaration cannot certify a
-human act, consent, edit completion or automatic yield. Keep data local.
+The [draft replacement slice](validation/2026-10-25-draft-mutations.md) now binds
+selected assistance to exact before/after receipts, product revisions and journal
+pins through the shared application command. It requires new manually descended
+revisions across the affected closure, protects all input/journal directories and
+publishes separate durable intent/result phases. Prepared interruptions expose
+no outputs; exact retries recover. The [protocol](protocols/draft_mutations.md)
+keeps bodies opaque and limits enforcement to this new path, not legacy admission.
+
+Next executable step: add the first typed draft mutation adapter for
+object-observation/mask replacements (plan §§11.3–11.6). Validate replacement
+runs/grids/views and before/after observation records with existing native
+admission against independently selected image/pose/capture-role inputs. Require
+the action-bound draft result and exact selected revisions, derive manual
+ancestry, and reject evaluation-only inputs at the inference boundary. Keep
+pending/failed versus committed outcomes explicit; terminal failure journaling
+and broader typed asset-command adoption remain open. A declaration cannot
+certify a human act, consent, payload correctness or automatic yield. Keep data local.
 Keep draft metadata separate from live scene transactions; actual payload
 validation must precede runtime adoption through the existing update path.
-Enforced mutation/action linkage, verified source/region correspondence and full
+Typed mutation validation/adoption, verified source/region correspondence and full
 capture/evaluation freezes remain A0 work. Current runtime evidence still needs
 recapture; installed observations do not establish runtime closure or legal rights.
 Unknown installation/model costs must refuse provisioning. Bounded tree checks

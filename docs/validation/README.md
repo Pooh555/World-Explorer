@@ -1,5 +1,7 @@
 # Validation index
 
+- [25 October: action-bound draft replacements](2026-10-25-draft-mutations.md) — exact action/receipt/revision binding, revised manual descendant closure, durable prepared/committed publication and native recovery; opaque bodies and typed adoption remain outside qualification.
+
 - [25 October: declared manual-action journal](2026-10-25-manual-actions.md) — bounded native command, separate setup/evaluation/assistance accounting, exact retry and controlled crash recovery, inference scope binding and CLI inspection; actual mutation/human authenticity and A0/AP0 qualification remain open.
 
 - [24 October: Windows record-store observer repair](2026-10-24-windows-record-lock.md) — supplied 568/569 native CPU result fails on hashing an exclusively held lock; complete snapshots before acquisition/after release preserve every file check, with rejection/retry evidence locally and native rerun pending.

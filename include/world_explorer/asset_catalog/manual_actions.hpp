@@ -57,6 +57,7 @@ struct ManualActionAccounting {
 class AdmittedManualActionJournal {
   public:
     const RecordCommit& commit() const;
+    const std::filesystem::path& source_directory() const;
     const std::vector<ManualActionRecord>& records() const;
     const ManualActionAccounting& accounting() const;
 

@@ -121,7 +121,7 @@ add_library(core src/core/hash.cpp src/core/file_lock.cpp src/core/asset_files.c
 we_target(core)
 target_link_libraries(core PRIVATE OpenSSL::Crypto nlohmann_json::nlohmann_json PUBLIC Threads::Threads)
 
-add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp src/asset_catalog/component_evidence.cpp src/asset_catalog/installed_components.cpp src/asset_catalog/region_provenance.cpp src/asset_catalog/asset_definition.cpp src/asset_catalog/definition_io.cpp src/asset_catalog/manual_actions.cpp)
+add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp src/asset_catalog/component_evidence.cpp src/asset_catalog/installed_components.cpp src/asset_catalog/region_provenance.cpp src/asset_catalog/asset_definition.cpp src/asset_catalog/definition_io.cpp src/asset_catalog/manual_actions.cpp src/asset_catalog/draft_mutations.cpp)
 we_target(asset_catalog)
 target_link_libraries(asset_catalog PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 
@@ -223,7 +223,7 @@ add_library(navigation src/navigation/fly_camera.cpp)
 we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
-add_library(application src/application/commands.cpp src/application/scenes.cpp src/application/manual_actions.cpp
+add_library(application src/application/commands.cpp src/application/scenes.cpp src/application/manual_actions.cpp src/application/draft_mutations.cpp
   src/application/depth_assets.cpp src/application/fusion_assets.cpp src/application/fusion_scene.cpp
   src/application/fusion_cleanup.cpp src/application/geometry_job.cpp src/application/mesh_job.cpp
   src/application/mesh_color_audit.cpp src/application/color_inputs.cpp src/application/mesh_texture.cpp src/application/gltf.cpp
@@ -395,6 +395,9 @@ if(BUILD_TESTING)
   add_executable(we_asset_receipt_probe tests/fixtures/asset_receipt_probe.cpp)
   we_target(we_asset_receipt_probe)
   target_link_libraries(we_asset_receipt_probe PRIVATE asset_catalog)
+  add_executable(we_draft_mutation_probe tests/fixtures/draft_mutation_probe.cpp)
+  we_target(we_draft_mutation_probe)
+  target_link_libraries(we_draft_mutation_probe PRIVATE application nlohmann_json::nlohmann_json)
   add_executable(we_collision_fixture tests/fixtures/collision_fixture.cpp)
   we_target(we_collision_fixture)
   target_link_libraries(we_collision_fixture PRIVATE collision nlohmann_json::nlohmann_json)
@@ -410,12 +413,13 @@ if(BUILD_TESTING)
   file(GLOB WE_CORE_TESTS CONFIGURE_DEPENDS tests/unit/*_tests.cpp)
 
   add_executable(we_core_tests ${WE_CORE_TESTS})
-  add_dependencies(we_core_tests we_asset_receipt_probe)
+  add_dependencies(we_core_tests we_asset_receipt_probe we_draft_mutation_probe)
   we_target(we_core_tests)
   target_link_libraries(we_core_tests PRIVATE application asset_catalog collision map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
   target_include_directories(we_core_tests SYSTEM PRIVATE "${WE_WIRE_DIRECTORY}" "${WE_POSE_DIRECTORY}" "${WE_FLATBUFFERS_INCLUDE}")
   target_compile_definitions(we_core_tests PRIVATE WE_TEST_WIRE_BINDINGS="${WE_WIRE_DIRECTORY}/python")
   target_compile_definitions(we_core_tests PRIVATE WE_TEST_ASSET_RECEIPT_PROBE="$<TARGET_FILE:we_asset_receipt_probe>")
+  target_compile_definitions(we_core_tests PRIVATE WE_TEST_DRAFT_MUTATION_PROBE="$<TARGET_FILE:we_draft_mutation_probe>")
   catch_discover_tests(we_core_tests PROPERTIES LABELS "cpu")
 
   find_package(Python3 COMPONENTS Interpreter REQUIRED)

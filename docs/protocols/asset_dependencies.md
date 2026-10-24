@@ -40,8 +40,10 @@ An action on a node or manual ancestry on any parent requires its
 Automated descendants cannot clear a declared manual ancestor. This does not
 detect omitted/falsified external action records. The [owned journal](manual_actions.md)
 now records bounded declarations and offers a scope-restricted inference binding;
-graph admission does not yet require it or bind actual output mutations/human
-operations. No automatic-success classification follows
+graph admission does not require it. The [draft replacement command](draft_mutations.md)
+now binds selected action hashes to exact before/after revisions, requires updated
+manual descendants and publishes owned bytes; payload correctness and human
+operations remain unverified. No automatic-success classification follows
 from a validated graph.
 
 ## Deterministic identity
