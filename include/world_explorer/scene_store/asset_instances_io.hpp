@@ -3,6 +3,9 @@
 #include "world_explorer/core/immutable_records.hpp"
 #include "world_explorer/scene_store/asset_instances.hpp"
 
+#include <cstddef>
+#include <span>
+
 namespace world_explorer {
 
 Result<AdmittedAssetInstances>

@@ -2,6 +2,9 @@
 
 #include "world_explorer/scene_store/fusion_asset.hpp"
 
+#include <cstddef>
+#include <span>
+
 namespace world_explorer {
 
 struct FusionCleanupPatch {

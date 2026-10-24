@@ -3,6 +3,8 @@
 #include "world_explorer/scene_store/depth_asset.hpp"
 #include "world_explorer/scene_store/scene.hpp"
 
+#include <span>
+
 namespace world_explorer {
 
 // Relations to observed axial depth, never physical occupancy or walking clearance.
@@ -53,10 +55,10 @@ constexpr std::size_t K_DEPTH_SPACE_LEDGER_BYTES { 120uz * 32uz * 32uz * 32uz };
 // Immutable consistency admission under an independently supplied terminal pin.
 // Does not recompute source depth or grant collision/navigation eligibility.
 class DepthSpaceEvidence {
-    struct AdmissionToken {};
+    struct AdmissionToken { };
 
   public:
-    explicit DepthSpaceEvidence(AdmissionToken) {}
+    explicit DepthSpaceEvidence(AdmissionToken) { }
 
     DepthSpaceEvidence(const DepthSpaceEvidence&) = delete;
     DepthSpaceEvidence& operator=(const DepthSpaceEvidence&) = delete;

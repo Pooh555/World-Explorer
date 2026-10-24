@@ -39,6 +39,11 @@ Full native Windows build/test confirmation remains due. Relinking makes the sav
 receipt stale: default inventory passes, `--local-evidence` exits 2. Fresh runtime
 observation is required before claiming current local inventory consistency.
 
+The [public-header repair](validation/2026-10-24-native-span-includes.md) addresses
+the supplied GCC 13/MSVC missing-`std::span` failures with direct includes in four
+headers and a Python-only public-header CTest guard. Local C++26/C++23 builds and
+598/573 CPU tests pass; native Windows/macOS/GCC 13 CI confirmation remains due.
+
 [ADR 019](adr/019-assets-before-platforms.md) orders M3 → A0–A5 → M4 → M5 → M6,
 then A6 engine packaging. The [asset track](technical_plan.md#11-offline-asset-production-track)
 adds reusable objects/structure, labeled completion, PBR and shared glTF/GLB

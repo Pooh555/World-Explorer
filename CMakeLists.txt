@@ -439,6 +439,9 @@ if(BUILD_TESTING)
   set_tests_properties(coverage_reporting PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;tooling")
   add_test(NAME cpp_style_tooling COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tests/tools -p "check_cpp_style_test.py" -v)
   set_tests_properties(cpp_style_tooling PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;tooling")
+  add_test(NAME public_header_policy COMMAND ${Python3_EXECUTABLE}
+    "${PROJECT_SOURCE_DIR}/tools/check_cpp_style.py" --headers-only include/world_explorer)
+  set_tests_properties(public_header_policy PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" LABELS "cpu;tooling")
 
   if(WE_COVERAGE)
     set(WE_COVERAGE_OBJECTS)

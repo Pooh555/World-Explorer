@@ -185,16 +185,27 @@ def check_template_initialization(files: list[Path]) -> int:
 
 def check_header_policy(files: list[Path]) -> int:
     violations: list[str] = []
+    non_code = re.compile(
+        r'R"(?P<delimiter>[^\s()\\]{0,16})\(.*?\)(?P=delimiter)"'
+        r'|//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'',
+        re.DOTALL,
+    )
     for path in files:
         if path.suffix.lower() not in HEADER_SUFFIXES:
             continue
-        lines = path.read_text(encoding="utf-8").splitlines()
+        source = path.read_text(encoding="utf-8")
+        lines = source.splitlines()
         if not lines or lines[0] != "#pragma once":
             violations.append(f"{path}:1: headers must start with '#pragma once'")
         if sum(line.strip() == "#pragma once" for line in lines) != 1:
             violations.append(
                 f"{path}: headers must contain exactly one '#pragma once'"
             )
+        code = non_code.sub("", source)
+        if re.search(r"\bstd\s*::\s*span\b", code) and not re.search(
+            r"^\s*#\s*include\s*<span>", code, re.MULTILINE
+        ):
+            violations.append(f"{path}: std::span requires a direct #include <span>")
     if violations:
         print("Header policy checks failed:", file=sys.stderr)
         print("\n".join(violations), file=sys.stderr)
@@ -250,7 +261,20 @@ def main() -> int:
         default="build/dev",
         help="Compile database directory for clang-tidy; skipped if absent.",
     )
+    parser.add_argument(
+        "--headers-only",
+        action="store_true",
+        help="Check header policy without requiring format/tidy tools.",
+    )
     args = parser.parse_args()
+
+    if args.headers_only:
+        files = (
+            resolve_targets(args.paths)
+            if args.paths
+            else discover_cpp_files(DEFAULT_SEARCH_ROOTS)
+        )
+        return check_header_policy(files)
 
     format_executable = shutil.which("clang-format")
     if not format_executable:

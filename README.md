@@ -312,6 +312,10 @@ Python formatting uses the pinned version in
 [`tools/python-style-requirements.txt`](tools/python-style-requirements.txt).
 New C++ and Python code should follow the repository's style templates.
 
+`python3 tools/check_cpp_style.py --headers-only include/world_explorer` checks
+public-header policy without LLVM tools. CTest runs this as
+`public_header_policy`, including direct `<span>` includes where used.
+
 ## License
 
 World Explorer is distributed under the [MIT License](LICENSE).

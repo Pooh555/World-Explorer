@@ -3,6 +3,9 @@
 #include "world_explorer/asset_catalog/asset_definition.hpp"
 #include "world_explorer/core/immutable_records.hpp"
 
+#include <cstddef>
+#include <span>
+
 namespace world_explorer {
 
 Result<AdmittedAssetDefinition>

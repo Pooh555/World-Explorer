@@ -15,6 +15,37 @@ SPEC.loader.exec_module(MODULE)
 
 
 class CheckCppStyleTests(unittest.TestCase):
+    def test_span_headers_require_their_own_include(self):
+        cases = [
+            ("#pragma once\nvoid use(std::span<int>);\n", 1),
+            ("#pragma once\n#include <span>\nvoid use(std::span<int>);\n", 0),
+            ("#pragma once\n// #include <span>\nvoid use(std::span<int>);\n", 1),
+            ("#pragma once\n/* #include <span> */\nvoid use(std::span<int>);\n", 1),
+            ('#pragma once\n// std::span\nconstexpr auto K_DOC = "std::span";\n', 0),
+            ('#pragma once\nconstexpr auto K_DOC = R"doc("std::span")doc";\n', 0),
+        ]
+        for source, expected in cases:
+            with self.subTest(source=source):
+                with mock.patch.object(MODULE.Path, "read_text", return_value=source):
+                    with mock.patch("builtins.print"):
+                        self.assertEqual(
+                            MODULE.check_header_policy([ROOT / "sample.hpp"]), expected
+                        )
+
+    def test_header_only_mode_needs_no_formatter_or_compile_database(self):
+        header = ROOT / "include/world_explorer/asset_catalog/definition_io.hpp"
+        with mock.patch.object(
+            MODULE.sys, "argv", ["check_cpp_style.py", "--headers-only"]
+        ):
+            with mock.patch.object(MODULE, "discover_cpp_files", return_value=[header]):
+                with mock.patch.object(
+                    MODULE, "check_header_policy", return_value=0
+                ) as check:
+                    with mock.patch.object(MODULE.shutil, "which") as which:
+                        self.assertEqual(MODULE.main(), 0)
+        check.assert_called_once_with([header])
+        which.assert_not_called()
+
     def test_tidy_targets_exclude_headers_without_compile_entries(self):
         database = ROOT / "build/dev/compile_commands.json"
         files = [

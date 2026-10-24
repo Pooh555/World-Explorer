@@ -1,5 +1,7 @@
 # Validation index
 
+- [24 October: native public-header include repair](2026-10-24-native-span-includes.md) — supplied GCC 13/MSVC missing-span failures repaired, direct-include CTest guard and local C++26/C++23 builds/full CPU suites pass; native CI reruns pending.
+
 - [24 October: capture/evaluation selections](2026-10-24-capture-selections.md) — bounded role manifests, separate inference payloads, pose-fit/dependency isolation and owned history; A0/AP0 remain in progress.
 
 - [24 October: pose-bound object observations](2026-10-24-object-observations.md) — strict bounded observation/mask bytes, actual calibration/pose binding and declared evidence; A0/AP0 remain in progress.
