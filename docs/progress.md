@@ -190,13 +190,20 @@ corpus schema 3 require exact selected pins/handles; schemas 1/2 retain their by
 Labels, physical visibility and inventory completeness remain unverified. The
 [protocol](protocols/evaluation_inventory.md) owns the contract and limits.
 
-Next executable step: implement strict temporal-block and held-out inspection-path
-evidence for the sealed corpus (plan §11.6). Bind complete selected frame roles,
-source timestamps and exact decoded camera poses to independently selected ordered
-blocks/path entries; reject overlap, omission, stale context and evaluation-to-fit
-leakage on synthetic admission/recovery fixtures. Keep physical path/pose accuracy
-unverified and retain missing controlled-light/background and real pilot inputs.
-Then add typed controlled-light/background evidence. Available selected local
+The [typed temporal/path slice](validation/2026-10-25-evaluation-paths.md) now binds
+complete ordered role blocks, native source timestamps/world camera values and a
+separate-source held-out path with declared uncertainty. Atomic two-record recovery
+and corpus schema 4 require matching selected refs/handles; schemas 1–3 retain their
+bytes. Physical accuracy, sampling novelty, independence and pre-tuning provenance
+remain unverified. The [protocol](protocols/evaluation_paths.md) owns this scope.
+
+Next executable step: implement typed controlled-reference evidence for backside,
+empty-background and changed-light captures (plan §11.6). Bind independently selected
+conditions/reference pairs to exact evaluation roles, original source/view/pose refs
+and declared lighting/measurement units; reject stale/missing/foreign references and
+inference leakage on synthetic admission/recovery fixtures. Keep physical lighting,
+background correspondence and real AP4/AP6 evaluation unverified. Preserve earlier
+corpus encodings when adding explicit typed enforcement. Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption
 and complete real capture/evaluation qualification remain A0 work. A declaration cannot certify a human

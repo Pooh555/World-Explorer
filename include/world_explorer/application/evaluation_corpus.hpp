@@ -4,6 +4,7 @@
 #include "world_explorer/asset_catalog/recipe.hpp"
 #include "world_explorer/map_store/capture_selection.hpp"
 #include "world_explorer/map_store/evaluation_inventory.hpp"
+#include "world_explorer/map_store/evaluation_paths.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -58,6 +59,7 @@ struct AssetCorpusDefinition {
     std::vector<AssetCorpusRecipe> m_recipes;
     bool m_require_typed_scale {};
     bool m_require_typed_inventory {};
+    bool m_require_typed_paths {};
 };
 
 struct AssetCorpusRef {
@@ -74,6 +76,7 @@ struct AssetCorpusCaptureInput {
     std::filesystem::path m_registry;
     std::optional<AdmittedCaptureMeasurement> m_measurement {};
     std::optional<AdmittedEvaluationInventory> m_inventory {};
+    std::optional<AdmittedEvaluationPaths> m_paths {};
 };
 
 struct AssetCorpusRecipeInput {

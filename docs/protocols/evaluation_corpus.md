@@ -1,4 +1,4 @@
-# Sealed asset evaluation corpus v1/v2/v3
+# Sealed asset evaluation corpus v1/v2/v3/v4
 
 [`evaluation_corpus.hpp`](../../include/world_explorer/application/evaluation_corpus.hpp)
 adds coordinator metadata in `application`, above capture selections and recipe
@@ -139,3 +139,24 @@ replaces the two opaque blockers with `INVENTORY_LABELS_UNVERIFIED`,
 Other capture/scale/rights/runtime blockers stay open. A new schema changes the
 corpus hash and requires a separately selected seal; it grants no execution or
 physical-truth authority.
+
+## Typed temporal and inspection evidence in schema 4
+
+`AssetCorpusDefinition::m_require_typed_paths` selects schema 4. Exact root fields
+add `typed_paths=true` and explicit boolean `typed_scale`/`typed_inventory` flags.
+Those flags select the existing scale/inventory requirements independently. Missing,
+false or nonboolean path flags and nonboolean earlier flags fail. Schemas 1–3
+retain their exact bytes and reject supplied path handles.
+
+Temporal-block and inspection-path refs must be both present or both absent.
+Present refs require the independently supplied [private path handle](evaluation_paths.md)
+to match both refs, original capture product and original receipt. A mismatched or
+missing handle fails admission/fresh read; a handle without refs fails. Missing
+pairs retain explicit missing prerequisites. Typed admission replaces the opaque
+`TEMPORAL_BLOCKS_UNVERIFIED`/`INSPECTION_PATH_UNVERIFIED` blockers with
+`TEMPORAL_SAMPLING_UNVERIFIED`, `INSPECTION_INDEPENDENCE_UNVERIFIED`,
+`EVALUATION_POSES_UNVERIFIED` and `PRETUNING_FREEZE_UNVERIFIED`. Any UNASSESSED or
+UNCERTAIN path entry adds `EVALUATION_POSE_UNCERTAINTY_DECLARED`. Even all
+DECLARED_RELIABLE entries retain the physical pose blocker. Independent-source
+hashes cannot establish physical novelty or a freeze before tuning. No execution
+or AP success authority is granted; revised seals need separately selected outputs.

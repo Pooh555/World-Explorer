@@ -17,7 +17,9 @@ The [typed inventory reader](evaluation_inventory.md) also supplies explicit ext
 evaluation roots to `validate_evaluation_separation`. That check extends forbidden
 hashes locally and rechecks selected inference closures, without mutating the
 original capture handle or its narrow inputs. Its boundaries and limits are owned
-by that protocol.
+by that protocol. [Typed temporal/inspection evidence](evaluation_paths.md) supplies
+both of its additional record roots through the same check; it also binds exact
+original timestamps and decoded camera values without exposing them to new workers.
 
 ## Selection and byte admission
 

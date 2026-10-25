@@ -288,7 +288,10 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                          K_KIND != AssetCorpusEvidence::INDEPENDENT_SCALE) &&
                         (!value.m_require_typed_inventory ||
                          (K_KIND != AssetCorpusEvidence::INVENTORY &&
-                          K_KIND != AssetCorpusEvidence::VISIBILITY))) {
+                          K_KIND != AssetCorpusEvidence::VISIBILITY)) &&
+                        (!value.m_require_typed_paths ||
+                         (K_KIND != AssetCorpusEvidence::TEMPORAL_BLOCKS &&
+                          K_KIND != AssetCorpusEvidence::INSPECTION_PATH))) {
                         blockers.push_back({ pin.m_label, std::string(K_NAME) + "_UNVERIFIED" });
                     }
                 }
@@ -343,6 +346,35 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                 }
             } else {
                 require(!K_INPUT->m_inventory, "Typed inventory requires corpus schema three");
+            }
+            const auto K_TEMPORAL = pin.m_evidence.find(AssetCorpusEvidence::TEMPORAL_BLOCKS);
+            const auto K_PATH = pin.m_evidence.find(AssetCorpusEvidence::INSPECTION_PATH);
+            if (value.m_require_typed_paths) {
+                require((K_TEMPORAL == pin.m_evidence.end()) == (K_PATH == pin.m_evidence.end()),
+                        "Temporal and inspection refs must be selected together");
+                if (K_TEMPORAL != pin.m_evidence.end()) {
+                    require(K_INPUT->m_paths.has_value(),
+                            "Corpus requires independently admitted evaluation paths",
+                            ErrorCode::RESYNC_REQUIRED);
+                    const auto& paths = K_INPUT->m_paths.value();
+                    require(paths.selection().m_temporal == K_TEMPORAL->second &&
+                                paths.selection().m_inspection == K_PATH->second &&
+                                paths.capture_product() == selected.m_product &&
+                                paths.receipt_sha256() == pin.m_receipt_sha256,
+                            "Corpus evaluation paths/capture differ",
+                            ErrorCode::RESYNC_REQUIRED);
+                    blockers.push_back({ pin.m_label, "TEMPORAL_SAMPLING_UNVERIFIED" });
+                    blockers.push_back({ pin.m_label, "INSPECTION_INDEPENDENCE_UNVERIFIED" });
+                    blockers.push_back({ pin.m_label, "EVALUATION_POSES_UNVERIFIED" });
+                    blockers.push_back({ pin.m_label, "PRETUNING_FREEZE_UNVERIFIED" });
+                    if (paths.has_unassessed_or_uncertain_poses()) {
+                        blockers.push_back({ pin.m_label, "EVALUATION_POSE_UNCERTAINTY_DECLARED" });
+                    }
+                } else {
+                    require(!K_INPUT->m_paths, "Evaluation-path handle has no selected refs");
+                }
+            } else {
+                require(!K_INPUT->m_paths, "Typed evaluation paths require schema four");
             }
             if (std::ranges::none_of(selected.m_frames, [](const auto& frame) {
                     return frame.m_role == CaptureFrameRole::HELD_OUT;
@@ -413,19 +445,24 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
         }
         std::ranges::sort(blockers);
         Json document { { "schema_version",
-                        value.m_require_typed_inventory ? 3
-                        : value.m_require_typed_scale   ? 2
-                                                        : 1 },
+                        value.m_require_typed_paths       ? 4
+                        : value.m_require_typed_inventory ? 3
+                        : value.m_require_typed_scale     ? 2
+                                                          : 1 },
                        { "corpus", value.m_corpus },
                        { "revision", value.m_revision },
                        { "track", name(value.m_track, K_TRACKS) },
                        { "captures", capture_rows },
                        { "recipes", recipe_rows } };
-        if (value.m_require_typed_scale || value.m_require_typed_inventory) {
+        if (value.m_require_typed_scale || value.m_require_typed_inventory ||
+            value.m_require_typed_paths) {
             document["typed_scale"] = value.m_require_typed_scale;
         }
-        if (value.m_require_typed_inventory) {
-            document["typed_inventory"] = true;
+        if (value.m_require_typed_inventory || value.m_require_typed_paths) {
+            document["typed_inventory"] = value.m_require_typed_inventory;
+        }
+        if (value.m_require_typed_paths) {
+            document["typed_paths"] = true;
         }
         auto canonical = document.dump();
         require(canonical.size() <= K_MAX_BYTES,
@@ -464,11 +501,29 @@ decode_asset_corpus(std::span<const std::byte> bytes,
                 "Corpus bytes differ from selected hash",
                 ErrorCode::RESYNC_REQUIRED);
         const auto K_SCHEMA = integer(K_DOC.at("schema_version"));
-        require(K_SCHEMA >= 1 && K_SCHEMA <= 3,
+        require(K_SCHEMA >= 1 && K_SCHEMA <= 4,
                 "Unsupported corpus schema",
                 ErrorCode::UNSUPPORTED_OPERATION);
         AssetCorpusDefinition value;
-        if (K_SCHEMA == 3) {
+        if (K_SCHEMA == 4) {
+            keys(K_DOC,
+                 { "schema_version",
+                  "corpus",
+                  "revision",
+                  "track",
+                  "captures",
+                  "recipes",
+                  "typed_scale",
+                  "typed_inventory",
+                  "typed_paths" });
+            require(K_DOC.at("typed_scale").is_boolean() &&
+                        K_DOC.at("typed_inventory").is_boolean() &&
+                        K_DOC.at("typed_paths").is_boolean() && K_DOC.at("typed_paths").get<bool>(),
+                    "Schema four requires typed paths");
+            value.m_require_typed_scale = K_DOC.at("typed_scale").get<bool>();
+            value.m_require_typed_inventory = K_DOC.at("typed_inventory").get<bool>();
+            value.m_require_typed_paths = true;
+        } else if (K_SCHEMA == 3) {
             keys(K_DOC,
                  { "schema_version",
                   "corpus",
