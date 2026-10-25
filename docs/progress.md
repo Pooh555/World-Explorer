@@ -49,6 +49,13 @@ the exclusively held writer lock. The test now takes full byte snapshots before
 acquisition and after release, checks `WOULD_BLOCK` while held and successful
 retry afterward. Local suites pass; a complete native Windows rerun remains due.
 
+The supplied [macOS draft-test failure](validation/2026-10-25-macos-draft-json.md)
+instantiates undefined libc++ byte character traits in an added JSON test.
+An explicit bounded character view repairs the test without changing its
+assertions or production contracts. Local libc++ reproduction and GNU focused
+checks pass; a native macOS rerun remains due. This build repair preserves the
+current A0 asset-definition edit handoff below.
+
 [ADR 019](adr/019-assets-before-platforms.md) orders M3 → A0–A5 → M4 → M5 → M6,
 then A6 engine packaging. The [asset track](technical_plan.md#11-offline-asset-production-track)
 adds reusable objects/structure, labeled completion, PBR and shared glTF/GLB

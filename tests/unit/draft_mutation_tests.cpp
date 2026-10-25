@@ -5,6 +5,7 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include <limits>
+#include <string_view>
 
 using namespace world_explorer;
 using namespace world_explorer::draft_mutation_test;
@@ -76,7 +77,8 @@ TEST_CASE("versioned draft admission bindings preserve opaque v1 and bind retry 
     const auto K_STORE = read_immutable_records(fixture.m_root);
     REQUIRE(K_STORE);
     const auto& bytes = K_STORE->m_records.at("mutation-1");
-    const auto K_DOC = Json::parse(bytes);
+    const auto K_DOC =
+        Json::parse(std::string_view(reinterpret_cast<const char*>(bytes.data()), bytes.size()));
     CHECK(K_DOC.at("schema_version").get<std::uint64_t>() == 2);
     CHECK(K_DOC.at("admission_sha256").get<std::string>() ==
           fixture.m_mutation.m_admission_sha256.value());
