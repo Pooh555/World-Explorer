@@ -7,6 +7,12 @@ A0/AP0 remain **IN_PROGRESS**. Separate [byte I/O and owned publication](asset_m
 now decode these canonical records and enforce per-directory committed revision
 ownership. Neither layer is a live scene update, exporter or asset producer.
 
+The [action-bound asset edit adapter](asset_definition_edits.md) now adds actual
+bounded generated mesh/constant-material payload checks, native region validation,
+attempt history and atomic attached before/after definitions. Its restricted
+profile is separate from this general metadata admission and from full asset
+quality, material inference and renderer/export qualification.
+
 ## Ownership, identity and immutable handles
 
 `core` owns distinct `AssetId`, `AssetInstanceId`, `AssetMaterialVariantId` and

@@ -157,13 +157,22 @@ physical outcome decisions recover before work reruns, even without a staged
 blob. The [protocol](protocols/draft_attempts.md) separates historical publication
 from current typed adoption and product/automatic-yield accounting.
 
-Next executable step: add the first action-bound typed asset-definition edit
-adapter for `EDIT_GEOMETRY`/`EDIT_MATERIAL` (plan §§11.3–11.6). Inspect existing
-definition/region/payload admission, then bind independent before/after definition,
-geometry/material/provenance references and selected revisions to the mutation
-intent. Validate actual supported payloads before publication/adoption, propagate
-manual ancestry, and route attempts through the new failure journal. Keep opaque
-or unsupported descendants explicitly unqualified. Broader worker/asset adoption,
+The [typed asset-edit slice](validation/2026-10-25-asset-definition-edits.md) now
+validates generated triangle-mesh and constant PBR payloads for both edit kinds,
+with exact bounds/regions, semantic change checks and derived manual ancestry.
+Explicit v3 intents attach before/after definitions outside their input receipts
+and commit them atomically with replaced products, avoiding a receipt hash cycle.
+Owned typed reads require the committed draft; attempt history retains failures
+and cancellation. The [protocol](protocols/asset_definition_edits.md) limits this
+to the generated static profile, without worker/render/export or real AP evidence.
+
+Next executable step: add a bounded sealed asset evaluation/corpus manifest
+(plan §§11.6–11.7). Bind exact capture-role selections, independent scale,
+empty-background/changed-light references and recipe/resource/rights pins before
+any tuning. Reuse owned immutable publication and require independently selected
+revision/commit pins. Verify admission/replay and explicit missing-prerequisite
+blockers on synthetic fixtures, then inventory available real pilot inputs
+without inference or provisioning. Broader worker/asset adoption,
 verified source/region correspondence and full capture/evaluation freezes remain
 A0 work. A declaration cannot certify a human
 act, consent, correct opaque descendants or automatic yield. Keep processing local

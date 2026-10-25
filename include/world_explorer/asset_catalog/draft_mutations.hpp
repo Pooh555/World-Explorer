@@ -20,8 +20,9 @@ struct DraftMetadataMutation {
     OperationId m_operation;
     std::uint64_t m_base_generation {};
     std::vector<AssetRevisionRef> m_targets;
-    // Absent retains byte-identical v1; present uses explicit v2 intent.
+    // Binding selects v2; attached metadata selects explicit v3.
     std::optional<std::string> m_admission_sha256 {};
+    std::vector<ImmutableRecord> m_metadata {};
 };
 
 struct DraftMetadataChange {
@@ -38,6 +39,7 @@ struct DraftMutationSnapshot {
     std::string m_intent_sha256, m_result_sha256;
     std::vector<DraftMetadataChange> m_changes;
     std::map<AssetProductId, std::vector<std::byte>> m_output_bytes;
+    std::map<std::string, std::vector<std::byte>> m_metadata_bytes {};
 };
 
 struct DraftMutationIdentity {

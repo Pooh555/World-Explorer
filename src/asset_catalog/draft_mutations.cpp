@@ -79,6 +79,7 @@ struct Intent {
     std::string m_action_sha;
     std::vector<DraftMetadataChange> m_changes;
     std::vector<std::byte> m_bytes;
+    std::vector<ImmutableRecordBinding> m_metadata {};
 };
 
 void validate_identity(ManualActionId action, OperationId operation, std::uint64_t base) {
@@ -89,16 +90,40 @@ void validate_identity(ManualActionId action, OperationId operation, std::uint64
             ErrorCode::INVALID_ARGUMENT);
 }
 
+std::vector<ImmutableRecordBinding> metadata_bindings(const Json& rows) {
+    array(rows, 4uz);
+    require(!rows.empty(), "Empty attached metadata");
+    std::vector<ImmutableRecordBinding> result;
+    std::string previous;
+    for (const auto& row : rows) {
+        keys(row, { "key", "sha256", "bytes" });
+        const auto K_KEY = row.at("key").get<std::string>();
+        const auto K_SIZE = integer(row.at("bytes"));
+        require(K_KEY.starts_with("metadata-") && K_KEY.size() <= 64uz && K_KEY > previous &&
+                    K_KEY.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789-") == K_KEY.npos,
+                "Invalid/duplicate attached metadata key");
+        require(K_SIZE && K_SIZE <= K_PRODUCT_BYTES,
+                "Attached metadata byte budget exceeded",
+                ErrorCode::RESOURCE_EXHAUSTED);
+        result.push_back({ K_KEY, digest(row.at("sha256")), static_cast<std::size_t>(K_SIZE) });
+        previous = K_KEY;
+    }
+    return result;
+}
+
 Intent parse_intent(const std::vector<std::byte>& bytes, const std::stop_token& stop) {
     const auto K_DOC = parse(bytes, K_INTENT_BYTES, stop);
     const auto K_VERSION = integer(K_DOC.at("schema_version"));
-    require(K_VERSION == 1 || K_VERSION == 2,
+    require(K_VERSION == 1 || K_VERSION == 2 || K_VERSION == 3,
             "Unsupported draft intent schema",
             ErrorCode::UNSUPPORTED_OPERATION);
     auto base = K_DOC;
-    if (K_VERSION == 2) {
+    if (K_VERSION >= 2) {
         digest(K_DOC.at("admission_sha256"));
         base.erase("admission_sha256");
+    }
+    if (K_VERSION == 3) {
+        base.erase("metadata");
     }
     keys(base,
          { "schema_version",
@@ -127,6 +152,9 @@ Intent parse_intent(const std::vector<std::byte>& bytes, const std::stop_token& 
                    digest(K_DOC.at("action_sha256")),
                    {},
                    bytes };
+    if (K_VERSION == 3) {
+        result.m_metadata = metadata_bindings(K_DOC.at("metadata"));
+    }
     validate_identity(result.m_action, result.m_operation, result.m_base);
     integer(K_DOC.at("world_epoch"));
     require(integer(K_DOC.at("pose_revision")) && integer(K_DOC.at("journal_generation")),
@@ -289,25 +317,55 @@ Plan plan(const DraftMetadataMutation& mutation,
             { product_key(K_OLD.m_product),
              take(before.copy_blob(K_OLD.m_product.m_content_sha256, K_PRODUCT_BYTES, stop)) });
     }
-    Json intent { { "schema_version", mutation.m_admission_sha256.has_value() ? 2 : 1 },
-                 { "action_id", mutation.m_action.m_value },
-                 { "kind", kind },
-                 { "operation_id", mutation.m_operation.m_value },
-                 { "base_generation", mutation.m_base_generation },
-                 { "world_epoch", expected.m_world_epoch.m_value },
-                 { "pose_revision", expected.m_pose_revision.m_value },
-                 { "before_receipt_sha256", before.receipt_sha256() },
-                 { "after_receipt_sha256", after.receipt_sha256() },
-                 { "before_graph_sha256", K_BEFORE.m_graph_sha256 },
-                 { "after_graph_sha256", K_AFTER.m_graph_sha256 },
-                 { "journal_generation", journal.commit().m_generation },
-                 { "journal_manifest_sha256", journal.commit().m_manifest_sha256 },
-                 { "action_sha256", action_sha },
-                 { "targets", target_rows },
-                 { "changes", changes } };
+    Json intent {
+        { "schema_version",
+         mutation.m_metadata.empty() ? (mutation.m_admission_sha256.has_value() ? 2 : 1) : 3 },
+        { "action_id", mutation.m_action.m_value },
+        { "kind", kind },
+        { "operation_id", mutation.m_operation.m_value },
+        { "base_generation", mutation.m_base_generation },
+        { "world_epoch", expected.m_world_epoch.m_value },
+        { "pose_revision", expected.m_pose_revision.m_value },
+        { "before_receipt_sha256", before.receipt_sha256() },
+        { "after_receipt_sha256", after.receipt_sha256() },
+        { "before_graph_sha256", K_BEFORE.m_graph_sha256 },
+        { "after_graph_sha256", K_AFTER.m_graph_sha256 },
+        { "journal_generation", journal.commit().m_generation },
+        { "journal_manifest_sha256", journal.commit().m_manifest_sha256 },
+        { "action_sha256", action_sha },
+        { "targets", target_rows },
+        { "changes", changes } };
     if (mutation.m_admission_sha256.has_value()) {
         digest_text(mutation.m_admission_sha256.value());
         intent["admission_sha256"] = mutation.m_admission_sha256.value();
+    }
+    if (!mutation.m_metadata.empty()) {
+        require(mutation.m_admission_sha256.has_value(),
+                "Attached metadata requires admission binding");
+        require(mutation.m_metadata.size() <= 4uz,
+                "Attached metadata count budget exceeded",
+                ErrorCode::RESOURCE_EXHAUSTED);
+        for (const auto& record : mutation.m_metadata) {
+            require(record.m_key.size() <= 64uz && !record.m_bytes.empty() &&
+                        record.m_bytes.size() <= K_PRODUCT_BYTES,
+                    "Attached metadata key/byte budget exceeded",
+                    ErrorCode::RESOURCE_EXHAUSTED);
+        }
+        auto records = mutation.m_metadata;
+        std::ranges::sort(records, {}, &ImmutableRecord::m_key);
+        auto rows = Json::array();
+        for (const auto& record : records) {
+            require(!record.m_bytes.empty() && record.m_bytes.size() <= K_PRODUCT_BYTES,
+                    "Attached metadata byte budget exceeded",
+                    ErrorCode::RESOURCE_EXHAUSTED);
+            rows.push_back({ { "key", record.m_key },
+                            { "sha256", sha256(record.m_bytes) },
+                            { "bytes", record.m_bytes.size() } });
+        }
+        result.m_intent.m_metadata = metadata_bindings(rows);
+        intent["metadata"] = rows;
+        result.m_result_records.insert(
+            result.m_result_records.end(), records.begin(), records.end());
     }
     result.m_intent.m_bytes = encoded(intent);
     require(result.m_intent.m_bytes.size() <= K_INTENT_BYTES,
@@ -376,6 +434,14 @@ History validate_history(const RecordStoreSnapshot& snapshot, const std::stop_to
                 expected_keys.insert(K_KEY);
             }
             result.m_heads[change.m_after.m_product] = change.m_after;
+        }
+        for (const auto& binding : intent.m_metadata) {
+            const auto K_FOUND = snapshot.m_records.find(binding.m_key);
+            require(K_FOUND != snapshot.m_records.end() &&
+                        K_FOUND->second.size() == binding.m_bytes &&
+                        sha256(K_FOUND->second) == binding.m_sha256,
+                    "Attached draft metadata differs");
+            expected_keys.insert(binding.m_key);
         }
         ++generation;
     }
@@ -461,6 +527,12 @@ Result<RecordCommit> publish_draft_metadata_mutation(const DraftMetadataMutation
                         ErrorCode::RESYNC_REQUIRED);
             }
         }
+        for (const auto& record : K_PLAN.m_result_records) {
+            const auto K_FOUND = current.m_records.find(record.m_key);
+            require(K_FOUND == current.m_records.end() || K_FOUND->second == record.m_bytes,
+                    "Committed draft record conflicts",
+                    ErrorCode::RESYNC_REQUIRED);
+        }
         const std::vector<std::filesystem::path> K_PROTECTED {
             before.source_directory(), after.source_directory(), journal.source_directory() };
         take(publish_immutable_records(directory,
@@ -534,6 +606,11 @@ read_draft_metadata_mutation(const DraftMetadataMutation& mutation,
             for (const auto& change : result.m_changes) {
                 result.m_output_bytes.emplace(change.m_after.m_product,
                                               K_STORE.m_records.at(product_key(change.m_after)));
+            }
+        }
+        if (result.m_phase == DraftMutationPhase::COMMITTED) {
+            for (const auto& binding : K_PLAN.m_intent.m_metadata) {
+                result.m_metadata_bytes.emplace(binding.m_key, K_STORE.m_records.at(binding.m_key));
             }
         }
         check_stop(stop);

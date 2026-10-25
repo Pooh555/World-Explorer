@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <span>
 #include <string_view>
 
 int main(int argc, char** argv) {
@@ -41,6 +42,17 @@ int main(int argc, char** argv) {
             mutation.m_targets.push_back({ { row.at("product_id").get<std::uint64_t>() },
                                           row.at("revision").get<std::uint64_t>(),
                                           row.at("content_sha256").get<std::string>() });
+        }
+        if (K_DOC.contains("admission_sha256")) {
+            mutation.m_admission_sha256 = K_DOC.at("admission_sha256").get<std::string>();
+        }
+        if (K_DOC.contains("metadata")) {
+            for (const auto& row : K_DOC.at("metadata")) {
+                const auto K_TEXT = row.at("text").get<std::string>();
+                const auto K_VIEW = std::as_bytes(std::span(K_TEXT));
+                mutation.m_metadata.push_back(
+                    { row.at("key").get<std::string>(), { K_VIEW.begin(), K_VIEW.end() } });
+            }
         }
         const std::filesystem::path K_OUTPUT { K_DOC.at("output").get<std::string>() };
         const std::string_view K_MODE(argv[2]);
@@ -120,6 +132,9 @@ int main(int argc, char** argv) {
             {},
             [&](DraftMutationProgress progress, std::size_t count) {
                 if ((K_MODE == "intent" && progress == DraftMutationProgress::INTENT_DURABLE) ||
+                    (K_MODE == "metadata" &&
+                     progress == DraftMutationProgress::RESULT_RECORD_WRITTEN &&
+                     count == K_DOC.at("metadata_crash_count").get<std::size_t>()) ||
                     (K_MODE == "output" &&
                      progress == DraftMutationProgress::RESULT_RECORD_WRITTEN && count == 1uz)) {
                     std::_Exit(77);

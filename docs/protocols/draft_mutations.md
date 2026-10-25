@@ -77,6 +77,18 @@ Changing/removing it changes retry/read identity. Result schema v1 is unchanged
 and binds either intent through its hash. Persistent core registry schemas and
 operation numbering are unchanged.
 
+Explicit intent v3 requires the admission hash and adds `metadata`: 1–4 sorted
+unique `{ key, sha256, bytes }` bindings. Keys have the `metadata-` prefix and
+existing portable lowercase/digit/hyphen spelling, at most 64 bytes; each body
+is 1–64 KiB and bounded before copying. Both definitions from the
+[typed asset-edit adapter](asset_definition_edits.md) use this path to avoid a
+receipt/self-hash cycle. Attached bodies join the atomic result-phase batch.
+History verifies every binding; `COMMITTED` snapshots expose selected owned
+`m_metadata_bytes`, while `PREPARED` exposes none. Existing record-key conflicts
+reject before publishing a new intent. No metadata means the exact prior v1/v2
+encoding. Result schema v1 and core schemas stay unchanged: its intent hash binds
+v3 metadata. Generic attachments remain opaque and confer no typed authority.
+
 Exact retry binds all original parameters, including receipt and journal pins.
 Completed replay returns the current validated commit without observers; prepared
 retry resumes the same result phase. Different reuse rejects. Action uniqueness

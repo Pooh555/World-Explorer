@@ -35,7 +35,7 @@ Result<Validated> validate(const ReplaceObjectMaskCommand& command,
     try {
         check_stop(stop);
         const auto& mutation = command.m_draft.m_mutation;
-        require(!mutation.m_admission_sha256.has_value(),
+        require(!mutation.m_admission_sha256.has_value() && mutation.m_metadata.empty(),
                 "Typed mask admission binding must be derived by the adapter",
                 ErrorCode::INVALID_ARGUMENT);
         require(mutation.m_kind == ManualActionKind::EDIT_MASK &&
