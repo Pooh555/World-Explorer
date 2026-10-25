@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: shared corpus inspection](2026-10-26-corpus-inspection.md) — independently pinned request/CLI reopening, complete blocker reporting and read-only refusal; typed CPU fixtures and selected real sample's missing-input diagnostic, no real corpus qualification.
+
 - [26 October: evaluation-protocol freeze](2026-10-26-evaluation-protocol.md) — complete observed/completed masks, fixed metric/review conventions and config/light/seed pins with corpus schema 7; synthetic CPU admission/recovery, execution/physical evaluation unqualified.
 
 - [26 October: capture envelope](2026-10-26-capture-envelope.md) — complete source/view/calibration/time bindings, explicit condition/count diagnostics and corpus schema 6; synthetic CPU admission/recovery, physical capture/consent/quality remain open.

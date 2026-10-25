@@ -221,15 +221,21 @@ execution/correspondence/novelty/review/freeze-timing gaps remain explicit. No m
 runner or real AP evidence is supplied. The [protocol](protocols/evaluation_protocol.md)
 owns bounds, role separation and metadata recovery.
 
-Next executable step: expose read-only asset-corpus inspection through the shared
-application/`we_process` command path. Require independently supplied original
-receipts, capture selections/current registry commits and typed evidence pins;
-never discover trusted pins from the corpus being inspected. Exercise a complete
-synthetic request and a selected real sample's missing-prerequisite refusal without
-processing or modifying source data. Report all derived blockers and preserve the
-schema/handle boundaries. Then audit A0 contract/recipe/capture readiness and exact
-remaining rights/install-size/device/resource gaps before any provisioning or A1
-claim. Keep evaluation-runner implementation and real product validation open.
+The [shared corpus-inspection slice](validation/2026-10-26-corpus-inspection.md)
+adds `we_process inspect-corpus REQUEST.json SHA256` over the same application
+admission path. Explicit original receipt/capture/evidence/registry pins remain
+independent of the inspected seal; successful reads retain every derived blocker.
+Typed synthetic request and native CLI preservation checks plus the selected real
+sample's missing-prerequisite refusal are recorded separately. The
+[request protocol](protocols/corpus_inspection.md) owns fields, budgets and limits.
+
+Next executable step: audit the A0 exit against plan §§11.3/11.6/11.7 using these
+implemented contracts and actual candidate/local artifacts. Identify exact absent
+recipe/component/terms/review/installation-size/device/capture pins and prepare
+the explicit bounded installation plan; retain unknowns instead of inventing sizes
+or self-approving rights. Distinguish an A0 contract exit from blocked provisioning
+and real A1 inputs. Keep evaluation-runner implementation and real product
+validation open; do not begin M4 or claim A1 from synthetic metadata.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption

@@ -1,6 +1,7 @@
 #include "world_explorer/application/capsule_session.hpp"
 #include "world_explorer/application/collision_inspection.hpp"
 #include "world_explorer/application/commands.hpp"
+#include "world_explorer/application/corpus_inspection.hpp"
 #include "world_explorer/application/dense_inputs.hpp"
 #include "world_explorer/application/depth_assets.hpp"
 #include "world_explorer/application/depth_space.hpp"
@@ -23,6 +24,7 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
 
+#include <array>
 #include <charconv>
 #include <chrono>
 #include <csignal>
@@ -105,6 +107,7 @@ int main(int argc, char** argv) {
                    "  we_process inspect-map MAP_DIRECTORY (checked restart/recovery)\n"
                    "  we_process inspect-actions JOURNAL GENERATION MANIFEST_SHA (declared "
                    "actions)\n"
+                   "  we_process inspect-corpus REQUEST.json SHA256 (read-only frozen metadata)\n"
                    "  we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE\n"
                    "  we_process fixture OUTPUT.wexplore  (synthetic diagnostic)\n"
                    "Worker overrides: --worker-script PATH --worker-python EXECUTABLE\n";
@@ -212,6 +215,31 @@ int main(int argc, char** argv) {
                 cancellation.request_stop();
             }
         });
+        if (K_COMMAND == "inspect-corpus") {
+            if (argc != 4) {
+                std::cerr << "Usage: we_process inspect-corpus REQUEST.json SHA256\n";
+                return 2;
+            }
+            const auto K_CORPUS =
+                inspect_asset_corpus_request(argv[2uz], argv[3uz], cancellation.get_token());
+            if (!K_CORPUS) {
+                std::cerr << K_CORPUS.error().m_message << '\n';
+                return 2;
+            }
+            const auto& definition = K_CORPUS->definition();
+            const std::array K_TRACKS { "SYNTHETIC", "PILOT", "RELEASE" };
+            std::cout << "Frozen asset corpus metadata; no execution or AP qualification\n"
+                      << "Track: " << K_TRACKS.at(static_cast<std::size_t>(definition.m_track))
+                      << '\n'
+                      << "Corpus: " << definition.m_corpus << ", revision " << definition.m_revision
+                      << ", captures " << definition.m_captures.size() << ", recipes "
+                      << definition.m_recipes.size() << '\n'
+                      << "SHA-256: " << K_CORPUS->reference().m_sha256 << '\n';
+            for (const auto& blocker : K_CORPUS->blockers()) {
+                std::cout << blocker.m_scope << ": " << blocker.m_code << '\n';
+            }
+            return 0;
+        }
         if (K_COMMAND == "init-map" || K_COMMAND == "import-map" || K_COMMAND == "inspect-map") {
             if (argc != (K_COMMAND == "import-map" ? 5 : 3)) {
                 std::cerr << "Usage: init-map DIR | import-map INPUT.weposes SHA256 DIR | "

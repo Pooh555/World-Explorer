@@ -6,6 +6,10 @@ inspection. A0/AP0 remain **IN_PROGRESS**. A seal freezes identities and missing
 prerequisites; it cannot qualify a real corpus, authorize execution, certify
 consent/scale or contribute an automatic success. All current fixtures are synthetic.
 
+The shared [read-only request/CLI command](corpus_inspection.md) loads explicit
+independent original inputs and reports the blockers below; it does not seal a
+new corpus or launch workers.
+
 ## Independent pins and ownership
 
 `admit_asset_corpus` takes a definition and separately selected owned capture and

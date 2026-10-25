@@ -264,6 +264,13 @@ The shared [draft replacement command](docs/protocols/draft_mutations.md) binds
 declared assistance to exact revised product bytes and durable intent/results;
 typed payload validation and live scene adoption remain separate.
 
+Inspect independently pinned frozen asset metadata with
+`build/dev/we_process inspect-corpus REQUEST.json REQUEST_SHA256`.
+The [request contract](docs/protocols/corpus_inspection.md) selects original
+receipts, capture commits and typed evidence explicitly. The command is read-only
+and prints all remaining blockers; exit 0 certifies successful metadata inspection
+only. Existing reconstruction scenes do not supply missing asset-corpus inputs.
+
 ## Platform Support
 
 | Platform/profile | Current evidence | Qualification boundary |
