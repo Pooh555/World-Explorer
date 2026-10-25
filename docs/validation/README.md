@@ -1,5 +1,7 @@
 # Validation index
 
+- [25 October: sealed evaluation metadata](2026-10-25-evaluation-corpus.md) — immutable capture/recipe/resource pins, exact selected reads, explicit missing/opaque prerequisites and cancellation replay; synthetic CPU slice, A0/AP0 remain in progress.
+
 - [25 October: typed asset-definition edits](2026-10-25-asset-definition-edits.md) — bounded actual generated mesh/constant-material payload admission, immutable edited-region ancestry, v3 atomic definition attachments, semantic heads and controlled recovery; synthetic CPU scope, A0/AP0 remain in progress.
 
 - [25 October: macOS draft-test JSON repair](2026-10-25-macos-draft-json.md) — supplied libc++ byte-traits compilation failure reproduced locally and repaired with an explicit character view; production contracts and A0 handoff unchanged, native macOS confirmation pending.

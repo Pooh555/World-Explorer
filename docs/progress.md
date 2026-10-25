@@ -166,15 +166,26 @@ Owned typed reads require the committed draft; attempt history retains failures
 and cancellation. The [protocol](protocols/asset_definition_edits.md) limits this
 to the generated static profile, without worker/render/export or real AP evidence.
 
-Next executable step: add a bounded sealed asset evaluation/corpus manifest
-(plan §§11.6–11.7). Bind exact capture-role selections, independent scale,
-empty-background/changed-light references and recipe/resource/rights pins before
-any tuning. Reuse owned immutable publication and require independently selected
-revision/commit pins. Verify admission/replay and explicit missing-prerequisite
-blockers on synthetic fixtures, then inventory available real pilot inputs
-without inference or provisioning. Broader worker/asset adoption,
-verified source/region correspondence and full capture/evaluation freezes remain
-A0 work. A declaration cannot certify a human
+The [sealed-corpus slice](validation/2026-10-25-evaluation-corpus.md) now binds
+independently selected committed capture manifests and candidate recipe/resource/
+rights pins in a canonical immutable seal. Exact selected reads, replay and staged
+cancellation recovery are checked on synthetic fixtures. Missing evidence and
+opaque supplied refs remain explicit blockers; no real corpus or measurement is
+qualified. The [protocol](protocols/evaluation_corpus.md) preserves the capture-role
+firewall and forbids using a seal as an execution or AP-pass token.
+
+Next executable step: implement strict receipt-backed independent-scale evidence
+for the sealed corpus (plan §11.6), reusing existing world-frame/measurement
+contracts where applicable. Start with a bounded measurement record binding
+selected capture/calibration, independently declared metric distance/uncertainty
+and native anchor geometry; validate exact refs, finite values, stale context and
+synthetic admission/recovery before replacing the corpus's opaque scale check.
+Keep human measurement/authenticity unverified. Then add typed inventory/visibility,
+temporal/path and controlled-light/background evidence. Available selected local
+sample receipts have no A1 consent/measurement/background/light bindings; preserve
+them and request the real pilot inputs when required. Broader worker/asset adoption,
+verified source/region correspondence and complete capture/evaluation qualification
+remain A0 work. A declaration cannot certify a human
 act, consent, correct opaque descendants or automatic yield. Keep processing local
 and draft metadata separate from live scene transactions; validate actual payloads
 before runtime adoption through the existing update path. Current runtime evidence
