@@ -20,6 +20,9 @@ original capture handle or its narrow inputs. Its boundaries and limits are owne
 by that protocol. [Typed temporal/inspection evidence](evaluation_paths.md) supplies
 both of its additional record roots through the same check; it also binds exact
 original timestamps and decoded camera values without exposing them to new workers.
+[Controlled prop references](controlled_references.md) likewise check their entire
+declared root closure, including optional lighting observations, against selected
+inference dependencies.
 
 ## Selection and byte admission
 

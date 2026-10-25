@@ -24,6 +24,10 @@ constexpr std::array K_EVIDENCE {
     std::pair { AssetCorpusEvidence::EMPTY_BACKGROUND, "EMPTY_BACKGROUND" },
     std::pair { AssetCorpusEvidence::CHANGED_LIGHT, "CHANGED_LIGHT" },
     std::pair { AssetCorpusEvidence::EVALUATION_PROTOCOL, "EVALUATION_PROTOCOL" } };
+constexpr std::array K_CONTROLLED {
+    std::pair { AssetCorpusEvidence::BACKSIDE, ControlledReferenceKind::BACKSIDE },
+    std::pair { AssetCorpusEvidence::EMPTY_BACKGROUND, ControlledReferenceKind::EMPTY_BACKGROUND },
+    std::pair { AssetCorpusEvidence::CHANGED_LIGHT, ControlledReferenceKind::CHANGED_LIGHT } };
 constexpr std::array K_TRACKS { std::pair { AssetCorpusTrack::SYNTHETIC, "SYNTHETIC" },
                                std::pair { AssetCorpusTrack::PILOT, "PILOT" },
                                std::pair { AssetCorpusTrack::RELEASE, "RELEASE" } };
@@ -222,6 +226,9 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
         }
         for (const auto& capture : captures) {
             token(capture.m_label);
+            require(capture.m_references.size() <= 3uz,
+                    "Corpus controlled-reference handle budget exceeded",
+                    ErrorCode::RESOURCE_EXHAUSTED);
         }
         for (const auto& recipe : recipes) {
             token(recipe.m_label);
@@ -291,7 +298,11 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                           K_KIND != AssetCorpusEvidence::VISIBILITY)) &&
                         (!value.m_require_typed_paths ||
                          (K_KIND != AssetCorpusEvidence::TEMPORAL_BLOCKS &&
-                          K_KIND != AssetCorpusEvidence::INSPECTION_PATH))) {
+                          K_KIND != AssetCorpusEvidence::INSPECTION_PATH)) &&
+                        (!value.m_require_typed_references ||
+                         (K_KIND != AssetCorpusEvidence::BACKSIDE &&
+                          K_KIND != AssetCorpusEvidence::EMPTY_BACKGROUND &&
+                          K_KIND != AssetCorpusEvidence::CHANGED_LIGHT))) {
                         blockers.push_back({ pin.m_label, std::string(K_NAME) + "_UNVERIFIED" });
                     }
                 }
@@ -376,6 +387,52 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
             } else {
                 require(!K_INPUT->m_paths, "Typed evaluation paths require schema four");
             }
+            if (!value.m_require_typed_references) {
+                require(K_INPUT->m_references.empty(),
+                        "Typed controlled references require schema five");
+            } else {
+                std::size_t used {};
+                for (const auto& [K_ROLE, K_KIND] : K_CONTROLLED) {
+                    const auto K_PIN = pin.m_evidence.find(K_ROLE);
+                    const auto K_COUNT =
+                        std::ranges::count(K_INPUT->m_references, K_KIND, [](const auto& ref) {
+                            return ref.selection().m_kind;
+                        });
+                    if (K_PIN == pin.m_evidence.end()) {
+                        require(K_COUNT == 0,
+                                "Controlled-reference handle has no selected evidence");
+                        continue;
+                    }
+                    require(
+                        K_COUNT == 1,
+                        "Corpus requires exactly one controlled-reference handle per selected kind",
+                        ErrorCode::RESYNC_REQUIRED);
+                    const auto K_REF =
+                        std::ranges::find(K_INPUT->m_references, K_KIND, [](const auto& ref) {
+                            return ref.selection().m_kind;
+                        });
+                    require(K_REF != K_INPUT->m_references.end() &&
+                                K_REF->selection().m_product == K_PIN->second &&
+                                K_REF->capture_product() == selected.m_product &&
+                                K_REF->receipt_sha256() == pin.m_receipt_sha256 &&
+                                K_INVENTORY != pin.m_evidence.end() &&
+                                K_VISIBILITY != pin.m_evidence.end() &&
+                                K_REF->inventory_product() == K_INVENTORY->second &&
+                                K_REF->visibility_product() == K_VISIBILITY->second,
+                            "Corpus controlled reference/capture/inventory differs",
+                            ErrorCode::RESYNC_REQUIRED);
+                    const auto K_SCOPE = pin.m_label + "/" + name(K_ROLE, K_EVIDENCE);
+                    blockers.push_back({ K_SCOPE, "REFERENCE_CORRESPONDENCE_UNVERIFIED" });
+                    blockers.push_back({ K_SCOPE, "PHYSICAL_CONDITIONS_UNVERIFIED" });
+                    blockers.push_back({ K_SCOPE, "LIGHTING_CALIBRATION_UNVERIFIED" });
+                    if (K_REF->has_missing_lighting()) {
+                        blockers.push_back({ K_SCOPE, "LIGHTING_MEASUREMENT_MISSING" });
+                    }
+                    ++used;
+                }
+                require(used == K_INPUT->m_references.size(),
+                        "Unselected controlled-reference handle kind");
+            }
             if (std::ranges::none_of(selected.m_frames, [](const auto& frame) {
                     return frame.m_role == CaptureFrameRole::HELD_OUT;
                 })) {
@@ -445,7 +502,8 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
         }
         std::ranges::sort(blockers);
         Json document { { "schema_version",
-                        value.m_require_typed_paths       ? 4
+                        value.m_require_typed_references  ? 5
+                        : value.m_require_typed_paths     ? 4
                         : value.m_require_typed_inventory ? 3
                         : value.m_require_typed_scale     ? 2
                                                           : 1 },
@@ -455,14 +513,18 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                        { "captures", capture_rows },
                        { "recipes", recipe_rows } };
         if (value.m_require_typed_scale || value.m_require_typed_inventory ||
-            value.m_require_typed_paths) {
+            value.m_require_typed_paths || value.m_require_typed_references) {
             document["typed_scale"] = value.m_require_typed_scale;
         }
-        if (value.m_require_typed_inventory || value.m_require_typed_paths) {
+        if (value.m_require_typed_inventory || value.m_require_typed_paths ||
+            value.m_require_typed_references) {
             document["typed_inventory"] = value.m_require_typed_inventory;
         }
-        if (value.m_require_typed_paths) {
-            document["typed_paths"] = true;
+        if (value.m_require_typed_paths || value.m_require_typed_references) {
+            document["typed_paths"] = value.m_require_typed_paths;
+        }
+        if (value.m_require_typed_references) {
+            document["typed_references"] = true;
         }
         auto canonical = document.dump();
         require(canonical.size() <= K_MAX_BYTES,
@@ -501,11 +563,33 @@ decode_asset_corpus(std::span<const std::byte> bytes,
                 "Corpus bytes differ from selected hash",
                 ErrorCode::RESYNC_REQUIRED);
         const auto K_SCHEMA = integer(K_DOC.at("schema_version"));
-        require(K_SCHEMA >= 1 && K_SCHEMA <= 4,
+        require(K_SCHEMA >= 1 && K_SCHEMA <= 5,
                 "Unsupported corpus schema",
                 ErrorCode::UNSUPPORTED_OPERATION);
         AssetCorpusDefinition value;
-        if (K_SCHEMA == 4) {
+        if (K_SCHEMA == 5) {
+            keys(K_DOC,
+                 { "schema_version",
+                  "corpus",
+                  "revision",
+                  "track",
+                  "captures",
+                  "recipes",
+                  "typed_scale",
+                  "typed_inventory",
+                  "typed_paths",
+                  "typed_references" });
+            require(K_DOC.at("typed_scale").is_boolean() &&
+                        K_DOC.at("typed_inventory").is_boolean() &&
+                        K_DOC.at("typed_paths").is_boolean() &&
+                        K_DOC.at("typed_references").is_boolean() &&
+                        K_DOC.at("typed_references").get<bool>(),
+                    "Schema five requires typed references");
+            value.m_require_typed_scale = K_DOC.at("typed_scale").get<bool>();
+            value.m_require_typed_inventory = K_DOC.at("typed_inventory").get<bool>();
+            value.m_require_typed_paths = K_DOC.at("typed_paths").get<bool>();
+            value.m_require_typed_references = true;
+        } else if (K_SCHEMA == 4) {
             keys(K_DOC,
                  { "schema_version",
                   "corpus",

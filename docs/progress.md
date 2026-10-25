@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-25 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-26 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
 gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts, typed metadata and owned history).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
@@ -197,13 +197,22 @@ and corpus schema 4 require matching selected refs/handles; schemas 1–3 retain
 bytes. Physical accuracy, sampling novelty, independence and pre-tuning provenance
 remain unverified. The [protocol](protocols/evaluation_paths.md) owns this scope.
 
-Next executable step: implement typed controlled-reference evidence for backside,
-empty-background and changed-light captures (plan §11.6). Bind independently selected
-conditions/reference pairs to exact evaluation roles, original source/view/pose refs
-and declared lighting/measurement units; reject stale/missing/foreign references and
-inference leakage on synthetic admission/recovery fixtures. Keep physical lighting,
-background correspondence and real AP4/AP6 evaluation unverified. Preserve earlier
-corpus encodings when adding explicit typed enforcement. Available selected local
+The [controlled-reference slice](validation/2026-10-26-controlled-references.md) now
+binds independent backside/empty-background/changed-light prop sets to exact
+inventory/capture/role/view/condition declarations and native optional lux/kelvin
+observations. Corpus schema 5 requires matching private handles per present kind;
+schemas 1–4 retain their bytes. Atomic metadata retry/read preserves caller data.
+Physical correspondence, calibration and real AP4/AP6 remain unverified. The
+[protocol](protocols/controlled_references.md) owns bounds and missing-measurement semantics.
+
+Next executable step: implement typed capture-envelope evidence for the sealed
+corpus (plan §11.6), binding independently selected source coverage, complete
+view/calibration/time tables and declared capture conditions to the original
+capture/receipt. Reject omitted/stale/foreign bindings and inference leakage on
+synthetic admission/recovery fixtures; keep physical consent/capture quality and
+coverage unverified. Then freeze the typed evaluation protocol's sampling, masks,
+renderer/tone mapping, fixed lights, seeds and rubric without changing gate targets.
+Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption
 and complete real capture/evaluation qualification remain A0 work. A declaration cannot certify a human

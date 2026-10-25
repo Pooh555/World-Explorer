@@ -1,4 +1,4 @@
-# Sealed asset evaluation corpus v1/v2/v3/v4
+# Sealed asset evaluation corpus v1/v2/v3/v4/v5
 
 [`evaluation_corpus.hpp`](../../include/world_explorer/application/evaluation_corpus.hpp)
 adds coordinator metadata in `application`, above capture selections and recipe
@@ -160,3 +160,31 @@ UNCERTAIN path entry adds `EVALUATION_POSE_UNCERTAINTY_DECLARED`. Even all
 DECLARED_RELIABLE entries retain the physical pose blocker. Independent-source
 hashes cannot establish physical novelty or a freeze before tuning. No execution
 or AP success authority is granted; revised seals need separately selected outputs.
+
+## Typed controlled references in schema 5
+
+`AssetCorpusDefinition::m_require_typed_references` selects schema 5. Exact root
+fields add `typed_references=true` and explicit boolean `typed_scale`,
+`typed_inventory`, `typed_paths`. Earlier flags select their existing requirements
+independently. Missing/false/nonboolean reference flags and nonboolean earlier
+flags fail. Schemas 1–4 retain their exact encodings and reject supplied reference
+handles. Revised freezes require separately selected seal outputs.
+
+Each present BACKSIDE/EMPTY_BACKGROUND/CHANGED_LIGHT ref requires exactly one
+[admitted controlled-reference handle](controlled_references.md) of that kind.
+Up to three caller-selected handles are allowed; duplicate, missing, foreign or
+unselected handles fail. The handle must bind the exact evidence product, original
+capture product/receipt and both inventory/visibility refs explicitly selected in
+the corpus. This requirement holds even when `typed_inventory` is false; its
+opaque inventory diagnostics remain in that mode. Kinds may be absent independently,
+retaining their `<ROLE>_MISSING` blocker without a fabricated reference set.
+
+For each present typed kind, the opaque `<ROLE>_UNVERIFIED` blocker is replaced by
+`REFERENCE_CORRESPONDENCE_UNVERIFIED`, `PHYSICAL_CONDITIONS_UNVERIFIED` and
+`LIGHTING_CALIBRATION_UNVERIFIED`, under scope `<capture_label>/<ROLE>`. If any
+pair lacks a baseline/reference lighting product, that scope also retains
+`LIGHTING_MEASUREMENT_MISSING`. Partial quantities inside a supplied observation
+remain explicit in the handle; presence does not prove complete calibration.
+Rights/authenticity/other evidence and recipe/runtime blockers remain unchanged.
+No real completion/relighting score, required-prop coverage, worker input or AP
+success authority is produced by this structural admission.

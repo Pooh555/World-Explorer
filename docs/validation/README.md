@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: controlled prop references](2026-10-26-controlled-references.md) — independent backside/empty-background/changed-light kinds, strict lighting units and corpus schema 5; synthetic CPU admission/recovery, physical correspondence/calibration remain open.
+
 - [A0 temporal blocks and inspection paths](2026-10-25-evaluation-paths.md) — bounded complete partitions, native camera/time binding, independent-source path and corpus schema 4; synthetic CPU admission/recovery, real pose/sampling/pre-tuning qualification open.
 
 - [25 October: typed inventory and visibility](2026-10-25-evaluation-inventory.md) — frozen object/structure identities, complete evaluation-view tables, explicit inference separation and corpus-v3 admission; synthetic CPU scope, labels/completeness/physical correspondence remain open.
