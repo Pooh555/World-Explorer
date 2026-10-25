@@ -15,6 +15,31 @@ namespace {
 using namespace json_record_detail;
 constexpr std::size_t K_MIB { 1024uz * 1024uz };
 using ViewKey = std::pair<CaptureId, FrameId>;
+using Nodes = std::map<AssetProductId, std::reference_wrapper<const AssetDependencyNode>>;
+
+void inference_dependencies(const Nodes& nodes,
+                            std::vector<AssetProductId> pending,
+                            const std::set<std::string>& forbidden,
+                            const std::stop_token& stop) {
+    std::set<AssetProductId> visited;
+    while (!pending.empty()) {
+        check_stop(stop);
+        const auto K_ID = pending.back();
+        pending.pop_back();
+        if (!visited.insert(K_ID).second) {
+            continue;
+        }
+        const auto& node = nodes.at(K_ID).get();
+        require(!forbidden.contains(node.m_product.m_content_sha256) &&
+                    !forbidden.contains(node.m_recipe_sha256) &&
+                    (!node.m_manual_action_sha256.has_value() ||
+                     !forbidden.contains(node.m_manual_action_sha256.value())),
+                "Evaluation bytes enter inference dependency closure");
+        for (const auto& parent : node.m_dependencies) {
+            pending.push_back(parent.m_product);
+        }
+    }
+}
 
 AssetRevisionRef reference(const Json& value) {
     keys(value, { "product_id", "revision", "content_sha256" });
@@ -71,6 +96,7 @@ struct AdmittedCaptureSelection::Implementation {
     std::vector<CaptureEvaluationFrame> m_evaluation;
     std::string m_receipt_sha256;
     std::vector<std::byte> m_bytes;
+    std::set<std::string> m_forbidden;
 };
 
 InferenceCaptureInputs::InferenceCaptureInputs(
@@ -102,6 +128,37 @@ const std::string& AdmittedCaptureSelection::receipt_sha256() const {
 
 const std::vector<std::byte>& AdmittedCaptureSelection::encoded_bytes() const {
     return m_state->m_bytes;
+}
+
+Result<void>
+AdmittedCaptureSelection::validate_inference_dependency(const AdmittedAssetReceipt& receipt,
+                                                        const AssetRevisionRef& product,
+                                                        const AssetDependencyContext& expected,
+                                                        const std::stop_token& stop) const {
+    try {
+        check_stop(stop);
+        require(receipt.receipt_sha256() == m_state->m_receipt_sha256 &&
+                    expected.m_world_epoch == m_state->m_record.m_context.m_world_epoch &&
+                    expected.m_pose_revision == m_state->m_record.m_context.m_pose_revision,
+                "Inference dependency uses a foreign receipt/context",
+                ErrorCode::RESYNC_REQUIRED);
+        std::map<AssetProductId, std::reference_wrapper<const AssetDependencyNode>> nodes;
+        for (const auto& node : receipt.graph().m_products) {
+            nodes.emplace(node.m_product.m_product, node);
+        }
+        const auto K_FOUND = nodes.find(product.m_product);
+        require(K_FOUND != nodes.end() && K_FOUND->second.get().m_product == product,
+                "Stale inference dependency selection",
+                ErrorCode::RESYNC_REQUIRED);
+        inference_dependencies(nodes, { product.m_product }, m_state->m_forbidden, stop);
+        return {};
+    } catch (const RecordFailure& error) {
+        return fail(error.m_code, error.what());
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Inference dependency allocation failed");
+    } catch (const std::exception& error) {
+        return fail(ErrorCode::INVALID_DATA, error.what());
+    }
 }
 
 Result<AdmittedCaptureSelection>
@@ -346,31 +403,14 @@ inspect_capture_selection(const AdmittedAssetReceipt& receipt,
         }
         require(remaining_frames.empty(), "Missing capture frames");
         // Follow all declared upstream bytes; hashes detect aliases with new IDs.
-        std::set<AssetProductId> visited_inference;
+        std::vector<AssetProductId> inference_roots;
         for (const auto& [K_KEY, K_FRAME] : frames) {
-            if (K_FRAME.m_role != CaptureFrameRole::INFERENCE) {
-                continue;
-            }
-            std::vector<AssetProductId> pending { K_FRAME.m_view.m_image.m_product,
-                                                 K_FRAME.m_view.m_pose_asset.m_product };
-            while (!pending.empty()) {
-                check_stop(stop);
-                const auto K_ID = pending.back();
-                pending.pop_back();
-                if (!visited_inference.insert(K_ID).second) {
-                    continue;
-                }
-                const auto& node = nodes.at(K_ID).get();
-                require(!forbidden.contains(node.m_product.m_content_sha256) &&
-                            !forbidden.contains(node.m_recipe_sha256) &&
-                            (!node.m_manual_action_sha256.has_value() ||
-                             !forbidden.contains(node.m_manual_action_sha256.value())),
-                        "Evaluation bytes enter inference dependency closure");
-                for (const auto& parent : node.m_dependencies) {
-                    pending.push_back(parent.m_product);
-                }
+            if (K_FRAME.m_role == CaptureFrameRole::INFERENCE) {
+                inference_roots.push_back(K_FRAME.m_view.m_image.m_product);
+                inference_roots.push_back(K_FRAME.m_view.m_pose_asset.m_product);
             }
         }
+        inference_dependencies(nodes, std::move(inference_roots), forbidden, stop);
         std::map<AssetProductId, CanonicalPoseAsset> decoded;
         std::size_t pose_bytes {};
         auto inference = std::make_shared<std::vector<CaptureFrameInputs>>();
@@ -502,7 +542,8 @@ inspect_capture_selection(const AdmittedAssetReceipt& receipt,
                     std::move(inference),
                     std::move(evaluation),
                     receipt.receipt_sha256(),
-                    *K_BYTES }));
+                    *K_BYTES,
+                    std::move(forbidden) }));
     } catch (const RecordFailure& error) {
         return fail(error.m_code, error.what());
     } catch (const std::bad_alloc&) {

@@ -6,6 +6,13 @@ in `map_store`. A0/AP0 remain **IN_PROGRESS**. This contract records selected ro
 and known dependency separation; it does not freeze a complete real evaluation
 corpus, authenticate consent, prove upstream fit history or qualify a recipe.
 
+`validate_inference_dependency` also checks an independently selected auxiliary
+product against this exact receipt/context and the same retained forbidden-hash
+set, following all declared upstream products. The
+[typed mask-edit path](object_mask_edits.md) uses it before publication and before
+constructing committed inference-mask inputs. Evaluation annotations remain
+forbidden on inference frames.
+
 ## Selection and byte admission
 
 `inspect_capture_selection` takes an independently selected manifest product,

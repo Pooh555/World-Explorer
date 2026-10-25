@@ -46,18 +46,21 @@ struct ObjectMaskSpan {
 struct ObjectClassHypothesis {
     std::string m_label;
     std::optional<double> m_confidence;
+    auto operator<=>(const ObjectClassHypothesis&) const = default;
 };
 
 struct ObjectTrackAssociation {
     ObjectTrackId m_track;
     ObjectAssociationDecision m_decision;
     std::optional<double> m_confidence;
+    auto operator<=>(const ObjectTrackAssociation&) const = default;
 };
 
 struct ObjectObservationEvidence {
     AssetRevisionRef m_product;
     bool m_accepted {};
     std::string m_reason;
+    auto operator<=>(const ObjectObservationEvidence&) const = default;
 };
 
 struct ObjectObservationRecord {

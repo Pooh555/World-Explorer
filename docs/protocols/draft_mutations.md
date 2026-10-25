@@ -3,8 +3,10 @@
 [`draft_mutations.hpp`](../../include/world_explorer/asset_catalog/draft_mutations.hpp)
 and the shared [`application` command](../../include/world_explorer/application/draft_mutations.hpp)
 publish selected draft product bytes with durable action/operation linkage.
-A0/AP0 remain **IN_PROGRESS**. Payloads remain opaque: this does not validate or
-produce masks, geometry, materials, typed assets or live scene transactions.
+A0/AP0 remain **IN_PROGRESS**. This generic path keeps payloads opaque. The
+[typed object-mask adapter](object_mask_edits.md) adds native payload/role checks
+for selected observation/mask replacements; other bodies and live scene
+transactions remain outside its scope.
 
 ## Admission and ancestry
 
@@ -65,6 +67,15 @@ operation reuse, stale branching, missing/changed bytes and noncontiguous phases
 Before a new intent, all previously changed products in the selected input graph
 must match the directory's committed heads. Existing revision keys cannot acquire
 different bytes. No source or foreign output is repaired/deleted.
+
+Requests without `m_admission_sha256` retain byte-identical v1 intents. An optional
+valid SHA-256 selects explicit intent schema v2, adding exactly
+`admission_sha256`; both versions are read without rewriting history. Typed
+adapters derive this field from their independent selection identities. The
+generic layer treats it as opaque identity, not proof of typed correctness.
+Changing/removing it changes retry/read identity. Result schema v1 is unchanged
+and binds either intent through its hash. Persistent core registry schemas and
+operation numbering are unchanged.
 
 Exact retry binds all original parameters, including receipt and journal pins.
 Completed replay returns the current validated commit without observers; prepared

@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <optional>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -19,6 +20,8 @@ struct DraftMetadataMutation {
     OperationId m_operation;
     std::uint64_t m_base_generation {};
     std::vector<AssetRevisionRef> m_targets;
+    // Absent retains byte-identical v1; present uses explicit v2 intent.
+    std::optional<std::string> m_admission_sha256 {};
 };
 
 struct DraftMetadataChange {

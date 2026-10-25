@@ -91,7 +91,16 @@ void validate_identity(ManualActionId action, OperationId operation, std::uint64
 
 Intent parse_intent(const std::vector<std::byte>& bytes, const std::stop_token& stop) {
     const auto K_DOC = parse(bytes, K_INTENT_BYTES, stop);
-    keys(K_DOC,
+    const auto K_VERSION = integer(K_DOC.at("schema_version"));
+    require(K_VERSION == 1 || K_VERSION == 2,
+            "Unsupported draft intent schema",
+            ErrorCode::UNSUPPORTED_OPERATION);
+    auto base = K_DOC;
+    if (K_VERSION == 2) {
+        digest(K_DOC.at("admission_sha256"));
+        base.erase("admission_sha256");
+    }
+    keys(base,
          { "schema_version",
           "action_id",
           "kind",
@@ -108,9 +117,6 @@ Intent parse_intent(const std::vector<std::byte>& bytes, const std::stop_token& 
           "action_sha256",
           "targets",
           "changes" });
-    require(integer(K_DOC.at("schema_version")) == 1,
-            "Unsupported draft intent schema",
-            ErrorCode::UNSUPPORTED_OPERATION);
     const auto K_KIND = K_DOC.at("kind").get<std::string>();
     require(K_KIND == "EDIT_MASK" || K_KIND == "EDIT_GEOMETRY" || K_KIND == "EDIT_MATERIAL",
             "Unsupported draft intent kind",
@@ -283,8 +289,7 @@ Plan plan(const DraftMetadataMutation& mutation,
             { product_key(K_OLD.m_product),
              take(before.copy_blob(K_OLD.m_product.m_content_sha256, K_PRODUCT_BYTES, stop)) });
     }
-    result.m_intent.m_bytes =
-        encoded({ { "schema_version", 1 },
+    Json intent { { "schema_version", mutation.m_admission_sha256.has_value() ? 2 : 1 },
                  { "action_id", mutation.m_action.m_value },
                  { "kind", kind },
                  { "operation_id", mutation.m_operation.m_value },
@@ -299,7 +304,12 @@ Plan plan(const DraftMetadataMutation& mutation,
                  { "journal_manifest_sha256", journal.commit().m_manifest_sha256 },
                  { "action_sha256", action_sha },
                  { "targets", target_rows },
-                 { "changes", changes } });
+                 { "changes", changes } };
+    if (mutation.m_admission_sha256.has_value()) {
+        digest_text(mutation.m_admission_sha256.value());
+        intent["admission_sha256"] = mutation.m_admission_sha256.value();
+    }
+    result.m_intent.m_bytes = encoded(intent);
     require(result.m_intent.m_bytes.size() <= K_INTENT_BYTES,
             "Draft intent byte budget exceeded",
             ErrorCode::RESOURCE_EXHAUSTED);

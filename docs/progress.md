@@ -134,20 +134,24 @@ publishes separate durable intent/result phases. Prepared interruptions expose
 no outputs; exact retries recover. The [protocol](protocols/draft_mutations.md)
 keeps bodies opaque and limits enforcement to this new path, not legacy admission.
 
-Next executable step: add the first typed draft mutation adapter for
-object-observation/mask replacements (plan §§11.3–11.6). Validate replacement
-runs/grids/views and before/after observation records with existing native
-admission against independently selected image/pose/capture-role inputs. Require
-the action-bound draft result and exact selected revisions, derive manual
-ancestry, and reject evaluation-only inputs at the inference boundary. Keep
-pending/failed versus committed outcomes explicit; terminal failure journaling
-and broader typed asset-command adoption remain open. A declaration cannot
-certify a human act, consent, payload correctness or automatic yield. Keep data local.
-Keep draft metadata separate from live scene transactions; actual payload
-validation must precede runtime adoption through the existing update path.
-Typed mutation validation/adoption, verified source/region correspondence and full
-capture/evaluation freezes remain A0 work. Current runtime evidence still needs
-recapture; installed observations do not establish runtime closure or legal rights.
+The [typed mask-edit slice](validation/2026-10-25-object-mask-edits.md) now
+validates both native observation/mask versions and independently selected capture
+roles before any intent. Exact action-bound committed results produce owned
+inference masks with derived manual ancestry; pending/invalid/evaluation inputs
+cannot create them. Role-manifest and observation pins are bound in versioned
+intent identity. The [protocol](protocols/object_mask_edits.md) keeps this separate
+from worker execution and geometry/material descendant qualification.
+
+Next executable step: extend draft mutation history with bounded failed/cancelled
+attempt outcomes tied to the exact action/intent/operation. Preserve prepared
+retry, committed replay, original inputs and independently selected current pins;
+add cancellation/observer-failure/recovery evidence without treating a failed
+attempt as successful assistance. Broader typed geometry/material command adoption,
+verified source/region correspondence and full capture/evaluation freezes remain A0 work. A declaration cannot certify a human
+act, consent, correct opaque descendants or automatic yield. Keep processing local
+and draft metadata separate from live scene transactions; validate actual payloads
+before runtime adoption through the existing update path. Current runtime evidence
+still needs recapture; installed observations do not establish runtime closure or legal rights.
 Unknown installation/model costs must refuse provisioning. Bounded tree checks
 do not complete AP0. Full installation/runtime qualification, measured budgets
 and enforced worker limits are still required. The 8 GiB host remains contracts-only; H_AP24/H_AP48

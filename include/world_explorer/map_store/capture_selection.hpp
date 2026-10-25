@@ -78,6 +78,13 @@ class AdmittedCaptureSelection {
     const std::string& receipt_sha256() const;
     const std::vector<std::byte>& encoded_bytes() const;
 
+    // Role firewall for additional inference products, including all upstream
+    // content/recipe/action hashes. Requires this exact admitted receipt/context.
+    Result<void> validate_inference_dependency(const AdmittedAssetReceipt& receipt,
+                                               const AssetRevisionRef& product,
+                                               const AssetDependencyContext& expected,
+                                               const std::stop_token& stop = {}) const;
+
   private:
     struct Implementation;
     explicit AdmittedCaptureSelection(std::shared_ptr<const Implementation> state);

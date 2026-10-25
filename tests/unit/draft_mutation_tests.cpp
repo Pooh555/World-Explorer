@@ -66,6 +66,29 @@ Json config(const DraftFixture& fixture) {
 
 }  // namespace
 
+TEST_CASE("versioned draft admission bindings preserve opaque v1 and bind retry identity",
+          "[draft-mutations]") {
+    DraftFixture fixture;
+    fixture.m_mutation.m_admission_sha256 = hash("synthetic typed admission binding");
+    const auto K_COMMIT = fixture.publish();
+    REQUIRE(K_COMMIT);
+    REQUIRE(fixture.read(*K_COMMIT));
+    const auto K_STORE = read_immutable_records(fixture.m_root);
+    REQUIRE(K_STORE);
+    const auto& bytes = K_STORE->m_records.at("mutation-1");
+    const auto K_DOC = Json::parse(bytes);
+    CHECK(K_DOC.at("schema_version").get<std::uint64_t>() == 2);
+    CHECK(K_DOC.at("admission_sha256").get<std::string>() ==
+          fixture.m_mutation.m_admission_sha256.value());
+    fixture.m_mutation.m_admission_sha256.reset();
+    REQUIRE(!fixture.read(*K_COMMIT));
+    REQUIRE(!fixture.publish());
+    fixture.m_mutation.m_admission_sha256 = "invalid";
+    fixture.m_root = fixture.m_workspace.m_root / "invalid-binding";
+    REQUIRE(!fixture.publish());
+    CHECK(!std::filesystem::exists(fixture.m_root));
+}
+
 TEST_CASE(
     "draft replacement publishes exact revised closure with immutable intent result and ancestry",
     "[draft-mutations]") {
