@@ -95,3 +95,14 @@ Unexpected staging entries are preserved/refused. Filesystem checks and locks
 assume cooperating writers; hostile concurrent directory replacement is outside
 this contract. Metadata is not adopted by the runtime: actual payload validation
 must precede the existing scene update path, including initial publication.
+
+
+## Physical operation inspection
+
+Core `inspect_immutable_record_operation` uses the existing complete owned-store
+admission to observe one operation's original base, immutable record key/hash/size
+bindings and committed flag. It can report a durable uncommitted operation without
+exposing pending bytes in the logical snapshot. It is bounded and read-only;
+absence returns an empty optional, malformed/foreign stores fail. The
+[draft attempt journal](draft_attempts.md) uses it to recover a finite canonical
+outcome after interruption. This adds no persistent schema or adoption authority.

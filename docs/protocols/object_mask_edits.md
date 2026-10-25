@@ -59,7 +59,9 @@ observation changes the intent. Removing the binding cannot replay typed history
 current draft commit, original request/receipts and journal pins. Generic history
 admission must find the exact committed result and owned output bytes. A prepared
 intent returns `WOULD_BLOCK`; no typed inference handle is constructed. Technical
-failures/cancellation return errors; separate terminal failure records remain open.
+failures/cancellation return errors. The [attempt commands](draft_attempts.md) now
+add separate durable terminal outcomes after the same typed admission;
+`read_object_mask_attempt` reads them with independent current journal pins.
 Exact retries resume prepared publication or replay committed history unchanged.
 
 Only this reader constructs `InferenceObjectMask`. Its immutable owned snapshot

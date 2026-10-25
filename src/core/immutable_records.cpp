@@ -328,6 +328,36 @@ Result<RecordStoreSnapshot> read_immutable_records(const fs::path& selected,
     }
 }
 
+Result<std::optional<RecordOperationBinding>> inspect_immutable_record_operation(
+    const fs::path& selected, OperationId operation, const std::stop_token& stop) {
+    try {
+        require(operation.m_value != 0, "Missing record operation", ErrorCode::INVALID_ARGUMENT);
+        const auto K_STATE = inspect(location(selected), false, stop);
+        const auto K_FOUND = K_STATE.m_intents.find(operation.m_value);
+        if (K_FOUND == K_STATE.m_intents.end()) {
+            return std::nullopt;
+        }
+        RecordOperationBinding result { K_FOUND->second.m_base, false, {} };
+        for (const auto& row : K_STATE.m_operations) {
+            result.m_committed =
+                result.m_committed || integer(row.at("operation_id")) == operation.m_value;
+        }
+        for (const auto& [K_KEY, K_BINDING] : K_FOUND->second.m_records) {
+            result.m_records.push_back({ K_KEY, K_BINDING.m_sha, K_BINDING.m_bytes });
+        }
+        check_stop(stop);
+        return result;
+    } catch (const RecordFailure& error) {
+        return fail(error.m_code, error.what());
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Record binding allocation failed");
+    } catch (const fs::filesystem_error& error) {
+        return fail(ErrorCode::IO_ERROR, error.what());
+    } catch (const std::exception& error) {
+        return fail(ErrorCode::INVALID_DATA, error.what());
+    }
+}
+
 Result<RecordCommit> publish_immutable_records(const fs::path& selected,
                                                OperationId operation,
                                                std::uint64_t base_generation,

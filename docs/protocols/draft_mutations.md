@@ -96,8 +96,9 @@ after interruption; this observation is not authenticated history selection.
 diagnostic/fault-injection callbacks, not output-edit hooks. Cancellation and
 observer exceptions return explicit errors and retain prepared history; partial
 result blobs are never exposed as committed outputs. Resume may repeat progress
-notifications. Failure reasons are returned, not durably recorded as distinct
-terminal failed/cancelled events. Core staging interruption before intent commit,
+notifications. Direct calls return failure reasons without terminal events; the
+[optional attempt journal](draft_attempts.md) now persists bounded failed/cancelled
+outcomes through separate shared commands and preserves them across new retries. Core staging interruption before intent commit,
 arbitrary power loss and hostile filesystem replacement retain their prior limits.
 
 The command enforces lineage and byte publication within this path. Legacy graph

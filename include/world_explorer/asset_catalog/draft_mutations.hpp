@@ -40,6 +40,19 @@ struct DraftMutationSnapshot {
     std::map<AssetProductId, std::vector<std::byte>> m_output_bytes;
 };
 
+struct DraftMutationIdentity {
+    std::string m_intent_sha256, m_result_sha256;
+};
+
+// Complete read-only admission, before publishing an attempt journal intent.
+Result<DraftMutationIdentity>
+inspect_draft_metadata_mutation(const DraftMetadataMutation& mutation,
+                                const AdmittedAssetReceipt& before,
+                                const AdmittedAssetReceipt& after,
+                                const AdmittedManualActionJournal& journal,
+                                const AssetDependencyContext& expected,
+                                const std::stop_token& stop = {});
+
 // Draft byte replacement only: EDIT_MASK/EDIT_GEOMETRY/EDIT_MATERIAL, same closed
 // product IDs/dependency IDs/recipes, exact revision +1 and changed bytes for every
 // target and transitive descendant (<=16 products, <=64 KiB/product). Unaffected

@@ -3,9 +3,11 @@
 #include "world_explorer/core/result.hpp"
 #include "world_explorer/core/types.hpp"
 
+#include <cstddef>
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <optional>
 #include <stop_token>
 #include <vector>
 
@@ -25,6 +27,24 @@ struct RecordStoreSnapshot {
     RecordCommit m_commit;
     std::map<std::string, std::vector<std::byte>> m_records;
 };
+
+struct ImmutableRecordBinding {
+    std::string m_key, m_sha256;
+    std::size_t m_bytes {};
+};
+
+struct RecordOperationBinding {
+    std::uint64_t m_base_generation {};
+    bool m_committed {};
+    std::vector<ImmutableRecordBinding> m_records;
+};
+
+// Read-only physical operation intent, including uncommitted record bindings.
+// This exposes no pending bytes as committed data and grants no adoption rights.
+Result<std::optional<RecordOperationBinding>>
+inspect_immutable_record_operation(const std::filesystem::path& directory,
+                                   OperationId operation,
+                                   const std::stop_token& stop = {});
 
 // Opaque byte primitive; domain readers/writers must validate their own schemas.
 // Closed owned root, nonblocking writer lock, immutable intent/blob publication,

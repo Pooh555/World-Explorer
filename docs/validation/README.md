@@ -1,5 +1,7 @@
 # Validation index
 
+- [25 October: draft attempt outcomes](2026-10-25-draft-attempts.md) — immutable failed/cancelled/committed attempts, exact selection/result binding, separate owned history, pending decision recovery and native child crashes; local synthetic CPU scope, A0/AP0 remain in progress.
+
 - [25 October: typed object-mask edits](2026-10-25-object-mask-edits.md) — native payload/role admission before intent, exact action/result binding, committed owned inference-mask inputs, evaluation ancestry exclusion and interruption/retry; synthetic CPU scope, A0/AP0 remain in progress.
 
 - [25 October: action-bound draft replacements](2026-10-25-draft-mutations.md) — exact action/receipt/revision binding, revised manual descendant closure, durable prepared/committed publication and native recovery; opaque bodies and typed adoption remain outside qualification.

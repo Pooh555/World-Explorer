@@ -70,6 +70,47 @@ int main(int argc, char** argv) {
         if (!K_JOURNAL) {
             return 2;
         }
+        if (K_DOC.contains("attempt_directory")) {
+            const DraftMetadataAttempt K_ATTEMPT { { K_DOC.at("attempt_id").get<std::uint64_t>() },
+                                                  K_DOC.at("attempt_base").get<std::uint64_t>(),
+                                                  K_DOC.at("attempt_directory").get<std::string>() };
+            std::stop_source cancellation;
+            const auto K_RESULT = attempt_draft_metadata(
+                { mutation, K_OUTPUT },
+                K_ATTEMPT,
+                *K_BEFORE,
+                *K_AFTER,
+                *K_JOURNAL,
+                K_CONTEXT,
+                cancellation.get_token(),
+                [&](auto, auto) {
+                    if (K_MODE == "attempt-cancelled-outcome") {
+                        cancellation.request_stop();
+                    }
+                },
+                [&](auto phase) {
+                    if ((K_MODE == "attempt-intent" &&
+                         phase == DraftAttemptProgress::INTENT_DURABLE) ||
+                        ((K_MODE == "attempt-outcome" || K_MODE == "attempt-cancelled-outcome") &&
+                         phase == DraftAttemptProgress::OUTCOME_RECORD_WRITTEN)) {
+                        std::_Exit(77);
+                    }
+                });
+            if (!K_RESULT) {
+                std::cerr << K_RESULT.error().m_message << '\n';
+                return 2;
+            }
+            std::cout << nlohmann::json(
+                             { { "generation", K_RESULT->m_commit.m_generation },
+                              { "manifest_sha256", K_RESULT->m_commit.m_manifest_sha256 },
+                              { "phase", static_cast<std::uint8_t>(K_RESULT->m_phase) },
+                              { "intent_sha256", K_RESULT->m_intent_sha256 },
+                              { "mutation_intent_sha256", K_RESULT->m_mutation_intent_sha256 },
+                              { "mutation_result_sha256", K_RESULT->m_mutation_result_sha256 } })
+                             .dump()
+                      << '\n';
+            return 0;
+        }
         const auto K_COMMIT = replace_draft_metadata(
             { mutation, K_OUTPUT },
             *K_BEFORE,

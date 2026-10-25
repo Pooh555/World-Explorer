@@ -402,6 +402,26 @@ void notify(const DraftMutationObserver& observed,
 
 }  // namespace
 
+Result<DraftMutationIdentity>
+inspect_draft_metadata_mutation(const DraftMetadataMutation& mutation,
+                                const AdmittedAssetReceipt& before,
+                                const AdmittedAssetReceipt& after,
+                                const AdmittedManualActionJournal& journal,
+                                const AssetDependencyContext& expected,
+                                const std::stop_token& stop) {
+    try {
+        const auto K_PLAN = plan(mutation, before, after, journal, expected, stop);
+        return DraftMutationIdentity { sha256(K_PLAN.m_intent.m_bytes),
+                                      sha256(result_bytes(K_PLAN.m_intent)) };
+    } catch (const RecordFailure& error) {
+        return fail(error.m_code, error.what());
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Draft identity allocation failed");
+    } catch (const std::exception& error) {
+        return fail(ErrorCode::INVALID_DATA, error.what());
+    }
+}
+
 Result<RecordCommit> publish_draft_metadata_mutation(const DraftMetadataMutation& mutation,
                                                      const AdmittedAssetReceipt& before,
                                                      const AdmittedAssetReceipt& after,

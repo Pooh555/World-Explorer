@@ -1,6 +1,6 @@
 #pragma once
 
-#include "world_explorer/asset_catalog/draft_mutations.hpp"
+#include "world_explorer/asset_catalog/draft_attempts.hpp"
 
 namespace world_explorer {
 
@@ -8,6 +8,17 @@ struct ReplaceDraftMetadataCommand {
     DraftMetadataMutation m_mutation;
     std::filesystem::path m_directory;
 };
+
+Result<DraftAttemptSnapshot>
+attempt_draft_metadata(const ReplaceDraftMetadataCommand& command,
+                       const DraftMetadataAttempt& attempt,
+                       const AdmittedAssetReceipt& before,
+                       const AdmittedAssetReceipt& after,
+                       const AdmittedManualActionJournal& journal,
+                       const AssetDependencyContext& expected,
+                       const std::stop_token& stop = {},
+                       const DraftMutationObserver& mutation_observed = {},
+                       const DraftAttemptObserver& observed = {});
 
 // Shared application command; owned draft publication, no scene mutation/worker.
 Result<RecordCommit> replace_draft_metadata(const ReplaceDraftMetadataCommand& command,

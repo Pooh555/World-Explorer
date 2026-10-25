@@ -13,6 +13,33 @@ struct ReplaceObjectMaskCommand {
     ObjectObservationSelection m_before, m_after;
 };
 
+// Typed checks precede attempt-journal admission; terminal attempt status never
+// substitutes for read_object_mask_edit's committed typed-input admission.
+Result<DraftAttemptSnapshot>
+attempt_object_mask_edit(const ReplaceObjectMaskCommand& command,
+                         const DraftMetadataAttempt& attempt,
+                         const AdmittedAssetReceipt& before,
+                         const AdmittedAssetReceipt& after,
+                         const AdmittedManualActionJournal& journal,
+                         const AdmittedCaptureSelection& before_capture,
+                         const AdmittedCaptureSelection& after_capture,
+                         const AssetDependencyContext& expected,
+                         const std::stop_token& stop = {},
+                         const DraftMutationObserver& mutation_observed = {},
+                         const DraftAttemptObserver& observed = {});
+
+Result<DraftAttemptSnapshot>
+read_object_mask_attempt(const ReplaceObjectMaskCommand& command,
+                         const DraftMetadataAttempt& attempt,
+                         const AdmittedAssetReceipt& before,
+                         const AdmittedAssetReceipt& after,
+                         const AdmittedManualActionJournal& journal,
+                         const AdmittedCaptureSelection& before_capture,
+                         const AdmittedCaptureSelection& after_capture,
+                         const RecordCommit& selected,
+                         const AssetDependencyContext& expected,
+                         const std::stop_token& stop = {});
+
 // Owned inference view and edited mask only; no evaluation data, complete pose
 // asset, observation labels/evidence bytes or source receipt. Constructed only
 // after typed admission and independently pinned COMMITTED draft publication.

@@ -142,12 +142,23 @@ cannot create them. Role-manifest and observation pins are bound in versioned
 intent identity. The [protocol](protocols/object_mask_edits.md) keeps this separate
 from worker execution and geometry/material descendant qualification.
 
-Next executable step: extend draft mutation history with bounded failed/cancelled
-attempt outcomes tied to the exact action/intent/operation. Preserve prepared
-retry, committed replay, original inputs and independently selected current pins;
-add cancellation/observer-failure/recovery evidence without treating a failed
-attempt as successful assistance. Broader typed geometry/material command adoption,
-verified source/region correspondence and full capture/evaluation freezes remain A0 work. A declaration cannot certify a human
+The [attempt-outcome slice](validation/2026-10-25-draft-attempts.md) now adds
+separate owned pending/failed/cancelled/committed attempt history, exact replay
+and controlled crash recovery around generic and typed mask commands. A new
+attempt can resume the same mutation while preserving the old cancellation;
+physical outcome decisions recover before work reruns, even without a staged
+blob. The [protocol](protocols/draft_attempts.md) separates historical publication
+from current typed adoption and product/automatic-yield accounting.
+
+Next executable step: add the first action-bound typed asset-definition edit
+adapter for `EDIT_GEOMETRY`/`EDIT_MATERIAL` (plan §§11.3–11.6). Inspect existing
+definition/region/payload admission, then bind independent before/after definition,
+geometry/material/provenance references and selected revisions to the mutation
+intent. Validate actual supported payloads before publication/adoption, propagate
+manual ancestry, and route attempts through the new failure journal. Keep opaque
+or unsupported descendants explicitly unqualified. Broader worker/asset adoption,
+verified source/region correspondence and full capture/evaluation freezes remain
+A0 work. A declaration cannot certify a human
 act, consent, correct opaque descendants or automatic yield. Keep processing local
 and draft metadata separate from live scene transactions; validate actual payloads
 before runtime adoption through the existing update path. Current runtime evidence

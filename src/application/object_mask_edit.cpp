@@ -148,6 +148,61 @@ bool InferenceObjectMask::manual_ancestor() const {
     return m_state->m_manual_ancestor;
 }
 
+Result<DraftAttemptSnapshot>
+attempt_object_mask_edit(const ReplaceObjectMaskCommand& command,
+                         const DraftMetadataAttempt& attempt,
+                         const AdmittedAssetReceipt& before,
+                         const AdmittedAssetReceipt& after,
+                         const AdmittedManualActionJournal& journal,
+                         const AdmittedCaptureSelection& before_capture,
+                         const AdmittedCaptureSelection& after_capture,
+                         const AssetDependencyContext& expected,
+                         const std::stop_token& stop,
+                         const DraftMutationObserver& mutation_observed,
+                         const DraftAttemptObserver& observed) {
+    const auto K_TYPED =
+        validate(command, before, after, before_capture, after_capture, expected, stop);
+    if (!K_TYPED) {
+        return std::unexpected(K_TYPED.error());
+    }
+    return attempt_draft_metadata(K_TYPED->m_draft,
+                                  attempt,
+                                  before,
+                                  after,
+                                  journal,
+                                  expected,
+                                  stop,
+                                  mutation_observed,
+                                  observed);
+}
+
+Result<DraftAttemptSnapshot>
+read_object_mask_attempt(const ReplaceObjectMaskCommand& command,
+                         const DraftMetadataAttempt& attempt,
+                         const AdmittedAssetReceipt& before,
+                         const AdmittedAssetReceipt& after,
+                         const AdmittedManualActionJournal& journal,
+                         const AdmittedCaptureSelection& before_capture,
+                         const AdmittedCaptureSelection& after_capture,
+                         const RecordCommit& selected,
+                         const AssetDependencyContext& expected,
+                         const std::stop_token& stop) {
+    const auto K_TYPED =
+        validate(command, before, after, before_capture, after_capture, expected, stop);
+    if (!K_TYPED) {
+        return std::unexpected(K_TYPED.error());
+    }
+    return read_draft_metadata_attempt(attempt,
+                                       K_TYPED->m_draft.m_mutation,
+                                       before,
+                                       after,
+                                       journal,
+                                       command.m_draft.m_directory,
+                                       selected,
+                                       expected,
+                                       stop);
+}
+
 Result<RecordCommit> replace_object_mask(const ReplaceObjectMaskCommand& command,
                                          const AdmittedAssetReceipt& before,
                                          const AdmittedAssetReceipt& after,
