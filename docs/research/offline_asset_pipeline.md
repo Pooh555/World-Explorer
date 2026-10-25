@@ -247,3 +247,27 @@ No links below authorize contacting services or uploading media.
 | R51 | [Godot 3D format guidance](https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/importing_3d_scenes/available_formats.html): glTF/GLB import; chosen engine is a project evaluation decision |
 | R52 | [Hypersim](https://github.com/apple-aiml-research/ml-hypersim): ICCV 2021 labels, CC-BY-SA-3.0 dataset and separately purchased mesh sources |
 | R53 | [OpenRooms](https://github.com/ViLab-UCSD/OpenRooms): CVPR 2021 synthetic interior data/code release; component/data rights remain separate |
+## 26 October 2026 A0 reference recheck
+
+The [A0 audit](../validation/2026-10-26-a0-exit-audit.md) adds bounded public
+commit/document snapshots and the [explicit installation proposal](../asset_installation_plan.md).
+The 17 October assessment above retains its original scope; this addendum is
+neither a reproduced pipeline nor a completed rights/resource review.
+
+The examined [SAM 2 instructions](https://github.com/facebookresearch/sam2/blob/2b90b9f5ceec907a1c18123530e92e794ad901a4/README.md#installation)
+require torch ≥2.5.1/torchvision ≥0.20.1. The selected local training profile is
+older, so the proposal isolates its environment. The author
+[SAM 2.1 tiny tree metadata](https://huggingface.co/api/models/facebook/sam2.1-hiera-tiny/tree/de431c4043854a71d8101e17995dfe596bf101a5?recursive=true&expand=false)
+exposes a 156,008,466-byte `.pt` file and LFS SHA-256; these are expected acquisition
+identities, without downloaded or verified weight bytes. Whole-install costs
+remain unknown.
+
+The frozen [SAM 3D setup](https://github.com/facebookresearch/sam-3d-objects/blob/f91db411c50efee93d8db7aeb323885650f6f722/doc/setup.md)
+and [TRELLIS README](https://github.com/microsoft/TRELLIS.2/blob/75fbf0183001ed9876c8dbb35de6b68552ee08bd/README.md)
+retain their ≥32 GB/≥24 GB guidance. The examined
+[TRELLIS setup](https://github.com/microsoft/TRELLIS.2/blob/75fbf0183001ed9876c8dbb35de6b68552ee08bd/setup.sh)
+still selects v0.4.0 nvdiffrast and the renderutils fork whose examined terms retain
+§3.3 restrictions. The proposal links exact terms; permissive wrapper terms do not
+clear that full recipe. [Mitsuba's source README](https://github.com/mitsuba-renderer/mitsuba3/blob/aa01500f57770a4ef0b067693cae08b3e8a2ac73/README.md)
+documents CPU differentiation, without establishing this project's material/light
+objective, local memory/runtime fit or real novel-light fidelity.

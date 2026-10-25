@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: A0 exit audit and installation proposal](2026-10-26-a0-exit-audit.md) — current contract gaps, selected host/environment/bundle observations and bounded primary metadata pins; A0/AP0 remain in progress, provisioning blocked, no new algorithm/product qualification.
+
 - [26 October: shared corpus inspection](2026-10-26-corpus-inspection.md) — independently pinned request/CLI reopening, complete blocker reporting and read-only refusal; typed CPU fixtures and selected real sample's missing-input diagnostic, no real corpus qualification.
 
 - [26 October: evaluation-protocol freeze](2026-10-26-evaluation-protocol.md) — complete observed/completed masks, fixed metric/review conventions and config/light/seed pins with corpus schema 7; synthetic CPU admission/recovery, execution/physical evaluation unqualified.

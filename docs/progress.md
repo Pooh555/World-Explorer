@@ -229,13 +229,25 @@ Typed synthetic request and native CLI preservation checks plus the selected rea
 sample's missing-prerequisite refusal are recorded separately. The
 [request protocol](protocols/corpus_inspection.md) owns fields, budgets and limits.
 
-Next executable step: audit the A0 exit against plan §§11.3/11.6/11.7 using these
-implemented contracts and actual candidate/local artifacts. Identify exact absent
-recipe/component/terms/review/installation-size/device/capture pins and prepare
-the explicit bounded installation plan; retain unknowns instead of inventing sizes
-or self-approving rights. Distinguish an A0 contract exit from blocked provisioning
-and real A1 inputs. Keep evaluation-runner implementation and real product
-validation open; do not begin M4 or claim A1 from synthetic metadata.
+The [A0 exit audit](validation/2026-10-26-a0-exit-audit.md) now maps implemented
+CPU slices against remaining geometry/material/structure/completion/export
+contracts and the missing real capture/recipe freeze. The
+[installation proposal](asset_installation_plan.md) records source-reference
+commits and an expected SAM 2.1 tiny checkpoint identity; archives/environment
+costs, independent reviews and measured stage limits remain unresolved. Provisioning
+is blocked. The host was rechecked at 8,188 MiB GPU /15.24 GiB RAM; the saved
+sample bundle reopens, without supplying A1 consent/scale/reference evidence.
+
+Next executable step: extend the typed geometry-product boundary beyond the
+generated-static profile using the retained M3 native mesh/source contracts.
+Bind independently selected capture/pose/source revisions and explicit surface
+correspondence/observed-support declarations; validate actual bounded triangle,
+normal/tangent/group/UV data and owned admission/publication/reload. Preserve the
+existing generated-static v1 profile. Exercise asymmetric synthetic geometry and
+read-only admission or explicit missing-prerequisite refusal for retained real
+partial geometry. Keep unknown/inferred support explicit; no measured-scale,
+Q5/N2 or A1 completion/PBR claim follows. Full structure/material/completion/export
+contracts and the real product validation remain open under plan §11.4.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption
