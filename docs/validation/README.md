@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: evaluation-protocol freeze](2026-10-26-evaluation-protocol.md) — complete observed/completed masks, fixed metric/review conventions and config/light/seed pins with corpus schema 7; synthetic CPU admission/recovery, execution/physical evaluation unqualified.
+
 - [26 October: capture envelope](2026-10-26-capture-envelope.md) — complete source/view/calibration/time bindings, explicit condition/count diagnostics and corpus schema 6; synthetic CPU admission/recovery, physical capture/consent/quality remain open.
 
 - [26 October: controlled prop references](2026-10-26-controlled-references.md) — independent backside/empty-background/changed-light kinds, strict lighting units and corpus schema 5; synthetic CPU admission/recovery, physical correspondence/calibration remain open.

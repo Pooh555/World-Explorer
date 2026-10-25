@@ -7,6 +7,7 @@
 #include "world_explorer/map_store/controlled_references.hpp"
 #include "world_explorer/map_store/evaluation_inventory.hpp"
 #include "world_explorer/map_store/evaluation_paths.hpp"
+#include "world_explorer/map_store/evaluation_protocol.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -64,6 +65,7 @@ struct AssetCorpusDefinition {
     bool m_require_typed_paths {};
     bool m_require_typed_references {};
     bool m_require_typed_envelope {};
+    bool m_require_typed_protocol {};
 };
 
 struct AssetCorpusRef {
@@ -83,6 +85,7 @@ struct AssetCorpusCaptureInput {
     std::optional<AdmittedEvaluationPaths> m_paths {};
     std::vector<AdmittedControlledReference> m_references {};
     std::optional<AdmittedCaptureEnvelope> m_envelope {};
+    std::optional<AdmittedEvaluationProtocol> m_protocol {};
 };
 
 struct AssetCorpusRecipeInput {

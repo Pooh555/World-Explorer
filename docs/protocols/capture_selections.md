@@ -24,6 +24,8 @@ original timestamps and decoded camera values without exposing them to new worke
 declared root closure, including optional lighting observations, against selected
 inference dependencies. [Capture envelopes](capture_envelope.md) also check their
 additional root while retaining complete source/view metadata as coordinator data.
+[Evaluation protocols](evaluation_protocol.md) check complete per-track evaluation
+masks and their full configuration/light closure through the same role boundary.
 
 ## Selection and byte admission
 

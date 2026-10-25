@@ -213,14 +213,24 @@ path conformance. Corpus schema 6 requires exact selected private handles; schem
 exposure stay explicit. Physical coverage, capture quality and consent remain
 unverified. The [protocol](protocols/capture_envelope.md) owns bounds and recovery.
 
-Next executable step: implement the typed evaluation-protocol freeze (plan §11.6):
-independently pin geometry/UV sampling, eligible surface masks, renderer/tone mapping,
-fixed light/seed identities, observed versus completed evaluation tracks and reviewer
-rubric references to the sealed corpus inputs. Enforce strict schemas, dependency/
-role separation and owned admission/recovery on synthetic fixtures. Preserve gate
-thresholds and retain metric/physical-review authenticity as unverified; no protocol
-manifest can approve a recipe or product. Broader worker adoption and complete
-runtime/rights/resource qualification remain open. Available selected local
+The [typed evaluation-protocol slice](validation/2026-10-26-evaluation-protocol.md)
+now freezes sampling parameters, complete observed/completed eligible-mask tables,
+closed plan metric/review conventions and config/light/seed pins. Corpus schema 7
+requires matching private handles; schemas 1–6 retain their bytes. Empty masks and
+execution/correspondence/novelty/review/freeze-timing gaps remain explicit. No metric
+runner or real AP evidence is supplied. The [protocol](protocols/evaluation_protocol.md)
+owns bounds, role separation and metadata recovery.
+
+Next executable step: expose read-only asset-corpus inspection through the shared
+application/`we_process` command path. Require independently supplied original
+receipts, capture selections/current registry commits and typed evidence pins;
+never discover trusted pins from the corpus being inspected. Exercise a complete
+synthetic request and a selected real sample's missing-prerequisite refusal without
+processing or modifying source data. Report all derived blockers and preserve the
+schema/handle boundaries. Then audit A0 contract/recipe/capture readiness and exact
+remaining rights/install-size/device/resource gaps before any provisioning or A1
+claim. Keep evaluation-runner implementation and real product validation open.
+Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption
 and complete real capture/evaluation qualification remain A0 work. A declaration cannot certify a human

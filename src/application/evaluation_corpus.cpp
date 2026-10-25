@@ -304,7 +304,9 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                           K_KIND != AssetCorpusEvidence::EMPTY_BACKGROUND &&
                           K_KIND != AssetCorpusEvidence::CHANGED_LIGHT)) &&
                         (!value.m_require_typed_envelope ||
-                         K_KIND != AssetCorpusEvidence::CAPTURE_ENVELOPE)) {
+                         K_KIND != AssetCorpusEvidence::CAPTURE_ENVELOPE) &&
+                        (!value.m_require_typed_protocol ||
+                         K_KIND != AssetCorpusEvidence::EVALUATION_PROTOCOL)) {
                         blockers.push_back({ pin.m_label, std::string(K_NAME) + "_UNVERIFIED" });
                     }
                 }
@@ -466,6 +468,34 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                 require(!K_INPUT->m_envelope,
                         "Typed capture envelope requires schema six and selected evidence");
             }
+            const auto K_PROTOCOL = pin.m_evidence.find(AssetCorpusEvidence::EVALUATION_PROTOCOL);
+            if (value.m_require_typed_protocol && K_PROTOCOL != pin.m_evidence.end()) {
+                require(K_INPUT->m_protocol.has_value(),
+                        "Corpus requires independently admitted evaluation protocol",
+                        ErrorCode::RESYNC_REQUIRED);
+                const auto& protocol = K_INPUT->m_protocol.value();
+                require(protocol.selection().m_product == K_PROTOCOL->second &&
+                            protocol.capture_product() == selected.m_product &&
+                            protocol.receipt_sha256() == pin.m_receipt_sha256,
+                        "Corpus evaluation-protocol binding differs",
+                        ErrorCode::RESYNC_REQUIRED);
+                for (const auto* code : { "SAMPLING_REALIZATION_UNVERIFIED",
+                                         "METRIC_IMPLEMENTATION_UNVERIFIED",
+                                         "RENDERER_TONE_MAPPING_UNVERIFIED",
+                                         "ELIGIBLE_SURFACE_CORRESPONDENCE_UNVERIFIED",
+                                         "LIGHT_NOVELTY_UNVERIFIED",
+                                         "BLINDED_REVIEW_UNVERIFIED",
+                                         "EVALUATION_RUNNER_UNIMPLEMENTED",
+                                         "PROTOCOL_FREEZE_TIMING_UNVERIFIED" }) {
+                    blockers.push_back({ pin.m_label, code });
+                }
+                if (protocol.has_empty_masks()) {
+                    blockers.push_back({ pin.m_label, "EMPTY_EVALUATION_MASK" });
+                }
+            } else {
+                require(!K_INPUT->m_protocol,
+                        "Typed evaluation protocol requires schema seven and selected evidence");
+            }
             if (std::ranges::none_of(selected.m_frames, [](const auto& frame) {
                     return frame.m_role == CaptureFrameRole::HELD_OUT;
                 })) {
@@ -535,7 +565,8 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
         }
         std::ranges::sort(blockers);
         Json document { { "schema_version",
-                        value.m_require_typed_envelope     ? 6
+                        value.m_require_typed_protocol     ? 7
+                        : value.m_require_typed_envelope   ? 6
                         : value.m_require_typed_references ? 5
                         : value.m_require_typed_paths      ? 4
                         : value.m_require_typed_inventory  ? 3
@@ -548,22 +579,27 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                        { "recipes", recipe_rows } };
         if (value.m_require_typed_scale || value.m_require_typed_inventory ||
             value.m_require_typed_paths || value.m_require_typed_references ||
-            value.m_require_typed_envelope) {
+            value.m_require_typed_envelope || value.m_require_typed_protocol) {
             document["typed_scale"] = value.m_require_typed_scale;
         }
         if (value.m_require_typed_inventory || value.m_require_typed_paths ||
-            value.m_require_typed_references || value.m_require_typed_envelope) {
+            value.m_require_typed_references || value.m_require_typed_envelope ||
+            value.m_require_typed_protocol) {
             document["typed_inventory"] = value.m_require_typed_inventory;
         }
         if (value.m_require_typed_paths || value.m_require_typed_references ||
-            value.m_require_typed_envelope) {
+            value.m_require_typed_envelope || value.m_require_typed_protocol) {
             document["typed_paths"] = value.m_require_typed_paths;
         }
-        if (value.m_require_typed_references || value.m_require_typed_envelope) {
+        if (value.m_require_typed_references || value.m_require_typed_envelope ||
+            value.m_require_typed_protocol) {
             document["typed_references"] = value.m_require_typed_references;
         }
-        if (value.m_require_typed_envelope) {
-            document["typed_envelope"] = true;
+        if (value.m_require_typed_envelope || value.m_require_typed_protocol) {
+            document["typed_envelope"] = value.m_require_typed_envelope;
+        }
+        if (value.m_require_typed_protocol) {
+            document["typed_protocol"] = true;
         }
         auto canonical = document.dump();
         require(canonical.size() <= K_MAX_BYTES,
@@ -602,11 +638,39 @@ decode_asset_corpus(std::span<const std::byte> bytes,
                 "Corpus bytes differ from selected hash",
                 ErrorCode::RESYNC_REQUIRED);
         const auto K_SCHEMA = integer(K_DOC.at("schema_version"));
-        require(K_SCHEMA >= 1 && K_SCHEMA <= 6,
+        require(K_SCHEMA >= 1 && K_SCHEMA <= 7,
                 "Unsupported corpus schema",
                 ErrorCode::UNSUPPORTED_OPERATION);
         AssetCorpusDefinition value;
-        if (K_SCHEMA == 6) {
+        if (K_SCHEMA == 7) {
+            keys(K_DOC,
+                 { "schema_version",
+                  "corpus",
+                  "revision",
+                  "track",
+                  "captures",
+                  "recipes",
+                  "typed_scale",
+                  "typed_inventory",
+                  "typed_paths",
+                  "typed_references",
+                  "typed_envelope",
+                  "typed_protocol" });
+            require(K_DOC.at("typed_scale").is_boolean() &&
+                        K_DOC.at("typed_inventory").is_boolean() &&
+                        K_DOC.at("typed_paths").is_boolean() &&
+                        K_DOC.at("typed_references").is_boolean() &&
+                        K_DOC.at("typed_envelope").is_boolean() &&
+                        K_DOC.at("typed_protocol").is_boolean() &&
+                        K_DOC.at("typed_protocol").get<bool>(),
+                    "Schema seven requires typed evaluation protocol");
+            value.m_require_typed_scale = K_DOC.at("typed_scale").get<bool>();
+            value.m_require_typed_inventory = K_DOC.at("typed_inventory").get<bool>();
+            value.m_require_typed_paths = K_DOC.at("typed_paths").get<bool>();
+            value.m_require_typed_references = K_DOC.at("typed_references").get<bool>();
+            value.m_require_typed_envelope = K_DOC.at("typed_envelope").get<bool>();
+            value.m_require_typed_protocol = true;
+        } else if (K_SCHEMA == 6) {
             keys(K_DOC,
                  { "schema_version",
                   "corpus",

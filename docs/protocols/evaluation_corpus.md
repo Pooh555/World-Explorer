@@ -1,4 +1,4 @@
-# Sealed asset evaluation corpus v1/v2/v3/v4/v5/v6
+# Sealed asset evaluation corpus v1/v2/v3/v4/v5/v6/v7
 
 [`evaluation_corpus.hpp`](../../include/world_explorer/application/evaluation_corpus.hpp)
 adds coordinator metadata in `application`, above capture selections and recipe
@@ -213,3 +213,24 @@ Derived declarations additionally retain `SOURCE_FRAME_COUNT_UNKNOWN`,
 allowed in a sealed partial corpus and never become a preflight/quality pass.
 Existing rights/authenticity/evidence and recipe/runtime blockers remain open;
 worker execution and real product/automatic-yield qualification are unchanged.
+
+## Typed evaluation protocol in schema 7
+
+`AssetCorpusDefinition::m_require_typed_protocol` selects schema 7. Exact root fields
+add `typed_protocol=true` and explicit boolean `typed_scale`, `typed_inventory`,
+`typed_paths`, `typed_references`, `typed_envelope`. Earlier flags independently
+select their existing checks. Missing/false/nonboolean protocol flags and nonboolean
+earlier flags fail. Schemas 1–6 retain their exact bytes and reject supplied protocol
+handles; a changed freeze needs separately selected seal outputs.
+
+Present EVALUATION_PROTOCOL refs require the independently supplied
+[private protocol handle](evaluation_protocol.md) matching exact product, original
+capture and receipt. Missing/foreign handles fail fresh admission/read. A handle
+without a selected ref fails; missing evidence remains EVALUATION_PROTOCOL_MISSING.
+Typed admission replaces EVALUATION_PROTOCOL_UNVERIFIED with
+SAMPLING_REALIZATION_UNVERIFIED, METRIC_IMPLEMENTATION_UNVERIFIED,
+RENDERER_TONE_MAPPING_UNVERIFIED, ELIGIBLE_SURFACE_CORRESPONDENCE_UNVERIFIED,
+LIGHT_NOVELTY_UNVERIFIED, BLINDED_REVIEW_UNVERIFIED, EVALUATION_RUNNER_UNIMPLEMENTED
+and PROTOCOL_FREEZE_TIMING_UNVERIFIED. Any empty mask adds EMPTY_EVALUATION_MASK.
+Other evidence/rights/runtime blockers remain. No protocol or seal authorizes
+execution, score computation, experiment-policy changes, real review or AP success.
