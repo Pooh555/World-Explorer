@@ -1,11 +1,10 @@
 #include "world_explorer/map_store/evaluation_paths.hpp"
 
-#include "../core/json_records.hpp"
+#include "capture_metadata.hpp"
 #include "world_explorer/core/hash.hpp"
 
 #include <algorithm>
 #include <array>
-#include <limits>
 #include <map>
 #include <set>
 #include <utility>
@@ -14,6 +13,7 @@ namespace world_explorer {
 namespace {
 
 using namespace json_record_detail;
+using namespace capture_metadata_detail;
 using ViewKey = std::pair<CaptureId, FrameId>;
 constexpr std::size_t K_MAX_BYTES { 256uz * 1024uz };
 constexpr std::array K_ROLES { "INFERENCE", "HELD_OUT", "EVALUATION_ONLY" };
@@ -25,22 +25,6 @@ Enum named(const Json& value, const std::array<const char*, N>& names) {
     const auto K_FOUND = std::ranges::find(names, K_TEXT);
     require(K_FOUND != names.end(), "Unsupported evaluation-path enum");
     return static_cast<Enum>(std::distance(names.begin(), K_FOUND));
-}
-
-std::int64_t signed_integer(const Json& value) {
-    require(value.is_number_integer(), "Expected signed metadata integer");
-    require(!value.is_number_unsigned() ||
-                value.get<std::uint64_t>() <=
-                    static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()),
-            "Metadata integer overflow");
-    return value.get<std::int64_t>();
-}
-
-AssetRevisionRef reference(const Json& value) {
-    keys(value, { "product_id", "revision", "content_sha256" });
-    return { { integer(value.at("product_id")) },
-            integer(value.at("revision")),
-            digest(value.at("content_sha256")) };
 }
 
 const AssetDependencyNode& bind(const AssetRevisionRef& ref, const AdmittedAssetReceipt& receipt) {
@@ -80,43 +64,6 @@ void header(const Json& value,
     require(value.at("manual_ancestor").is_boolean() &&
                 value.at("manual_ancestor").get<bool>() == node.m_manual_ancestor,
             "Evaluation-path manual ancestry differs");
-}
-
-void camera(const Json& value, const CaptureFrameInputs& inputs) {
-    keys(value, { "view", "pts", "time_base", "capture_time_ns", "world_from_camera" });
-    const auto& row = value.at("view");
-    keys(
-        row,
-        { "capture_id", "frame_id", "calibration_id", "frame_pose_revision", "image", "pose_asset" });
-    const ObjectViewSelection K_VIEW { { integer(row.at("capture_id")) },
-                                      { integer(row.at("frame_id")) },
-                                      { integer(row.at("calibration_id")) },
-                                      { integer(row.at("frame_pose_revision")) },
-                                      reference(row.at("image")),
-                                      reference(row.at("pose_asset")) };
-    require(K_VIEW == inputs.m_view,
-            "Evaluation-path camera selection differs",
-            ErrorCode::RESYNC_REQUIRED);
-    const auto& time_base = value.at("time_base");
-    array(time_base, 2uz);
-    const auto& timestamp = inputs.m_observation.m_timestamp;
-    require(time_base.size() == 2uz && signed_integer(value.at("pts")) == timestamp.m_pts &&
-                signed_integer(time_base[0uz]) == timestamp.m_time_base_numerator &&
-                signed_integer(time_base[1uz]) == timestamp.m_time_base_denominator &&
-                signed_integer(value.at("capture_time_ns")) ==
-                    inputs.m_observation.m_capture_time.count(),
-            "Evaluation-path timestamps differ",
-            ErrorCode::RESYNC_REQUIRED);
-    const auto K_POSE = transform(value.at("world_from_camera"));
-    const auto& expected = inputs.m_world_from_camera;
-    require(K_POSE.m_rotation.m_w == expected.m_rotation.m_w &&
-                K_POSE.m_rotation.m_x == expected.m_rotation.m_x &&
-                K_POSE.m_rotation.m_y == expected.m_rotation.m_y &&
-                K_POSE.m_rotation.m_z == expected.m_rotation.m_z &&
-                K_POSE.m_translation == expected.m_translation &&
-                K_POSE.m_scale == expected.m_scale,
-            "Evaluation-path decoded world pose differs",
-            ErrorCode::RESYNC_REQUIRED);
 }
 
 std::string record_key(const AssetRevisionRef& ref, const std::string& kind) {

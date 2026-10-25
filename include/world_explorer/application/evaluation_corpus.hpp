@@ -2,6 +2,7 @@
 
 #include "world_explorer/application/capture_measurement.hpp"
 #include "world_explorer/asset_catalog/recipe.hpp"
+#include "world_explorer/map_store/capture_envelope.hpp"
 #include "world_explorer/map_store/capture_selection.hpp"
 #include "world_explorer/map_store/controlled_references.hpp"
 #include "world_explorer/map_store/evaluation_inventory.hpp"
@@ -62,6 +63,7 @@ struct AssetCorpusDefinition {
     bool m_require_typed_inventory {};
     bool m_require_typed_paths {};
     bool m_require_typed_references {};
+    bool m_require_typed_envelope {};
 };
 
 struct AssetCorpusRef {
@@ -80,6 +82,7 @@ struct AssetCorpusCaptureInput {
     std::optional<AdmittedEvaluationInventory> m_inventory {};
     std::optional<AdmittedEvaluationPaths> m_paths {};
     std::vector<AdmittedControlledReference> m_references {};
+    std::optional<AdmittedCaptureEnvelope> m_envelope {};
 };
 
 struct AssetCorpusRecipeInput {

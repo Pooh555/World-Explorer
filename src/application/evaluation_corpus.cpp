@@ -302,7 +302,9 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                         (!value.m_require_typed_references ||
                          (K_KIND != AssetCorpusEvidence::BACKSIDE &&
                           K_KIND != AssetCorpusEvidence::EMPTY_BACKGROUND &&
-                          K_KIND != AssetCorpusEvidence::CHANGED_LIGHT))) {
+                          K_KIND != AssetCorpusEvidence::CHANGED_LIGHT)) &&
+                        (!value.m_require_typed_envelope ||
+                         K_KIND != AssetCorpusEvidence::CAPTURE_ENVELOPE)) {
                         blockers.push_back({ pin.m_label, std::string(K_NAME) + "_UNVERIFIED" });
                     }
                 }
@@ -433,6 +435,37 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                 require(used == K_INPUT->m_references.size(),
                         "Unselected controlled-reference handle kind");
             }
+            const auto K_ENVELOPE = pin.m_evidence.find(AssetCorpusEvidence::CAPTURE_ENVELOPE);
+            if (value.m_require_typed_envelope && K_ENVELOPE != pin.m_evidence.end()) {
+                require(K_INPUT->m_envelope.has_value(),
+                        "Corpus requires independently admitted capture envelope",
+                        ErrorCode::RESYNC_REQUIRED);
+                const auto& envelope = K_INPUT->m_envelope.value();
+                require(envelope.selection().m_product == K_ENVELOPE->second &&
+                            envelope.capture_product() == selected.m_product &&
+                            envelope.receipt_sha256() == pin.m_receipt_sha256,
+                        "Corpus capture-envelope binding differs",
+                        ErrorCode::RESYNC_REQUIRED);
+                blockers.push_back({ pin.m_label, "SOURCE_COVERAGE_UNVERIFIED" });
+                blockers.push_back({ pin.m_label, "CAPTURE_CONDITIONS_UNVERIFIED" });
+                blockers.push_back({ pin.m_label, "CAPTURE_CONSENT_UNVERIFIED" });
+                blockers.push_back({ pin.m_label, "CAPTURE_QUALITY_UNVERIFIED" });
+                if (envelope.has_unknown_source_counts()) {
+                    blockers.push_back({ pin.m_label, "SOURCE_FRAME_COUNT_UNKNOWN" });
+                }
+                if (envelope.has_unassessed_conditions()) {
+                    blockers.push_back({ pin.m_label, "CAPTURE_CONDITIONS_UNASSESSED" });
+                }
+                if (envelope.has_dynamic_sources()) {
+                    blockers.push_back({ pin.m_label, "DYNAMIC_CAPTURE_DECLARED" });
+                }
+                if (envelope.has_automatic_exposure()) {
+                    blockers.push_back({ pin.m_label, "AUTOMATIC_CAPTURE_EXPOSURE_DECLARED" });
+                }
+            } else {
+                require(!K_INPUT->m_envelope,
+                        "Typed capture envelope requires schema six and selected evidence");
+            }
             if (std::ranges::none_of(selected.m_frames, [](const auto& frame) {
                     return frame.m_role == CaptureFrameRole::HELD_OUT;
                 })) {
@@ -502,29 +535,35 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
         }
         std::ranges::sort(blockers);
         Json document { { "schema_version",
-                        value.m_require_typed_references  ? 5
-                        : value.m_require_typed_paths     ? 4
-                        : value.m_require_typed_inventory ? 3
-                        : value.m_require_typed_scale     ? 2
-                                                          : 1 },
+                        value.m_require_typed_envelope     ? 6
+                        : value.m_require_typed_references ? 5
+                        : value.m_require_typed_paths      ? 4
+                        : value.m_require_typed_inventory  ? 3
+                        : value.m_require_typed_scale      ? 2
+                                                           : 1 },
                        { "corpus", value.m_corpus },
                        { "revision", value.m_revision },
                        { "track", name(value.m_track, K_TRACKS) },
                        { "captures", capture_rows },
                        { "recipes", recipe_rows } };
         if (value.m_require_typed_scale || value.m_require_typed_inventory ||
-            value.m_require_typed_paths || value.m_require_typed_references) {
+            value.m_require_typed_paths || value.m_require_typed_references ||
+            value.m_require_typed_envelope) {
             document["typed_scale"] = value.m_require_typed_scale;
         }
         if (value.m_require_typed_inventory || value.m_require_typed_paths ||
-            value.m_require_typed_references) {
+            value.m_require_typed_references || value.m_require_typed_envelope) {
             document["typed_inventory"] = value.m_require_typed_inventory;
         }
-        if (value.m_require_typed_paths || value.m_require_typed_references) {
+        if (value.m_require_typed_paths || value.m_require_typed_references ||
+            value.m_require_typed_envelope) {
             document["typed_paths"] = value.m_require_typed_paths;
         }
-        if (value.m_require_typed_references) {
-            document["typed_references"] = true;
+        if (value.m_require_typed_references || value.m_require_typed_envelope) {
+            document["typed_references"] = value.m_require_typed_references;
+        }
+        if (value.m_require_typed_envelope) {
+            document["typed_envelope"] = true;
         }
         auto canonical = document.dump();
         require(canonical.size() <= K_MAX_BYTES,
@@ -563,11 +602,36 @@ decode_asset_corpus(std::span<const std::byte> bytes,
                 "Corpus bytes differ from selected hash",
                 ErrorCode::RESYNC_REQUIRED);
         const auto K_SCHEMA = integer(K_DOC.at("schema_version"));
-        require(K_SCHEMA >= 1 && K_SCHEMA <= 5,
+        require(K_SCHEMA >= 1 && K_SCHEMA <= 6,
                 "Unsupported corpus schema",
                 ErrorCode::UNSUPPORTED_OPERATION);
         AssetCorpusDefinition value;
-        if (K_SCHEMA == 5) {
+        if (K_SCHEMA == 6) {
+            keys(K_DOC,
+                 { "schema_version",
+                  "corpus",
+                  "revision",
+                  "track",
+                  "captures",
+                  "recipes",
+                  "typed_scale",
+                  "typed_inventory",
+                  "typed_paths",
+                  "typed_references",
+                  "typed_envelope" });
+            require(K_DOC.at("typed_scale").is_boolean() &&
+                        K_DOC.at("typed_inventory").is_boolean() &&
+                        K_DOC.at("typed_paths").is_boolean() &&
+                        K_DOC.at("typed_references").is_boolean() &&
+                        K_DOC.at("typed_envelope").is_boolean() &&
+                        K_DOC.at("typed_envelope").get<bool>(),
+                    "Schema six requires typed capture envelope");
+            value.m_require_typed_scale = K_DOC.at("typed_scale").get<bool>();
+            value.m_require_typed_inventory = K_DOC.at("typed_inventory").get<bool>();
+            value.m_require_typed_paths = K_DOC.at("typed_paths").get<bool>();
+            value.m_require_typed_references = K_DOC.at("typed_references").get<bool>();
+            value.m_require_typed_envelope = true;
+        } else if (K_SCHEMA == 5) {
             keys(K_DOC,
                  { "schema_version",
                   "corpus",

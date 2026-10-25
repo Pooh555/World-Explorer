@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: capture envelope](2026-10-26-capture-envelope.md) — complete source/view/calibration/time bindings, explicit condition/count diagnostics and corpus schema 6; synthetic CPU admission/recovery, physical capture/consent/quality remain open.
+
 - [26 October: controlled prop references](2026-10-26-controlled-references.md) — independent backside/empty-background/changed-light kinds, strict lighting units and corpus schema 5; synthetic CPU admission/recovery, physical correspondence/calibration remain open.
 
 - [A0 temporal blocks and inspection paths](2026-10-25-evaluation-paths.md) — bounded complete partitions, native camera/time binding, independent-source path and corpus schema 4; synthetic CPU admission/recovery, real pose/sampling/pre-tuning qualification open.

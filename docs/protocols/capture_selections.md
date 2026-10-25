@@ -22,7 +22,8 @@ both of its additional record roots through the same check; it also binds exact
 original timestamps and decoded camera values without exposing them to new workers.
 [Controlled prop references](controlled_references.md) likewise check their entire
 declared root closure, including optional lighting observations, against selected
-inference dependencies.
+inference dependencies. [Capture envelopes](capture_envelope.md) also check their
+additional root while retaining complete source/view metadata as coordinator data.
 
 ## Selection and byte admission
 

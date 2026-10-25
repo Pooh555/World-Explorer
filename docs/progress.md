@@ -205,14 +205,22 @@ schemas 1–4 retain their bytes. Atomic metadata retry/read preserves caller da
 Physical correspondence, calibration and real AP4/AP6 remain unverified. The
 [protocol](protocols/controlled_references.md) owns bounds and missing-measurement semantics.
 
-Next executable step: implement typed capture-envelope evidence for the sealed
-corpus (plan §11.6), binding independently selected source coverage, complete
-view/calibration/time tables and declared capture conditions to the original
-capture/receipt. Reject omitted/stale/foreign bindings and inference leakage on
-synthetic admission/recovery fixtures; keep physical consent/capture quality and
-coverage unverified. Then freeze the typed evaluation protocol's sampling, masks,
-renderer/tone mapping, fixed lights, seeds and rubric without changing gate targets.
-Available selected local
+The [typed capture-envelope slice](validation/2026-10-26-capture-envelope.md) now
+binds complete sources/views to native calibration/time/world-camera values and
+independent count/condition declarations. Shared camera checks preserve temporal/
+path conformance. Corpus schema 6 requires exact selected private handles; schemas
+1–5 retain their bytes. Unknown counts/conditions, dynamic scenes and automatic
+exposure stay explicit. Physical coverage, capture quality and consent remain
+unverified. The [protocol](protocols/capture_envelope.md) owns bounds and recovery.
+
+Next executable step: implement the typed evaluation-protocol freeze (plan §11.6):
+independently pin geometry/UV sampling, eligible surface masks, renderer/tone mapping,
+fixed light/seed identities, observed versus completed evaluation tracks and reviewer
+rubric references to the sealed corpus inputs. Enforce strict schemas, dependency/
+role separation and owned admission/recovery on synthetic fixtures. Preserve gate
+thresholds and retain metric/physical-review authenticity as unverified; no protocol
+manifest can approve a recipe or product. Broader worker adoption and complete
+runtime/rights/resource qualification remain open. Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption
 and complete real capture/evaluation qualification remain A0 work. A declaration cannot certify a human

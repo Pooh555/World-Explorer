@@ -1,4 +1,4 @@
-# Sealed asset evaluation corpus v1/v2/v3/v4/v5
+# Sealed asset evaluation corpus v1/v2/v3/v4/v5/v6
 
 [`evaluation_corpus.hpp`](../../include/world_explorer/application/evaluation_corpus.hpp)
 adds coordinator metadata in `application`, above capture selections and recipe
@@ -188,3 +188,28 @@ remain explicit in the handle; presence does not prove complete calibration.
 Rights/authenticity/other evidence and recipe/runtime blockers remain unchanged.
 No real completion/relighting score, required-prop coverage, worker input or AP
 success authority is produced by this structural admission.
+
+## Typed capture envelope in schema 6
+
+`AssetCorpusDefinition::m_require_typed_envelope` selects schema 6. Exact root
+fields add `typed_envelope=true` and explicit boolean `typed_scale`,
+`typed_inventory`, `typed_paths`, `typed_references`. Earlier flags select their
+existing checks independently. Missing/false/nonboolean envelope flags and
+nonboolean earlier flags fail. Schemas 1–5 retain their exact encodings and reject
+supplied envelope handles. A changed freeze needs a separately selected seal.
+
+A present CAPTURE_ENVELOPE ref requires one independently supplied
+[private admitted envelope](capture_envelope.md) matching that exact product,
+original capture product and receipt. Missing/foreign handles fail admission and
+fresh reads; a handle without a selected ref fails. Absent evidence retains
+`CAPTURE_ENVELOPE_MISSING`. Typed admission replaces `CAPTURE_ENVELOPE_UNVERIFIED`
+with `SOURCE_COVERAGE_UNVERIFIED`, `CAPTURE_CONDITIONS_UNVERIFIED`,
+`CAPTURE_CONSENT_UNVERIFIED`, `CAPTURE_QUALITY_UNVERIFIED`. Native metadata agreement
+does not prove physical capture properties or consent.
+
+Derived declarations additionally retain `SOURCE_FRAME_COUNT_UNKNOWN`,
+`CAPTURE_CONDITIONS_UNASSESSED`, `DYNAMIC_CAPTURE_DECLARED` and
+`AUTOMATIC_CAPTURE_EXPOSURE_DECLARED` when applicable. Unknown declarations are
+allowed in a sealed partial corpus and never become a preflight/quality pass.
+Existing rights/authenticity/evidence and recipe/runtime blockers remain open;
+worker execution and real product/automatic-yield qualification are unchanged.
