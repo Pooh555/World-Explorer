@@ -1,4 +1,4 @@
-# Sealed asset evaluation corpus v1/v2
+# Sealed asset evaluation corpus v1/v2/v3
 
 [`evaluation_corpus.hpp`](../../include/world_explorer/application/evaluation_corpus.hpp)
 adds coordinator metadata in `application`, above capture selections and recipe
@@ -120,3 +120,22 @@ retains `MEASUREMENT_AUTHENTICITY_UNVERIFIED`, `GEOMETRY_CORRESPONDENCE_UNVERIFI
 and optional `SYNTHETIC_SCALE_DIAGNOSTIC`. Other opaque evidence/rights/runtime
 blockers remain. This strengthens declared structure without granting real scale,
 worker execution, scene alignment or AP qualification.
+
+## Typed inventory and visibility in schema 3
+
+`AssetCorpusDefinition::m_require_typed_inventory` selects schema 3, whose exact root
+fields additionally contain `typed_inventory=true` and explicit boolean
+`typed_scale`. False/nonboolean/missing inventory flags and nonboolean scale flags
+fail. Scale true retains schema-2 requirements; false retains schema-1 opaque scale
+checks. Schemas 1/2 keep their exact encodings and reject inventory handles.
+
+Inventory and visibility refs must be both present or both missing. Present refs
+require one independently selected [private typed inventory handle](evaluation_inventory.md)
+matching both refs, the exact capture product and original receipt. Missing or
+mismatched handles fail fresh admission/read. Missing pairs retain explicit missing
+prerequisites; supplying a handle without selected refs fails. Structural admission
+replaces the two opaque blockers with `INVENTORY_LABELS_UNVERIFIED`,
+`INVENTORY_COMPLETENESS_UNVERIFIED`, `VISIBILITY_CORRESPONDENCE_UNVERIFIED`.
+Other capture/scale/rights/runtime blockers stay open. A new schema changes the
+corpus hash and requires a separately selected seal; it grants no execution or
+physical-truth authority.

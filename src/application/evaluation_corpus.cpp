@@ -284,8 +284,11 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                     blockers.push_back({ pin.m_label, std::string(K_NAME) + "_MISSING" });
                 } else {
                     evidence[K_NAME] = reference(K_FOUND->second);
-                    if (!value.m_require_typed_scale ||
-                        K_KIND != AssetCorpusEvidence::INDEPENDENT_SCALE) {
+                    if ((!value.m_require_typed_scale ||
+                         K_KIND != AssetCorpusEvidence::INDEPENDENT_SCALE) &&
+                        (!value.m_require_typed_inventory ||
+                         (K_KIND != AssetCorpusEvidence::INVENTORY &&
+                          K_KIND != AssetCorpusEvidence::VISIBILITY))) {
                         blockers.push_back({ pin.m_label, std::string(K_NAME) + "_UNVERIFIED" });
                     }
                 }
@@ -314,6 +317,32 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
             } else {
                 require(!K_INPUT->m_measurement,
                         "Typed measurement requires schema two and a selected scale ref");
+            }
+            const auto K_INVENTORY = pin.m_evidence.find(AssetCorpusEvidence::INVENTORY);
+            const auto K_VISIBILITY = pin.m_evidence.find(AssetCorpusEvidence::VISIBILITY);
+            if (value.m_require_typed_inventory) {
+                require((K_INVENTORY == pin.m_evidence.end()) ==
+                            (K_VISIBILITY == pin.m_evidence.end()),
+                        "Typed inventory and visibility refs must be selected together");
+                if (K_INVENTORY != pin.m_evidence.end()) {
+                    require(K_INPUT->m_inventory.has_value(),
+                            "Corpus requires independently admitted inventory/visibility",
+                            ErrorCode::RESYNC_REQUIRED);
+                    const auto& inventory = K_INPUT->m_inventory.value();
+                    require(inventory.selection().m_inventory == K_INVENTORY->second &&
+                                inventory.selection().m_visibility == K_VISIBILITY->second &&
+                                inventory.capture_product() == selected.m_product &&
+                                inventory.receipt_sha256() == pin.m_receipt_sha256,
+                            "Corpus inventory/visibility capture differs",
+                            ErrorCode::RESYNC_REQUIRED);
+                    blockers.push_back({ pin.m_label, "INVENTORY_LABELS_UNVERIFIED" });
+                    blockers.push_back({ pin.m_label, "INVENTORY_COMPLETENESS_UNVERIFIED" });
+                    blockers.push_back({ pin.m_label, "VISIBILITY_CORRESPONDENCE_UNVERIFIED" });
+                } else {
+                    require(!K_INPUT->m_inventory, "Typed inventory handle has no selected refs");
+                }
+            } else {
+                require(!K_INPUT->m_inventory, "Typed inventory requires corpus schema three");
             }
             if (std::ranges::none_of(selected.m_frames, [](const auto& frame) {
                     return frame.m_role == CaptureFrameRole::HELD_OUT;
@@ -383,14 +412,20 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
             blockers.push_back({ "corpus", "SYNTHETIC_INPUTS" });
         }
         std::ranges::sort(blockers);
-        Json document { { "schema_version", value.m_require_typed_scale ? 2 : 1 },
+        Json document { { "schema_version",
+                        value.m_require_typed_inventory ? 3
+                        : value.m_require_typed_scale   ? 2
+                                                        : 1 },
                        { "corpus", value.m_corpus },
                        { "revision", value.m_revision },
                        { "track", name(value.m_track, K_TRACKS) },
                        { "captures", capture_rows },
                        { "recipes", recipe_rows } };
-        if (value.m_require_typed_scale) {
-            document["typed_scale"] = true;
+        if (value.m_require_typed_scale || value.m_require_typed_inventory) {
+            document["typed_scale"] = value.m_require_typed_scale;
+        }
+        if (value.m_require_typed_inventory) {
+            document["typed_inventory"] = true;
         }
         auto canonical = document.dump();
         require(canonical.size() <= K_MAX_BYTES,
@@ -429,11 +464,27 @@ decode_asset_corpus(std::span<const std::byte> bytes,
                 "Corpus bytes differ from selected hash",
                 ErrorCode::RESYNC_REQUIRED);
         const auto K_SCHEMA = integer(K_DOC.at("schema_version"));
-        require(K_SCHEMA == 1 || K_SCHEMA == 2,
+        require(K_SCHEMA >= 1 && K_SCHEMA <= 3,
                 "Unsupported corpus schema",
                 ErrorCode::UNSUPPORTED_OPERATION);
         AssetCorpusDefinition value;
-        if (K_SCHEMA == 2) {
+        if (K_SCHEMA == 3) {
+            keys(K_DOC,
+                 { "schema_version",
+                  "corpus",
+                  "revision",
+                  "track",
+                  "captures",
+                  "recipes",
+                  "typed_scale",
+                  "typed_inventory" });
+            require(K_DOC.at("typed_scale").is_boolean() &&
+                        K_DOC.at("typed_inventory").is_boolean() &&
+                        K_DOC.at("typed_inventory").get<bool>(),
+                    "Schema three requires typed inventory");
+            value.m_require_typed_scale = K_DOC.at("typed_scale").get<bool>();
+            value.m_require_typed_inventory = true;
+        } else if (K_SCHEMA == 2) {
             keys(K_DOC,
                  { "schema_version",
                   "corpus",

@@ -161,6 +161,74 @@ AdmittedCaptureSelection::validate_inference_dependency(const AdmittedAssetRecei
     }
 }
 
+Result<void> AdmittedCaptureSelection::validate_evaluation_separation(
+    const AdmittedAssetReceipt& receipt,
+    const std::vector<AssetRevisionRef>& products,
+    const AssetDependencyContext& expected,
+    const std::stop_token& stop) const {
+    try {
+        check_stop(stop);
+        require(!products.empty() && products.size() <= 16uz,
+                "Evaluation root budget exceeded",
+                ErrorCode::RESOURCE_EXHAUSTED);
+        require(receipt.receipt_sha256() == receipt_sha256() &&
+                    expected.m_world_epoch == record().m_context.m_world_epoch &&
+                    expected.m_pose_revision == record().m_context.m_pose_revision,
+                "Evaluation separation uses a foreign receipt/context",
+                ErrorCode::RESYNC_REQUIRED);
+        Nodes nodes;
+        for (const auto& node : receipt.graph().m_products) {
+            nodes.emplace(node.m_product.m_product, node);
+        }
+        std::set<AssetProductId> roots, boundaries { record().m_selection.m_product.m_product };
+        std::vector<AssetProductId> pending, inference_roots;
+        for (const auto& product : products) {
+            const auto K_FOUND = nodes.find(product.m_product);
+            require(K_FOUND != nodes.end() && K_FOUND->second.get().m_product == product,
+                    "Stale evaluation product selection",
+                    ErrorCode::RESYNC_REQUIRED);
+            require(roots.insert(product.m_product).second, "Duplicate evaluation root");
+            pending.push_back(product.m_product);
+        }
+        for (const auto& frame : record().m_selection.m_frames) {
+            boundaries.insert(frame.m_view.m_image.m_product);
+            boundaries.insert(frame.m_view.m_pose_asset.m_product);
+            if (frame.m_role == CaptureFrameRole::INFERENCE) {
+                inference_roots.push_back(frame.m_view.m_image.m_product);
+                inference_roots.push_back(frame.m_view.m_pose_asset.m_product);
+            }
+        }
+        auto forbidden = m_state->m_forbidden;
+        std::set<AssetProductId> visited;
+        while (!pending.empty()) {
+            check_stop(stop);
+            const auto K_ID = pending.back();
+            pending.pop_back();
+            if (!visited.insert(K_ID).second ||
+                (boundaries.contains(K_ID) && !roots.contains(K_ID))) {
+                continue;
+            }
+            const auto& node = nodes.at(K_ID).get();
+            forbidden.insert(node.m_product.m_content_sha256);
+            forbidden.insert(node.m_recipe_sha256);
+            if (node.m_manual_action_sha256) {
+                forbidden.insert(*node.m_manual_action_sha256);
+            }
+            for (const auto& parent : node.m_dependencies) {
+                pending.push_back(parent.m_product);
+            }
+        }
+        inference_dependencies(nodes, std::move(inference_roots), forbidden, stop);
+        return {};
+    } catch (const RecordFailure& error) {
+        return fail(error.m_code, error.what());
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Evaluation separation allocation failed");
+    } catch (const std::exception& error) {
+        return fail(ErrorCode::INVALID_DATA, error.what());
+    }
+}
+
 Result<AdmittedCaptureSelection>
 inspect_capture_selection(const AdmittedAssetReceipt& receipt,
                           const CaptureSelection& selection,

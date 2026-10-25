@@ -13,6 +13,12 @@ set, following all declared upstream products. The
 constructing committed inference-mask inputs. Evaluation annotations remain
 forbidden on inference frames.
 
+The [typed inventory reader](evaluation_inventory.md) also supplies explicit extra
+evaluation roots to `validate_evaluation_separation`. That check extends forbidden
+hashes locally and rechecks selected inference closures, without mutating the
+original capture handle or its narrow inputs. Its boundaries and limits are owned
+by that protocol.
+
 ## Selection and byte admission
 
 `inspect_capture_selection` takes an independently selected manifest product,

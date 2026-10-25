@@ -85,6 +85,13 @@ class AdmittedCaptureSelection {
                                                const AssetDependencyContext& expected,
                                                const std::stop_token& stop = {}) const;
 
+    // Additional coordinator/evaluation records must not enter selected inference
+    // closures through content, recipe or action aliases. <=16 explicit roots.
+    Result<void> validate_evaluation_separation(const AdmittedAssetReceipt& receipt,
+                                                const std::vector<AssetRevisionRef>& products,
+                                                const AssetDependencyContext& expected,
+                                                const std::stop_token& stop = {}) const;
+
   private:
     struct Implementation;
     explicit AdmittedCaptureSelection(std::shared_ptr<const Implementation> state);

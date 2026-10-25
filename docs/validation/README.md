@@ -1,5 +1,7 @@
 # Validation index
 
+- [25 October: typed inventory and visibility](2026-10-25-evaluation-inventory.md) — frozen object/structure identities, complete evaluation-view tables, explicit inference separation and corpus-v3 admission; synthetic CPU scope, labels/completeness/physical correspondence remain open.
+
 - [25 October: typed capture measurements](2026-10-25-capture-measurements.md) — receipt/capture/native-scene pins, existing mesh-anchor validation, atomic metadata replay and explicit corpus-v2 scale admission; synthetic CPU scope, physical authenticity/correspondence and full A0 remain open.
 
 - [25 October: sealed evaluation metadata](2026-10-25-evaluation-corpus.md) — immutable capture/recipe/resource pins, exact selected reads, explicit missing/opaque prerequisites and cancellation replay; synthetic CPU slice, A0/AP0 remain in progress.

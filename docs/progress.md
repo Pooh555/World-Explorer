@@ -182,17 +182,24 @@ requires matching private scale handles; schema 1 keeps its original bytes.
 Synthetic/physical-authenticity/correspondence blockers remain; no scene/map scale
 is changed. The [protocol](protocols/capture_measurements.md) owns its bounds.
 
-Next executable step: add strict receipt-backed object/structure inventory and
-visibility evidence for the sealed corpus (plan §11.6), reusing admitted object
-observations and capture roles. Bind required track IDs/types, structural elements
-and per-evaluation-view visibility/annotation refs; reject omitted/duplicate/stale
-entries and inference-label leakage on synthetic admission/publication fixtures.
-Keep declared labels/observed correspondence unverified and retain explicit
-missing pilot prerequisites. Then add typed temporal/path and controlled-light/
-background evidence. Available selected local sample receipts have no A1 consent/
-measurement/background/light bindings; preserve them and request the real pilot
-inputs when required. Broader worker/asset adoption and complete real capture/
-evaluation qualification remain A0 work. A declaration cannot certify a human
+The [typed inventory slice](validation/2026-10-25-evaluation-inventory.md) now
+binds required object/structure tracks to complete per-evaluation-view tables and
+admitted annotation/mask counts. Known content/recipe/action separation checks
+protect selected inference closures. Owned two-record publication/replay and
+corpus schema 3 require exact selected pins/handles; schemas 1/2 retain their bytes.
+Labels, physical visibility and inventory completeness remain unverified. The
+[protocol](protocols/evaluation_inventory.md) owns the contract and limits.
+
+Next executable step: implement strict temporal-block and held-out inspection-path
+evidence for the sealed corpus (plan §11.6). Bind complete selected frame roles,
+source timestamps and exact decoded camera poses to independently selected ordered
+blocks/path entries; reject overlap, omission, stale context and evaluation-to-fit
+leakage on synthetic admission/recovery fixtures. Keep physical path/pose accuracy
+unverified and retain missing controlled-light/background and real pilot inputs.
+Then add typed controlled-light/background evidence. Available selected local
+sample receipts have no A1 consent/measurement/background/light bindings; preserve
+them and request the real pilot inputs when required. Broader worker/asset adoption
+and complete real capture/evaluation qualification remain A0 work. A declaration cannot certify a human
 act, consent, correct opaque descendants or automatic yield. Keep processing local
 and draft metadata separate from live scene transactions; validate actual payloads
 before runtime adoption through the existing update path. Current runtime evidence
