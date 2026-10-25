@@ -1,4 +1,4 @@
-# Sealed asset evaluation corpus v1
+# Sealed asset evaluation corpus v1/v2
 
 [`evaluation_corpus.hpp`](../../include/world_explorer/application/evaluation_corpus.hpp)
 adds coordinator metadata in `application`, above capture selections and recipe
@@ -38,8 +38,7 @@ Each capture has ten optional evidence refs, all bound to exact original receipt
 nodes: capture envelope, object/structure inventory, visibility, independent scale,
 training temporal blocks, held-out inspection path, backsides, empty background,
 changed light and evaluation protocol. The protocol ref is intended to freeze
-sampling/masks/renderer/tone mapping/lights/reviewer rubric. These bodies are
-currently opaque: presence yields `<ROLE>_UNVERIFIED`, absence `<ROLE>_MISSING`.
+sampling/masks/renderer/tone mapping/lights/reviewer rubric. Schema 1 keeps these bodies opaque: presence yields `<ROLE>_UNVERIFIED`, absence `<ROLE>_MISSING`.
 Independent scale must be present exactly when the admitted capture selects a
 measurement, with the identical ref. Neither case creates measured scale.
 
@@ -97,3 +96,27 @@ survives source removal, but a fresh read requires the selected capture registry
 Later unrelated generic registry writes invalidate typed reads and publication
 replay. No tuning, evaluation, solver, download, model install, map/scene mutation,
 corpus-level run accounting or GUI/CLI workflow is implemented here.
+
+## Explicit typed scale in schema 2
+
+Schema 2 adds the required boolean `typed_scale=true` to the exact root field set.
+`AssetCorpusDefinition::m_require_typed_scale` selects it. False/nonboolean/missing
+values fail; schema 1 still rejects this extra field and retains byte-identical
+encoding. The existing capture/recipe rows, independent commit/hash pins, bounds
+and single-seal publication are unchanged. A different schema changes the corpus
+hash and needs a separately selected seal directory.
+
+For each present independent-scale ref, the separately selected capture input must
+supply an [admitted typed measurement](capture_measurements.md) bound to that exact
+ref/capture product/receipt. Missing or mismatched handles fail admission and fresh
+reads. Missing scale evidence remains `INDEPENDENT_SCALE_MISSING`; supplying a
+handle without a selected ref fails. Schema 1 rejects typed handles, preventing
+ambiguous diagnostics under unchanged serialized bytes. A typed handle does not
+require a separate measurement registry when the already committed capture pins
+its original receipt bytes; that registry is an additional owned metadata path.
+
+Schema 2 removes `INDEPENDENT_SCALE_UNVERIFIED` only after structural admission and
+retains `MEASUREMENT_AUTHENTICITY_UNVERIFIED`, `GEOMETRY_CORRESPONDENCE_UNVERIFIED`
+and optional `SYNTHETIC_SCALE_DIAGNOSTIC`. Other opaque evidence/rights/runtime
+blockers remain. This strengthens declared structure without granting real scale,
+worker execution, scene alignment or AP qualification.

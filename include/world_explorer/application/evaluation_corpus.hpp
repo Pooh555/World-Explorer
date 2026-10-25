@@ -1,5 +1,6 @@
 #pragma once
 
+#include "world_explorer/application/capture_measurement.hpp"
 #include "world_explorer/asset_catalog/recipe.hpp"
 #include "world_explorer/map_store/capture_selection.hpp"
 
@@ -8,6 +9,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stop_token>
 #include <string>
@@ -53,6 +55,7 @@ struct AssetCorpusDefinition {
     AssetCorpusTrack m_track { AssetCorpusTrack::SYNTHETIC };
     std::vector<AssetCorpusCapture> m_captures;
     std::vector<AssetCorpusRecipe> m_recipes;
+    bool m_require_typed_scale {};
 };
 
 struct AssetCorpusRef {
@@ -67,6 +70,7 @@ struct AssetCorpusCaptureInput {
     AdmittedCaptureSelection m_selection;
     AdmittedAssetReceipt m_receipt;
     std::filesystem::path m_registry;
+    std::optional<AdmittedCaptureMeasurement> m_measurement {};
 };
 
 struct AssetCorpusRecipeInput {

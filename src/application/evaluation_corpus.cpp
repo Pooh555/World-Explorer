@@ -284,7 +284,10 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                     blockers.push_back({ pin.m_label, std::string(K_NAME) + "_MISSING" });
                 } else {
                     evidence[K_NAME] = reference(K_FOUND->second);
-                    blockers.push_back({ pin.m_label, std::string(K_NAME) + "_UNVERIFIED" });
+                    if (!value.m_require_typed_scale ||
+                        K_KIND != AssetCorpusEvidence::INDEPENDENT_SCALE) {
+                        blockers.push_back({ pin.m_label, std::string(K_NAME) + "_UNVERIFIED" });
+                    }
                 }
             }
             const auto K_SCALE = pin.m_evidence.find(AssetCorpusEvidence::INDEPENDENT_SCALE);
@@ -293,6 +296,25 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
                          K_SCALE->second == *selected.m_measurement),
                     "Independent-scale reference differs from capture measurement",
                     ErrorCode::RESYNC_REQUIRED);
+            if (value.m_require_typed_scale && K_SCALE != pin.m_evidence.end()) {
+                require(K_INPUT->m_measurement.has_value(),
+                        "Corpus requires independently admitted typed scale",
+                        ErrorCode::RESYNC_REQUIRED);
+                const auto& measurement = K_INPUT->m_measurement.value();
+                require(measurement.selection().m_product == K_SCALE->second &&
+                            measurement.capture_product() == selected.m_product &&
+                            measurement.receipt_sha256() == pin.m_receipt_sha256,
+                        "Corpus typed measurement/capture differs",
+                        ErrorCode::RESYNC_REQUIRED);
+                blockers.push_back({ pin.m_label, "MEASUREMENT_AUTHENTICITY_UNVERIFIED" });
+                blockers.push_back({ pin.m_label, "GEOMETRY_CORRESPONDENCE_UNVERIFIED" });
+                if (measurement.alignment().m_synthetic) {
+                    blockers.push_back({ pin.m_label, "SYNTHETIC_SCALE_DIAGNOSTIC" });
+                }
+            } else {
+                require(!K_INPUT->m_measurement,
+                        "Typed measurement requires schema two and a selected scale ref");
+            }
             if (std::ranges::none_of(selected.m_frames, [](const auto& frame) {
                     return frame.m_role == CaptureFrameRole::HELD_OUT;
                 })) {
@@ -361,13 +383,16 @@ Result<AdmittedAssetCorpus> admit_asset_corpus(const AssetCorpusDefinition& defi
             blockers.push_back({ "corpus", "SYNTHETIC_INPUTS" });
         }
         std::ranges::sort(blockers);
-        const Json K_DOCUMENT { { "schema_version", 1 },
-                               { "corpus", value.m_corpus },
-                               { "revision", value.m_revision },
-                               { "track", name(value.m_track, K_TRACKS) },
-                               { "captures", capture_rows },
-                               { "recipes", recipe_rows } };
-        auto canonical = K_DOCUMENT.dump();
+        Json document { { "schema_version", value.m_require_typed_scale ? 2 : 1 },
+                       { "corpus", value.m_corpus },
+                       { "revision", value.m_revision },
+                       { "track", name(value.m_track, K_TRACKS) },
+                       { "captures", capture_rows },
+                       { "recipes", recipe_rows } };
+        if (value.m_require_typed_scale) {
+            document["typed_scale"] = true;
+        }
+        auto canonical = document.dump();
         require(canonical.size() <= K_MAX_BYTES,
                 "Corpus byte budget exceeded",
                 ErrorCode::RESOURCE_EXHAUSTED);
@@ -403,11 +428,26 @@ decode_asset_corpus(std::span<const std::byte> bytes,
         require(sha256(bytes) == selected.m_sha256,
                 "Corpus bytes differ from selected hash",
                 ErrorCode::RESYNC_REQUIRED);
-        keys(K_DOC, { "schema_version", "corpus", "revision", "track", "captures", "recipes" });
-        require(integer(K_DOC.at("schema_version")) == 1,
+        const auto K_SCHEMA = integer(K_DOC.at("schema_version"));
+        require(K_SCHEMA == 1 || K_SCHEMA == 2,
                 "Unsupported corpus schema",
                 ErrorCode::UNSUPPORTED_OPERATION);
         AssetCorpusDefinition value;
+        if (K_SCHEMA == 2) {
+            keys(K_DOC,
+                 { "schema_version",
+                  "corpus",
+                  "revision",
+                  "track",
+                  "captures",
+                  "recipes",
+                  "typed_scale" });
+            require(K_DOC.at("typed_scale").is_boolean() && K_DOC.at("typed_scale").get<bool>(),
+                    "Schema two requires typed scale");
+            value.m_require_typed_scale = true;
+        } else {
+            keys(K_DOC, { "schema_version", "corpus", "revision", "track", "captures", "recipes" });
+        }
         value.m_corpus = K_DOC.at("corpus").get<std::string>();
         value.m_revision = integer(K_DOC.at("revision"));
         require(value.m_corpus == selected.m_corpus && value.m_revision == selected.m_revision,
