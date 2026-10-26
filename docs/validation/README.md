@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: native textured PBR glTF export](2026-10-26-native-exports.md) — explicit channel/mesh conversion and shared asset/assembly resources with source-bound package admission/recovery; synthetic format evidence, real native PBR/Godot qualification open.
+
 - [26 October: native geometry/material asset adoption](2026-10-26-native-assets.md) — exact native product/completion, face/group/channel and compensated-pivot bindings with shared revisioned definitions/instances and atomic metadata recovery; synthetic CPU scope, real PBR/producer/export qualification open.
 
 - [26 October: generated constant GLB/export manifests](2026-10-26-static-exports.md) — actual shared-resource GLB conversion, source-bound package/sidecar/audit admission and owned recovery; synthetic binary oracle and zero-error/warning Khronos result, no Godot/real asset qualification.

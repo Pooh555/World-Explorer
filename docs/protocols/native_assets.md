@@ -99,3 +99,7 @@ does not select a live-scene head. Missing/foreign/stale committed metadata fail
 Adoption remains a draft result: initial runtime load and replacement still need
 conversion and the existing scene-update path. Native PBR viewing, textured
 portable export, ordinary Godot import and real A1 evaluation remain open.
+
+The separate [native textured glTF profile](native_exports.md) converts these
+private handles into shared portable resources. It adds no native PBR rendering
+or real asset/relighting/engine qualification.

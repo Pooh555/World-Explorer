@@ -302,17 +302,26 @@ The [protocol](protocols/native_assets.md) scopes this draft path: heterogeneous
 channel summaries, broader structure/LOD/collider adoption and actual producer,
 renderer/export integration remain open. No real AP gate is qualified.
 
-Next executable step: implement an explicit native-material texture/mesh converter
-from the admitted asset handle (plan §§11.4–11.5), preserving original geometry,
-material-group/channel/UV/tangent, semantic identity, pivot and instance bindings.
-Encode linear native color/emission channels into the declared portable color
-format, retain numeric/normal conventions and record losses/unsupported features.
-Prove individual/assembly decoded equivalence, actual validator checks and stale/
-foreign rejection before using the same resources in native PBR viewing. Preserve
-generated-static v1 and captured GLB; do not flatten captured radiance into albedo.
-Broader structure/completion contracts, heterogeneous per-channel metadata, full
-producer/asset adoption and real A1 native PBR/Godot validation remain open under
-plan §11.4; provisioning still requires the recorded prerequisites.
+The [native textured glTF slice](validation/2026-10-26-native-exports.md) adds
+explicit geometry/channel conversion, shared individual/assembly buffers and
+PNGs, source-bound package admission and immutable recovery. It preserves face
+group/provenance mappings and measures float/color/numeric/normal losses against
+independent limits. The [protocol](protocols/native_exports.md) keeps captured
+radiance, HDR emission and per-instance overrides outside this PBR profile;
+source images and fit lights are not exported. Synthetic format validation does
+not qualify real assets, relighting or engine/runtime behavior.
+
+Next executable step: add immutable PBR mesh/material/texture resources to
+render_core and the native Vulkan viewer for the admitted native asset/export
+profile, preserving source identities, instance sharing, UV/tangent/normal/color
+conventions and initial/replacement scene-update semantics. Validate the shader
+and resource lifetimes with clearly labeled synthetic diagnostics, then use the
+same path for the real A1 completed/PBR pilot when its inputs/producer exist.
+Preserve captured-unlit/generated-static profiles and fail unsupported features
+before runtime admission. Broader structure/completion/LOD/collider contracts,
+heterogeneous per-channel metadata, full producer adoption and real A1 PBR/Godot
+validation remain open under plan §11.4; provisioning requires the recorded
+prerequisites. Optional native GLB compilation remains separate export work.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption

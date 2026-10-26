@@ -25,9 +25,11 @@ struct NativeFixture {
 
     explicit NativeFixture(bool manual = false,
                            const Mutation& change = {},
-                           AssetLightingMode lighting = AssetLightingMode::ESTIMATED_PBR)
+                           AssetLightingMode lighting = AssetLightingMode::ESTIMATED_PBR,
+                           const MaterialFixtureMutations& material_changes = {})
         : m_base({ .m_lighting = manual ? AssetLightingMode::GENERATED_PBR : lighting,
-                  .m_manual = manual }),
+                  .m_manual = manual },
+                 material_changes),
           m_receipt(stage(manual, change)) { }
 
     AdmittedAssetReceipt stage(bool manual, const Mutation& change) {
