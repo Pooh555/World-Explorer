@@ -68,6 +68,14 @@ M1–M6 order/thresholds remain; native/reference release evidence is due by M6.
 
 ## Current A0 work
 
+The [Ubuntu GCC 13 lifetime repair](validation/2026-10-26-ubuntu-inference-lifetime.md)
+retains explicit inference handles in evaluation-path/capture-envelope readers
+and their two matching fixtures. The supplied GCC 13 build rejected temporary
+handle range initializers under `-Werror=dangling-reference`; local C++26/C++23
+builds pass without suppressions. GCC 15 accepts both old/repaired reader TUs and
+does not reproduce that warning; the Ubuntu GCC 13 CI rerun remains required.
+The completion-product handoff below is unchanged.
+
 [Asset dependency admission](validation/2026-10-23-asset-dependencies.md) validates
 a bounded closed DAG, exact revision/context, canonical identity and transitive
 manual ancestry. The [byte-receipt slice](validation/2026-10-24-asset-receipts.md)

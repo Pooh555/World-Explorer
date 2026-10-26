@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: Ubuntu inference-handle lifetime repair](2026-10-26-ubuntu-inference-lifetime.md) — explicit owners replace temporary range handles in two readers and matching fixtures; local checks retain warnings/standards, GCC 13 CI confirmation pending.
+
 - [26 October: bounded structure graphs](2026-10-26-structure-graphs.md) — native connected patches and complete oriented boundaries, planar openings, room links and spatial residuals; synthetic CPU admission/recovery, no physical room/support/gravity qualification.
 
 - [26 October: bounded material products](2026-10-26-material-products.md) — actual linear channel bytes, complete texel provenance, inference-only light/exposure pins and atomic full-closure replay; synthetic CPU scope, no fitting/relighting/AP qualification.

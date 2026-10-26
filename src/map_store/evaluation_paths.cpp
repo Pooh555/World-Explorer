@@ -182,7 +182,8 @@ Result<AdmittedEvaluationPaths> inspect_evaluation_paths(const EvaluationPathSel
         for (const auto& source : capture.record().m_selection.m_sources) {
             sources.emplace(source.m_capture, source.m_source_sha256);
         }
-        for (const auto& frame : capture.inference().frames()) {
+        const auto K_INFERENCE = capture.inference();
+        for (const auto& frame : K_INFERENCE.frames()) {
             frames.emplace(ViewKey { frame.m_view.m_capture, frame.m_view.m_frame }, frame);
             roles.emplace(ViewKey { frame.m_view.m_capture, frame.m_view.m_frame },
                           CaptureFrameRole::INFERENCE);

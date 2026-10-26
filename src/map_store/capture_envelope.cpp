@@ -234,7 +234,8 @@ Result<AdmittedCaptureEnvelope> inspect_capture_envelope(const CaptureEnvelopeSe
                     ErrorCode::RESYNC_REQUIRED);
         }
         std::map<ViewKey, std::reference_wrapper<const CaptureFrameInputs>> native;
-        for (const auto& frame : capture.inference().frames()) {
+        const auto K_INFERENCE = capture.inference();
+        for (const auto& frame : K_INFERENCE.frames()) {
             native.emplace(ViewKey { frame.m_view.m_capture, frame.m_view.m_frame }, frame);
         }
         for (const auto& frame : capture.evaluation()) {

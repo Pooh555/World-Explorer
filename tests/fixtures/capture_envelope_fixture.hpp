@@ -83,7 +83,8 @@ struct EnvelopeFixture {
                  { "calibration", envelope_calibration(inputs.m_calibration) },
                  { "role", role_name(role) } });
         };
-        for (const auto& frame : m_base.m_capture.inference().frames()) {
+        const auto K_INFERENCE = m_base.m_capture.inference();
+        for (const auto& frame : K_INFERENCE.frames()) {
             K_ADD(frame, CaptureFrameRole::INFERENCE);
         }
         for (const auto& frame : m_base.m_capture.evaluation()) {

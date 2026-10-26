@@ -37,6 +37,12 @@ release profiles. [ADR 016](adr/016-m2-development-exit.md) scopes M2 to the Lin
 
 ## Planned local asset production before M4
 
+The [26 October Ubuntu GCC 13 repair](validation/2026-10-26-ubuntu-inference-lifetime.md)
+addresses the supplied `-Wdangling-reference` build failures by retaining explicit
+inference ownership handles in two readers and matching fixtures. Local build
+checks do not substitute for the pending Ubuntu GCC 13 rerun; no native/platform
+qualification or milestone status is promoted.
+
 [ADR 019](adr/019-assets-before-platforms.md) schedules the approved final product
 direction in [plan §11](technical_plan.md#11-offline-asset-production-track):
 M3 → A0–A5 → M4 → M5 → M6, then A6 engine packaging. M1–M6 retain relative

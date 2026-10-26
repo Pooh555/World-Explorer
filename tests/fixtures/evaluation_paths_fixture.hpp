@@ -147,7 +147,8 @@ struct PathsFixture {
         m_selected.m_path = { { { 7 }, { 10 }, EvaluationPoseConfidence::UNCERTAIN },
                              { { 7 }, { 20 }, EvaluationPoseConfidence::DECLARED_RELIABLE } };
         std::map<std::pair<CaptureId, FrameId>, Json> cameras;
-        for (const auto& inputs : K_CAPTURE.inference().frames()) {
+        const auto K_INFERENCE = K_CAPTURE.inference();
+        for (const auto& inputs : K_INFERENCE.frames()) {
             cameras.emplace(std::pair { inputs.m_view.m_capture, inputs.m_view.m_frame },
                             path_camera(inputs));
         }
