@@ -47,7 +47,8 @@ Result<std::unique_ptr<MeshTextureBaker>> MeshTextureBaker::create(SceneChunk ch
             return fail(ErrorCode::INVALID_ARGUMENT, "Unsupported texture source profile");
         }
         if (!chunk.m_geometry_valid || !chunk.m_mesh || chunk.m_mesh->m_baked ||
-            chunk.m_mesh->m_triangles.empty() || chunk.m_source_frames.empty() ||
+            chunk.m_mesh->m_pbr || chunk.m_mesh->m_triangles.empty() ||
+            chunk.m_source_frames.empty() ||
             chunk.m_source_frames.size() >
                 (profile == MeshTextureProfile::DEPTH_SEQUENCE ? 120uz : 18uz)) {
             return fail(ErrorCode::INVALID_ARGUMENT,

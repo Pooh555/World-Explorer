@@ -39,7 +39,8 @@ MeshPass::~MeshPass() {
 }
 
 void MeshPass::initialize(const std::filesystem::path& shaders,
-                          VkDescriptorSetLayout scene_layout) {
+                          VkDescriptorSetLayout scene_layout,
+                          bool pbr) {
     for (const auto K_FORMAT : { VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_D32_SFLOAT }) {
         VkFormatProperties properties {};
         vkGetPhysicalDeviceFormatProperties(m_backend.physical_device(), K_FORMAT, &properties);
@@ -115,10 +116,10 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
     layout.pPushConstantRanges = &K_PUSH;
     check(vkCreatePipelineLayout(m_device, &layout, nullptr, &m_layout),
           "create mesh diagnostic layout");
-    const auto K_VERTEX = m_backend.load_shader_module(shaders, "mesh.vert");
+    const auto K_VERTEX = m_backend.load_shader_module(shaders, pbr ? "pbr.vert" : "mesh.vert");
     VkShaderModule fragment {};
     try {
-        fragment = m_backend.load_shader_module(shaders, "mesh.frag");
+        fragment = m_backend.load_shader_module(shaders, pbr ? "pbr.frag" : "mesh.frag");
         const std::array<VkPipelineShaderStageCreateInfo, 2> K_STAGES {
             { { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
               nullptr,
@@ -135,12 +136,21 @@ void MeshPass::initialize(const std::filesystem::path& shaders,
               "main",
               nullptr } } };
         const VkVertexInputBindingDescription K_BINDING {
-            0, sizeof(MeshGpuVertex), VK_VERTEX_INPUT_RATE_VERTEX };
-        const std::array<VkVertexInputAttributeDescription, 4> K_ATTRIBUTES {
-            { { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(MeshGpuVertex, m_position) },
-             { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(MeshGpuVertex, m_normal) },
-             { 2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(MeshGpuVertex, m_uv) },
-             { 3, 0, VK_FORMAT_R32G32B32_UINT, offsetof(MeshGpuVertex, m_texture) } } };
+            0,
+            static_cast<std::uint32_t>(pbr ? sizeof(PbrGpuVertex) : sizeof(MeshGpuVertex)),
+            VK_VERTEX_INPUT_RATE_VERTEX };
+        const std::array<VkVertexInputAttributeDescription, 4> K_ATTRIBUTES =
+            pbr ? std::array<
+                      VkVertexInputAttributeDescription,
+                      4> { { { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(PbrGpuVertex, m_position) },
+                           { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(PbrGpuVertex, m_normal) },
+                           { 2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(PbrGpuVertex, m_tangent) },
+                           { 3, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(PbrGpuVertex, m_uv) } } }
+                : std::array<VkVertexInputAttributeDescription, 4> {
+                      { { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(MeshGpuVertex, m_position) },
+                       { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(MeshGpuVertex, m_normal) },
+                       { 2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(MeshGpuVertex, m_uv) },
+                       { 3, 0, VK_FORMAT_R32G32B32_UINT, offsetof(MeshGpuVertex, m_texture) } } };
         auto vertices = structure<VkPipelineVertexInputStateCreateInfo>(
             VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
         vertices.vertexBindingDescriptionCount = 1;
@@ -301,6 +311,94 @@ void MeshPass::record(VkCommandBuffer command,
     vkCmdBindVertexBuffers(command, 0, 1, &scene.buffer, &K_VERTEX_OFFSET);
     vkCmdBindIndexBuffer(command, scene.buffer, draw.m_index_offset, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(command, draw.m_index_count, 1, 0, 0, 0);
+    vkCmdEndRenderPass(command);
+    detail::memory_barrier(command,
+                           VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                           VK_ACCESS_2_SHADER_WRITE_BIT,
+                           VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                           VK_ACCESS_2_TRANSFER_WRITE_BIT);
+    VkBufferImageCopy copy {};
+    copy.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    copy.imageExtent = { target.m_extent.width, target.m_extent.height, 1 };
+    vkCmdCopyImageToBuffer(
+        command, target.m_color.m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, captured, 1, &copy);
+    detail::memory_barrier(command,
+                           VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                           VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                           VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                           VK_ACCESS_2_SHADER_READ_BIT);
+}
+
+void MeshPass::record_pbr(VkCommandBuffer command,
+                          const MeshTarget& target,
+                          const detail::gpu_buffer& scene,
+                          const detail::push_parameters& parameters,
+                          const std::vector<PbrDraw>& draws,
+                          const PbrLighting& lighting,
+                          VkBuffer captured,
+                          VkDescriptorSet scene_descriptor) {
+    const std::array<VkClearValue, 2> K_CLEAR { VkClearValue { .color = { { .045F, .051F, .063F, 1 } } },
+                                               VkClearValue { .depthStencil = { 1, 0 } } };
+    auto pass = structure<VkRenderPassBeginInfo>(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO);
+    pass.renderPass = m_pass;
+    pass.framebuffer = target.m_framebuffer;
+    pass.renderArea.extent = target.m_extent;
+    pass.clearValueCount = 2;
+    pass.pClearValues = K_CLEAR.data();
+    vkCmdBeginRenderPass(command, &pass, VK_SUBPASS_CONTENTS_INLINE);
+    const VkViewport K_VIEWPORT { 0,
+                                 0,
+                                 static_cast<float>(target.m_extent.width),
+                                 static_cast<float>(target.m_extent.height),
+                                 0,
+                                 1 };
+    const VkRect2D K_SCISSOR { { 0, 0 }, target.m_extent };
+    vkCmdSetViewport(command, 0, 1, &K_VIEWPORT);
+    vkCmdSetScissor(command, 0, 1, &K_SCISSOR);
+    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+
+    struct Push {
+        std::array<float, 4> m_right, m_down, m_forward, m_intrinsics, m_viewport;
+        std::array<std::uint32_t, 4> m_draw;
+        std::array<float, 4> m_light, m_ambient;
+    };
+
+    static_assert(sizeof(Push) == 128uz);
+    const auto K_LENGTH = std::sqrt(dot(lighting.m_to_light, lighting.m_to_light));
+    const auto K_DIRECTION = lighting.m_to_light * (1 / K_LENGTH);
+    const auto K_DOT = [&](const auto& row) {
+        return static_cast<float>(row[0uz] * K_DIRECTION.m_x + row[1uz] * K_DIRECTION.m_y +
+                                  row[2uz] * K_DIRECTION.m_z);
+    };
+    Push push { parameters.right,
+               parameters.down,
+               parameters.forward,
+               parameters.intrinsics,
+               parameters.viewport_clip,
+               {},
+               { K_DOT(parameters.right),
+                K_DOT(parameters.down),
+                K_DOT(parameters.forward),
+                static_cast<float>(lighting.m_intensity) },
+               { static_cast<float>(lighting.m_ambient.m_x),
+                static_cast<float>(lighting.m_ambient.m_y),
+                static_cast<float>(lighting.m_ambient.m_z),
+                static_cast<float>(lighting.m_exposure) } };
+    vkCmdBindDescriptorSets(
+        command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_layout, 0, 1, &scene_descriptor, 0, nullptr);
+    for (const auto& draw : draws) {
+        push.m_draw = { draw.m_instance_words, draw.m_material_words, 0, 0 };
+        vkCmdPushConstants(command,
+                           m_layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0,
+                           sizeof(push),
+                           &push);
+        const VkDeviceSize K_OFFSET { draw.m_vertex_offset };
+        vkCmdBindVertexBuffers(command, 0, 1, &scene.buffer, &K_OFFSET);
+        vkCmdBindIndexBuffer(command, scene.buffer, draw.m_index_offset, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(command, draw.m_index_count, draw.m_instance_count, 0, 0, 0);
+    }
     vkCmdEndRenderPass(command);
     detail::memory_barrier(command,
                            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,

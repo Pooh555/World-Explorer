@@ -65,7 +65,7 @@ struct VulkanRenderer::Implementation {
     RendererDiagnostics m_diagnostics;
     std::atomic<std::uint32_t> m_validation_errors {};
     std::unique_ptr<vulkan_device> m_device_backend;
-    std::unique_ptr<MeshPass> m_mesh_pass;
+    std::unique_ptr<MeshPass> m_mesh_pass, m_pbr_pass;
     std::unique_ptr<vulkan_swapchain> m_swapchain_backend;
     VkInstance m_instance {};
     VkSurfaceKHR m_surface {};
@@ -123,6 +123,8 @@ struct VulkanRenderer::Implementation {
         std::vector<UploadRegion> m_regions;
         std::size_t m_mesh_vertex_offset {}, m_mesh_index_offset {}, m_mesh_vertices {},
             m_mesh_indices {};
+        std::vector<PbrDraw> m_pbr_draws;
+        std::size_t m_pbr_triangles {};
     };
 
     struct ActiveUpload {
@@ -138,6 +140,8 @@ struct VulkanRenderer::Implementation {
     std::size_t m_splat_count {};
     std::size_t m_mesh_vertex_offset {}, m_mesh_index_offset {}, m_mesh_vertices {},
         m_mesh_indices {};
+    std::vector<PbrDraw> m_pbr_draws;
+    std::size_t m_pbr_triangles {};
 
     struct RetiredBuffer {
         std::uint64_t m_timeline;
@@ -210,6 +214,7 @@ struct VulkanRenderer::Implementation {
         if (m_bindings.layout) {
             vkDestroyDescriptorSetLayout(m_device, m_bindings.layout, nullptr);
         }
+        m_pbr_pass.reset();
         m_mesh_pass.reset();
         m_swapchain_backend.reset();
         m_device_backend.reset();
@@ -579,7 +584,7 @@ struct VulkanRenderer::Implementation {
         for (const auto& [K_ID, K_CHUNK] : snapshot->m_chunks) {
             static_cast<void>(K_ID);
             count += K_CHUNK->m_splats.size();
-            if (K_CHUNK->m_mesh && K_CHUNK->m_geometry_valid) {
+            if (K_CHUNK->m_mesh && !K_CHUNK->m_mesh->m_pbr && K_CHUNK->m_geometry_valid) {
                 const auto& mesh = *K_CHUNK->m_mesh;
                 mesh_vertices +=
                     mesh.m_baked ? mesh.m_triangles.size() * 3uz : mesh.m_vertices.size();
@@ -596,7 +601,12 @@ struct VulkanRenderer::Implementation {
         const auto K_VERTEX_OFFSET = std::max(count * K_STRIDE, 16uz);
         const auto K_INDEX_OFFSET = K_VERTEX_OFFSET + mesh_vertices * sizeof(MeshGpuVertex);
         const auto K_TEXTURE_OFFSET = K_INDEX_OFFSET + mesh_indices * sizeof(std::uint32_t);
-        const auto K_BYTES = K_TEXTURE_OFFSET + texture_bytes;
+        const auto K_PBR_OFFSET = K_TEXTURE_OFFSET + texture_bytes;
+        auto pbr = prepare_pbr_upload(*snapshot, origin, K_PBR_OFFSET);
+        if (!pbr) {
+            throw std::runtime_error(pbr.error().m_message);
+        }
+        const auto K_BYTES = K_PBR_OFFSET + pbr->m_bytes.size();
         if (K_BYTES > m_properties.limits.maxStorageBufferRange) {
             throw std::runtime_error("Scene exceeds storage-buffer address range");
         }
@@ -690,7 +700,7 @@ struct VulkanRenderer::Implementation {
         std::size_t vertex_index {}, triangle_index {}, texture_offset { K_TEXTURE_OFFSET };
         for (const auto& [K_ID, K_CHUNK] : snapshot->m_chunks) {
             static_cast<void>(K_ID);
-            if (!K_CHUNK->m_mesh || !K_CHUNK->m_geometry_valid) {
+            if (!K_CHUNK->m_mesh || K_CHUNK->m_mesh->m_pbr || !K_CHUNK->m_geometry_valid) {
                 continue;
             }
             const auto& mesh = *K_CHUNK->m_mesh;
@@ -755,6 +765,9 @@ struct VulkanRenderer::Implementation {
                 }
             }
         }
+        if (!pbr->m_bytes.empty()) {
+            std::memcpy(destination + K_PBR_OFFSET, pbr->m_bytes.data(), pbr->m_bytes.size());
+        }
         if (K_BYTES > K_VERTEX_OFFSET) {
             regions.push_back({ K_VERTEX_OFFSET, K_VERTEX_OFFSET, K_BYTES - K_VERTEX_OFFSET, false });
         }
@@ -771,7 +784,9 @@ struct VulkanRenderer::Implementation {
                 K_VERTEX_OFFSET,
                 K_INDEX_OFFSET,
                 mesh_vertices,
-                mesh_indices };
+                mesh_indices,
+                std::move(pbr->m_draws),
+                pbr->m_triangles };
     }
 
     void copy_upload(Frame& current, UploadResources& resources, std::size_t limit) {
@@ -818,6 +833,8 @@ struct VulkanRenderer::Implementation {
         m_mesh_index_offset = resources.m_mesh_index_offset;
         m_mesh_vertices = resources.m_mesh_vertices;
         m_mesh_indices = resources.m_mesh_indices;
+        m_pbr_draws = std::move(resources.m_pbr_draws);
+        m_pbr_triangles = resources.m_pbr_triangles;
         m_scene_origin = resources.m_origin;
     }
 
@@ -826,14 +843,14 @@ struct VulkanRenderer::Implementation {
         auto resources = prepare_upload(snapshot, origin);
         begin_timing(current, GpuTimingStage::UPLOAD);
         copy_upload(current, resources, resources.m_bytes);
-        memory_barrier(current.m_command,
-                       VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                       VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                           VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
-                           VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                       VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT |
-                           VK_ACCESS_2_INDEX_READ_BIT);
+        memory_barrier(
+            current.m_command,
+            VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+                VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+            VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT |
+                VK_ACCESS_2_INDEX_READ_BIT);
         end_timing(current, GpuTimingStage::UPLOAD);
         finish_upload(resources, completion);
     }
@@ -1236,10 +1253,11 @@ struct VulkanRenderer::Implementation {
         return true;
     }
 
-    void prepare_mesh_target(Frame& current) {
-        if (!m_mesh_pass) {
-            m_mesh_pass = std::make_unique<MeshPass>(*m_device_backend);
-            m_mesh_pass->initialize(m_options.m_shader_directory, m_bindings.layout);
+    void prepare_mesh_target(Frame& current, bool pbr) {
+        auto& selected_pass = pbr ? m_pbr_pass : m_mesh_pass;
+        if (!selected_pass) {
+            selected_pass = std::make_unique<MeshPass>(*m_device_backend);
+            selected_pass->initialize(m_options.m_shader_directory, m_bindings.layout, pbr);
         }
         if (!current.m_mesh_target || current.m_mesh_target->m_extent.width != m_extent.width ||
             current.m_mesh_target->m_extent.height != m_extent.height) {
@@ -1249,16 +1267,27 @@ struct VulkanRenderer::Implementation {
                 throw std::runtime_error("Mesh target residency exhausted");
             }
             auto target =
-                m_mesh_pass->create_target(m_extent, m_options.m_residency_bytes - K_LIVE);
+                selected_pass->create_target(m_extent, m_options.m_residency_bytes - K_LIVE);
             current.m_mesh_target = std::move(target);
         }
     }
 
-    void draw(const CameraView& camera, bool draw_appearance, SceneRepresentation representation) {
+    void draw(const CameraView& camera,
+              bool draw_appearance,
+              SceneRepresentation representation,
+              const PbrLighting& lighting) {
         if (representation != SceneRepresentation::CAPTURED_APPEARANCE &&
             representation != SceneRepresentation::OBSERVED_MESH &&
-            representation != SceneRepresentation::BAKED_APPEARANCE) {
+            representation != SceneRepresentation::BAKED_APPEARANCE &&
+            representation != SceneRepresentation::NATIVE_PBR) {
             throw std::invalid_argument("Unknown scene representation");
+        }
+        const bool K_PBR_VIEW = representation == SceneRepresentation::NATIVE_PBR;
+        if (K_PBR_VIEW) {
+            const auto K_LIGHT = validate_pbr_lighting(lighting);
+            if (!K_LIGHT) {
+                throw std::invalid_argument(K_LIGHT.error().m_message);
+            }
         }
         const bool K_MESH_VIEW = representation != SceneRepresentation::CAPTURED_APPEARANCE;
         const auto K_BEGIN = std::chrono::steady_clock::now();
@@ -1301,7 +1330,7 @@ struct VulkanRenderer::Implementation {
               "query retirement timeline");
         collect_completed(completed);
         if (K_MESH_VIEW && draw_appearance) {
-            prepare_mesh_target(current);
+            prepare_mesh_target(current, K_PBR_VIEW);
         }
         std::uint32_t image_index = 0;
         const auto K_ACQUIRE_BEGIN = m_options.m_collect_timings
@@ -1389,6 +1418,7 @@ struct VulkanRenderer::Implementation {
                                VK_ACCESS_2_TRANSFER_WRITE_BIT,
                                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
                                    VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+                                   VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
                                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
                                VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT |
                                    VK_ACCESS_2_INDEX_READ_BIT);
@@ -1530,7 +1560,17 @@ struct VulkanRenderer::Implementation {
             record_tiles(current, params, 0);
             record_composition(current, params, false);
         }
-        if (K_MESH_VIEW && m_mesh_indices && draw_appearance) {
+        if (K_PBR_VIEW && draw_appearance) {
+            m_pbr_pass->record_pbr(current.m_command,
+                                   *current.m_mesh_target,
+                                   m_scene_buffer,
+                                   params,
+                                   m_pbr_draws,
+                                   lighting,
+                                   current.m_captured.buffer,
+                                   current.m_descriptors[0]);
+        }
+        if (K_MESH_VIEW && !K_PBR_VIEW && m_mesh_indices && draw_appearance) {
             m_mesh_pass->record(current.m_command,
                                 *current.m_mesh_target,
                                 m_scene_buffer,
@@ -1551,7 +1591,7 @@ struct VulkanRenderer::Implementation {
                 }
             }
         }
-        m_diagnostics.m_resident_mesh_triangles = m_mesh_indices / 3uz;
+        m_diagnostics.m_resident_mesh_triangles = m_mesh_indices / 3uz + m_pbr_triangles;
         m_diagnostics.m_framebuffer_bytes = 0;
         for (const auto& frame : m_frames) {
             m_diagnostics.m_framebuffer_bytes +=
@@ -1739,9 +1779,10 @@ void VulkanRenderer::set_overlay_callback(std::function<void(std::uintptr_t)> ca
 
 Result<void> VulkanRenderer::draw(const CameraView& camera,
                                   bool draw_appearance,
-                                  SceneRepresentation representation) {
+                                  SceneRepresentation representation,
+                                  const PbrLighting& lighting) {
     try {
-        m_impl->draw(camera, draw_appearance, representation);
+        m_impl->draw(camera, draw_appearance, representation, lighting);
         return {};
     } catch (const detail::vulkan_error& exception) {
         return fail(exception.status() == VK_ERROR_DEVICE_LOST ? ErrorCode::DEVICE_LOST

@@ -3,9 +3,11 @@
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/scene_store/world_frame.hpp"
 
+#include <algorithm>
 #include <bit>
 #include <limits>
 #include <set>
+#include <stdexcept>
 
 namespace world_explorer {
 namespace {
@@ -55,7 +57,8 @@ void append_chunk(SceneHashWriter& hash,
     // stream/version prefix while retaining every legacy splat-only digest.
     if (chunk.m_mesh) {
         K_ADD(0);
-        K_ADD(include_baked && chunk.m_mesh->m_baked &&
+        K_ADD(chunk.m_mesh->m_pbr ? 7
+              : include_baked && chunk.m_mesh->m_baked &&
                       chunk.m_mesh->m_baked->m_profile == MeshTextureProfile::DEPTH_SEQUENCE
                   ? (chunk.m_mesh->m_baked->m_portable_parent_sha256.empty() ? 5 : 6)
               : include_baked && chunk.m_mesh->m_baked &&
@@ -183,6 +186,15 @@ void append_chunk(SceneHashWriter& hash,
                 }
             }
         }
+        if (mesh.m_pbr) {
+            const auto K_PBR = encode_pbr_appearance(*mesh.m_pbr);
+            if (!K_PBR) {
+                throw std::runtime_error(K_PBR.error().m_message);
+            }
+            K_ADD(UINT64_MAX - 1);
+            K_ADD(K_PBR->size());
+            hash.add_bytes(*K_PBR);
+        }
     }
 }
 
@@ -274,7 +286,14 @@ Result<std::size_t> mesh_bytes(const SceneChunk& chunk, const SceneLimits& limit
     if (*K_BAKED > limits.m_max_payload_bytes - bytes) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Combined mesh texture budget exceeded");
     }
-    return bytes + *K_BAKED;
+    const auto K_PBR = validate_pbr_appearance(chunk, limits);
+    if (!K_PBR) {
+        return std::unexpected(K_PBR.error());
+    }
+    if (*K_PBR > limits.m_max_payload_bytes - bytes - *K_BAKED) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Combined PBR payload budget exceeded");
+    }
+    return bytes + *K_BAKED + *K_PBR;
 }
 
 }  // namespace
@@ -403,7 +422,20 @@ Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits) 
     if (bytes > limits.m_max_payload_bytes) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "World-frame payload budget exceeded");
     }
-    std::size_t splats {}, vertices {}, triangles {}, texels {};
+    std::size_t splats {}, vertices {}, triangles {}, texels {}, pbr_materials {};
+    std::set<AssetId> pbr_assets;
+    std::set<AssetInstanceId> pbr_instances;
+    std::string pbr_source;
+    const bool K_PBR = std::ranges::any_of(scene.m_chunks, [](const auto& entry) {
+        return entry.second && entry.second->m_mesh && entry.second->m_mesh->m_pbr;
+    });
+    if (K_PBR &&
+        (scene.m_chunks.size() > 2uz || std::ranges::any_of(scene.m_chunks, [](const auto& entry) {
+             return !entry.second || !entry.second->m_mesh || !entry.second->m_mesh->m_pbr;
+         }))) {
+        return fail(ErrorCode::UNSUPPORTED_OPERATION,
+                    "Native PBR scene requires at most two PBR chunks");
+    }
     for (const auto& [K_ID, K_CHUNK] : scene.m_chunks) {
         if (!K_CHUNK || K_ID != K_CHUNK->m_id) {
             return fail(ErrorCode::INVALID_DATA, "chunk key differs from identity");
@@ -430,7 +462,44 @@ Result<std::size_t> validate_scene(const SceneState& scene, SceneLimits limits) 
             }
             vertices += mesh.m_vertices.size();
             triangles += mesh.m_triangles.size();
-            if (mesh.m_observed) {
+            if (mesh.m_pbr) {
+                const auto& pbr = *mesh.m_pbr;
+                if (!pbr_assets.insert(pbr.m_definition.m_asset).second ||
+                    pbr.m_materials.size() > 4uz - pbr_materials) {
+                    return fail(ErrorCode::RESOURCE_EXHAUSTED, "PBR asset/material count differs");
+                }
+                pbr_materials += pbr.m_materials.size();
+                for (const auto& instance : pbr.m_instances) {
+                    if (!pbr_instances.insert(instance.m_instance).second ||
+                        pbr_instances.size() > 64uz) {
+                        return fail(ErrorCode::INVALID_DATA, "PBR instance identity/count differs");
+                    }
+                }
+                if (!pbr_source.empty() && pbr_source != pbr.m_export_manifest_sha256) {
+                    return fail(ErrorCode::RESYNC_REQUIRED,
+                                "PBR chunks use different source exports");
+                }
+                pbr_source = pbr.m_export_manifest_sha256;
+                if (scene.m_scale != ScaleStatus::ARBITRARY || scene.m_world_frame ||
+                    (K_CHUNK->m_geometry_valid && pbr.m_epoch != scene.m_epoch)) {
+                    return fail(ErrorCode::WRONG_EPOCH, "PBR scene scale/world context differs");
+                }
+                for (const auto& material : pbr.m_materials) {
+                    const auto K_TEXELS =
+                        static_cast<std::size_t>(material.m_width) * material.m_height * 4uz;
+                    if (K_TEXELS > limits.m_max_texture_texels - texels) {
+                        return fail(ErrorCode::RESOURCE_EXHAUSTED,
+                                    "Aggregate PBR texture budget exceeded");
+                    }
+                    texels += K_TEXELS;
+                }
+                const auto K_KIND = scene.m_provenance.find("source_kind");
+                if (K_KIND == scene.m_provenance.end() ||
+                    K_KIND->second !=
+                        (pbr.m_synthetic ? "synthetic_diagnostic" : "native_asset_draft")) {
+                    return fail(ErrorCode::INVALID_DATA, "PBR source label differs");
+                }
+            } else if (mesh.m_observed) {
                 const auto K_SOURCE_EPOCH =
                     scene.m_world_frame ? scene.m_world_frame->m_source_epoch : scene.m_epoch;
                 if ((!scene.m_world_frame && scene.m_scale != ScaleStatus::ARBITRARY) ||

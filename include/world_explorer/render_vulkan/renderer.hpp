@@ -2,6 +2,7 @@
 
 #include "world_explorer/core/result.hpp"
 #include "world_explorer/render_core/camera.hpp"
+#include "world_explorer/render_core/pbr.hpp"
 #include "world_explorer/render_core/update_sink.hpp"
 
 #include <filesystem>
@@ -14,7 +15,8 @@ namespace world_explorer {
 enum class SceneRepresentation : std::uint8_t {
     CAPTURED_APPEARANCE,
     OBSERVED_MESH,
-    BAKED_APPEARANCE
+    BAKED_APPEARANCE,
+    NATIVE_PBR
 };
 
 enum class GpuSplatStorage : std::uint8_t { FP32, FP32_GEOMETRY_FP16_SH };
@@ -71,10 +73,10 @@ class VulkanRenderer {
     void set_overlay_callback(std::function<void(std::uintptr_t)> callback);
     // Overlay/presentation remain active when appearance is paused for a local
     // reconstruction job. Resident assets and update ownership are retained.
-    Result<void>
-    draw(const CameraView& camera,
-         bool draw_appearance = true,
-         SceneRepresentation representation = SceneRepresentation::CAPTURED_APPEARANCE);
+    Result<void> draw(const CameraView& camera,
+                      bool draw_appearance = true,
+                      SceneRepresentation representation = SceneRepresentation::CAPTURED_APPEARANCE,
+                      const PbrLighting& lighting = {});
     Result<void> wait_for_idle();
     // Save the next successfully presented frame as an RGB PPM; explicit transfer capability is
     // required.

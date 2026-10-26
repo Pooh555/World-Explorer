@@ -108,3 +108,7 @@ leave an incomplete new directory, which must not be consumed. There is no
 ordinary-directory resume or new arbitrary power-loss/disk-full/concurrent-writer
 qualification. Native PBR rendering must still use the existing immutable scene
 update path; real A1 viewing and Godot evaluation remain required.
+
+The separate [native PBR scene compiler](native_pbr_scene.md) now consumes admitted
+textured exports for bounded immutable runtime resources and diagnostic native
+viewing. That integration does not qualify producers, real A1 output or AP gates.

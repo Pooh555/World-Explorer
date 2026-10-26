@@ -225,7 +225,7 @@ void reject_and_repair(ErrorCode code, Mutation mutate, SceneSnapshot scene = sy
 
 TEST_CASE("bundle manifests reject unsupported conventions and invalid typed identities",
           "[bundle_admission][manifest]") {
-    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14);
+    const auto K_FIELD = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
     CAPTURE(K_FIELD);
     reject_and_repair(
         K_FIELD == 0 ? ErrorCode::UNSUPPORTED_OPERATION : ErrorCode::INVALID_DATA,
@@ -238,6 +238,9 @@ TEST_CASE("bundle manifests reject unsupported conventions and invalid typed ide
                                          "quaternion_order",
                                          "pixel_centers" };
             if (K_FIELD == 0) {
+                value["schema_version"] = 7;
+            }
+            if (K_FIELD == 15) {
                 value["schema_version"] = 6;
             }
             if (K_FIELD >= 1 && K_FIELD <= 6) {

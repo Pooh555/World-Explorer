@@ -348,6 +348,7 @@ int viewer_main(int argc, char** argv) {
     std::optional<SavedView> bookmark;
     std::optional<UpdateTicket> pending_ticket;
     auto previous_representation = representation;
+    PbrLighting pbr_lighting;
     SceneSnapshot current;
     std::uint64_t next_operation = 1;
     bool running = true, captured = false, show_open = false, show_import = false,
@@ -521,15 +522,18 @@ int viewer_main(int argc, char** argv) {
                 previous_representation = representation;
                 current = loaded;
                 bool has_baked = false;
+                bool has_pbr = false;
                 bool has_mesh = false;
                 bool has_splats = false;
                 for (const auto& [K_ID, K_CHUNK] : current->m_chunks) {
                     static_cast<void>(K_ID);
                     has_mesh = has_mesh || K_CHUNK->m_mesh.has_value();
+                    has_pbr = has_pbr || (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_pbr);
                     has_baked = has_baked || (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_baked);
                     has_splats = has_splats || !K_CHUNK->m_splats.empty();
                 }
-                representation = has_baked && !has_splats ? SceneRepresentation::BAKED_APPEARANCE
+                representation = has_pbr                    ? SceneRepresentation::NATIVE_PBR
+                                 : has_baked && !has_splats ? SceneRepresentation::BAKED_APPEARANCE
                                  : has_mesh && !has_splats
                                      ? SceneRepresentation::OBSERVED_MESH
                                      : SceneRepresentation::CAPTURED_APPEARANCE;
@@ -659,7 +663,9 @@ int viewer_main(int argc, char** argv) {
             ImGui::TextUnformatted("PROJECT");
             ImGui::Separator();
             ImGui::TextWrapped("%s",
-                               current ? (representation == SceneRepresentation::BAKED_APPEARANCE
+                               current ? (representation == SceneRepresentation::NATIVE_PBR
+                                              ? "Native PBR draft"
+                                          : representation == SceneRepresentation::BAKED_APPEARANCE
                                               ? "Baked captured color"
                                           : representation == SceneRepresentation::OBSERVED_MESH
                                               ? "Partial observed geometry"
@@ -667,12 +673,14 @@ int viewer_main(int argc, char** argv) {
                                        : "No scene open");
             if (current) {
                 bool has_baked = false;
+                bool has_pbr = false;
                 bool has_portable = false;
                 bool has_mesh = false;
                 bool has_splats = false;
                 for (const auto& [K_ID, K_CHUNK] : current->m_chunks) {
                     static_cast<void>(K_ID);
                     has_mesh = has_mesh || K_CHUNK->m_mesh.has_value();
+                    has_pbr = has_pbr || (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_pbr);
                     has_baked = has_baked || (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_baked);
                     has_portable = has_portable ||
                                    (K_CHUNK->m_mesh && K_CHUNK->m_mesh->m_baked &&
@@ -680,7 +688,8 @@ int viewer_main(int argc, char** argv) {
                     has_splats = has_splats || !K_CHUNK->m_splats.empty();
                 }
                 if (has_mesh) {
-                    if (ImGui::RadioButton("Observed surfaces",
+                    if (!has_pbr &&
+                        ImGui::RadioButton("Observed surfaces",
                                            representation == SceneRepresentation::OBSERVED_MESH)) {
                         representation = SceneRepresentation::OBSERVED_MESH;
                     }
@@ -695,7 +704,39 @@ int viewer_main(int argc, char** argv) {
                                                SceneRepresentation::CAPTURED_APPEARANCE)) {
                         representation = SceneRepresentation::CAPTURED_APPEARANCE;
                     }
-                    if (representation == SceneRepresentation::BAKED_APPEARANCE) {
+                    if (has_pbr) {
+                        ImGui::RadioButton("Native PBR draft",
+                                           representation == SceneRepresentation::NATIVE_PBR);
+                        representation = SceneRepresentation::NATIVE_PBR;
+                        ImGui::TextWrapped("Draft PBR under preview lighting. Material recovery "
+                                           "and scene scale are unverified. Walking unavailable.");
+                        float direction[3] { static_cast<float>(pbr_lighting.m_to_light.m_x),
+                                            static_cast<float>(pbr_lighting.m_to_light.m_y),
+                                            static_cast<float>(pbr_lighting.m_to_light.m_z) };
+                        ImGui::TextUnformatted("Preview light direction");
+                        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                        if (ImGui::SliderFloat3("##pbr_direction", direction, -1.F, 1.F)) {
+                            const Vec3d K_VALUE { direction[0], direction[1], direction[2] };
+                            if (dot(K_VALUE, K_VALUE) > 1e-6) {
+                                pbr_lighting.m_to_light = K_VALUE;
+                            }
+                        }
+                        K_TRACE_ITEM("pbr_direction");
+                        float intensity { static_cast<float>(pbr_lighting.m_intensity) },
+                            exposure { static_cast<float>(pbr_lighting.m_exposure) };
+                        ImGui::TextUnformatted("Preview light intensity");
+                        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                        if (ImGui::SliderFloat("##pbr_intensity", &intensity, 0.F, 4.F)) {
+                            pbr_lighting.m_intensity = intensity;
+                        }
+                        K_TRACE_ITEM("pbr_intensity");
+                        ImGui::TextUnformatted("Preview exposure");
+                        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                        if (ImGui::SliderFloat("##pbr_exposure", &exposure, 0.F, 4.F)) {
+                            pbr_lighting.m_exposure = exposure;
+                        }
+                        K_TRACE_ITEM("pbr_exposure");
+                    } else if (representation == SceneRepresentation::BAKED_APPEARANCE) {
                         ImGui::TextWrapped(
                             "Captured unlit color. Unknown texels are masked. Not "
                             "relightable albedo. Surface accuracy and collision unverified.");
@@ -1093,7 +1134,8 @@ int viewer_main(int argc, char** argv) {
         const auto K_DRAWN = renderer->draw(
             { camera.m_position, camera.right(), camera.down(), camera.forward(), camera_fov },
             !state.processing.load(),
-            representation);
+            representation,
+            pbr_lighting);
         if (!K_DRAWN && K_DRAWN.error().m_code == ErrorCode::DEVICE_LOST) {
             if (device_recoveries++) {
                 gui.m_device_lost = true;

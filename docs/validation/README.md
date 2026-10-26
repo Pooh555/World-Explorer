@@ -1,5 +1,6 @@
 # Validation index
 
+- [26 October: native PBR scenes and viewer](2026-10-26-native-pbr-viewer.md) — source-pinned immutable resources and shared Vulkan instances, synthetic pixel/light/input/update validation; real A1/PBR/Godot qualification remains open.
 - [26 October: native textured PBR glTF export](2026-10-26-native-exports.md) — explicit channel/mesh conversion and shared asset/assembly resources with source-bound package admission/recovery; synthetic format evidence, real native PBR/Godot qualification open.
 
 - [26 October: native geometry/material asset adoption](2026-10-26-native-assets.md) — exact native product/completion, face/group/channel and compensated-pivot bindings with shared revisioned definitions/instances and atomic metadata recovery; synthetic CPU scope, real PBR/producer/export qualification open.

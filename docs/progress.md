@@ -311,17 +311,28 @@ radiance, HDR emission and per-instance overrides outside this PBR profile;
 source images and fit lights are not exported. Synthetic format validation does
 not qualify real assets, relighting or engine/runtime behavior.
 
-Next executable step: add immutable PBR mesh/material/texture resources to
-render_core and the native Vulkan viewer for the admitted native asset/export
-profile, preserving source identities, instance sharing, UV/tangent/normal/color
-conventions and initial/replacement scene-update semantics. Validate the shader
-and resource lifetimes with clearly labeled synthetic diagnostics, then use the
-same path for the real A1 completed/PBR pilot when its inputs/producer exist.
-Preserve captured-unlit/generated-static profiles and fail unsupported features
-before runtime admission. Broader structure/completion/LOD/collider contracts,
-heterogeneous per-channel metadata, full producer adoption and real A1 PBR/Godot
-validation remain open under plan §11.4; provisioning requires the recorded
-prerequisites. Optional native GLB compilation remains separate export work.
+The [native PBR scene slice](validation/2026-10-26-native-pbr-viewer.md) now compiles
+admitted native exports into immutable schema-6 bundles and shared Vulkan
+geometry/material/instance resources. Ordinary viewer loading, preview light
+controls and update retirement are exercised on labeled synthetic diagnostics;
+Independent pixel-reference checks cover color/ORM/tangent normals, two shared instances
+and changed lights. Captured profiles remain supported. This is renderer/resource
+integration, without real material recovery, completed-room output, physical
+relighting or Godot qualification. The [protocol](protocols/native_pbr_scene.md)
+owns limits and compatibility.
+
+Next executable step: resolve heterogeneous per-channel material provenance in
+native asset adoption. Recheck plan §11.4 and the material/region/definition
+contracts, add an explicit additive representation for independently partitioned
+channels, and preserve every original channel mask/evidence class through typed
+adoption, owned metadata reload and downstream export/runtime bindings. Keep the
+current refusal until the new representation is admitted; do not collapse differing
+channels into one false root summary. Use bounded synthetic contract/recovery
+checks without claiming real AP completion. Broader structure/completion/LOD/collider
+adoption, producer execution and the real capture/recipe freeze remain A0 work;
+optional native GLB remains separate. Provisioning requires the recorded
+prerequisites. The real A1 completed/PBR pilot must use the same native resource
+path after its inputs and producers exist.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption

@@ -193,7 +193,7 @@ target_link_libraries(map_store PRIVATE collision nlohmann_json::nlohmann_json)
 
 add_library(scene_store src/scene_store/scene.cpp src/scene_store/scene_store.cpp src/scene_store/bundle.cpp
   src/scene_store/world_frame.cpp src/scene_store/collision_support.cpp src/scene_store/depth_space.cpp src/scene_store/depth_space_grid.cpp src/scene_store/depth_space_evidence.cpp src/scene_store/depth_asset.cpp src/scene_store/fusion_asset.cpp src/scene_store/fusion_components.cpp
-  src/scene_store/fusion_cleanup.cpp src/scene_store/color_projection.cpp src/scene_store/baked_appearance.cpp src/scene_store/mesh_texture.cpp src/scene_store/gltf.cpp src/scene_store/gltf_import.cpp src/scene_store/gltf_png.cpp src/scene_store/asset_instances.cpp src/scene_store/asset_instances_io.cpp)
+  src/scene_store/fusion_cleanup.cpp src/scene_store/color_projection.cpp src/scene_store/pbr_appearance.cpp src/scene_store/baked_appearance.cpp src/scene_store/mesh_texture.cpp src/scene_store/gltf.cpp src/scene_store/gltf_import.cpp src/scene_store/gltf_png.cpp src/scene_store/asset_instances.cpp src/scene_store/asset_instances_io.cpp)
 we_target(scene_store)
 target_link_libraries(scene_store PUBLIC core asset_catalog PRIVATE nlohmann_json::nlohmann_json)
 
@@ -223,7 +223,7 @@ add_library(navigation src/navigation/fly_camera.cpp)
 we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
-add_library(application src/application/commands.cpp src/application/scenes.cpp src/application/manual_actions.cpp src/application/draft_mutations.cpp src/application/object_mask_edit.cpp src/application/asset_definition_edit.cpp src/application/evaluation_corpus.cpp src/application/capture_measurement.cpp src/application/corpus_inspection.cpp src/application/geometry_product.cpp src/application/material_product.cpp src/application/structure_graph.cpp src/application/completion_product.cpp src/application/static_export.cpp src/application/native_assets.cpp src/application/native_export.cpp src/application/native_export_codec.cpp
+add_library(application src/application/commands.cpp src/application/scenes.cpp src/application/manual_actions.cpp src/application/draft_mutations.cpp src/application/object_mask_edit.cpp src/application/asset_definition_edit.cpp src/application/evaluation_corpus.cpp src/application/capture_measurement.cpp src/application/corpus_inspection.cpp src/application/geometry_product.cpp src/application/material_product.cpp src/application/structure_graph.cpp src/application/completion_product.cpp src/application/static_export.cpp src/application/native_assets.cpp src/application/native_export.cpp src/application/native_export_codec.cpp src/application/native_pbr_scene.cpp
   src/application/depth_assets.cpp src/application/fusion_assets.cpp src/application/fusion_scene.cpp
   src/application/fusion_cleanup.cpp src/application/geometry_job.cpp src/application/mesh_job.cpp
   src/application/mesh_color_audit.cpp src/application/color_inputs.cpp src/application/mesh_texture.cpp src/application/gltf.cpp
@@ -244,7 +244,7 @@ we_target(we_process)
 target_link_libraries(we_process PRIVATE application)
 target_compile_definitions(we_process PRIVATE WE_WORKER_SCRIPT="${PROJECT_SOURCE_DIR}/workers/worker.py")
 
-add_library(render_core src/render_core/update_sink.cpp src/render_core/camera.cpp src/render_core/tile_plan.cpp)
+add_library(render_core src/render_core/pbr.cpp src/render_core/update_sink.cpp src/render_core/camera.cpp src/render_core/tile_plan.cpp)
 we_target(render_core)
 target_link_libraries(render_core PUBLIC scene_store)
 
@@ -268,7 +268,7 @@ if(WE_BUILD_VIEWER)
   endif()
 
   set(WE_SHADER_OUTPUTS)
-  foreach(shader project.comp radix_histogram.comp radix_scan.comp radix_offsets.comp radix_scatter.comp tile_count.comp tile_scan.comp tile_emit.comp tile_ranges.comp composite.comp composite.frag present.vert mesh.vert mesh.frag)
+  foreach(shader project.comp radix_histogram.comp radix_scan.comp radix_offsets.comp radix_scatter.comp tile_count.comp tile_scan.comp tile_emit.comp tile_ranges.comp composite.comp composite.frag present.vert mesh.vert mesh.frag pbr.vert pbr.frag)
     set(output "${PROJECT_BINARY_DIR}/shaders/${shader}.spv")
 
     add_custom_command(OUTPUT "${output}"
@@ -301,6 +301,12 @@ if(WE_BUILD_VIEWER)
     target_include_directories(we_viewer PRIVATE "${PROJECT_SOURCE_DIR}/src/render_vulkan")
   endif()
   add_dependencies(we_viewer we_shaders)
+
+  add_executable(we_gpu_pbr tests/gpu/pbr.cpp)
+  we_target(we_gpu_pbr)
+  target_link_libraries(we_gpu_pbr PRIVATE application render_vulkan SDL3::SDL3 nlohmann_json::nlohmann_json)
+  target_compile_definitions(we_gpu_pbr PRIVATE WE_SHADER_DIRECTORY="${PROJECT_BINARY_DIR}/shaders")
+  add_dependencies(we_gpu_pbr we_shaders)
 
   add_executable(we_gpu_mesh tests/gpu/mesh.cpp)
   we_target(we_gpu_mesh)

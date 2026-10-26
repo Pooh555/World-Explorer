@@ -3,6 +3,7 @@
 #include "world_explorer/core/math.hpp"
 #include "world_explorer/core/types.hpp"
 #include "world_explorer/scene_store/fusion_asset.hpp"
+#include "world_explorer/scene_store/pbr_appearance.hpp"
 
 #include <cstdint>
 #include <map>
@@ -58,6 +59,7 @@ struct SceneMesh {
     std::vector<std::array<std::uint32_t, 3>> m_triangles;
     std::optional<ObservedMeshSource> m_observed;
     std::optional<BakedMeshAppearance> m_baked {};
+    std::optional<PbrAppearance> m_pbr {};
 };
 
 struct SceneChunk {

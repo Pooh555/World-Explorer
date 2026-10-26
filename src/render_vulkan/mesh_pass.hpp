@@ -41,7 +41,9 @@ class MeshPass {
     ~MeshPass();
     MeshPass(const MeshPass&) = delete;
     MeshPass& operator=(const MeshPass&) = delete;
-    void initialize(const std::filesystem::path& shaders, VkDescriptorSetLayout scene_layout);
+    void initialize(const std::filesystem::path& shaders,
+                    VkDescriptorSetLayout scene_layout,
+                    bool pbr = false);
     std::unique_ptr<MeshTarget> create_target(VkExtent2D extent, std::size_t budget);
     void record(VkCommandBuffer command,
                 const MeshTarget& target,
@@ -50,6 +52,14 @@ class MeshPass {
                 MeshDraw draw,
                 VkBuffer captured,
                 VkDescriptorSet scene_descriptor);
+    void record_pbr(VkCommandBuffer command,
+                    const MeshTarget& target,
+                    const detail::gpu_buffer& scene,
+                    const detail::push_parameters& parameters,
+                    const std::vector<PbrDraw>& draws,
+                    const PbrLighting& lighting,
+                    VkBuffer captured,
+                    VkDescriptorSet scene_descriptor);
 
   private:
     vulkan_device& m_backend;

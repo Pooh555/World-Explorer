@@ -244,7 +244,8 @@ SimilarityTransform get_transform(Decoder& input) {
 
 Encoder encode_chunk(const SceneChunk& chunk) {
     Encoder output;
-    output.text(chunk.m_mesh && chunk.m_mesh->m_baked &&
+    output.text(chunk.m_mesh && chunk.m_mesh->m_pbr ? "WEXCHK05"
+                : chunk.m_mesh && chunk.m_mesh->m_baked &&
                         chunk.m_mesh->m_baked->m_profile == MeshTextureProfile::DEPTH_SEQUENCE
                     ? "WEXCHK04"
                 : chunk.m_mesh && chunk.m_mesh->m_baked ? "WEXCHK03"
@@ -358,6 +359,14 @@ Encoder encode_chunk(const SceneChunk& chunk) {
             }
         }
     }
+    if (chunk.m_mesh && chunk.m_mesh->m_pbr) {
+        const auto K_PBR = encode_pbr_appearance(*chunk.m_mesh->m_pbr);
+        if (!K_PBR) {
+            throw std::runtime_error(K_PBR.error().m_message);
+        }
+        output.m_bytes.insert(output.m_bytes.end(), K_PBR->begin(), K_PBR->end());
+    }
+
     return output;
 }
 
@@ -416,7 +425,7 @@ SceneMesh decode_mesh(Decoder& input, SceneLimits limits, std::uint64_t material
             index = static_cast<std::uint32_t>(input.integer(4));
         }
     }
-    if (material_version) {
+    if (material_version == 1 || material_version == 2) {
         const bool K_SEQUENCE { material_version == 2 };
         input.magic(K_SEQUENCE ? "WEXMAT02" : "WEXMAT01");
         auto& baked = mesh.m_baked.emplace();
@@ -492,7 +501,8 @@ decode_chunk(std::span<const std::byte> bytes, SceneLimits limits, std::uint64_t
     const auto K_MAGIC = input.text(8uz);
     const bool K_SEQUENCE { K_MAGIC == "WEXCHK04" && schema == 4 };
     const bool K_BAKED = (K_MAGIC == "WEXCHK03" && schema >= 3) || K_SEQUENCE;
-    const bool K_MESH = (K_MAGIC == "WEXCHK02" && schema >= 2) || K_BAKED;
+    const bool K_PBR = K_MAGIC == "WEXCHK05" && schema == 6;
+    const bool K_MESH = (K_MAGIC == "WEXCHK02" && schema >= 2) || K_BAKED || K_PBR;
     if (K_MAGIC != "WEXCHK01" && !K_MESH) {
         throw std::runtime_error("unsupported binary chunk version");
     }
@@ -545,7 +555,20 @@ decode_chunk(std::span<const std::byte> bytes, SceneLimits limits, std::uint64_t
         splat.m_sh_degree = static_cast<std::uint8_t>(K_DEGREE);
     }
     if (K_MESH) {
-        chunk->m_mesh = decode_mesh(input, limits, K_SEQUENCE ? 2U : K_BAKED ? 1U : 0U);
+        chunk->m_mesh = decode_mesh(input,
+                                    limits,
+                                    K_PBR        ? 3U
+                                    : K_SEQUENCE ? 2U
+                                    : K_BAKED    ? 1U
+                                                 : 0U);
+        if (K_PBR) {
+            auto pbr = decode_pbr_appearance(bytes.subspan(input.m_position));
+            if (!pbr) {
+                throw std::runtime_error(pbr.error().m_message);
+            }
+            chunk->m_mesh->m_pbr = std::move(*pbr);
+            input.m_position = bytes.size();
+        }
     }
     auto checked = validate_chunk(*chunk, limits);
     if (!checked) {
@@ -602,6 +625,9 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
         if (!checked) {
             return std::unexpected(checked.error());
         }
+        const bool K_PBR = std::ranges::any_of(snapshot->m_chunks, [](const auto& entry) {
+            return entry.second->m_mesh && entry.second->m_mesh->m_pbr;
+        });
         const bool K_MESH = std::ranges::any_of(snapshot->m_chunks, [](const auto& entry) {
             return entry.second->m_mesh.has_value();
         });
@@ -641,10 +667,11 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
         write_atomic(asset_path(directory, K_PROVENANCE_NAME), as_bytes(K_PROVENANCE));
         Json manifest = {
             { "schema_version",
-             K_SEQUENCE ? 4
-             : K_BAKED  ? 3
-             : K_MESH   ? 2
-                        : 1 },
+             K_PBR        ? 6
+             : K_SEQUENCE ? 4
+             : K_BAKED    ? 3
+             : K_MESH     ? 2
+                          : 1 },
             { "scene_id", snapshot->m_id.m_value },
             { "epoch", snapshot->m_epoch.m_value },
             { "revision", snapshot->m_revision.m_value },
@@ -680,6 +707,23 @@ Result<void> write_bundle(const std::filesystem::path& directory, const SceneSna
                 K_SEQUENCE ? "WEXCHK04/WEXMSH01/WEXMAT02" : "WEXCHK03/WEXMSH01/WEXMAT01";
             manifest["geometry"]["lighting"] = "captured_unlit";
         }
+        if (K_PBR) {
+            if (K_BAKED || snapshot->m_world_frame ||
+                std::ranges::any_of(snapshot->m_chunks, [](const auto& item) {
+                    return !item.second->m_mesh || !item.second->m_mesh->m_pbr ||
+                           !item.second->m_splats.empty();
+                })) {
+                return fail(ErrorCode::UNSUPPORTED_OPERATION,
+                            "PBR bundles require exclusively native PBR chunks");
+            }
+            manifest["geometry"]["representation"] = "indexed_native_pbr_instances";
+            manifest["geometry"]["encoding"] = "WEXCHK05/WEXMSH01/WEXPBR01";
+            manifest["geometry"]["lighting"] = "native_pbr_unqualified";
+            manifest["appearance"] = { { "representation", "static_native_pbr" },
+                                      { "lighting", "unqualified_pbr" },
+                                      { "color_domain", "srgb_textures_linear_brdf" },
+                                      { "sh_basis", "none" } };
+        }
         if (snapshot->m_world_frame) {
             const auto& frame = *snapshot->m_world_frame;
             const auto K_NAME = "world_frame_" + frame.m_document_sha256 + ".json";
@@ -712,13 +756,13 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory,
         }
         const auto K_MANIFEST = parse_json(K_BYTES);
         const auto K_ROOT_SCHEMA = unsigned_field(K_MANIFEST, "schema_version");
-        if (K_ROOT_SCHEMA < 1 || K_ROOT_SCHEMA > 5) {
+        if (K_ROOT_SCHEMA < 1 || K_ROOT_SCHEMA > 6) {
             return fail(ErrorCode::UNSUPPORTED_OPERATION, "unsupported scene schema major version");
         }
         const auto K_SCHEMA = K_ROOT_SCHEMA == 5
                                   ? unsigned_field(K_MANIFEST, "payload_schema_version")
                                   : K_ROOT_SCHEMA;
-        if (K_SCHEMA < 1 || K_SCHEMA > 4 ||
+        if (K_SCHEMA < 1 || (K_SCHEMA > 4 && K_SCHEMA != 6) ||
             (K_ROOT_SCHEMA != 5 &&
              (K_MANIFEST.contains("world_frame") || K_MANIFEST.contains("world_frame_sha256") ||
               K_MANIFEST.contains("payload_schema_version")))) {
@@ -729,15 +773,19 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory,
             expect(geometry, "collision_status", "UNAVAILABLE");
             expect(geometry,
                    "representation",
-                   K_SCHEMA >= 3 ? "indexed_position_normal_baked_unlit"
-                                 : "indexed_position_normal");
+                   K_SCHEMA == 6   ? "indexed_native_pbr_instances"
+                   : K_SCHEMA >= 3 ? "indexed_position_normal_baked_unlit"
+                                   : "indexed_position_normal");
             expect(geometry,
                    "encoding",
-                   K_SCHEMA == 4   ? "WEXCHK04/WEXMSH01/WEXMAT02"
+                   K_SCHEMA == 6   ? "WEXCHK05/WEXMSH01/WEXPBR01"
+                   : K_SCHEMA == 4 ? "WEXCHK04/WEXMSH01/WEXMAT02"
                    : K_SCHEMA == 3 ? "WEXCHK03/WEXMSH01/WEXMAT01"
                                    : "WEXCHK02/WEXMSH01");
             if (K_SCHEMA >= 3) {
-                expect(geometry, "lighting", "captured_unlit");
+                expect(geometry,
+                       "lighting",
+                       K_SCHEMA == 6 ? "native_pbr_unqualified" : "captured_unlit");
             }
             expect(geometry, "source_validation", "snapshot_dependencies");
         }
@@ -748,10 +796,18 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory,
         expect(coordinates, "pose_convention", "world_from_camera");
         expect(coordinates, "quaternion_order", "wxyz");
         expect(coordinates, "pixel_centers", "integer");
-        expect(K_MANIFEST.at("appearance"), "representation", "gaussian_3d");
-        expect(K_MANIFEST.at("appearance"), "lighting", "captured");
-        expect(K_MANIFEST.at("appearance"), "color_domain", "srgb");
-        expect(K_MANIFEST.at("appearance"), "sh_basis", "real_3dgs_coefficient_major_rgb");
+        expect(K_MANIFEST.at("appearance"),
+               "representation",
+               K_SCHEMA == 6 ? "static_native_pbr" : "gaussian_3d");
+        expect(K_MANIFEST.at("appearance"),
+               "lighting",
+               K_SCHEMA == 6 ? "unqualified_pbr" : "captured");
+        expect(K_MANIFEST.at("appearance"),
+               "color_domain",
+               K_SCHEMA == 6 ? "srgb_textures_linear_brdf" : "srgb");
+        expect(K_MANIFEST.at("appearance"),
+               "sh_basis",
+               K_SCHEMA == 6 ? "none" : "real_3dgs_coefficient_major_rgb");
         expect(K_MANIFEST, "compression", "none");
         auto state = std::make_shared<SceneState>();
         state->m_id = { unsigned_field(K_MANIFEST, "scene_id") };
@@ -840,10 +896,17 @@ Result<SceneSnapshot> load_bundle(const std::filesystem::path& directory,
                 total_triangles += chunk->m_mesh->m_triangles.size();
             }
         }
+        if (K_SCHEMA == 6 && (state->m_chunks.empty() || state->m_world_frame ||
+                              std::ranges::any_of(state->m_chunks, [](const auto& item) {
+                                  return !item.second->m_mesh || !item.second->m_mesh->m_pbr ||
+                                         !item.second->m_splats.empty();
+                              }))) {
+            throw std::runtime_error("Native PBR schema requires native PBR chunks");
+        }
         if (K_SCHEMA == 4 && !has_sequence) {
             throw std::runtime_error("Sequence schema requires sequence appearance");
         }
-        if (K_SCHEMA >= 3 && !has_baked) {
+        if (K_SCHEMA >= 3 && K_SCHEMA != 6 && !has_baked) {
             throw std::runtime_error("Texture schema requires a baked mesh");
         }
         if (K_SCHEMA >= 2 && !has_mesh) {

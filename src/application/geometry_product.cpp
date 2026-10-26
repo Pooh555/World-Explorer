@@ -121,7 +121,7 @@ const SceneChunk& source_chunk(const GeometryProductRequest& request,
     for (const auto& [K_ID, K_CHUNK] : source.m_chunks) {
         check_stop(stop);
         if (!K_CHUNK || !K_CHUNK->m_mesh || !K_CHUNK->m_splats.empty() ||
-            K_CHUNK->m_mesh->m_baked) {
+            K_CHUNK->m_mesh->m_baked || K_CHUNK->m_mesh->m_pbr) {
             throw RecordFailure(ErrorCode::INVALID_DATA,
                                 "Geometry source requires untextured native meshes");
         }

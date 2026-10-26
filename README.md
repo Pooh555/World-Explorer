@@ -271,6 +271,13 @@ receipts, capture commits and typed evidence explicitly. The command is read-onl
 and prints all remaining blockers; exit 0 certifies successful metadata inspection
 only. Existing reconstruction scenes do not supply missing asset-corpus inputs.
 
+The native application API can compile an admitted textured asset export into a
+[source-pinned PBR draft bundle](docs/protocols/native_pbr_scene.md). Open that
+bundle with `build/dev/we_viewer --scene PATH`: the viewer selects PBR and exposes
+preview direction, intensity and exposure controls. Shared instances reuse mesh
+and image resources. This bounded synthetic validation does not establish real
+asset production, material recovery, measured scale, walking or Godot import.
+
 ## Platform Support
 
 | Platform/profile | Current evidence | Qualification boundary |

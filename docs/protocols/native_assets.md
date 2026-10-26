@@ -96,10 +96,9 @@ request, requires the selected current physical store commit and checks exact
 canonical bytes for every definition and the instance set. Historical semantic
 revisions remain readable under a newly selected current store commit; the API
 does not select a live-scene head. Missing/foreign/stale committed metadata fails.
-Adoption remains a draft result: initial runtime load and replacement still need
-conversion and the existing scene-update path. Native PBR viewing, textured
-portable export, ordinary Godot import and real A1 evaluation remain open.
-
-The separate [native textured glTF profile](native_exports.md) converts these
-private handles into shared portable resources. It adds no native PBR rendering
-or real asset/relighting/engine qualification.
+Adoption remains a draft result. The separate
+[native textured glTF profile](native_exports.md) converts these private handles
+into shared portable resources. The [native PBR scene compiler](native_pbr_scene.md)
+consumes admitted exports for bounded immutable runtime resources through the
+existing scene-update path and diagnostic native viewing. Ordinary Godot import,
+producer execution, real A1 output and AP qualification remain open.
