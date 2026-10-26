@@ -124,3 +124,7 @@ same intent, and stale/conflicting operations fail. Reload freshly admits the
 independent prerequisites, requires the selected current commit and checks every
 root/method input key/content hash. Root alone cannot replace missing selected
 method bytes. Existing immutable-store crash/locking semantics apply unchanged.
+
+The separate [native asset-adoption path](native_assets.md) now binds these
+private handles to checked revisioned definitions/instances. It preserves this
+profile and adds no producer, renderer/export or real AP qualification.

@@ -128,3 +128,7 @@ matching retries resume the same intent. Wrong base/context or conflicting
 operation requires failure/resync. Reload freshly admits independent inputs,
 requires the selected current commit and checks every closure key/content hash.
 A committed root without channels, provenance or fits is insufficient.
+
+The separate [native asset-adoption path](native_assets.md) now binds these
+private handles to checked revisioned definitions/instances. It preserves this
+profile and adds no producer, renderer/export or real AP qualification.

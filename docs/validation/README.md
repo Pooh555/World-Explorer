@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: native geometry/material asset adoption](2026-10-26-native-assets.md) — exact native product/completion, face/group/channel and compensated-pivot bindings with shared revisioned definitions/instances and atomic metadata recovery; synthetic CPU scope, real PBR/producer/export qualification open.
+
 - [26 October: generated constant GLB/export manifests](2026-10-26-static-exports.md) — actual shared-resource GLB conversion, source-bound package/sidecar/audit admission and owned recovery; synthetic binary oracle and zero-error/warning Khronos result, no Godot/real asset qualification.
 
 - [26 October: bounded completion products](2026-10-26-completion-products.md) — actual observed-face protection, complete regions, pinned method inputs, ranked/rejected consistency and atomic owned recovery; synthetic CPU scope, no real completion/rights/adoption qualification.

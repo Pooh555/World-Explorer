@@ -292,16 +292,27 @@ with zero errors/warnings; Godot is unavailable and stays NOT_RUN. The
 native/textured PBR products need a converter/adoption path, and no real asset,
 material recovery or engine qualification is supplied. Captured profiles are unchanged.
 
-Next executable step: connect independently admitted native geometry/material
-products to revisioned asset definitions/instances (plan §11.4), preserving exact
-receipt/epoch/pose, material-group/variant, pivot/unit/bounds and complete face/
-texel provenance bindings. Require completion's selected geometry where applicable;
-reject mismatched or unsupported payloads before publication. Reuse existing owned
-draft/history transactions, preserve generated-static v1 and captured GLB, and
-exercise cancellation/replay and stale/foreign bindings. Native PBR viewing and
-textured portable conversion remain separate required integration/validation work.
-Broader structure/completion contracts, full producer/asset adoption, export
-contracts and real A1 native PBR/Godot validation remain open under plan §11.4; provisioning still requires the recorded prerequisites.
+The [native asset-adoption slice](validation/2026-10-26-native-assets.md) now
+binds independently admitted geometry/material products and optional selected
+completion to revisioned definitions/instances. It checks exact original context,
+all face groups, full face/channel provenance, recomputed pivoted bounds and
+compensated original placement, retaining shared payloads and manual ancestry.
+Existing owned metadata publication/reload provides atomic cancellation/replay.
+The [protocol](protocols/native_assets.md) scopes this draft path: heterogeneous
+channel summaries, broader structure/LOD/collider adoption and actual producer,
+renderer/export integration remain open. No real AP gate is qualified.
+
+Next executable step: implement an explicit native-material texture/mesh converter
+from the admitted asset handle (plan §§11.4–11.5), preserving original geometry,
+material-group/channel/UV/tangent, semantic identity, pivot and instance bindings.
+Encode linear native color/emission channels into the declared portable color
+format, retain numeric/normal conventions and record losses/unsupported features.
+Prove individual/assembly decoded equivalence, actual validator checks and stale/
+foreign rejection before using the same resources in native PBR viewing. Preserve
+generated-static v1 and captured GLB; do not flatten captured radiance into albedo.
+Broader structure/completion contracts, heterogeneous per-channel metadata, full
+producer/asset adoption and real A1 native PBR/Godot validation remain open under
+plan §11.4; provisioning still requires the recorded prerequisites.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption

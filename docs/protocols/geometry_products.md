@@ -130,3 +130,7 @@ recovers. Fresh reads require the independently selected current commit and both
 hashes, then repeat admission against the original capture/receipt/native source.
 No separate crash mechanism or global asset authority is introduced. Integration
 with full asset definitions, material products and producers remains open.
+
+The separate [native asset-adoption path](native_assets.md) now binds these
+private handles to checked revisioned definitions/instances. It preserves this
+profile and adds no producer, renderer/export or real AP qualification.
