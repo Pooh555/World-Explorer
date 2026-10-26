@@ -6,6 +6,10 @@ application. Both `EDIT_GEOMETRY` and `EDIT_MATERIAL` are supported for the boun
 profile below. A0/AP0 remain **IN_PROGRESS**. No scene transaction, worker,
 renderer/export adapter or evaluated PBR product follows from this admission.
 
+The additive [native-source geometry profile](geometry_products.md) owns broader
+geometry/correspondence admission through `application`. The generated-static
+payload and edit formats below keep their existing behavior.
+
 ## Definition, selection and atomic publication
 
 The command supplies original draft identity/directory and independent before/after

@@ -238,16 +238,24 @@ costs, independent reviews and measured stage limits remain unresolved. Provisio
 is blocked. The host was rechecked at 8,188 MiB GPU /15.24 GiB RAM; the saved
 sample bundle reopens, without supplying A1 consent/scale/reference evidence.
 
-Next executable step: extend the typed geometry-product boundary beyond the
-generated-static profile using the retained M3 native mesh/source contracts.
-Bind independently selected capture/pose/source revisions and explicit surface
-correspondence/observed-support declarations; validate actual bounded triangle,
-normal/tangent/group/UV data and owned admission/publication/reload. Preserve the
-existing generated-static v1 profile. Exercise asymmetric synthetic geometry and
-read-only admission or explicit missing-prerequisite refusal for retained real
-partial geometry. Keep unknown/inferred support explicit; no measured-scale,
-Q5/N2 or A1 completion/PBR claim follows. Full structure/material/completion/export
-contracts and the real product validation remain open under plan §11.4.
+The [native-source geometry slice](validation/2026-10-26-geometry-products.md) adds
+bounded high/runtime arrays, normal/tangent/group/UV and topology checks, complete
+per-face correspondence/support and owned two-record publication/reload. Observed
+declarations require exact coverage within a native source triangle; inferred,
+unknown/generated and manual ancestry stay explicit. The retained real partial
+mesh reopens and refuses absent independent asset pins. The
+[protocol](protocols/geometry_products.md) scopes this profile; full producer/asset
+adoption, physical support, measured geometry and broader quality remain open.
+
+Next executable step: implement typed material-product admission bound to the
+selected geometry handle and original receipt/context. Validate bounded actual
+channel payloads, BRDF/lighting mode, color spaces, normal basis/handedness, UV and
+sampler policy plus complete texel provenance; keep source fit-light/exposure
+dependencies separate from evaluation inputs. Preserve generated-constant PBR v1.
+Exercise synthetic channel/geometry/provenance mismatches and immutable recovery;
+retain physical relighting and actual material/light fitting as unverified.
+Full structure/completion/export contracts and real A1 native PBR/Godot validation
+remain open under plan §11.4; provisioning still requires the recorded prerequisites.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption

@@ -53,7 +53,11 @@ The [26 October A0 audit](validation/2026-10-26-a0-exit-audit.md) retains A0/AP0
 contracts and a real capture/recipe freeze remain open. The
 [installation proposal](asset_installation_plan.md) records reference pins and
 explicit missing costs/reviews/fit bindings; provisioning is **BLOCKED**. Existing
-synthetic admission evidence does not qualify those missing capabilities.
+synthetic admission evidence does not qualify those missing capabilities. The
+[native-source geometry slice](validation/2026-10-26-geometry-products.md) adds
+bounded actual mesh/attribute/topology/correspondence admission; physical support,
+full asset/material adoption and the remaining geometry-quality obligations stay
+open.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

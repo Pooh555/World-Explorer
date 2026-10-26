@@ -223,7 +223,7 @@ add_library(navigation src/navigation/fly_camera.cpp)
 we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
-add_library(application src/application/commands.cpp src/application/scenes.cpp src/application/manual_actions.cpp src/application/draft_mutations.cpp src/application/object_mask_edit.cpp src/application/asset_definition_edit.cpp src/application/evaluation_corpus.cpp src/application/capture_measurement.cpp src/application/corpus_inspection.cpp
+add_library(application src/application/commands.cpp src/application/scenes.cpp src/application/manual_actions.cpp src/application/draft_mutations.cpp src/application/object_mask_edit.cpp src/application/asset_definition_edit.cpp src/application/evaluation_corpus.cpp src/application/capture_measurement.cpp src/application/corpus_inspection.cpp src/application/geometry_product.cpp
   src/application/depth_assets.cpp src/application/fusion_assets.cpp src/application/fusion_scene.cpp
   src/application/fusion_cleanup.cpp src/application/geometry_job.cpp src/application/mesh_job.cpp
   src/application/mesh_color_audit.cpp src/application/color_inputs.cpp src/application/mesh_texture.cpp src/application/gltf.cpp
@@ -398,6 +398,9 @@ if(BUILD_TESTING)
   add_executable(we_draft_mutation_probe tests/fixtures/draft_mutation_probe.cpp)
   we_target(we_draft_mutation_probe)
   target_link_libraries(we_draft_mutation_probe PRIVATE application nlohmann_json::nlohmann_json)
+  add_executable(we_geometry_product_probe tests/fixtures/geometry_product_probe.cpp)
+  we_target(we_geometry_product_probe)
+  target_link_libraries(we_geometry_product_probe PRIVATE application)
   add_executable(we_collision_fixture tests/fixtures/collision_fixture.cpp)
   we_target(we_collision_fixture)
   target_link_libraries(we_collision_fixture PRIVATE collision nlohmann_json::nlohmann_json)
