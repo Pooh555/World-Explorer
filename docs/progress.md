@@ -247,13 +247,22 @@ mesh reopens and refuses absent independent asset pins. The
 [protocol](protocols/geometry_products.md) scopes this profile; full producer/asset
 adoption, physical support, measured geometry and broader quality remain open.
 
-Next executable step: implement typed material-product admission bound to the
-selected geometry handle and original receipt/context. Validate bounded actual
-channel payloads, BRDF/lighting mode, color spaces, normal basis/handedness, UV and
-sampler policy plus complete texel provenance; keep source fit-light/exposure
-dependencies separate from evaluation inputs. Preserve generated-constant PBR v1.
-Exercise synthetic channel/geometry/provenance mismatches and immutable recovery;
-retain physical relighting and actual material/light fitting as unverified.
+The [material-product slice](validation/2026-10-26-material-products.md) adds
+bounded actual linear channel bytes, geometry/capture/receipt bindings, explicit
+BRDF/normal/UV/sampler declarations and complete native texel provenance. Estimated
+PBR requires separate inference-view light/exposure inputs; generated mixed regions
+and declared edits stay explicit. Full owned closure publication/reload is atomic.
+The [protocol](protocols/material_products.md) scopes this CPU profile; generated
+constant-PBR v1 is unchanged. Actual fitting, physical relighting, sRGB texture
+export, producer/asset adoption and AP6 remain unverified.
+
+Next executable step: implement bounded typed structure-graph admission against
+independently selected native geometry/capture/receipt handles (plan §11.4).
+Validate stable surface/opening/room IDs, finite bounded patches and oriented
+boundary/opening loops, explicit thickness source, adjacency/support/contact/
+containment relations and residuals; retain observed/inferred/generated provenance
+without treating a semantic floor as measured gravity. Exercise malformed loops,
+foreign/stale dependencies, immutable cancellation/replay and full selected reload.
 Full structure/completion/export contracts and real A1 native PBR/Godot validation
 remain open under plan §11.4; provisioning still requires the recorded prerequisites.
 Available selected local

@@ -365,6 +365,7 @@ struct AdmittedGeometryProduct::Implementation {
     std::vector<GeometryFaceSupport> m_support;
     std::array<std::uint64_t, 5> m_coverage {};
     std::string m_receipt;
+    AssetRevisionRef m_capture;
     AssetDependencyContext m_context;
     bool m_synthetic {}, m_manual {}, m_closed {};
     std::vector<std::byte> m_bytes, m_source_bytes;
@@ -399,6 +400,10 @@ const std::array<std::uint64_t, 5>& AdmittedGeometryProduct::coverage() const {
 
 const std::string& AdmittedGeometryProduct::receipt_sha256() const {
     return m_state->m_receipt;
+}
+
+const AssetRevisionRef& AdmittedGeometryProduct::capture_product() const {
+    return m_state->m_capture;
 }
 
 const AssetDependencyContext& AdmittedGeometryProduct::context() const {
@@ -668,6 +673,7 @@ Result<AdmittedGeometryProduct> inspect_geometry_product(const GeometryProductRe
                                                          std::move(support),
                                                          coverage,
                                                          receipt.receipt_sha256(),
+                                                         capture.record().m_selection.m_product,
                                                          expected,
                                                          K_SYNTHETIC,
                                                          node.m_manual_ancestor,

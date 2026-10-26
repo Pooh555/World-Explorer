@@ -49,7 +49,7 @@ M4/M6; full AP8/AP9 cannot pass on that local exit alone. M7–M8 retain their l
 scope and deferral.
 
 The [26 October A0 audit](validation/2026-10-26-a0-exit-audit.md) retains A0/AP0
-**IN_PROGRESS**: full geometry/material/structure/completion/export record
+**IN_PROGRESS**: full producer/asset adoption, structure/completion/export record
 contracts and a real capture/recipe freeze remain open. The
 [installation proposal](asset_installation_plan.md) records reference pins and
 explicit missing costs/reviews/fit bindings; provisioning is **BLOCKED**. Existing
@@ -58,6 +58,11 @@ synthetic admission evidence does not qualify those missing capabilities. The
 bounded actual mesh/attribute/topology/correspondence admission; physical support,
 full asset/material adoption and the remaining geometry-quality obligations stay
 open.
+The [material-product slice](validation/2026-10-26-material-products.md) admits
+bounded actual linear channels and complete texel provenance, explicit inference
+light/exposure inputs and original geometry/capture/receipt pins. Owned closure
+recovery passes CPU checks; actual fitting, physical relighting, texture export
+and AP6 remain unqualified. Generated-constant PBR v1 is preserved.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

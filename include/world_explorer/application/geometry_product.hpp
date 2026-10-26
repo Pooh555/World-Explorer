@@ -73,6 +73,7 @@ class AdmittedGeometryProduct {
     const std::vector<GeometryFaceSupport>& support() const;
     const std::array<std::uint64_t, 5>& coverage() const;
     const std::string& receipt_sha256() const;
+    const AssetRevisionRef& capture_product() const;
     const AssetDependencyContext& context() const;
     bool synthetic_source() const;
     bool manual_ancestor() const;

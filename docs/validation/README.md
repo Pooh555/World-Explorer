@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: bounded material products](2026-10-26-material-products.md) — actual linear channel bytes, complete texel provenance, inference-only light/exposure pins and atomic full-closure replay; synthetic CPU scope, no fitting/relighting/AP qualification.
+
 - [26 October: native-source geometry products](2026-10-26-geometry-products.md) — bounded native/runtime mesh, attribute/topology/correspondence/support admission and atomic owned replay; synthetic CPU fixtures and retained real mesh missing-input refusal, no physical/AP qualification.
 
 - [26 October: A0 exit audit and installation proposal](2026-10-26-a0-exit-audit.md) — current contract gaps, selected host/environment/bundle observations and bounded primary metadata pins; A0/AP0 remain in progress, provisioning blocked, no new algorithm/product qualification.
