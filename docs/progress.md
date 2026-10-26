@@ -282,14 +282,24 @@ publication/reload is atomic. The [protocol](protocols/completion_products.md)
 keeps geometry subjects and opaque execution/rights declarations separate from
 asset-definition identity, real producer execution and perceptual completion quality.
 
-Next executable step: implement bounded export-manifest admission (plan §11.4).
-Bind actual exported payload bytes to independently admitted geometry/material and
-scene/catalog revisions; validate canonical mesh/material/node/resource mapping,
-transforms/units, sidecar hashes, feature losses and exact validator/import receipt
-identities/outcomes. Refuse unsupported profiles or missing converters/evidence;
-captured-unlit GLB cannot stand in for reusable PBR or ordinary Godot validation.
-Exercise corruption, mismatched canonical resources, stale context, missing
-sidecars/receipts and immutable cancellation/replay. Preserve current export profiles.
+The [generated constant GLB/export-manifest slice](validation/2026-10-26-static-exports.md)
+adds actual static mesh/constant-material conversion, resource reuse across nodes,
+source-bound complete package admission and atomic owned replay. Authoritative
+definition/instance/provenance/rights/audit sidecars retain exact identities and
+conversion losses. The actual synthetic GLB passes the retained Khronos validator
+with zero errors/warnings; Godot is unavailable and stays NOT_RUN. The
+[protocol](protocols/static_exports.md) limits this separate profile: expanded
+native/textured PBR products need a converter/adoption path, and no real asset,
+material recovery or engine qualification is supplied. Captured profiles are unchanged.
+
+Next executable step: connect independently admitted native geometry/material
+products to revisioned asset definitions/instances (plan §11.4), preserving exact
+receipt/epoch/pose, material-group/variant, pivot/unit/bounds and complete face/
+texel provenance bindings. Require completion's selected geometry where applicable;
+reject mismatched or unsupported payloads before publication. Reuse existing owned
+draft/history transactions, preserve generated-static v1 and captured GLB, and
+exercise cancellation/replay and stale/foreign bindings. Native PBR viewing and
+textured portable conversion remain separate required integration/validation work.
 Broader structure/completion contracts, full producer/asset adoption, export
 contracts and real A1 native PBR/Godot validation remain open under plan §11.4; provisioning still requires the recorded prerequisites.
 Available selected local

@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: generated constant GLB/export manifests](2026-10-26-static-exports.md) — actual shared-resource GLB conversion, source-bound package/sidecar/audit admission and owned recovery; synthetic binary oracle and zero-error/warning Khronos result, no Godot/real asset qualification.
+
 - [26 October: bounded completion products](2026-10-26-completion-products.md) — actual observed-face protection, complete regions, pinned method inputs, ranked/rejected consistency and atomic owned recovery; synthetic CPU scope, no real completion/rights/adoption qualification.
 
 - [26 October: Ubuntu inference-handle lifetime repair](2026-10-26-ubuntu-inference-lifetime.md) — explicit owners replace temporary range handles in two readers and matching fixtures; local checks retain warnings/standards, GCC 13 CI confirmation pending.

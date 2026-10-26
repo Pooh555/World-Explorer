@@ -55,8 +55,8 @@ M4/M6; full AP8/AP9 cannot pass on that local exit alone. M7–M8 retain their l
 scope and deferral.
 
 The [26 October A0 audit](validation/2026-10-26-a0-exit-audit.md) retains A0/AP0
-**IN_PROGRESS**: full producer/asset adoption, broader structure/completion
-contracts, export records and a real capture/recipe freeze remain open. The
+**IN_PROGRESS**: full producer/asset adoption, broader structure/completion/export
+contracts and a real capture/recipe freeze remain open. The
 [installation proposal](asset_installation_plan.md) records reference pins and
 explicit missing costs/reviews/fit bindings; provisioning is **BLOCKED**. Existing
 synthetic admission evidence does not qualify those missing capabilities. The
@@ -78,6 +78,11 @@ actual observed-face protection, complete output partitions, independently pinne
 method inputs and computed candidate consistency with owned recovery. This
 synthetic CPU profile qualifies no algorithm execution, hidden-surface quality,
 rights, full object/shell identity or asset-definition adoption.
+The [generated constant export slice](validation/2026-10-26-static-exports.md)
+adds real GLB bytes/resource sharing and source-bound manifest/sidecar/audit
+admission with immutable recovery. A synthetic artifact passes Khronos validation;
+ordinary Godot import, expanded native/textured PBR conversion/adoption and real
+A1/AP7 qualification remain open. Existing captured profiles remain unchanged.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|
