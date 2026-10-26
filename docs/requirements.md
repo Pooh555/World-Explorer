@@ -49,8 +49,8 @@ M4/M6; full AP8/AP9 cannot pass on that local exit alone. M7–M8 retain their l
 scope and deferral.
 
 The [26 October A0 audit](validation/2026-10-26-a0-exit-audit.md) retains A0/AP0
-**IN_PROGRESS**: full producer/asset adoption, structure/completion/export record
-contracts and a real capture/recipe freeze remain open. The
+**IN_PROGRESS**: full producer/asset adoption, broader structure contracts,
+completion/export records and a real capture/recipe freeze remain open. The
 [installation proposal](asset_installation_plan.md) records reference pins and
 explicit missing costs/reviews/fit bindings; provisioning is **BLOCKED**. Existing
 synthetic admission evidence does not qualify those missing capabilities. The
@@ -63,6 +63,10 @@ bounded actual linear channels and complete texel provenance, explicit inference
 light/exposure inputs and original geometry/capture/receipt pins. Owned closure
 recovery passes CPU checks; actual fitting, physical relighting, texture export
 and AP6 remain unqualified. Generated-constant PBR v1 is preserved.
+The [structure-graph slice](validation/2026-10-26-structure-graphs.md) adds bounded
+native patch/boundary admission, planar openings, exact room links and computed
+plane/anchor/AABB residuals. These partial CPU contracts do not establish physical
+room closure, observed voids, measured gravity or load-bearing support.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

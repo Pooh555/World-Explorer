@@ -256,15 +256,25 @@ The [protocol](protocols/material_products.md) scopes this CPU profile; generate
 constant-PBR v1 is unchanged. Actual fitting, physical relighting, sRGB texture
 export, producer/asset adoption and AP6 remain unverified.
 
-Next executable step: implement bounded typed structure-graph admission against
-independently selected native geometry/capture/receipt handles (plan §11.4).
-Validate stable surface/opening/room IDs, finite bounded patches and oriented
-boundary/opening loops, explicit thickness source, adjacency/support/contact/
-containment relations and residuals; retain observed/inferred/generated provenance
-without treating a semantic floor as measured gravity. Exercise malformed loops,
-foreign/stale dependencies, immutable cancellation/replay and full selected reload.
-Full structure/completion/export contracts and real A1 native PBR/Godot validation
-remain open under plan §11.4; provisioning still requires the recorded prerequisites.
+The [structure-graph slice](validation/2026-10-26-structure-graphs.md) adds bounded
+native planar/nonplanar patches, complete directed mesh-boundary loops, declared
+thickness, planar openings and exact room adjacency. Native plane/anchor/AABB
+residuals are computed against independent limits; support cycles and misleading
+observed void/metric/closed-room claims fail. Owned publication/reload preserves
+original geometry/capture/receipt bindings. The [protocol](protocols/structure_graphs.md)
+keeps partial coverage, semantic labels and declared spatial relations separate
+from physical room closure, gravity, load-bearing support and observed free space.
+
+Next executable step: implement bounded typed completion-product admission against
+independently selected geometry/structure/capture/receipt handles (plan §11.4).
+Protect observed anchors through actual correspondence; bind explicit completion
+regions, method/seed/prompt/library/rights inputs and ranked alternatives/rejection
+reasons, consistency results and confidence. Keep generated/inferred support and
+manual ancestry explicit. Exercise false observed-support claims, foreign/stale
+pins, cancellation/replay and independent committed reload. No completion worker
+or visually plausible substitute can satisfy the real reconstruction gate.
+Broader structure contracts, full producer/asset adoption, completion/export and
+real A1 native PBR/Godot validation remain open under plan §11.4; provisioning still requires the recorded prerequisites.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption

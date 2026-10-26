@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: bounded structure graphs](2026-10-26-structure-graphs.md) — native connected patches and complete oriented boundaries, planar openings, room links and spatial residuals; synthetic CPU admission/recovery, no physical room/support/gravity qualification.
+
 - [26 October: bounded material products](2026-10-26-material-products.md) — actual linear channel bytes, complete texel provenance, inference-only light/exposure pins and atomic full-closure replay; synthetic CPU scope, no fitting/relighting/AP qualification.
 
 - [26 October: native-source geometry products](2026-10-26-geometry-products.md) — bounded native/runtime mesh, attribute/topology/correspondence/support admission and atomic owned replay; synthetic CPU fixtures and retained real mesh missing-input refusal, no physical/AP qualification.
