@@ -1,5 +1,7 @@
 # Validation index
 
+- [26 October: bounded completion products](2026-10-26-completion-products.md) — actual observed-face protection, complete regions, pinned method inputs, ranked/rejected consistency and atomic owned recovery; synthetic CPU scope, no real completion/rights/adoption qualification.
+
 - [26 October: Ubuntu inference-handle lifetime repair](2026-10-26-ubuntu-inference-lifetime.md) — explicit owners replace temporary range handles in two readers and matching fixtures; local checks retain warnings/standards, GCC 13 CI confirmation pending.
 
 - [26 October: bounded structure graphs](2026-10-26-structure-graphs.md) — native connected patches and complete oriented boundaries, planar openings, room links and spatial residuals; synthetic CPU admission/recovery, no physical room/support/gravity qualification.

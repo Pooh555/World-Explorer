@@ -273,16 +273,25 @@ original geometry/capture/receipt bindings. The [protocol](protocols/structure_g
 keeps partial coverage, semantic labels and declared spatial relations separate
 from physical room closure, gravity, load-bearing support and observed free space.
 
-Next executable step: implement bounded typed completion-product admission against
-independently selected geometry/structure/capture/receipt handles (plan §11.4).
-Protect observed anchors through actual correspondence; bind explicit completion
-regions, method/seed/prompt/library/rights inputs and ranked alternatives/rejection
-reasons, consistency results and confidence. Keep generated/inferred support and
-manual ancestry explicit. Exercise false observed-support claims, foreign/stale
-pins, cancellation/replay and independent committed reload. No completion worker
-or visually plausible substitute can satisfy the real reconstruction gate.
-Broader structure contracts, full producer/asset adoption, completion/export and
-real A1 native PBR/Godot validation remain open under plan §11.4; provisioning still requires the recorded prerequisites.
+The [completion-product slice](validation/2026-10-26-completion-products.md) adds
+original/candidate geometry and structure binding, exact observed-face protection,
+complete output partitions, pinned method/seed/prompt/library/rights bytes and
+recomputed anchor/partition/extent checks. Selected output must pass; rejected
+alternatives retain actual failed checks and declared ranking. Owned method/root
+publication/reload is atomic. The [protocol](protocols/completion_products.md)
+keeps geometry subjects and opaque execution/rights declarations separate from
+asset-definition identity, real producer execution and perceptual completion quality.
+
+Next executable step: implement bounded export-manifest admission (plan §11.4).
+Bind actual exported payload bytes to independently admitted geometry/material and
+scene/catalog revisions; validate canonical mesh/material/node/resource mapping,
+transforms/units, sidecar hashes, feature losses and exact validator/import receipt
+identities/outcomes. Refuse unsupported profiles or missing converters/evidence;
+captured-unlit GLB cannot stand in for reusable PBR or ordinary Godot validation.
+Exercise corruption, mismatched canonical resources, stale context, missing
+sidecars/receipts and immutable cancellation/replay. Preserve current export profiles.
+Broader structure/completion contracts, full producer/asset adoption, export
+contracts and real A1 native PBR/Godot validation remain open under plan §11.4; provisioning still requires the recorded prerequisites.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption
