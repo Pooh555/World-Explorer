@@ -422,17 +422,28 @@ source preservation and unchanged global blockers. The
 [request protocol](protocols/external_model_inspection.md) labels all output
 unqualified and keeps observation separate from acquisition/execution authority.
 
-Next executable step: refresh the read-only A0 exit/pre-installation audit against
-this command and the current installation proposal. Reconcile exact proposed
-code/config/terms/archive, isolated environment and checkpoint pins, whole-plan
-download/installed/build/staging/scratch costs, independent review selections,
-enforceable worker limits and real pilot/corpus prerequisites into a concrete
-freeze/acquisition proposal. Start with the saved large request/report oracle and
-`python3 tools/check_dependency_inventory.py --local-evidence`; retained runtime
-payload evidence is stale after relinking and must not be reported current.
-Keep unknown costs null/blocking and the real checkpoint unacquired. Address the
-first unresolved prerequisite; do not add another observation profile merely to
-avoid the real recipe/capture freeze. Do not treat synthetic diagnostics as real production,
+The [28 October readiness audit](validation/2026-10-28-a0-readiness.md) confirms
+exact large-file CLI replay and unchanged source data. The candidate Linux
+CPython3.12/torch2.5.1+cu124/torchvision0.20.1+cu124 pair now has publisher hash/size
+pins and bounded dependency-metadata inspection; full artifact verification,
+transitive/source/build/installed closure, independent reviews and whole-plan
+costs remain open. The user requested the [A1 capture checklist](a1_capture_checklist.md);
+no new pilot data has been selected or qualified.
+
+Next executable step: resolve the proposed control variant's transitive artifact
+lock from `artifacts/validation/a0-readiness-20261028/wheel-metadata.json`, starting
+with its 12 NVIDIA packages, Triton3.1.0, SymPy1.13.1 and SAM's direct/build
+requirements. Pin exact Linux/cp312 URLs, hashes, sizes and notice/review gaps;
+also resolve the complete SAM source inventory/archive and interpreter/toolchain identities.
+Preserve all existing environments. Keep installed/build/staging/scratch costs
+null/blocking until independently bounded, and prepare the concrete acquisition
+proposal before any installation/model download. Do not introduce another
+observation profile to avoid recipe freeze. The user can independently collect
+pilot data using the checklist; once a folder is identified, inspect original
+hashes/roles/measurement and reference gaps before any solve. The correct local checker is
+`python3 tools/check_dependency_manifest.py --local-evidence`; it currently exits
+2 on stale runtime bytes, while default passes and strict closure exits 3. No
+runtime evidence was refreshed. Do not treat synthetic diagnostics as real production,
 enable measured walking or skip to platform/engine qualification. Convex props, physics-session integration,
 broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.

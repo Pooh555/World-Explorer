@@ -11,7 +11,8 @@ Read by task; do not load the entire directory for routine work.
 | M3 development exit and deferred Q5/N2 evidence | [Plan §8.3](technical_plan.md#83-m3-local-development-exit-and-deferred-reconstruction-qualification), [ADR 020](adr/020-m3-development-exit.md); no measurement required for internet-sourced `sample_1`, measured geometry/walking gates remain open |
 | Planned reusable objects, completed environments and PBR assets | [Plan §11](technical_plan.md#11-offline-asset-production-track), [assets-before-platforms decision](adr/019-assets-before-platforms.md); A0 contracts IN_PROGRESS after M3/before M4; A1–A6 product work NOT_STARTED |
 | Asset-pipeline candidate evidence, licenses and connection experiments | [Dated research assessment](research/offline_asset_pipeline.md); external facts only, no installed recipe or qualification |
-| Prepare asset-worker provisioning | [Installation proposal](asset_installation_plan.md), [A0 exit audit](validation/2026-10-26-a0-exit-audit.md); explicit reference pins, missing costs/reviews/capture bindings and isolated installation sequence; provisioning remains blocked |
+| Prepare asset-worker provisioning | [Installation proposal](asset_installation_plan.md), [28 October readiness audit](validation/2026-10-28-a0-readiness.md); explicit candidate artifact pins, remaining closure/cost/review gaps; provisioning remains blocked |
+| Prepare the real A1 pilot capture | [Capture checklist](a1_capture_checklist.md); separate inference/evaluation passes, independent measurements, empty background and changed-light references; local data only |
 | Observe explicitly selected large MODEL files | [External MODEL v2](protocols/asset_external_models.md), [shared request/CLI](protocols/external_model_inspection.md); streamed two-pass mutable-file observation, separate from v1 owned receipts and execution authority |
 | Write/update documentation | [Documentation protocol](protocols/documentation.md) |
 | Implement an interface | [Capture](protocols/capture.md), [poses](protocols/poses.md), [maps](protocols/maps.md), [scenes](protocols/scene.md), [depth](protocols/depth.md), [dense inputs](protocols/dense_inputs.md), [workers](protocols/worker.md), [jobs](protocols/jobs.md), [viewer settings/camera/handoff](protocols/viewer.md) |
@@ -47,7 +48,7 @@ Read by task; do not load the entire directory for routine work.
 | Check actual backend imports / owned viewer mappings | [Observed Linux mappings](protocols/backend_bindings.md) |
 | Check newly mapped owners and installed notices | [Installed owner associations](protocols/binding_owners.md) |
 | Find historical results | [Validation index](validation/README.md); reports preserve their original scope |
-| Check current A0 readiness before installation | [27 October exit audit](validation/2026-10-27-a0-exit-audit.md), [installation proposal](asset_installation_plan.md); bounded product contracts exist, large-artifact evidence/runtime/recipe/capture prerequisites remain open |
+| Check current A0 readiness before installation | [28 October readiness audit](validation/2026-10-28-a0-readiness.md), [installation proposal](asset_installation_plan.md); large-file observation exists, full artifact/runtime/recipe/capture closure remains open |
 | Understand a consequential choice | [Decision records](adr/) |
 | Build/use the application | Repository [README](../README.md) |
 | Measure CPU contract coverage | [Coverage protocol](protocols/coverage.md), reviewed [scope](../tools/coverage_scope.json) |

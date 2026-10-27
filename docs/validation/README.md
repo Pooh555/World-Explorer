@@ -1,5 +1,7 @@
 # Validation index
 
+- [28 October: A0 readiness and capture preparation](2026-10-28-a0-readiness.md) — exact synthetic replay, current dependency blockers, concrete Linux Torch artifact/dependency proposal and requested real capture checklist; no installation, inference or gate promotion.
+
 - [28 October: Windows probe environment repair](2026-10-28-windows-probe-environment.md) — remove three exposed deprecated CRT calls with owned cross-platform values; local branch/output checks, native Windows rerun pending.
 
 - [27 October: external MODEL shared request and CLI](2026-10-27-external-model-cli.md) — strict independent request/receipt/file/review pins, actual large-file replay, cancellation/refusal and source preservation; real recipe/capture/acquisition/runtime qualification remains open.

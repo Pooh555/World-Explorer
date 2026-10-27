@@ -1,11 +1,12 @@
-# Asset-worker installation proposal — updated 27 October 2026
+# Asset-worker installation proposal — updated 28 October 2026
 
 **PROPOSED; provisioning BLOCKED; A0/AP0 remain IN_PROGRESS.** This is the explicit
 installation plan for plan §§11.2/11.7's initial control pipeline. No installer
 consumes this document, no executable asset recipe has been frozen, and no
 component is approved by its inclusion here. The
-[current A0 audit](validation/2026-10-27-a0-exit-audit.md) owns current local
-observations; the [26 October audit](validation/2026-10-26-a0-exit-audit.md)
+[current readiness audit](validation/2026-10-28-a0-readiness.md) owns current local
+observations; the [27 October audit](validation/2026-10-27-a0-exit-audit.md)
+retains the original large-file blocker, and the [26 October audit](validation/2026-10-26-a0-exit-audit.md)
 retains the original reference collection and its historical contract gaps.
 
 ## Proposed components and missing bindings
@@ -33,6 +34,63 @@ environment is torch 2.4.1+cu124 / torchvision 0.19.1+cu124. Use a **new isolate
 Python 3.12 environment** and an exact resolved dependency lock; preserve the
 training, pose, dense, fusion and metric environments. Offload options and the
 tiny variant do not establish an 8 GiB device or host-memory fit.
+
+### Proposed Linux control variant — 28 October
+
+For the next artifact-lock investigation, select **Linux x86_64 / CPython 3.12 /
+torch 2.5.1+cu124 / torchvision 0.20.1+cu124**, matching the
+[publisher's 2.5.1 CUDA 12.4 pair](https://pytorch.org/get-started/previous-versions/#v2-5-1).
+This is a concrete candidate, not a complete dependency lock, installation action
+or host-fit claim. The interpreter patch/build/hash and CUDA compiler/build
+closure still need selection. No existing worker environment is upgraded or
+credited as a reusable installation.
+
+The [official Torch index](https://download.pytorch.org/whl/cu124/torch/) and
+[torchvision index](https://download.pytorch.org/whl/cu124/torchvision/) advertise
+the following exact CPython 3.12 Linux wheel identities. HEAD gives their expected
+download sizes; complete payload SHA-256 verification has **not** occurred.
+
+| Proposed file | Declared bytes | Publisher SHA-256 |
+|---|---:|---|
+| `torch-2.5.1+cu124-cp312-cp312-linux_x86_64.whl` | 908,202,405 | `bf6484bfe5bc4f92a4a1a1bf553041505e19a911f717065330eb061afe0e14d7` |
+| `torchvision-0.20.1+cu124-cp312-cp312-linux_x86_64.whl` | 7,287,066 | `d1053ec5054549e7dac2613b151bffe323f3c924939d296df4d7d34925aaf3ad` |
+
+Separate `.metadata` requests returned 404. Bounded HTTP ZIP ranges inspected only
+the selected wheels' directories and dependency records: 1,404,199 and 85,289
+network bytes respectively, under 3 MiB/wheel and 128 KiB/decoded record. The
+[audit](validation/2026-10-28-a0-readiness.md) retains HTTPS/ETag/If-Match/range/CRC
+and metadata SHA receipts. These are publisher-metadata observations, not full
+wheel verification, full package extraction, installation or execution.
+
+The exact Torch record requires **12 NVIDIA packages**, Triton **3.1.0** and,
+for Python 3.12, SymPy **1.13.1** and setuptools, alongside other direct runtime
+requirements. Torchvision selects torch **2.5.1**, NumPy and Pillow. Optional
+extras are unselected. All transitive package artifacts, notices and installed/
+build costs remain unresolved; these two top-level files are not an environment.
+
+Propose `SAM2_BUILD_CUDA=1` and `SAM2_BUILD_ALLOW_ERRORS=0` for this explicit
+extension-enabled variant. The pinned [setup source](https://github.com/facebookresearch/sam2/blob/2b90b9f5ceec907a1c18123530e92e794ad901a4/setup.py)
+otherwise tolerates extension failures. A separately chosen extension-free variant
+would need a different recipe/feature identity, not a silent build downgrade.
+The [build-system requirements](https://github.com/facebookresearch/sam2/blob/2b90b9f5ceec907a1c18123530e92e794ad901a4/pyproject.toml)
+also leave torch/setuptools open-ended: freeze build dependencies and prevent
+build isolation/resolution from fetching another stack.
+
+A future adapter must require the selected local config and checkpoint path
+before calling the direct builder. The pinned
+[builder](https://github.com/facebookresearch/sam2/blob/2b90b9f5ceec907a1c18123530e92e794ad901a4/sam2/build_sam.py)
+allows a null checkpoint and provides hub-download helpers; neither is an allowed
+fallback for this proposal. Freeze precision, postprocessing, frame/batch/pixel
+limits and the automatic proposal/association method separately. No adapter or
+resource enforcement is supplied by this document.
+
+These two wheel declarations plus the proposed checkpoint total
+**1,071,497,937 bytes**. This is only a known download subtotal. Whole-plan download,
+installed, build/staging and scratch/reservation costs stay **null/unknown**, with
+no cache credit. Code/source inventory, the complete environment/build lock,
+terms/independent reviews and enforced/measured stage limits still block any
+installation/use proposal. Physical pilot preparation can proceed independently
+using the [capture checklist](a1_capture_checklist.md).
 
 ### Proposed single-checkpoint acquisition
 
