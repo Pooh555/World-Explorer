@@ -1,4 +1,5 @@
 #include "../fixtures/native_collider_fixture.hpp"
+#include "../fixtures/probe_environment.hpp"
 #include "../fixtures/structure_graph_fixture.hpp"
 #include "world_explorer/collision/native_static_shape.hpp"
 #include "world_explorer/collision/static_shape.hpp"
@@ -8,7 +9,6 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include <bit>
-#include <cstdlib>
 #include <fstream>
 #include <limits>
 #include <type_traits>
@@ -419,8 +419,8 @@ TEST_CASE("native diagnostic shape preserves ring hole and original face queries
             }
         }
     }
-    if (const auto K_PATH = std::getenv("WE_NATIVE_SHAPE_PROBE_ROOT")) {
-        const std::filesystem::path K_ROOT { K_PATH };
+    if (const auto K_PATH = test_support::probe_environment("WE_NATIVE_SHAPE_PROBE_ROOT")) {
+        const std::filesystem::path K_ROOT { *K_PATH };
         std::filesystem::create_directories(K_ROOT);
         std::ofstream report(K_ROOT / "shape.json");
         report << product.dump(2) << '\n';

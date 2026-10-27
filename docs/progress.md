@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-27 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-28 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
 gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts, typed metadata and owned history).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
@@ -38,6 +38,13 @@ previously repaired reader and asset-catalog objects before this new failure.
 Full native Windows build/test confirmation remains due. Relinking makes the saved runtime payload
 receipt stale: default inventory passes, `--local-evidence` exits 2. Fresh runtime
 observation is required before claiming current local inventory consistency.
+
+The supplied [28 October Windows probe failure](validation/2026-10-28-windows-probe-environment.md)
+reports MSVC C4996/C2220 on an unguarded `getenv` in the large-model test.
+Three cross-platform probe helpers now use owned environment values with
+`_dupenv_s` on MSVC. Artifact generation and all warnings/standards remain enabled.
+Local checks do not replace the required native Windows rerun; A0's
+recipe/capture/readiness handoff below is unchanged.
 
 The [public-header repair](validation/2026-10-24-native-span-includes.md) addresses
 the supplied GCC 13/MSVC missing-`std::span` failures with direct includes in four

@@ -1,13 +1,12 @@
 #include "../fixtures/native_collider_fixture.hpp"
 #include "../fixtures/native_lod_fixture.hpp"
+#include "../fixtures/probe_environment.hpp"
 #include "world_explorer/application/commands.hpp"
 #include "world_explorer/application/native_collider_diagnostic.hpp"
 #include "world_explorer/core/asset_files.hpp"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/generators/catch_generators.hpp>
-
-#include <cstdlib>
 
 using namespace world_explorer;
 using namespace world_explorer::native_collider_test;
@@ -156,8 +155,8 @@ TEST_CASE("native collider diagnostic shares actual shapes across selected pivot
     CHECK(hits == 4uz);
     CHECK(tree(fixture.m_output.m_root) == K_BEFORE);
     CHECK(tree(fixture.m_source.m_base.m_receipt.source_directory()) == K_SOURCE);
-    if (auto output = std::getenv("WE_COLLIDER_DIAGNOSTIC_PROBE_ROOT")) {
-        const auto K_ROOT = std::filesystem::path(output) / (K_ROTATED ? "rotated" : "plain");
+    if (auto output = test_support::probe_environment("WE_COLLIDER_DIAGNOSTIC_PROBE_ROOT")) {
+        const auto K_ROOT = std::filesystem::path(*output) / (K_ROTATED ? "rotated" : "plain");
         std::filesystem::create_directories(K_ROOT);
         REQUIRE(write_native_export(fixture.m_package, K_ROOT / "package"));
         write(K_ROOT / "request.json", fixture.m_diagnostic.m_request_json);

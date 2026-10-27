@@ -1,5 +1,7 @@
 # Validation index
 
+- [28 October: Windows probe environment repair](2026-10-28-windows-probe-environment.md) — remove three exposed deprecated CRT calls with owned cross-platform values; local branch/output checks, native Windows rerun pending.
+
 - [27 October: external MODEL shared request and CLI](2026-10-27-external-model-cli.md) — strict independent request/receipt/file/review pins, actual large-file replay, cancellation/refusal and source preservation; real recipe/capture/acquisition/runtime qualification remains open.
 
 - [27 October: external MODEL file observations](2026-10-27-external-models.md) — separate streamed large-file profile, independent recipe/review joins, mutation/cancellation/alias checks and synthetic bounded-memory evidence; acquisition, runtime closure and AP qualification remain open.

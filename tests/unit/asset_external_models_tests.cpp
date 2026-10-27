@@ -1,10 +1,10 @@
 #include "../fixtures/asset_component_fixture.hpp"
+#include "../fixtures/probe_environment.hpp"
 #include "world_explorer/asset_catalog/external_models.hpp"
 
 #include <catch2/generators/catch_generators.hpp>
 
 #include <chrono>
-#include <cstdlib>
 
 using namespace world_explorer;
 using namespace world_explorer::asset_component_test;
@@ -82,8 +82,8 @@ void large_model(std::uint64_t bytes, const std::string& expected_sha) {
     ModelFixture fixture;
     auto& file = fixture.m_models[0uz].m_files[0uz];
     fs::path retained;
-    if (auto output = std::getenv("WE_EXTERNAL_MODEL_PROBE_ROOT")) {
-        retained = fs::path(output) / std::to_string(bytes);
+    if (auto output = test_support::probe_environment("WE_EXTERNAL_MODEL_PROBE_ROOT")) {
+        retained = fs::path(*output) / std::to_string(bytes);
         REQUIRE(fs::create_directory(retained));
         retained = fs::canonical(retained);
         file.m_file = retained / "synthetic-model.bin";
