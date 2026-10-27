@@ -393,5 +393,6 @@ TEST_CASE("native collider adoption preserves explicit export refusal in every c
     const auto K_EXPORT = prepare_native_export(request);
     REQUIRE(!K_EXPORT);
     CHECK(K_EXPORT.error().m_code == ErrorCode::UNSUPPORTED_OPERATION);
-    CHECK(K_EXPORT.error().m_message == "Native collider export companion is not implemented");
+    CHECK(K_EXPORT.error().m_message ==
+          "Native collider export requires explicit companion selection");
 }

@@ -12,6 +12,7 @@ using namespace json_record_detail;
 inline constexpr auto K_PACKAGE_BYTES = 8uz * 1024uz * 1024uz;
 inline constexpr std::string_view K_PROFILE { "WE_NATIVE_TEXTURED_GLTF_V1" };
 inline constexpr std::string_view K_LOD_PROFILE { "WE_NATIVE_LOD_GLTF_V1" };
+inline constexpr std::string_view K_COLLIDER_PROFILE { "WE_NATIVE_COLLIDER_GLTF_V1" };
 
 template <class T> T take(Result<T> value) {
     if (!value) {
@@ -88,7 +89,13 @@ CompiledAsset compile_asset(const AdmittedAssetDefinition& definition,
                             const AdmittedAssetInstances& instances,
                             Files& files,
                             const std::stop_token& stop,
-                            std::optional<std::size_t> lod_level = {});
+                            std::optional<std::size_t> lod_level = {},
+                            std::string_view profile = {});
 void append_resources(Json& assembly, Json asset, const std::string& prefix);
+// Full companion returned to the caller; files contain unchanged root/base/cook
+// bytes. No backend or navigation object is constructed.
+Json compile_colliders(const NativeExportRequest& request,
+                       Files& files,
+                       const std::stop_token& stop);
 
 }  // namespace world_explorer::native_export_detail

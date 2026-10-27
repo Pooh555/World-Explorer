@@ -16,6 +16,11 @@ struct NativeExportLodSelection {
     std::size_t m_level {};
 };
 
+struct NativeExportColliderPolicy {
+    // Binary64 composition residual in arbitrary world units; no metric claim.
+    double m_world_position_units { 1e-8 };
+};
+
 struct NativeExportRequest {
     std::optional<AdmittedNativeAssets> m_assets;
     std::optional<AdmittedAssetReceipt> m_receipt;
@@ -25,12 +30,14 @@ struct NativeExportRequest {
     // Explicit opt-in: exactly one selected level per definition, shared by all
     // its instances. All admitted levels/certificates remain in the package.
     std::optional<std::vector<NativeExportLodSelection>> m_lods {};
+    // Explicit companion export, not backend cooking or walking permission.
+    std::optional<NativeExportColliderPolicy> m_colliders {};
 };
 
 // A separate native textured PBR profile: <=2 definitions, <=4 total materials,
 // <=64 visible instances, <=64 files /8 MiB. Core sRGB8/linear8 RGBA PNGs,
 // arbitrary units, no captured-unlit conversion, HDR emission, instance material
-// overrides or collider. LODs require the explicit additive selection profile.
+// overrides. LODs/colliders require their explicit additive profiles.
 Result<std::vector<ExportPackageFile>> prepare_native_export(const NativeExportRequest& request,
                                                              const std::stop_token& stop = {});
 

@@ -126,5 +126,7 @@ all levels/certificates and independently bounds every conversion while selectin
 one level per definition for individual/assembly export and native preview.
 
 [Native static colliders](native_colliders.md) can enter definitions upstream.
-All current export profiles explicitly refuse them before compiling resources;
-no collider or its authority is silently discarded from an otherwise valid asset.
+Original export profiles explicitly refuse them before compiling resources.
+The opt-in [schema-4 collider companion](collider_exports.md) retains the exact
+root/base/cook/provenance and checked instance placements. No collider or its
+authority is silently discarded or promoted to an active physics body.

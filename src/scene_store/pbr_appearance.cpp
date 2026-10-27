@@ -5,6 +5,7 @@
 #include "world_explorer/core/hash.hpp"
 
 #include <bit>
+#include <charconv>
 #include <set>
 #include <span>
 
@@ -112,6 +113,109 @@ bool within(Vec3d value, const Bounds3d& bounds) {
            value.m_x <= bounds.m_maximum.m_x && value.m_y >= bounds.m_minimum.m_y &&
            value.m_y <= bounds.m_maximum.m_y && value.m_z >= bounds.m_minimum.m_z &&
            value.m_z <= bounds.m_maximum.m_z;
+}
+
+void collider_pins(const Json& manifest, const Json& asset) {
+    const auto& inventory = manifest.at("files");
+    const auto K_PIN = [&](const Json& pin, const std::string& path) {
+        digest_text(pin.at("sha256").get<std::string>());
+        require(pin.at("path").get<std::string>() == path &&
+                    std::ranges::any_of(inventory,
+                                        [&](const auto& row) {
+                                            return row.at("path").template get<std::string>() ==
+                                                       path &&
+                                                   row.at("sha256") == pin.at("sha256");
+                                        }),
+                "PBR collider file pin differs");
+    };
+    const auto K_REFERENCE = [](const Json& ref) {
+        keys(ref, { "product_id", "revision", "sha256" });
+        digest_text(ref.at("sha256").get<std::string>());
+        for (auto name : { "product_id", "revision" }) {
+            const auto K_TEXT = ref.at(name).get<std::string>();
+            std::uint64_t value {};
+            const auto K_PARSE =
+                std::from_chars(K_TEXT.data(), K_TEXT.data() + K_TEXT.size(), value);
+            require(K_PARSE.ec == std::errc {} && K_PARSE.ptr == K_TEXT.data() + K_TEXT.size() &&
+                        value && std::to_string(value) == K_TEXT,
+                    "Invalid PBR collider reference");
+        }
+    };
+    const auto& companion = manifest.at("collider_companion");
+    keys(companion, { "path", "sha256", "geometry_scope", "purpose", "backend_shape" });
+    K_PIN(companion, "colliders.json");
+    const auto& limits = manifest.at("collider_limits");
+    keys(limits, { "world_position_units" });
+    const auto K_LIMIT = number(limits.at("world_position_units"));
+    require(K_LIMIT >= 0 && K_LIMIT <= 1 &&
+                companion.at("geometry_scope").get<std::string>() == "LOD0" &&
+                companion.at("purpose").get<std::string>() == "SYNTHETIC_GAMEPLAY" &&
+                companion.at("backend_shape").get<std::string>() == "NOT_COOKED" &&
+                manifest.at("walking_enabled").is_boolean() &&
+                !manifest.at("walking_enabled").get<bool>() &&
+                std::ranges::any_of(manifest.at("assets"),
+                                    [](const auto& item) {
+                                        return !item.at("collider").is_null();
+                                    }),
+            "PBR collider companion authority or limit differs");
+    const auto& collider = asset.at("collider");
+    if (collider.is_null()) {
+        return;
+    }
+    keys(collider,
+         { "definition",
+          "product",
+          "base_geometry",
+          "purpose",
+          "body",
+          "units",
+          "frame",
+          "backend_shape",
+          "root",
+          "base",
+          "cook",
+          "provenance",
+          "vertex_count",
+          "triangle_count",
+          "asset_from_collider",
+          "maximum_world_position_error_units" });
+    const auto K_PREFIX =
+        "colliders/" + asset.at("definition").at("asset_id").get<std::string>() + "/";
+    K_REFERENCE(collider.at("product"));
+    K_REFERENCE(collider.at("base_geometry"));
+    K_REFERENCE(collider.at("provenance").at("product"));
+    keys(collider.at("root"), { "path", "sha256" });
+    keys(collider.at("base"), { "path", "sha256" });
+    keys(collider.at("cook"), { "path", "sha256", "format" });
+    keys(collider.at("provenance"), { "product", "path", "sha256" });
+    K_PIN(collider.at("root"), K_PREFIX + "root.json");
+    K_PIN(collider.at("base"), K_PREFIX + "base.json");
+    K_PIN(collider.at("cook"), K_PREFIX + "triangles.bin");
+    const auto& provenance = collider.at("provenance").at("product");
+    K_PIN(collider.at("provenance"),
+          "provenance/" + provenance.at("product_id").get<std::string>() + "-" +
+              provenance.at("revision").get<std::string>() + ".json");
+    const auto K_FRAME = transform(collider.at("asset_from_collider"));
+    const auto K_ERROR = number(collider.at("maximum_world_position_error_units"));
+    require(collider.at("definition") == asset.at("definition") &&
+                collider.at("base_geometry") ==
+                    asset.at(manifest.contains("lod_selection") ? "base_geometry" : "geometry") &&
+                collider.at("product").at("sha256") == collider.at("root").at("sha256") &&
+                collider.at("base_geometry").at("sha256") == collider.at("base").at("sha256") &&
+                provenance.at("sha256") == collider.at("provenance").at("sha256") &&
+                collider.at("purpose").get<std::string>() == "SYNTHETIC_GAMEPLAY" &&
+                collider.at("body").get<std::string>() == "STATIC_STRUCTURAL" &&
+                collider.at("units").get<std::string>() == "ARBITRARY" &&
+                collider.at("frame").get<std::string>() == "BASE_GEOMETRY_LOCAL" &&
+                collider.at("backend_shape").get<std::string>() == "NOT_COOKED" &&
+                collider.at("cook").at("format").get<std::string>() ==
+                    "WE_NATIVE_COLLIDER_TRIANGLES_V1" &&
+                integer(collider.at("vertex_count")) >= 3 &&
+                integer(collider.at("vertex_count")) <= 8192 &&
+                integer(collider.at("triangle_count")) >= 1 &&
+                integer(collider.at("triangle_count")) <= 8192 && valid(K_FRAME) &&
+                K_FRAME.m_scale == 1 && K_ERROR >= 0 && K_ERROR <= K_LIMIT,
+            "PBR collider binding or authority differs");
 }
 
 }  // namespace
@@ -304,23 +408,29 @@ Result<std::size_t> validate_pbr_appearance(const SceneChunk& chunk, const Scene
         const auto K_DOC =
             parse(std::as_bytes(std::span(value.m_export_manifest)), 1024uz * 1024uz, {});
         const auto K_PROFILE = K_DOC.at("profile").get<std::string>();
-        const bool K_LOD = K_PROFILE == "WE_NATIVE_LOD_GLTF_V1";
-        const bool K_STRUCTURED =
-            K_PROFILE == "WE_NATIVE_STRUCTURED_GLTF_V1" || (K_LOD && K_DOC.contains("structure"));
-        require(((K_PROFILE == "WE_NATIVE_TEXTURED_GLTF_V1" &&
-                  integer(K_DOC.at("schema_version")) == 1 && !K_DOC.contains("structure") &&
-                  !K_DOC.contains("lod_selection")) ||
-                 (K_PROFILE == "WE_NATIVE_STRUCTURED_GLTF_V1" &&
-                  integer(K_DOC.at("schema_version")) == 2 && !K_DOC.contains("lod_selection")) ||
-                 (K_LOD && integer(K_DOC.at("schema_version")) == 3)) &&
-                    K_DOC.at("qualification").get<std::string>() == "UNQUALIFIED_EXPORT" &&
-                    K_DOC.at("synthetic_diagnostic").get<bool>() == value.m_synthetic &&
-                    K_DOC.at("manual_ancestor").get<bool>() == value.m_manual_ancestor &&
-                    K_DOC.at("world_epoch").get<std::string>() ==
-                        std::to_string(value.m_epoch.m_value) &&
-                    K_DOC.at("pose_revision").get<std::string>() ==
-                        std::to_string(value.m_pose_revision.m_value),
-                "PBR manifest context/labels differ");
+        const bool K_COLLIDER = K_PROFILE == "WE_NATIVE_COLLIDER_GLTF_V1";
+        const bool K_LOD =
+            K_PROFILE == "WE_NATIVE_LOD_GLTF_V1" || (K_COLLIDER && K_DOC.contains("lod_selection"));
+        const bool K_STRUCTURED = K_PROFILE == "WE_NATIVE_STRUCTURED_GLTF_V1" ||
+                                  ((K_LOD || K_COLLIDER) && K_DOC.contains("structure"));
+        require(
+            ((K_PROFILE == "WE_NATIVE_TEXTURED_GLTF_V1" &&
+              integer(K_DOC.at("schema_version")) == 1 && !K_DOC.contains("structure") &&
+              !K_DOC.contains("lod_selection") && !K_DOC.contains("collider_companion")) ||
+             (K_PROFILE == "WE_NATIVE_STRUCTURED_GLTF_V1" &&
+              integer(K_DOC.at("schema_version")) == 2 && !K_DOC.contains("lod_selection") &&
+              !K_DOC.contains("collider_companion")) ||
+             (K_PROFILE == "WE_NATIVE_LOD_GLTF_V1" && integer(K_DOC.at("schema_version")) == 3 &&
+              !K_DOC.contains("collider_companion")) ||
+             (K_COLLIDER && integer(K_DOC.at("schema_version")) == 4)) &&
+                K_DOC.at("qualification").get<std::string>() == "UNQUALIFIED_EXPORT" &&
+                K_DOC.at("synthetic_diagnostic").get<bool>() == value.m_synthetic &&
+                K_DOC.at("manual_ancestor").get<bool>() == value.m_manual_ancestor &&
+                K_DOC.at("world_epoch").get<std::string>() ==
+                    std::to_string(value.m_epoch.m_value) &&
+                K_DOC.at("pose_revision").get<std::string>() ==
+                    std::to_string(value.m_pose_revision.m_value),
+            "PBR manifest context/labels differ");
         const auto& assets = K_DOC.at("assets");
         require(assets.is_array() && assets.size() <= 2uz, "PBR source asset budget exceeded");
         const auto K_ASSET = std::ranges::find_if(assets, [&](const auto& asset) {
@@ -366,6 +476,11 @@ Result<std::size_t> validate_pbr_appearance(const SceneChunk& chunk, const Scene
         K_PIN_FILE("scene.json", value.m_scene_document);
         const auto K_ASSET_DOC =
             parse(std::as_bytes(std::span(value.m_asset_document)), 1024uz * 1024uz, {});
+        if (K_COLLIDER) {
+            collider_pins(K_DOC, *K_ASSET);
+            require(K_ASSET_DOC.at("extras").at("profile").get<std::string>() == K_PROFILE,
+                    "PBR collider render profile differs");
+        }
         if (K_LOD) {
             const auto& lod = K_DOC.at("lod_selection");
             keys(lod, { "path", "sha256", "scope", "structure_geometry_scope" });

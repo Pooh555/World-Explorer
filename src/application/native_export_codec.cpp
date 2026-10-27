@@ -198,7 +198,8 @@ CompiledAsset compile_asset(const AdmittedAssetDefinition& admitted,
                             const AdmittedAssetInstances& instances,
                             Files& files,
                             const std::stop_token& stop,
-                            std::optional<std::size_t> lod_level) {
+                            std::optional<std::size_t> lod_level,
+                            std::string_view profile) {
     CompiledAsset result { document(), Json::object(), {} };
     auto& doc = result.m_document;
     auto& errors = result.m_errors;
@@ -354,6 +355,9 @@ CompiledAsset compile_asset(const AdmittedAssetDefinition& admitted,
     if (lod_level) {
         doc["extras"]["profile"] = K_LOD_PROFILE;
         doc["extras"]["lod_level"] = lod_level.value_or(0uz);
+    }
+    if (!profile.empty()) {
+        doc["extras"]["profile"] = profile;
     }
     result.m_mapping = { { "definition", reference(admitted.reference()) },
                         { "geometry", reference(geometry.selection().m_product) },

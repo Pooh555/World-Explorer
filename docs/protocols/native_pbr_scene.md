@@ -82,3 +82,8 @@ The Project panel shows each selected level; all copies share its resources.
 Companion/certificate source pins remain in the runtime documents, while complete
 unselected levels and proofs remain in the portable package. This does not add
 streaming, automatic selection or AP8/physical reconstruction authority.
+
+The [schema-4 collider companion](collider_exports.md) now composes with these
+render sources. Runtime documents retain original collider input/provenance pins
+and uncooked companion provenance; collision remains unavailable and walking
+blocked. Actual cook bytes and all placements remain in the portable package.

@@ -1,5 +1,7 @@
 # Validation index
 
+- [27 October: collider export companion and native source pins](2026-10-27-collider-export.md) — exact inputs/provenance, checked placements and LOD0 binding, shared render resources and inactive native collision; backend/engine/real AP qualification open.
+
 - [27 October: native static structural collider admission](2026-10-27-native-collider.md) — exact source/topology/policy bindings, portable canonical input and owned recovery; backend/convex/export/real walking and AP gates remain open.
 
 - [27 October: explicit native LOD export and preview](2026-10-27-lod-export.md) — all-level certificate/resource retention, bounded conversion, per-definition selection and ordinary native PBR display; synthetic scope, real AP8 qualification open.

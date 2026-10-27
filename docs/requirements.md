@@ -141,8 +141,15 @@ adds exact static structural surface/policy admission, portable deterministic co
 input, full face provenance and immutable product/definition/instance identity.
 The [protocol](protocols/native_colliders.md) preserves holes and arbitrary units;
 SYNTHETIC_GAMEPLAY never authorizes Q5/N2 or walking. Backend/convex cooking,
-collider export, real production and AP8 budgets remain open. A0/AP0 remain
+engine mapping, real production and AP8 budgets remain open. A0/AP0 remain
 **IN_PROGRESS**.
+
+The [collider companion slice](validation/2026-10-27-collider-export.md) adds an
+opt-in schema-4 package retaining original base/root/cook/provenance, independent
+placement bounds and per-instance mappings across render LOD choices. The
+[protocol](protocols/collider_exports.md) preserves native source pins and walking
+unavailability. Synthetic local export/renderer integration does not qualify
+backend physics, real assets, engine mapping or AP gates. A0/AP0 stay **IN_PROGRESS**.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

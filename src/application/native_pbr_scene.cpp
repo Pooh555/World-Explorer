@@ -89,7 +89,7 @@ Result<SceneSnapshot> compile_native_pbr_scene(const AdmittedNativeExport& packa
             { "source_kind", K_SYNTHETIC ? "synthetic_diagnostic" : "native_asset_draft" },
             { "profile", K_MANIFEST.at("profile").get<std::string>() },
             { "qualification", "UNQUALIFIED_NATIVE_PBR" } };
-        if (K_MANIFEST.at("profile").get<std::string>() == "WE_NATIVE_LOD_GLTF_V1") {
+        if (K_MANIFEST.contains("lod_selection")) {
             std::string levels;
             for (const auto& asset : K_MANIFEST.at("assets")) {
                 if (!levels.empty()) {
@@ -99,6 +99,9 @@ Result<SceneSnapshot> compile_native_pbr_scene(const AdmittedNativeExport& packa
                           ": LOD " + std::to_string(integer(asset.at("level")));
             }
             scene->m_provenance.emplace("selected_lods", std::move(levels));
+        }
+        if (K_MANIFEST.contains("collider_companion")) {
+            scene->m_provenance.emplace("collider_status", "UNCOOKED_GAMEPLAY_COMPANION");
         }
         for (const auto& source : K_MANIFEST.at("assets")) {
             check_stop(stop);

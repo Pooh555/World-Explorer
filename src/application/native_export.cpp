@@ -69,8 +69,8 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
         }
     }
     for (const auto& definition : instances.definitions()) {
-        require(!definition.definition().m_collider,
-                "Native collider export companion is not implemented",
+        require(request.m_colliders || !definition.definition().m_collider,
+                "Native collider export requires explicit companion selection",
                 ErrorCode::UNSUPPORTED_OPERATION);
         require(request.m_lods || definition.definition().m_lods.empty(),
                 "Native LOD export requires explicit per-definition selection",
@@ -147,7 +147,14 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
             auto levels = Json::array();
             for (std::size_t level { 0uz }; level <= K_SOURCE->m_lods.size(); ++level) {
                 check_stop(stop);
-                auto result = compile_asset(definition, *K_SOURCE, instances, files, stop, level);
+                auto result =
+                    compile_asset(definition,
+                                  *K_SOURCE,
+                                  instances,
+                                  files,
+                                  stop,
+                                  level,
+                                  request.m_colliders ? K_COLLIDER_PROFILE : std::string_view {});
                 K_CHECK_ERRORS(result);
                 auto& mapping = result.m_mapping;
                 mapping["level"] = level;
@@ -198,7 +205,14 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
             compiled.m_mapping["asset_path"] = K_ASSET_PATH;
             compiled.m_mapping["base_geometry"] = reference(definition.definition().m_geometry);
         } else {
-            compiled = compile_asset(definition, *K_SOURCE, instances, files, stop);
+            compiled =
+                compile_asset(definition,
+                              *K_SOURCE,
+                              instances,
+                              files,
+                              stop,
+                              {},
+                              request.m_colliders ? K_COLLIDER_PROFILE : std::string_view {});
             K_CHECK_ERRORS(compiled);
         }
         compiled.m_mapping["mesh_index"] = assembly["meshes"].size();
@@ -266,6 +280,23 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
                     { "selection_scope", "EXPLICIT_PER_DEFINITION_ALL_INSTANCES" },
                     { "assets", lod_entries } });
     }
+    Json colliders;
+    if (request.m_colliders) {
+        colliders = compile_colliders(request, files, stop);
+        files.json("colliders.json", colliders);
+        assembly["extras"]["profile"] = K_COLLIDER_PROFILE;
+        for (auto& mapping : mappings) {
+            const auto& entries = colliders.at("assets");
+            const auto K_ENTRY = std::ranges::find_if(entries, [&](const auto& item) {
+                return item.at("definition") == mapping.at("definition");
+            });
+            mapping["collider"] = K_ENTRY == entries.end() ? Json(nullptr) : *K_ENTRY;
+            if (K_ENTRY != entries.end()) {
+                mapping["collider"].erase("instances");
+                mapping["collider"].erase("source_faces");
+            }
+        }
+    }
     files.json("environment.gltf", assembly);
     files.json("catalog.json", catalog);
     files.add("scene.json", bytes(instances.canonical_json()));
@@ -279,11 +310,13 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
     const auto K_UNITS =
         Json { { "status", "ARBITRARY" }, { "nominal_metres_per_unit", 1 }, { "measured", false } };
     Json manifest { { "schema_version",
-                    request.m_lods        ? 3
+                    request.m_colliders   ? 4
+                    : request.m_lods      ? 3
                     : request.m_structure ? 2
                                           : 1 },
                    { "profile",
-                    request.m_lods        ? K_LOD_PROFILE
+                    request.m_colliders   ? K_COLLIDER_PROFILE
+                    : request.m_lods      ? K_LOD_PROFILE
                     : request.m_structure ? std::string_view("WE_NATIVE_STRUCTURED_GLTF_V1")
                                           : K_PROFILE },
                    { "qualification", "UNQUALIFIED_EXPORT" },
@@ -335,6 +368,15 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
                                      { "sha256", sha256(K_LODS->m_bytes) },
                                      { "scope", "EXPLICIT_PER_DEFINITION_ALL_INSTANCES" },
                                      { "structure_geometry_scope", "LOD0" } };
+    }
+    if (request.m_colliders) {
+        manifest["collider_companion"] = { { "path", "colliders.json" },
+                                          { "sha256", sha256(bytes(colliders.dump())) },
+                                          { "geometry_scope", "LOD0" },
+                                          { "purpose", "SYNTHETIC_GAMEPLAY" },
+                                          { "backend_shape", "NOT_COOKED" } };
+        manifest["collider_limits"] = {
+            { "world_position_units", selected(request.m_colliders).m_world_position_units } };
     }
     files.json("manifest.json", manifest);
     std::ranges::sort(files.m_files, {}, &ExportPackageFile::m_path);

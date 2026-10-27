@@ -365,15 +365,25 @@ cook policy, full remapped face provenance and every instance reference. Its
 portable canonical triangle input and original root publish/reload atomically.
 The [protocol](protocols/native_colliders.md) preserves holes and source evidence,
 labels arbitrary-scale gameplay purpose, and keeps backend shapes, support ledgers,
-measured walking and all current export profiles outside this admission path.
+measured walking outside this admission path; original export profiles keep their
+explicit collider opt-in boundary.
 
-Next executable step: carry admitted native collider roots and canonical triangle
-input through an explicit export companion profile. Recheck plan §§11.4–11.5,
-collider/native export contracts and arbitrary-scale restrictions. Bind original
-geometry/cook/provenance hashes and independently verified pivot/instance transforms;
-keep collider geometry tied to LOD0 even when rendering another level. Preserve
-legacy package bytes and walking unavailability. Validate real emitted files and
-native source pins locally before any backend/engine or platform qualification.
+The [collider companion slice](validation/2026-10-27-collider-export.md) now exports
+original collider/base/cook/provenance bytes and checked per-instance frames in an
+opt-in schema-4 package. Render LODs, base-bound graph/collider identity and legacy
+bytes remain separate. Ordinary native PBR scenes retain the new source pins with
+collision unavailable and walking blocked. The [protocol](protocols/collider_exports.md)
+keeps this synthetic local data/renderer integration distinct from backend shapes,
+real production and AP8 qualification.
+
+Next executable step: introduce a backend-neutral native triangle input boundary
+and a source-bound diagnostic static-shape adapter using the admitted collider
+input. Recheck collision target dependencies and the existing Jolt triangle-retention
+and ray-query contracts; avoid passing application-owned types down into collision.
+Verify exact cook/backend identity, losses and transformed multi-instance queries
+locally, while preserving arbitrary units, synthetic gameplay labels, support-ledger
+requirements and every measured-walking barrier. Do not start engine packaging or
+platform qualification to bypass these local checks.
 Backend collider cooking, convex props, broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.
 Provisioning requires the recorded prerequisites. The real A1 completed/PBR pilot

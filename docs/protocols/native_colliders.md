@@ -76,7 +76,8 @@ The collider reference/provenance enters canonical definition identity and every
 instance reference. No extra collider source entry is added to `m_sources`;
 the collider root already binds its policy and sole base dependency. Existing
 asset/scene publication and selected metadata reload retain these exact references.
-All current native export profiles explicitly refuse colliders until a companion
-profile is admitted and locally exercised. No collider is installed in a viewer,
+Original native export profiles refuse colliders without explicit opt-in; the
+separate [collider companion profile](collider_exports.md) now carries original
+inputs, provenance and checked placements. No collider is installed in a viewer,
 Jolt owner, measured collision session or engine. Real production/scale/support,
-convex props, backend cooking, portable export and AP8 budgets remain open.
+convex props, backend cooking, engine mapping and AP8 budgets remain open.
