@@ -87,7 +87,7 @@ Result<SceneSnapshot> compile_native_pbr_scene(const AdmittedNativeExport& packa
         const bool K_SYNTHETIC = K_MANIFEST.at("synthetic_diagnostic").get<bool>();
         scene->m_provenance = {
             { "source_kind", K_SYNTHETIC ? "synthetic_diagnostic" : "native_asset_draft" },
-            { "profile", "WE_NATIVE_TEXTURED_GLTF_V1" },
+            { "profile", K_MANIFEST.at("profile").get<std::string>() },
             { "qualification", "UNQUALIFIED_NATIVE_PBR" } };
         for (const auto& source : K_MANIFEST.at("assets")) {
             check_stop(stop);

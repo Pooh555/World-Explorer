@@ -330,17 +330,26 @@ integration, not producer, material recovery or real AP evidence. The
 [protocol](protocols/asset_channel_provenance.md) separates actual mask retention
 in export from hash-only runtime bindings.
 
-Next executable step: bind the admitted structure graph to native structural
-asset definitions and scene instances. Recheck plan §11.4, structure-graph and native
-asset contracts; explicitly bind selected patch/opening/room/support identities to
-actual adopted shell geometry and reject unsupported or stale references before
-publication. Preserve shared instance identity, observed/generated provenance,
-original placement and existing update/cancellation paths. Use bounded synthetic
-admission/reload checks before real structural producer integration. Broader
-LOD/collider adoption, producer execution and real capture/recipe freeze remain
-A0 work; optional native GLB remains separate. Provisioning requires the recorded
-prerequisites. The real A1 completed/PBR pilot must use the existing native resource
-path after its inputs and producers exist.
+The [native structural binding slice](validation/2026-10-27-native-structure.md)
+now joins exact graph/geometry/definition identities and all instance copies,
+retains original openings/rooms/support relations and atomically publishes their
+binding with asset/scene metadata. An explicit structured export envelope carries
+original graph roots; native PBR bundles retain source pins. Synthetic topology,
+placement, metadata recovery and native display checks do not establish physical
+openings, room closure, gravity or support. The
+[protocol](protocols/native_structure.md) keeps whole-definition partial graphs
+separate from opaque instance room/support refs and future prop membership.
+
+Next executable step: bind explicit native LOD geometry products to asset
+definitions. Recheck plan §11.4, geometry-product and asset-definition contracts;
+require exact source/pose/material/UV/correspondence and per-LOD face provenance,
+with independently selected conversion/error bounds. Preserve current refusal
+until that additive profile is admitted. Verify owned reload/replay and downstream
+resource identity without starting M5 streaming or certifying AP8 performance.
+Native collider adoption, broader structural/prop relations, producer execution and
+real capture/recipe freeze remain A0 work; optional native GLB stays separate.
+Provisioning requires the recorded prerequisites. The real A1 completed/PBR pilot
+must use the existing native resource path after its inputs and producers exist.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve
 them and request the real pilot inputs when required. Broader worker/asset adoption

@@ -104,3 +104,9 @@ into shared portable resources. The [native PBR scene compiler](native_pbr_scene
 consumes admitted exports for bounded immutable runtime resources through the
 existing scene-update path and diagnostic native viewing. Ordinary Godot import,
 producer execution, real A1 output and AP qualification remain open.
+
+The separate [native structure binder](native_structure.md) now joins admitted
+graph elements to exact structural definitions and all their copies. Its explicit
+record retains typed graph identities and placement; opaque instance room/support
+refs remain unsupported here. Real structure production and physical support stay
+unqualified.

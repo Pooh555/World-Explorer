@@ -112,3 +112,9 @@ update path; real A1 viewing and Godot evaluation remain required.
 The separate [native PBR scene compiler](native_pbr_scene.md) now consumes admitted
 textured exports for bounded immutable runtime resources and diagnostic native
 viewing. That integration does not qualify producers, real A1 output or AP gates.
+
+An explicitly selected [native structure binding](native_structure.md) now adds
+manifest schema 2 / `WE_NATIVE_STRUCTURED_GLTF_V1` with exact graph/binding sidecars.
+Core mesh/material resources retain this conversion profile; legacy schema-1
+exports remain byte compatible. Native PBR loading preserves the structured
+source pins without adding physical-support or real AP qualification.

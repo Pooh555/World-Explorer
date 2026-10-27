@@ -70,3 +70,8 @@ source AO/support/collision revalidation. Captured radiance is never converted
 into albedo. A shader toggle or plausible synthetic image cannot satisfy AP6.
 The implementation follows [glTF material conventions](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#materials)
 and the [Vulkan shader interface requirements](https://docs.vulkan.org/spec/latest/chapters/interfaces.html).
+
+The explicit [structured export envelope](native_structure.md) is also accepted:
+manifest schema 2 / `WE_NATIVE_STRUCTURED_GLTF_V1`. The same schema-6 runtime tail
+retains graph/binding pins and the actual profile label. Graph roots remain in the
+source package, and the viewer gains no room/provenance inspector from this path.

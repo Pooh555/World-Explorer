@@ -1,6 +1,7 @@
 #pragma once
 
 #include "world_explorer/application/native_assets.hpp"
+#include "world_explorer/application/native_structure.hpp"
 #include "world_explorer/application/static_export.hpp"
 
 namespace world_explorer {
@@ -15,6 +16,7 @@ struct NativeExportRequest {
     std::optional<AdmittedAssetReceipt> m_receipt;
     AssetDependencyContext m_expected;
     NativeExportPolicy m_policy;
+    std::optional<AdmittedNativeStructure> m_structure {};
 };
 
 // A separate native textured PBR profile: <=2 definitions, <=4 total materials,

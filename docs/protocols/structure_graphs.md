@@ -115,3 +115,9 @@ Conflicting operations, stale bases/context and protected-root overlap fail.
 Reload freshly admits the independent inputs, requires the selected current
 commit and checks the committed key/content hash. This is not asset adoption or
 a live scene revision. Full structure production and quality remain open.
+
+The separate [native structural adoption path](native_structure.md) now binds
+these private graphs to exact native geometry/definition/instance snapshots and
+publishes original graph roots with their metadata atomically. It preserves this
+partial, declaration-only scope; graph admission alone still authorizes no scene
+mutation or physical-support claim.

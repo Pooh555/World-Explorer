@@ -40,6 +40,13 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
             "Native export original receipt/context differs",
             ErrorCode::RESYNC_REQUIRED);
     (void)take(validate_asset_dependencies(receipt.graph(), expected, stop));
+    if (request.m_structure) {
+        const auto& structured = request.m_structure.value();
+        require(structured.assets().receipt_sha256() == receipt.receipt_sha256() &&
+                    structured.assets().instances().sha256() == instances.sha256(),
+                "Native export structured source differs",
+                ErrorCode::RESYNC_REQUIRED);
+    }
     require(!instances.definitions().empty() && instances.definitions().size() <= 2uz &&
                 instances.instances().m_instances.size() <= 64uz,
             "Native export definition/instance budget exceeded",
@@ -81,6 +88,15 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
                 ErrorCode::UNSUPPORTED_OPERATION);
     }
     Files files;
+    if (request.m_structure) {
+        const auto& structured = request.m_structure.value();
+        files.add("structure/bindings.json", bytes(structured.canonical_json()));
+        for (const auto& record : structured.records()) {
+            if (record.m_key.starts_with("structure-")) {
+                files.add("structure/" + record.m_key.substr(10uz) + ".json", record.m_bytes);
+            }
+        }
+    }
     auto assembly = document();
     auto catalog = Json::array(), mappings = Json::array();
     std::map<AssetId, std::size_t> meshes;
@@ -153,6 +169,10 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
     assembly["extras"] = { { "profile", K_PROFILE },
                           { "synthetic_diagnostic", source.synthetic_source() },
                           { "qualification", "UNQUALIFIED_EXPORT" } };
+    if (request.m_structure) {
+        assembly["extras"]["profile"] = "WE_NATIVE_STRUCTURED_GLTF_V1";
+        assembly["extras"]["manual_ancestor"] = request.m_structure->manual_ancestor();
+    }
     files.json("environment.gltf", assembly);
     files.json("catalog.json", catalog);
     files.add("scene.json", bytes(instances.canonical_json()));
@@ -165,43 +185,52 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
     }
     const auto K_UNITS =
         Json { { "status", "ARBITRARY" }, { "nominal_metres_per_unit", 1 }, { "measured", false } };
-    files.json("manifest.json",
-               { { "schema_version", 1 },
-                { "profile", K_PROFILE },
-                { "qualification", "UNQUALIFIED_EXPORT" },
-                { "source_receipt_sha256", receipt.receipt_sha256() },
-                { "source_instances_sha256", instances.sha256() },
-                { "scene_id", std::to_string(instances.instances().m_scene.m_value) },
-                { "scene_revision", std::to_string(instances.instances().m_revision.m_value) },
-                { "world_epoch", std::to_string(expected.m_world_epoch.m_value) },
-                { "pose_revision", std::to_string(expected.m_pose_revision.m_value) },
-                { "assets", mappings },
-                { "nodes", node_map },
-                { "files", inventory },
-                { "units", K_UNITS },
-                { "walking_enabled", false },
-                { "manual_ancestor", instances.instances().m_manual_ancestor },
-                { "synthetic_diagnostic", source.synthetic_source() },
-                { "error_limits", K_POLICY },
-                { "losses",
-                 { "FLOAT32_GEOMETRY_UV",
-                  "NORMAL_TANGENT_NORMALIZED",
-                  "PIVOT_BAKED",
-                  "SRGB8_COLOR_EMISSION",
-                  "LINEAR8_ORM_NORMAL",
-                  "NORMAL_MAP_DECODE_NORMALIZED",
-                  "PRIMITIVES_GROUPED_WITH_SOURCE_FACE_MAP",
-                  "NOMINAL_METRE_MAPPING" } },
-                { "uv_origin", "TOP_LEFT_UNCHANGED" },
-                { "normal_basis", "TANGENT_W_POSITIVE_BITANGENT_UNCHANGED" },
-                { "mip_policy", "NONE" },
-                { "occlusion_scope", "UNQUALIFIED_SOURCE_CHANNEL" },
-                { "movement_occlusion_revalidation", "REQUIRED" },
-                { "source_images_added", false },
-                { "fit_lights_exported", false },
-                { "material_assignment", "SOURCE_FACE_GROUPS_WITHOUT_INSTANCE_OVERRIDES" },
-                { "validator", "NOT_RUN" },
-                { "importer", "NOT_RUN" } });
+    Json manifest {
+        { "schema_version", request.m_structure ? 2 : 1 },
+        { "profile",
+         request.m_structure ? std::string_view("WE_NATIVE_STRUCTURED_GLTF_V1") : K_PROFILE },
+        { "qualification", "UNQUALIFIED_EXPORT" },
+        { "source_receipt_sha256", receipt.receipt_sha256() },
+        { "source_instances_sha256", instances.sha256() },
+        { "scene_id", std::to_string(instances.instances().m_scene.m_value) },
+        { "scene_revision", std::to_string(instances.instances().m_revision.m_value) },
+        { "world_epoch", std::to_string(expected.m_world_epoch.m_value) },
+        { "pose_revision", std::to_string(expected.m_pose_revision.m_value) },
+        { "assets", mappings },
+        { "nodes", node_map },
+        { "files", inventory },
+        { "units", K_UNITS },
+        { "walking_enabled", false },
+        { "manual_ancestor",
+         request.m_structure ? request.m_structure->manual_ancestor()
+                             : instances.instances().m_manual_ancestor },
+        { "synthetic_diagnostic", source.synthetic_source() },
+        { "error_limits", K_POLICY },
+        { "losses",
+         { "FLOAT32_GEOMETRY_UV",
+          "NORMAL_TANGENT_NORMALIZED",
+          "PIVOT_BAKED",
+          "SRGB8_COLOR_EMISSION",
+          "LINEAR8_ORM_NORMAL",
+          "NORMAL_MAP_DECODE_NORMALIZED",
+          "PRIMITIVES_GROUPED_WITH_SOURCE_FACE_MAP",
+          "NOMINAL_METRE_MAPPING" } },
+        { "uv_origin", "TOP_LEFT_UNCHANGED" },
+        { "normal_basis", "TANGENT_W_POSITIVE_BITANGENT_UNCHANGED" },
+        { "mip_policy", "NONE" },
+        { "occlusion_scope", "UNQUALIFIED_SOURCE_CHANNEL" },
+        { "movement_occlusion_revalidation", "REQUIRED" },
+        { "source_images_added", false },
+        { "fit_lights_exported", false },
+        { "material_assignment", "SOURCE_FACE_GROUPS_WITHOUT_INSTANCE_OVERRIDES" },
+        { "validator", "NOT_RUN" },
+        { "importer", "NOT_RUN" } };
+    if (request.m_structure) {
+        manifest["structure"] = { { "path", "structure/bindings.json" },
+                                 { "sha256", request.m_structure->sha256() },
+                                 { "scope", "DECLARED_PARTIAL_PATCHES" } };
+    }
+    files.json("manifest.json", manifest);
     std::ranges::sort(files.m_files, {}, &ExportPackageFile::m_path);
     check_stop(stop);
     return std::move(files.m_files);

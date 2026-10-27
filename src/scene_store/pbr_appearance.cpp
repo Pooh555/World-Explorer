@@ -303,7 +303,11 @@ Result<std::size_t> validate_pbr_appearance(const SceneChunk& chunk, const Scene
                 "PBR manifest checksum differs");
         const auto K_DOC =
             parse(std::as_bytes(std::span(value.m_export_manifest)), 1024uz * 1024uz, {});
-        require(K_DOC.at("profile").get<std::string>() == "WE_NATIVE_TEXTURED_GLTF_V1" &&
+        const auto K_PROFILE = K_DOC.at("profile").get<std::string>();
+        const bool K_STRUCTURED = K_PROFILE == "WE_NATIVE_STRUCTURED_GLTF_V1";
+        require(((K_PROFILE == "WE_NATIVE_TEXTURED_GLTF_V1" &&
+                  integer(K_DOC.at("schema_version")) == 1 && !K_DOC.contains("structure")) ||
+                 (K_STRUCTURED && integer(K_DOC.at("schema_version")) == 2)) &&
                     K_DOC.at("qualification").get<std::string>() == "UNQUALIFIED_EXPORT" &&
                     K_DOC.at("synthetic_diagnostic").get<bool>() == value.m_synthetic &&
                     K_DOC.at("manual_ancestor").get<bool>() == value.m_manual_ancestor &&
@@ -329,6 +333,22 @@ Result<std::size_t> validate_pbr_appearance(const SceneChunk& chunk, const Scene
             "assets/" + std::to_string(value.m_definition.m_asset.m_value) + "/asset.gltf";
         const auto& inventory = K_DOC.at("files");
         require(inventory.is_array() && inventory.size() <= 64uz, "PBR inventory budget exceeded");
+        if (K_STRUCTURED) {
+            const auto& structure = K_DOC.at("structure");
+            keys(structure, { "path", "sha256", "scope" });
+            digest_text(structure.at("sha256").get<std::string>());
+            require(
+                structure.at("path").get<std::string>() == "structure/bindings.json" &&
+                    structure.at("scope").get<std::string>() == "DECLARED_PARTIAL_PATCHES" &&
+                    std::ranges::any_of(inventory,
+                                        [&](const auto& row) {
+                                            return row.at("path").template get<std::string>() ==
+                                                       "structure/bindings.json" &&
+                                                   row.at("sha256").template get<std::string>() ==
+                                                       structure.at("sha256").get<std::string>();
+                                        }),
+                "PBR structure binding pin differs");
+        }
         const auto K_PIN_FILE = [&](const std::string& path, const std::string& text) {
             const auto K_ROW = std::ranges::find_if(inventory, [&](const auto& item) {
                 return item.at("path").template get<std::string>() == path;
