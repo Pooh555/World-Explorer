@@ -78,6 +78,9 @@ the collider root already binds its policy and sole base dependency. Existing
 asset/scene publication and selected metadata reload retain these exact references.
 Original native export profiles refuse colliders without explicit opt-in; the
 separate [collider companion profile](collider_exports.md) now carries original
-inputs, provenance and checked placements. No collider is installed in a viewer,
-Jolt owner, measured collision session or engine. Real production/scale/support,
-convex props, backend cooking, engine mapping and AP8 budgets remain open.
+inputs, provenance and checked placements. A separate [diagnostic static-shape
+adapter](native_static_shapes.md) now cooks this input into a source-bound Jolt
+owner and checks decoded losses/queries. Admission/export alone installs no
+collider in a viewer, measured collision session or engine. Real production,
+scale/support, convex props, physics-session integration, engine mapping and AP8
+budgets remain open.

@@ -376,15 +376,22 @@ collision unavailable and walking blocked. The [protocol](protocols/collider_exp
 keeps this synthetic local data/renderer integration distinct from backend shapes,
 real production and AP8 qualification.
 
-Next executable step: introduce a backend-neutral native triangle input boundary
-and a source-bound diagnostic static-shape adapter using the admitted collider
-input. Recheck collision target dependencies and the existing Jolt triangle-retention
-and ray-query contracts; avoid passing application-owned types down into collision.
-Verify exact cook/backend identity, losses and transformed multi-instance queries
-locally, while preserving arbitrary units, synthetic gameplay labels, support-ledger
-requirements and every measured-walking barrier. Do not start engine packaging or
-platform qualification to bypass these local checks.
-Backend collider cooking, convex props, broader structural/prop relations, producer execution and
+The [diagnostic static-shape slice](validation/2026-10-27-native-static-shapes.md)
+adds a neutral immutable input boundary and actual source-bound Jolt construction,
+with sanitizer/decoded-triangle retention, independent loss policy, backend/build
+identity and fresh transformed ray queries. Its [protocol](protocols/native_static_shapes.md)
+keeps geometric inspection separate from scene-instance authority, physics bodies,
+support ledgers, measured walking and serialized backend caches. Local synthetic
+checks do not qualify real geometry or AP gates.
+
+Next executable step: expose an explicit application/CLI diagnostic using the
+owned collider package and current admitted asset/instance selections. Recheck
+schema-4 companion/pivot mappings and choose fresh source pins/instance frames
+from private admission before querying the shared shape. Retain labeled actual
+backend/report/query output and verify changed-instance/source rejection locally;
+do not fabricate support ledgers, enable measured walking or skip to engine
+packaging/platform qualification. Convex props, physics-session integration,
+broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.
 Provisioning requires the recorded prerequisites. The real A1 completed/PBR pilot
 must use the existing native resource path after its inputs and producers exist.

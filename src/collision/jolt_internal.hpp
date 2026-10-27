@@ -2,6 +2,9 @@
 
 #include "world_explorer/collision/static_shape.hpp"
 
+// Jolt's public math headers use std::is_trivial without including this header.
+#include <type_traits>
+
 // Jolt requires this before every other Jolt header.
 // clang-format off
 #include <Jolt/Jolt.h>

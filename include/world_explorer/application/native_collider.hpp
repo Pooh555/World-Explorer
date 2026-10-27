@@ -1,6 +1,7 @@
 #pragma once
 
 #include "world_explorer/application/geometry_product.hpp"
+#include "world_explorer/scene_store/native_collider_input.hpp"
 
 #include <span>
 
@@ -21,12 +22,6 @@ struct NativeColliderRequest {
     std::optional<AdmittedGeometryProduct> m_base;
     std::optional<AdmittedAssetReceipt> m_receipt;
     AssetDependencyContext m_expected;
-};
-
-struct NativeColliderMesh {
-    std::vector<Vec3d> m_positions;
-    std::vector<std::array<std::uint32_t, 3>> m_triangles;
-    std::vector<std::uint32_t> m_source_faces;
 };
 
 // Exact static structural surface in arbitrary base-geometry units. Portable
@@ -62,6 +57,9 @@ class AdmittedNativeCollider {
 // and face appears exactly once, with original positions and oriented topology.
 Result<AdmittedNativeCollider> inspect_native_collider(const NativeColliderRequest& request,
                                                        const std::stop_token& stop = {});
+Result<AdmittedColliderInput> prepare_native_collider_input(const AdmittedNativeCollider& collider,
+                                                            const AssetDependencyContext& expected,
+                                                            const std::stop_token& stop = {});
 Result<RecordCommit> publish_native_collider(const AdmittedNativeCollider& collider,
                                              const AdmittedAssetReceipt& receipt,
                                              const std::filesystem::path& directory,

@@ -185,6 +185,25 @@ const std::string& AdmittedNativeCollider::receipt_sha256() const {
     return m_state->m_receipt;
 }
 
+Result<AdmittedColliderInput> prepare_native_collider_input(const AdmittedNativeCollider& collider,
+                                                            const AssetDependencyContext& expected,
+                                                            const std::stop_token& stop) {
+    if (stop.stop_requested()) {
+        return fail(ErrorCode::CANCELLED, "Native collider input preparation cancelled");
+    }
+    if (collider.base().context().m_world_epoch != expected.m_world_epoch ||
+        collider.base().context().m_pose_revision != expected.m_pose_revision) {
+        return fail(ErrorCode::RESYNC_REQUIRED, "Native collider input context differs");
+    }
+    return decode_native_collider_input(collider.canonical_bytes(),
+                                        { expected,
+                                         collider.selection().m_product,
+                                         collider.base().selection().m_product,
+                                         collider.receipt_sha256(),
+                                         collider.digest() },
+                                        stop);
+}
+
 Result<AdmittedNativeCollider> inspect_native_collider(const NativeColliderRequest& request,
                                                        const std::stop_token& stop) {
     try {
