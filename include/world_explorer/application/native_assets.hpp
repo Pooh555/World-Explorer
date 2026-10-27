@@ -2,6 +2,7 @@
 
 #include "world_explorer/application/completion_product.hpp"
 #include "world_explorer/application/material_product.hpp"
+#include "world_explorer/application/native_lod.hpp"
 #include "world_explorer/scene_store/asset_instances_io.hpp"
 
 namespace world_explorer {
@@ -14,6 +15,8 @@ struct NativeAssetSelection {
     std::optional<AdmittedCompletionProduct> m_completion;
     // Independently selected original placement; other instances may be copies.
     AssetInstanceId m_source_instance;
+    // Ordered like definition.m_lods; each certificate is relative to LOD0.
+    std::vector<AdmittedNativeLod> m_lods {};
 };
 
 struct NativeAssetsRequest {
@@ -43,7 +46,8 @@ class AdmittedNativeAssets {
 };
 
 // <=16 definitions, <=16 materials/definition, <=64 instances, arbitrary units,
-// no LOD/collider or room/support/lineage adoption. Every face group is bound.
+// exact certified LODs; no collider or room/support/lineage adoption.
+// Every base/LOD face group and provenance partition is bound.
 // Schema-1 aggregate material provenance must exactly match every channel's
 // partition. Schema 2 binds each original channel and its own provenance sidecar.
 Result<AdmittedNativeAssets> inspect_native_assets(const NativeAssetsRequest& request,

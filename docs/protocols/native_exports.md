@@ -118,3 +118,8 @@ manifest schema 2 / `WE_NATIVE_STRUCTURED_GLTF_V1` with exact graph/binding side
 Core mesh/material resources retain this conversion profile; legacy schema-1
 exports remain byte compatible. Native PBR loading preserves the structured
 source pins without adding physical-support or real AP qualification.
+
+[Certified native LODs](native_lods.md) can now enter asset definitions upstream.
+Both current export profiles explicitly refuse those definitions before resource
+compilation. An additive companion mapping and independently bounded per-LOD
+conversion are required before export or native preview may select them.

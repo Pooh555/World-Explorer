@@ -53,6 +53,9 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
             ErrorCode::RESOURCE_EXHAUSTED);
     std::size_t materials {};
     for (const auto& definition : instances.definitions()) {
+        require(definition.definition().m_lods.empty(),
+                "Native LOD export companion mapping is not implemented",
+                ErrorCode::UNSUPPORTED_OPERATION);
         require(definition.definition().m_materials.size() <= 4uz - materials,
                 "Native export material budget exceeded",
                 ErrorCode::RESOURCE_EXHAUSTED);

@@ -340,12 +340,22 @@ openings, room closure, gravity or support. The
 [protocol](protocols/native_structure.md) keeps whole-definition partial graphs
 separate from opaque instance room/support refs and future prop membership.
 
-Next executable step: bind explicit native LOD geometry products to asset
-definitions. Recheck plan §11.4, geometry-product and asset-definition contracts;
-require exact source/pose/material/UV/correspondence and per-LOD face provenance,
-with independently selected conversion/error bounds. Preserve current refusal
-until that additive profile is admitted. Verify owned reload/replay and downstream
-resource identity without starting M5 streaming or certifying AP8 performance.
+The [native LOD admission slice](validation/2026-10-27-native-lod.md) now binds
+explicit reduced geometry to LOD0 with exact whole-surface fan certificates,
+material/UV/normal/tangent preservation, complete per-LOD face provenance and
+source-bound definition/instance identity. Owned metadata reload/replay retains
+these private inputs. The [protocol](protocols/native_lods.md) limits this first
+profile to exact dyadic affine fans; general decimation and measured AP8 quality
+remain open. Native export explicitly refuses LOD definitions until their mapping
+is implemented; original no-LOD packages retain their meaning.
+
+Next executable step: carry admitted native LOD geometry/certificates through an
+additive native export companion mapping, shared individual/assembly resources
+and explicit native preview selection. Recheck plan §§11.4–11.5, native export/PBR
+contracts and the LOD proof before extending formats. Preserve old no-LOD bytes,
+base-bound structure face IDs, per-LOD provenance and independent float conversion
+bounds; verify owned reload and actual local native rendering. Do not start M5
+streaming or infer AP8 silhouette/performance qualification from synthetic results.
 Native collider adoption, broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.
 Provisioning requires the recorded prerequisites. The real A1 completed/PBR pilot

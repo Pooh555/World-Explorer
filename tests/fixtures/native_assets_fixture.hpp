@@ -26,10 +26,12 @@ struct NativeFixture {
     explicit NativeFixture(bool manual = false,
                            const Mutation& change = {},
                            AssetLightingMode lighting = AssetLightingMode::ESTIMATED_PBR,
-                           const MaterialFixtureMutations& material_changes = {})
+                           const MaterialFixtureMutations& material_changes = {},
+                           const GeometryFixture::Mutation& geometry_change = {})
         : m_base({ .m_lighting = manual ? AssetLightingMode::GENERATED_PBR : lighting,
                   .m_manual = manual },
-                 material_changes),
+                 material_changes,
+                 geometry_change),
           m_receipt(stage(manual, change)) { }
 
     AdmittedAssetReceipt stage(bool manual, const Mutation& change) {
@@ -91,11 +93,12 @@ struct NativeFixture {
             K_ADD(16000uz + index, material.m_product, prototype, selected, false);
         }
         auto faces = prototype;
+        const auto K_FACES = m_base.m_base.m_record["support"].size();
         faces["domain"] = {
-            { "kind", "GEOMETRY_FACES" }, { "elements", 2 }, { "width", 0 }, { "height", 0 } };
+            { "kind", "GEOMETRY_FACES" }, { "elements", K_FACES }, { "width", 0 }, { "height", 0 } };
         faces["manual_ancestor"] = false;
         faces["spans"] = Json::array();
-        for (std::size_t index { 0uz }; index < 2uz; ++index) {
+        for (std::size_t index { 0uz }; index < K_FACES; ++index) {
             const auto& support = m_base.m_base.m_record["support"][index];
             faces["spans"].push_back({ { "first", index },
                                       { "count", 1 },
@@ -107,7 +110,7 @@ struct NativeFixture {
         }
         auto selected = channel.m_region;
         selected.m_target = K_GEOMETRY;
-        selected.m_domain = { AssetRegionKind::GEOMETRY_FACES, 2, 0, 0 };
+        selected.m_domain = { AssetRegionKind::GEOMETRY_FACES, K_FACES, 0, 0 };
         K_ADD(16002, K_GEOMETRY, faces, selected, true);
         auto rights = region.node(16003, "synthetic native adoption rights; unreviewed");
         region.m_graph.m_products.push_back(rights);

@@ -14,7 +14,8 @@ renderer transaction, export, real completion/relighting or qualification token.
 `NativeAssetsRequest` selects the original receipt, epoch/pose, 1–16 definitions
 and 1–64 scene instances. Each asset independently supplies typed definition
 metadata, provenance selections, one geometry handle, 1–16 material handles, an
-optional completion handle and the original source-instance ID. Definitions still
+optional completion handle, ordered [certified LOD handles](native_lods.md) and
+the original source-instance ID. Definitions still
 pass existing metadata admission. Every native handle must use the exact receipt
 and current context; material geometry/product/variant/lighting references must
 match. The set of actual per-face material-group IDs must exactly equal the
@@ -23,14 +24,16 @@ variant remains checked by existing metadata admission; this path does not bake
 an override or alter per-face group assignments.
 
 Sources are exactly the geometry's original capture product and native-source
-binding, plus the selected completion product when present. Completion requires
+binding, plus the selected completion product and LOD certificate roots when
+present. Every LOD is bound to LOD0, the exact receipt and its own complete face
+provenance; declared triangle counts strictly decrease. Completion requires
 its selected geometry, original receipt/context and object→prop or shell→structural
 subject correspondence. Rejected candidates cannot substitute. Omitting completion
 while retaining its definition source fails. No completion selection makes no
 claim about completed geometry; this path does not infer producer history from
 visual similarity or require every asset to have a completion product.
 
-Only arbitrary units are supported. LOD/collider and instance room/support/lineage
+Only arbitrary units are supported. Collider and instance room/support/lineage
 adoption are explicitly unsupported. Structural identity remains metadata; no
 room closure, support, gravity, measured scale or walking authority is inferred.
 Rights are the existing exact opaque product binding, without legal clearance.

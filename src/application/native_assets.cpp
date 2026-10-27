@@ -50,10 +50,10 @@ bool same_span(const AssetRegionSpan& a, const AssetRegionSpan& b) {
 }
 
 void face_provenance(const NativeAssetSelection& asset,
+                     const AdmittedGeometryProduct& geometry,
                      const AdmittedAssetReceipt& receipt,
                      const AssetDependencyContext& expected,
                      const std::stop_token& stop) {
-    const auto& geometry = selected(asset.m_geometry);
     const auto K_REGION = region(asset, geometry.selection().m_product, receipt, expected, stop);
     const auto& record = K_REGION.m_record;
     require(record.m_domain == AssetRegionDomain { AssetRegionKind::GEOMETRY_FACES,
@@ -297,13 +297,29 @@ Result<AdmittedNativeAssets> inspect_native_assets(const NativeAssetsRequest& re
                     "Native asset geometry/receipt differs",
                     ErrorCode::RESYNC_REQUIRED);
             require(definition.m_units.m_status == AssetUnitStatus::ARBITRARY &&
-                        definition.m_lods.empty() && !definition.m_collider,
-                    "Native asset units/LOD/collider profile unsupported",
+                        !definition.m_collider,
+                    "Native asset units/collider profile unsupported",
                     ErrorCode::UNSUPPORTED_OPERATION);
             std::vector<AssetRevisionRef> sources { geometry.capture_product(),
                                                    geometry.selection().m_source };
+            require(asset.m_lods.size() == definition.m_lods.size() && asset.m_lods.size() <= 8uz,
+                    "Native asset independently admitted LOD bindings missing");
+            auto previous_faces = geometry.mesh().m_triangles.size();
+            for (std::size_t level { 0uz }; level < asset.m_lods.size(); ++level) {
+                check_stop(stop);
+                const auto& lod = asset.m_lods[level];
+                require(lod.receipt_sha256() == receipt.receipt_sha256() &&
+                            lod.base().selection().m_product == geometry.selection().m_product &&
+                            lod.candidate().selection().m_product == definition.m_lods[level] &&
+                            lod.candidate().mesh().m_triangles.size() < previous_faces,
+                        "Native asset LOD order, base or receipt differs",
+                        ErrorCode::RESYNC_REQUIRED);
+                previous_faces = lod.candidate().mesh().m_triangles.size();
+                sources.push_back(lod.selection().m_product);
+                face_provenance(asset, lod.candidate(), receipt, expected, stop);
+            }
             if (asset.m_completion) {
-                const auto& completion = asset.m_completion.value();
+                const auto& completion = selected(asset.m_completion);
                 context(completion.context(), expected);
                 require(
                     completion.receipt_sha256() == receipt.receipt_sha256() &&
@@ -319,11 +335,11 @@ Result<AdmittedNativeAssets> inspect_native_assets(const NativeAssetsRequest& re
             }
             require(definition.m_sources.size() == sources.size() &&
                         std::ranges::is_permutation(definition.m_sources, sources),
-                    "Native asset source/completion refs differ",
+                    "Native asset source/completion/LOD refs differ",
                     ErrorCode::RESYNC_REQUIRED);
             auto admitted = take(
                 admit_asset_definition(definition, receipt, asset.m_provenance, expected, stop));
-            face_provenance(asset, receipt, expected, stop);
+            face_provenance(asset, geometry, receipt, expected, stop);
             materials(asset, receipt, expected, stop);
             bounds(asset, stop);
             synthetic = synthetic || geometry.synthetic_source();

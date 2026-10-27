@@ -1,5 +1,7 @@
 # Validation index
 
+- [27 October: certified native LOD admission](2026-10-27-native-lod.md) — whole-surface affine fan replay, per-LOD provenance and immutable definition/instance identity; export/preview mapping and real AP8 qualification remain open.
+
 - [27 October: native structural graph adoption](2026-10-27-native-structure.md) — exact graph/geometry/definition/instance bindings, atomic history and structured export/native source pins; synthetic scope, physical structure and real AP qualification open.
 - [27 October: independent material-channel provenance](2026-10-27-channel-provenance.md) — additive definition-v2 bindings, heterogeneous masks and owned history/export/runtime pins; synthetic validation, real producer/AP qualification open.
 - [26 October: native PBR scenes and viewer](2026-10-26-native-pbr-viewer.md) — source-pinned immutable resources and shared Vulkan instances, synthetic pixel/light/input/update validation; real A1/PBR/Godot qualification remains open.
