@@ -80,8 +80,10 @@ path/size/hash and independently selected reviews under finite ceilings. Its
 at and twice the proposed size with bounded process memory. All v1 limits and
 encodings remain unchanged. Mutable-file observations are neither privately owned
 immutable payloads nor execution authority. The actual proposed checkpoint has
-not passed this profile, and its reviews remain unselected. A shared frozen
-request/CLI boundary, full native environment inventories/runtime closure,
+not passed this profile, and its reviews remain unselected. The
+[shared frozen request/CLI](protocols/external_model_inspection.md) now replays
+independently selected small snapshots and MODEL files with all global blockers.
+Full native environment inventories/runtime closure,
 whole-installation costs and actual resource enforcement remain open before
 acquisition/activation can be concretely proposed.
 

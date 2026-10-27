@@ -407,14 +407,25 @@ receipt/evidence/tree limits remain unchanged. The
 [protocol](protocols/asset_external_models.md) keeps mutable-file observations
 separate from immutable payload ownership and execution/rights/runtime authority.
 
-Next executable step: expose this external MODEL observation through a strict,
-independently hash-selected frozen request and shared read-only application/CLI
-command. Bind both small receipts, original product/context, native model file
-selections, independent reviews and byte ceilings; check request budgets and
-preserve every source on success/refusal. Replay retained synthetic large products
-with an independent request/report/hash oracle, including changed file/selection,
-cancellation and CLI failures. Keep the real checkpoint unacquired and all global
-rights/runtime/worker-limit blockers. Do not treat synthetic diagnostics as real production,
+The [external MODEL request/CLI slice](validation/2026-10-27-external-model-cli.md)
+adds `we_process inspect-external-models REQUEST.json SHA256` over the shared
+read-only observer. Strict bounded selection parsing precedes receipt admission;
+both retained synthetic large files replay with independently checked JSON,
+source preservation and unchanged global blockers. The
+[request protocol](protocols/external_model_inspection.md) labels all output
+unqualified and keeps observation separate from acquisition/execution authority.
+
+Next executable step: refresh the read-only A0 exit/pre-installation audit against
+this command and the current installation proposal. Reconcile exact proposed
+code/config/terms/archive, isolated environment and checkpoint pins, whole-plan
+download/installed/build/staging/scratch costs, independent review selections,
+enforceable worker limits and real pilot/corpus prerequisites into a concrete
+freeze/acquisition proposal. Start with the saved large request/report oracle and
+`python3 tools/check_dependency_inventory.py --local-evidence`; retained runtime
+payload evidence is stale after relinking and must not be reported current.
+Keep unknown costs null/blocking and the real checkpoint unacquired. Address the
+first unresolved prerequisite; do not add another observation profile merely to
+avoid the real recipe/capture freeze. Do not treat synthetic diagnostics as real production,
 enable measured walking or skip to platform/engine qualification. Convex props, physics-session integration,
 broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.

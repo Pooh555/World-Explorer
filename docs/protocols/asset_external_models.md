@@ -6,6 +6,8 @@ Large external payloads stay outside the small owned [receipt](asset_receipts.md
 All v1 receipt, [component evidence](asset_component_evidence.md) and
 [installed-tree](asset_installed_components.md) limits/encodings remain unchanged.
 A0/AP0 remain **IN_PROGRESS**; this profile starts no installer or worker.
+The [shared request/CLI](external_model_inspection.md) now reopens independently
+hash-selected snapshots and explicit file selections through this same observer.
 
 ## Independent selection and metadata
 
@@ -31,7 +33,7 @@ the result follows recipe/manifest order. Logical paths retain the portable v1
 rules: ASCII, 240 bytes/128 per segment, no traversal/device names, duplicates,
 case aliases or file/parent collisions. Native file locations are explicit and
 need not reproduce logical paths. They must be canonical absolute normalized
-paths, at most 4,096 generic-string bytes/64 segments, without embedded NUL.
+paths, at most 4,096 UTF-8 generic-string bytes/64 segments, without embedded NUL.
 Leaves must be regular, nonsymlink files with exactly one hard link; every parent
 must be a nonsymlink directory. Equivalent selected files across components reject.
 Neighbouring unselected files are outside this observation's scope.

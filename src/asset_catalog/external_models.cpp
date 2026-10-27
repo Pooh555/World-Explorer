@@ -154,7 +154,7 @@ Result<AssetExternalModelObservation> inspect_asset_external_models(
                 const auto K_KEY = portable_path(file.m_relative_path);
                 (void)digest(file.m_sha256);
                 require(file.m_file.is_absolute() &&
-                            file.m_file.generic_string().size() <= 4096uz &&
+                            file.m_file.generic_u8string().size() <= 4096uz &&
                             file.m_file.native().find(fs::path::value_type {}) ==
                                 fs::path::string_type::npos &&
                             std::distance(file.m_file.begin(), file.m_file.end()) <= 64z &&

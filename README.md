@@ -271,6 +271,13 @@ receipts, capture commits and typed evidence explicitly. The command is read-onl
 and prints all remaining blockers; exit 0 certifies successful metadata inspection
 only. Existing reconstruction scenes do not supply missing asset-corpus inputs.
 
+Observe explicitly selected external MODEL files with
+`build/dev/we_process inspect-external-models REQUEST.json REQUEST_SHA256`.
+The [request contract](docs/protocols/external_model_inspection.md) binds both small
+receipts and exact native file/size/hash/review selections, then streams two
+hash passes and prints a labeled JSON diagnostic with all remaining blockers.
+Exit 0 grants no immutable payload ownership, installation or worker execution.
+
 Run explicitly selected synthetic static-collider queries with
 `build/dev/we_process inspect-colliders REQUEST.json REQUEST_SHA256`.
 The [batch/request contract](docs/protocols/native_collider_diagnostics.md) binds

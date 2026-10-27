@@ -236,7 +236,7 @@ add_library(navigation src/navigation/fly_camera.cpp)
 we_target(navigation)
 target_link_libraries(navigation PUBLIC core)
 
-add_library(application src/application/commands.cpp src/application/scenes.cpp src/application/manual_actions.cpp src/application/draft_mutations.cpp src/application/object_mask_edit.cpp src/application/asset_definition_edit.cpp src/application/evaluation_corpus.cpp src/application/capture_measurement.cpp src/application/corpus_inspection.cpp src/application/geometry_product.cpp src/application/material_product.cpp src/application/structure_graph.cpp src/application/native_structure.cpp src/application/completion_product.cpp src/application/static_export.cpp src/application/native_assets.cpp src/application/native_collider.cpp src/application/native_collider_diagnostic.cpp src/application/native_lod.cpp src/application/native_export.cpp src/application/native_collider_export.cpp src/application/native_export_codec.cpp src/application/native_pbr_scene.cpp
+add_library(application src/application/commands.cpp src/application/scenes.cpp src/application/manual_actions.cpp src/application/draft_mutations.cpp src/application/object_mask_edit.cpp src/application/asset_definition_edit.cpp src/application/evaluation_corpus.cpp src/application/capture_measurement.cpp src/application/corpus_inspection.cpp src/application/external_model_inspection.cpp src/application/geometry_product.cpp src/application/material_product.cpp src/application/structure_graph.cpp src/application/native_structure.cpp src/application/completion_product.cpp src/application/static_export.cpp src/application/native_assets.cpp src/application/native_collider.cpp src/application/native_collider_diagnostic.cpp src/application/native_lod.cpp src/application/native_export.cpp src/application/native_collider_export.cpp src/application/native_export_codec.cpp src/application/native_pbr_scene.cpp
   src/application/depth_assets.cpp src/application/fusion_assets.cpp src/application/fusion_scene.cpp
   src/application/fusion_cleanup.cpp src/application/geometry_job.cpp src/application/mesh_job.cpp
   src/application/mesh_color_audit.cpp src/application/color_inputs.cpp src/application/mesh_texture.cpp src/application/gltf.cpp
@@ -436,7 +436,7 @@ if(BUILD_TESTING)
 
   add_executable(we_core_tests ${WE_CORE_TESTS})
   add_dependencies(we_core_tests we_asset_receipt_probe we_draft_mutation_probe we_process)
-  set_source_files_properties(tests/unit/corpus_inspection_tests.cpp tests/unit/native_collider_diagnostic_tests.cpp PROPERTIES
+  set_source_files_properties(tests/unit/corpus_inspection_tests.cpp tests/unit/native_collider_diagnostic_tests.cpp tests/unit/external_model_inspection_tests.cpp PROPERTIES
     COMPILE_DEFINITIONS "WE_TEST_PROCESS=\"$<TARGET_FILE:we_process>\"")
   we_target(we_core_tests)
   target_link_libraries(we_core_tests PRIVATE application asset_catalog collision map_store render_core Catch2::Catch2WithMain nlohmann_json::nlohmann_json)

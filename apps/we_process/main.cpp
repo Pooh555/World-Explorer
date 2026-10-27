@@ -6,6 +6,7 @@
 #include "world_explorer/application/depth_assets.hpp"
 #include "world_explorer/application/depth_space.hpp"
 #include "world_explorer/application/depth_visibility.hpp"
+#include "world_explorer/application/external_model_inspection.hpp"
 #include "world_explorer/application/fusion_assets.hpp"
 #include "world_explorer/application/fusion_cleanup.hpp"
 #include "world_explorer/application/fusion_scene.hpp"
@@ -109,6 +110,8 @@ int main(int argc, char** argv) {
                    "  we_process inspect-actions JOURNAL GENERATION MANIFEST_SHA (declared "
                    "actions)\n"
                    "  we_process inspect-corpus REQUEST.json SHA256 (read-only frozen metadata)\n"
+                   "  we_process inspect-external-models REQUEST.json SHA256 (read-only "
+                   "observations)\n"
                    "  we_process inspect-colliders REQUEST.json SHA256 (synthetic static ray "
                    "queries)\n"
                    "  we_process solve-poses DECODE_STAGE VIDEO NEW_JOB --pose-python EXECUTABLE\n"
@@ -218,6 +221,20 @@ int main(int argc, char** argv) {
                 cancellation.request_stop();
             }
         });
+        if (K_COMMAND == "inspect-external-models") {
+            if (argc != 4) {
+                std::cerr << "Usage: we_process inspect-external-models REQUEST.json SHA256\n";
+                return 2;
+            }
+            const auto K_REPORT = inspect_asset_external_models_request(
+                argv[2uz], argv[3uz], cancellation.get_token());
+            if (!K_REPORT) {
+                std::cerr << K_REPORT.error().m_message << '\n';
+                return 2;
+            }
+            std::cout << *K_REPORT << '\n';
+            return 0;
+        }
         if (K_COMMAND == "inspect-colliders") {
             if (argc != 4) {
                 std::cerr << "Usage: we_process inspect-colliders REQUEST.json SHA256\n";
