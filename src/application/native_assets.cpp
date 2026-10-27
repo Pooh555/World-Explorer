@@ -49,12 +49,17 @@ bool same_span(const AssetRegionSpan& a, const AssetRegionSpan& b) {
            a.m_support == b.m_support && a.m_manual_ancestor == b.m_manual_ancestor;
 }
 
-void face_provenance(const NativeAssetSelection& asset,
-                     const AdmittedGeometryProduct& geometry,
-                     const AdmittedAssetReceipt& receipt,
-                     const AssetDependencyContext& expected,
-                     const std::stop_token& stop) {
-    const auto K_REGION = region(asset, geometry.selection().m_product, receipt, expected, stop);
+void verify_faces(const NativeAssetSelection& asset,
+                  const AdmittedGeometryProduct& geometry,
+                  const AssetRevisionRef& target,
+                  std::span<const std::uint32_t> source_faces,
+                  const AssetRevisionRef& parent,
+                  const AdmittedAssetReceipt& receipt,
+                  const AssetDependencyContext& expected,
+                  const std::stop_token& stop) {
+    require(source_faces.empty() || source_faces.size() == geometry.support().size(),
+            "Native face correspondence count differs");
+    const auto K_REGION = region(asset, target, receipt, expected, stop);
     const auto& record = K_REGION.m_record;
     require(record.m_domain == AssetRegionDomain { AssetRegionKind::GEOMETRY_FACES,
                                                   geometry.mesh().m_triangles.size(),
@@ -80,17 +85,35 @@ void face_provenance(const NativeAssetSelection& asset,
     }
     for (const auto& span : record.m_spans) {
         check_stop(stop);
-        require(!span.m_confidence && span.m_parents == std::vector { geometry.selection().m_source },
+        require(!span.m_confidence && span.m_parents == std::vector { parent },
                 "Native face confidence or parent binding unsupported",
                 ErrorCode::UNSUPPORTED_OPERATION);
         for (auto face = span.m_first; face < span.m_first + span.m_count; ++face) {
-            const auto& support = geometry.support().at(static_cast<std::size_t>(face));
+            const auto K_SOURCE = source_faces.empty()
+                                      ? static_cast<std::size_t>(face)
+                                      : source_faces[static_cast<std::size_t>(face)];
+            const auto& support = geometry.support().at(K_SOURCE);
             auto views = support.m_views;
             std::ranges::sort(views);
             require(span.m_class == support.m_class && span.m_support == views,
                     "Native asset face provenance differs from correspondence");
         }
     }
+}
+
+void face_provenance(const NativeAssetSelection& asset,
+                     const AdmittedGeometryProduct& geometry,
+                     const AdmittedAssetReceipt& receipt,
+                     const AssetDependencyContext& expected,
+                     const std::stop_token& stop) {
+    verify_faces(asset,
+                 geometry,
+                 geometry.selection().m_product,
+                 {},
+                 geometry.selection().m_source,
+                 receipt,
+                 expected,
+                 stop);
 }
 
 void materials(const NativeAssetSelection& asset,
@@ -296,10 +319,33 @@ Result<AdmittedNativeAssets> inspect_native_assets(const NativeAssetsRequest& re
                         definition.m_geometry == geometry.selection().m_product,
                     "Native asset geometry/receipt differs",
                     ErrorCode::RESYNC_REQUIRED);
-            require(definition.m_units.m_status == AssetUnitStatus::ARBITRARY &&
-                        !definition.m_collider,
-                    "Native asset units/collider profile unsupported",
+            require(definition.m_units.m_status == AssetUnitStatus::ARBITRARY,
+                    "Native asset units profile unsupported",
                     ErrorCode::UNSUPPORTED_OPERATION);
+            require(asset.m_collider.has_value() == definition.m_collider.has_value(),
+                    "Native asset independent collider selection missing");
+            if (asset.m_collider) {
+                const auto& collider = selected(asset.m_collider);
+                const auto& binding = selected(definition.m_collider);
+                require(definition.m_kind == AssetKind::STRUCTURAL &&
+                            binding.m_mode == AssetColliderMode::SYNTHETIC_GAMEPLAY,
+                        "Native collider requires static structural synthetic gameplay mode",
+                        ErrorCode::UNSUPPORTED_OPERATION);
+                require(collider.receipt_sha256() == receipt.receipt_sha256() &&
+                            collider.base().selection().m_product ==
+                                geometry.selection().m_product &&
+                            binding.m_product == collider.selection().m_product,
+                        "Native asset collider source or receipt differs",
+                        ErrorCode::RESYNC_REQUIRED);
+                verify_faces(asset,
+                             geometry,
+                             collider.selection().m_product,
+                             collider.mesh().m_source_faces,
+                             geometry.selection().m_product,
+                             receipt,
+                             expected,
+                             stop);
+            }
             std::vector<AssetRevisionRef> sources { geometry.capture_product(),
                                                    geometry.selection().m_source };
             require(asset.m_lods.size() == definition.m_lods.size() && asset.m_lods.size() <= 8uz,

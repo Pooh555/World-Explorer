@@ -359,14 +359,22 @@ LOD0-bound structure and complete portable provenance. This is synthetic local
 integration; general decimation, real producers and AP8 quality/performance remain
 unqualified. No M5 streaming or automatic distance selection is implemented.
 
-Next executable step: admit separately selected native collider geometry and cook
-policy against exact base/source/context, bind the collider to asset definitions,
-and verify immutable reload plus downstream source identity. Recheck plan §11.4,
-asset-definition/collision contracts and arbitrary-scale restrictions. Generated
-colliders must remain synthetic gameplay collision and cannot qualify Q5/N2 or
-enable measured walking. Keep export refusal until an explicit collider companion
-profile is admitted and locally exercised.
-Native collider adoption, broader structural/prop relations, producer execution and
+The [native collider admission slice](validation/2026-10-27-native-collider.md)
+now binds a distinct exact static structural collider to base geometry, independent
+cook policy, full remapped face provenance and every instance reference. Its
+portable canonical triangle input and original root publish/reload atomically.
+The [protocol](protocols/native_colliders.md) preserves holes and source evidence,
+labels arbitrary-scale gameplay purpose, and keeps backend shapes, support ledgers,
+measured walking and all current export profiles outside this admission path.
+
+Next executable step: carry admitted native collider roots and canonical triangle
+input through an explicit export companion profile. Recheck plan §§11.4–11.5,
+collider/native export contracts and arbitrary-scale restrictions. Bind original
+geometry/cook/provenance hashes and independently verified pivot/instance transforms;
+keep collider geometry tied to LOD0 even when rendering another level. Preserve
+legacy package bytes and walking unavailability. Validate real emitted files and
+native source pins locally before any backend/engine or platform qualification.
+Backend collider cooking, convex props, broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.
 Provisioning requires the recorded prerequisites. The real A1 completed/PBR pilot
 must use the existing native resource path after its inputs and producers exist.

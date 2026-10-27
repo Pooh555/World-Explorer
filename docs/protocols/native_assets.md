@@ -15,7 +15,8 @@ renderer transaction, export, real completion/relighting or qualification token.
 and 1–64 scene instances. Each asset independently supplies typed definition
 metadata, provenance selections, one geometry handle, 1–16 material handles, an
 optional completion handle, ordered [certified LOD handles](native_lods.md) and
-the original source-instance ID. Definitions still
+an optional [static structural collider](native_colliders.md), plus the original
+source-instance ID. Definitions still
 pass existing metadata admission. Every native handle must use the exact receipt
 and current context; material geometry/product/variant/lighting references must
 match. The set of actual per-face material-group IDs must exactly equal the
@@ -33,8 +34,9 @@ while retaining its definition source fails. No completion selection makes no
 claim about completed geometry; this path does not infer producer history from
 visual similarity or require every asset to have a completion product.
 
-Only arbitrary units are supported. Collider and instance room/support/lineage
-adoption are explicitly unsupported. Structural identity remains metadata; no
+Only arbitrary units are supported. Collider adoption requires a distinct private
+static structural product, full remapped face provenance and SYNTHETIC_GAMEPLAY
+mode. Instance room/support/lineage adoption remains unsupported. Structural identity remains metadata; no
 room closure, support, gravity, measured scale or walking authority is inferred.
 Rights are the existing exact opaque product binding, without legal clearance.
 

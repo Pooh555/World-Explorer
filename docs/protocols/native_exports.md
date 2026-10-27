@@ -124,3 +124,7 @@ Both original export profiles explicitly refuse those definitions before resourc
 compilation. The opt-in [schema-3 LOD profile](native_lod_exports.md) now retains
 all levels/certificates and independently bounds every conversion while selecting
 one level per definition for individual/assembly export and native preview.
+
+[Native static colliders](native_colliders.md) can enter definitions upstream.
+All current export profiles explicitly refuse them before compiling resources;
+no collider or its authority is silently discarded from an otherwise valid asset.

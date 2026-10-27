@@ -69,6 +69,9 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
         }
     }
     for (const auto& definition : instances.definitions()) {
+        require(!definition.definition().m_collider,
+                "Native collider export companion is not implemented",
+                ErrorCode::UNSUPPORTED_OPERATION);
         require(request.m_lods || definition.definition().m_lods.empty(),
                 "Native LOD export requires explicit per-definition selection",
                 ErrorCode::UNSUPPORTED_OPERATION);
