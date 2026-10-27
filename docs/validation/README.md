@@ -1,5 +1,7 @@
 # Validation index
 
+- [27 October: external MODEL file observations](2026-10-27-external-models.md) — separate streamed large-file profile, independent recipe/review joins, mutation/cancellation/alias checks and synthetic bounded-memory evidence; acquisition, runtime closure and AP qualification remain open.
+
 - [27 October: refreshed A0 exit audit](2026-10-27-a0-exit-audit.md) — current bounded product contracts accounted for, selected host/runtime/capture rechecked, large-artifact verification gap identified; documentation-only audit, provisioning and real AP qualification remain open.
 
 - [27 October: shared native collider diagnostic and CLI](2026-10-27-collider-diagnostic.md) — exact current private asset/instance joins, bounded actual Jolt batches and read-only frozen replay; synthetic local scope, live physics/real AP qualification open.

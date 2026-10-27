@@ -69,18 +69,21 @@ nonempty file/archive inside an owned receipt, with **16 MiB/file**;
 [receipt admission](protocols/asset_receipts.md) and
 [installed-tree inspection](protocols/asset_installed_components.md) each cap the
 relevant total at **64 MiB**. The proposed single checkpoint exceeds all three
-bounds. These implemented small-fixture profiles cannot presently verify this
-model or a complete production environment. This is a source-bound/declared-size
-comparison, without model payload verification or an installation attempt.
+bounds. These small-fixture profiles cannot verify this model or a complete
+production environment. This remains a source-bound/declared-size comparison,
+without model payload verification or an installation attempt.
 
-Before acquisition, implement a separately versioned, explicitly selected
-large-artifact observation boundary with streamed hashing, finite per-file/total
-budgets, exact byte/path/review pins, cancellation and caller-data preservation.
-Keep mutable-file observations distinct from privately owned immutable bytes and
-execution authority. Preserve all v1 receipt/evidence limits and encodings; raising
-their constants or treating an external hash declaration as admitted payload
-would not close this gap. Full native environment inventories/runtime closure and
-actual resource enforcement remain separate requirements after this boundary.
+The separate [external MODEL observation v2](protocols/asset_external_models.md)
+now streams explicitly selected no-archive MODEL files, joining exact
+path/size/hash and independently selected reviews under finite ceilings. Its
+[synthetic validation](validation/2026-10-27-external-models.md) exercises files
+at and twice the proposed size with bounded process memory. All v1 limits and
+encodings remain unchanged. Mutable-file observations are neither privately owned
+immutable payloads nor execution authority. The actual proposed checkpoint has
+not passed this profile, and its reviews remain unselected. A shared frozen
+request/CLI boundary, full native environment inventories/runtime closure,
+whole-installation costs and actual resource enforcement remain open before
+acquisition/activation can be concretely proposed.
 
 ## Reservation and activation sequence
 

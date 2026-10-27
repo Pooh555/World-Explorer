@@ -121,7 +121,7 @@ add_library(core src/core/hash.cpp src/core/file_lock.cpp src/core/asset_files.c
 we_target(core)
 target_link_libraries(core PRIVATE OpenSSL::Crypto nlohmann_json::nlohmann_json PUBLIC Threads::Threads)
 
-add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp src/asset_catalog/component_evidence.cpp src/asset_catalog/installed_components.cpp src/asset_catalog/region_provenance.cpp src/asset_catalog/asset_definition.cpp src/asset_catalog/definition_io.cpp src/asset_catalog/manual_actions.cpp src/asset_catalog/draft_mutations.cpp src/asset_catalog/draft_attempts.cpp src/asset_catalog/static_payloads.cpp)
+add_library(asset_catalog src/asset_catalog/dependency_graph.cpp src/asset_catalog/dependency_receipt.cpp src/asset_catalog/recipe.cpp src/asset_catalog/component_evidence.cpp src/asset_catalog/external_models.cpp src/asset_catalog/installed_components.cpp src/asset_catalog/region_provenance.cpp src/asset_catalog/asset_definition.cpp src/asset_catalog/definition_io.cpp src/asset_catalog/manual_actions.cpp src/asset_catalog/draft_mutations.cpp src/asset_catalog/draft_attempts.cpp src/asset_catalog/static_payloads.cpp)
 we_target(asset_catalog)
 target_link_libraries(asset_catalog PUBLIC core PRIVATE nlohmann_json::nlohmann_json)
 

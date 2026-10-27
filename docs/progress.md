@@ -399,15 +399,22 @@ cannot pass the existing 16 MiB/file evidence and 64 MiB receipt/tree profiles.
 The [installation proposal](asset_installation_plan.md#artifact-verification-boundary-before-acquisition)
 records this boundary without authorizing acquisition or widening v1 limits.
 
-Next executable step: implement a separately versioned large-artifact observation
-boundary before any asset-model acquisition. Bind independent model file identity,
-declared size, finite per-file/aggregate limits and explicit paths; stream hashes
-with cancellation/change detection and preserve caller bytes on failure. Exercise
-a synthetic file at least 156,008,466 bytes plus stale/mutated/linked/over-budget
-cases locally, including a bounded-memory check. Keep v1 owned receipts/limits
-unchanged and distinguish observations from immutable-byte or execution authority.
-Reconcile the selected component/review binding without clearing rights, runtime
-or worker-limit blockers. Do not treat synthetic diagnostics as real production,
+The [external MODEL observation slice](validation/2026-10-27-external-models.md)
+adds a separate schema-2 manifest and explicit path/size/hash/review selection,
+two streamed passes and bounded cancellation/change/alias checks. Synthetic
+156,008,466-byte and doubled files exercise the large-file path; original v1
+receipt/evidence/tree limits remain unchanged. The
+[protocol](protocols/asset_external_models.md) keeps mutable-file observations
+separate from immutable payload ownership and execution/rights/runtime authority.
+
+Next executable step: expose this external MODEL observation through a strict,
+independently hash-selected frozen request and shared read-only application/CLI
+command. Bind both small receipts, original product/context, native model file
+selections, independent reviews and byte ceilings; check request budgets and
+preserve every source on success/refusal. Replay retained synthetic large products
+with an independent request/report/hash oracle, including changed file/selection,
+cancellation and CLI failures. Keep the real checkpoint unacquired and all global
+rights/runtime/worker-limit blockers. Do not treat synthetic diagnostics as real production,
 enable measured walking or skip to platform/engine qualification. Convex props, physics-session integration,
 broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.
