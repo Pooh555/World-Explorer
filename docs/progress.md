@@ -384,13 +384,20 @@ keeps geometric inspection separate from scene-instance authority, physics bodie
 support ledgers, measured walking and serialized backend caches. Local synthetic
 checks do not qualify real geometry or AP gates.
 
-Next executable step: expose an explicit application/CLI diagnostic using the
-owned collider package and current admitted asset/instance selections. Recheck
-schema-4 companion/pivot mappings and choose fresh source pins/instance frames
-from private admission before querying the shared shape. Retain labeled actual
-backend/report/query output and verify changed-instance/source rejection locally;
-do not fabricate support ledgers, enable measured walking or skip to engine
-packaging/platform qualification. Convex props, physics-session integration,
+The [shared collider diagnostic](validation/2026-10-27-collider-diagnostic.md)
+now selects current private asset/instance pins, checks exact canonical package/
+pivot/placement joins and runs bounded actual Jolt query batches. The
+[CLI contract](protocols/native_collider_diagnostics.md) exposes read-only frozen
+request replay and labeled report JSON; stale current selections refuse. Frozen
+snapshot integrity remains separate from live scene/body authority and AP gates.
+
+Next executable step: refresh the scoped A0 exit audit against plan §§11.4,
+11.6 and 11.8 using the current code and retained evidence. Identify the first
+remaining executable contract and its exact producer/data/resource prerequisites;
+recheck the selected installation/runtime/capture blockers before adding another
+adapter. Do not treat accumulated synthetic diagnostics as real production,
+fabricate support ledgers, enable measured walking or skip to platform/engine
+qualification. Convex props, physics-session integration,
 broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.
 Provisioning requires the recorded prerequisites. The real A1 completed/PBR pilot

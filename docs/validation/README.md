@@ -1,5 +1,7 @@
 # Validation index
 
+- [27 October: shared native collider diagnostic and CLI](2026-10-27-collider-diagnostic.md) — exact current private asset/instance joins, bounded actual Jolt batches and read-only frozen replay; synthetic local scope, live physics/real AP qualification open.
+
 - [27 October: diagnostic native static shapes](2026-10-27-native-static-shapes.md) — neutral owned input, actual Jolt mesh construction, compressed-triangle loss/retention and transformed source-bound ray queries; synthetic CPU scope, scene-instance/physics/real AP qualification open.
 
 - [27 October: collider export companion and native source pins](2026-10-27-collider-export.md) — exact inputs/provenance, checked placements and LOD0 binding, shared render resources and inactive native collision; backend/engine/real AP qualification open.

@@ -271,6 +271,13 @@ receipts, capture commits and typed evidence explicitly. The command is read-onl
 and prints all remaining blockers; exit 0 certifies successful metadata inspection
 only. Existing reconstruction scenes do not supply missing asset-corpus inputs.
 
+Run explicitly selected synthetic static-collider queries with
+`build/dev/we_process inspect-colliders REQUEST.json REQUEST_SHA256`.
+The [batch/request contract](docs/protocols/native_collider_diagnostics.md) binds
+the original package and exact instance frames, then prints actual Jolt hits,
+misses and conversion losses as JSON. This read-only frozen replay installs no
+physics body and grants no measured-walking or real asset qualification.
+
 The native application API can compile an admitted textured asset export into a
 [source-pinned PBR draft bundle](docs/protocols/native_pbr_scene.md). Open that
 bundle with `build/dev/we_viewer --scene PATH`: the viewer selects PBR and exposes

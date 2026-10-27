@@ -89,3 +89,8 @@ reports are separate diagnostics, without an overall hit-distance or clearance
 certificate. Stale input, cancellation and backend failure preserve the existing
 owner. Existing M3 support-ledger/controller admission and all Q5/N2 walking
 barriers remain unchanged.
+
+The [application batch/CLI diagnostic](native_collider_diagnostics.md) now selects
+fresh private asset/instance frames, checks their canonical package joins and
+exposes bounded frozen replay. It retains the separation from live scene/body
+installation and measured walking.
