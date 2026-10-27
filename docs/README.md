@@ -46,6 +46,7 @@ Read by task; do not load the entire directory for routine work.
 | Check actual backend imports / owned viewer mappings | [Observed Linux mappings](protocols/backend_bindings.md) |
 | Check newly mapped owners and installed notices | [Installed owner associations](protocols/binding_owners.md) |
 | Find historical results | [Validation index](validation/README.md); reports preserve their original scope |
+| Check current A0 readiness before installation | [27 October exit audit](validation/2026-10-27-a0-exit-audit.md), [installation proposal](asset_installation_plan.md); bounded product contracts exist, large-artifact evidence/runtime/recipe/capture prerequisites remain open |
 | Understand a consequential choice | [Decision records](adr/) |
 | Build/use the application | Repository [README](../README.md) |
 | Measure CPU contract coverage | [Coverage protocol](protocols/coverage.md), reviewed [scope](../tools/coverage_scope.json) |

@@ -1,10 +1,12 @@
-# Asset-worker installation proposal — 26 October 2026
+# Asset-worker installation proposal — updated 27 October 2026
 
 **PROPOSED; provisioning BLOCKED; A0/AP0 remain IN_PROGRESS.** This is the explicit
 installation plan for plan §§11.2/11.7's initial control pipeline. No installer
 consumes this document, no executable asset recipe has been frozen, and no
 component is approved by its inclusion here. The
-[A0 audit](validation/2026-10-26-a0-exit-audit.md) owns actual local observations.
+[current A0 audit](validation/2026-10-27-a0-exit-audit.md) owns current local
+observations; the [26 October audit](validation/2026-10-26-a0-exit-audit.md)
+retains the original reference collection and its historical contract gaps.
 
 ## Proposed components and missing bindings
 
@@ -19,10 +21,11 @@ recipe identity and checks under the existing [recipe contract](protocols/asset_
 |---|---|---|
 | Calibrated views, depth, observed fusion | Preserve existing native M3 interfaces, [dense identity](../workers/identity/dense-development-20261020.json) and [fusion lock](../workers/fusion/environment-lock.txt) at project parent `10dc6b140b49fbce591dbf8ce5151a3db817a91c` | Independently select actual capture/pose/depth/geometry receipts. Existing worker environments are retained; their local evidence does not close asset-worker/runtime/rights qualification |
 | Instance proposals/propagation | [SAM 2 code](https://github.com/facebookresearch/sam2/tree/2b90b9f5ceec907a1c18123530e92e794ad901a4), proposed **2.1 hiera tiny** checkpoint/config below | Code archive/hash/size; complete new Python/torch/torchvision/CUDA-build lock and file costs; component reviews; automatic proposal/3D association adapter; measured stage limits |
-| Structure/completion control | First-party bounded plane/support fitting and constrained extrusion/symmetry; optional independently licensed local retrieval, as specified in §11.2 | Worker implementation, observed-anchor/correspondence contracts and any library asset identities/terms. No library or generative checkpoint is selected; unknown regions stay explicit on rejection |
+| Structure/completion control | First-party bounded plane/support fitting and constrained extrusion/symmetry; optional independently licensed local retrieval, as specified in §11.2 | Worker implementation and broader correspondence/quality coverage; bounded native patch/anchor/completion contracts now exist. Bind any library asset identities/terms. No library or generative checkpoint is selected; unknown regions stay explicit on rejection |
 | UVs and mesh production | [xatlas `f700c7790aaa030e794b52ba7791a05c085faf0c`](https://github.com/jpcy/xatlas/tree/f700c7790aaa030e794b52ba7791a05c085faf0c), [meshoptimizer `f0a684f11ead064e176775c9b796f82a55910e92`](https://github.com/zeux/meshoptimizer/tree/f0a684f11ead064e176775c9b796f82a55910e92) | Source/archive identities and complete build closure, installed byte inventory, reviews, seam/correspondence/bake adapter. Neither is currently a project dependency |
 | Shared material/light fit | [Mitsuba `aa01500f57770a4ef0b067693cae08b3e8a2ac73`](https://github.com/mitsuba-renderer/mitsuba3/tree/aa01500f57770a4ef0b067693cae08b3e8a2ac73) with first-party objective; proposed `llvm_ad_rgb` control | Exact release/wheel or source build plus matching Dr.Jit/LLVM closure, costs/reviews, objective/BRDF/color/glTF adapter and measured limits. Documented CPU differentiation is not a room-fit result |
-| Headless bake and ordinary engine import | Blender and Godot remain proposed external tools | Select exact versions/builds/platform archives, hashes, all notices/terms and installed costs; implement bake/portable asset exporter and verify ordinary import. No tool version or package is selected here |
+| Headless bake and ordinary engine import | Blender and Godot remain proposed external tools | Select exact versions/builds/platform archives, hashes, all notices/terms and installed costs; bind an actual bake worker to the existing bounded native PBR/export path and verify ordinary import. No tool version or package is selected here |
+| Convex prop production | CoACD remains a specification candidate, without a selected component here | Select implementation/archive/environment/terms/costs and enforce per-prop hull/vertex limits before use. Existing Jolt static structural triangles and ray diagnostics do not decompose props or qualify contact dynamics |
 
 SAM 2's examined [installation instructions](https://github.com/facebookresearch/sam2/blob/2b90b9f5ceec907a1c18123530e92e794ad901a4/README.md#installation)
 require Python ≥3.10, torch ≥2.5.1 and torchvision ≥0.20.1. The retained training
@@ -57,6 +60,27 @@ Model-card declarations and permissive top-level licenses do not clear the full
 dependency/input/output graph. Local-use and distribution review selections remain
 **UNREVIEWED**, with no selected review record. Source/config document hashes
 cannot substitute for archive, environment or checkpoint payload admission.
+
+## Artifact verification boundary before acquisition
+
+The declared checkpoint above is **156,008,466 bytes (148.78 MiB)**. Current
+[component evidence v1](protocols/asset_component_evidence.md) requires every
+nonempty file/archive inside an owned receipt, with **16 MiB/file**;
+[receipt admission](protocols/asset_receipts.md) and
+[installed-tree inspection](protocols/asset_installed_components.md) each cap the
+relevant total at **64 MiB**. The proposed single checkpoint exceeds all three
+bounds. These implemented small-fixture profiles cannot presently verify this
+model or a complete production environment. This is a source-bound/declared-size
+comparison, without model payload verification or an installation attempt.
+
+Before acquisition, implement a separately versioned, explicitly selected
+large-artifact observation boundary with streamed hashing, finite per-file/total
+budgets, exact byte/path/review pins, cancellation and caller-data preservation.
+Keep mutable-file observations distinct from privately owned immutable bytes and
+execution authority. Preserve all v1 receipt/evidence limits and encodings; raising
+their constants or treating an external hash declaration as admitted payload
+would not close this gap. Full native environment inventories/runtime closure and
+actual resource enforcement remain separate requirements after this boundary.
 
 ## Reservation and activation sequence
 

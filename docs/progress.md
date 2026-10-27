@@ -237,9 +237,10 @@ Typed synthetic request and native CLI preservation checks plus the selected rea
 sample's missing-prerequisite refusal are recorded separately. The
 [request protocol](protocols/corpus_inspection.md) owns fields, budgets and limits.
 
-The [A0 exit audit](validation/2026-10-26-a0-exit-audit.md) now maps implemented
-CPU slices against remaining geometry/material/structure/completion/export
-contracts and the missing real capture/recipe freeze. The
+The [26 October A0 audit](validation/2026-10-26-a0-exit-audit.md) records its then
+missing geometry/material/structure/completion/export contracts. The
+[27 October refresh](validation/2026-10-27-a0-exit-audit.md) accounts for their
+subsequent bounded implementation and retains the real capture/recipe gaps. The
 [installation proposal](asset_installation_plan.md) records source-reference
 commits and an expected SAM 2.1 tiny checkpoint identity; archives/environment
 costs, independent reviews and measured stage limits remain unresolved. Provisioning
@@ -391,13 +392,23 @@ pivot/placement joins and runs bounded actual Jolt query batches. The
 request replay and labeled report JSON; stale current selections refuse. Frozen
 snapshot integrity remains separate from live scene/body authority and AP gates.
 
-Next executable step: refresh the scoped A0 exit audit against plan §§11.4,
-11.6 and 11.8 using the current code and retained evidence. Identify the first
-remaining executable contract and its exact producer/data/resource prerequisites;
-recheck the selected installation/runtime/capture blockers before adding another
-adapter. Do not treat accumulated synthetic diagnostics as real production,
-fabricate support ledgers, enable measured walking or skip to platform/engine
-qualification. Convex props, physics-session integration,
+The [refreshed A0 audit](validation/2026-10-27-a0-exit-audit.md) confirms the current
+bounded contract/export/viewer/collider coverage, persistent recipe/capture/runtime
+gaps and a concrete pre-installation mismatch: the proposed 156,008,466-byte model
+cannot pass the existing 16 MiB/file evidence and 64 MiB receipt/tree profiles.
+The [installation proposal](asset_installation_plan.md#artifact-verification-boundary-before-acquisition)
+records this boundary without authorizing acquisition or widening v1 limits.
+
+Next executable step: implement a separately versioned large-artifact observation
+boundary before any asset-model acquisition. Bind independent model file identity,
+declared size, finite per-file/aggregate limits and explicit paths; stream hashes
+with cancellation/change detection and preserve caller bytes on failure. Exercise
+a synthetic file at least 156,008,466 bytes plus stale/mutated/linked/over-budget
+cases locally, including a bounded-memory check. Keep v1 owned receipts/limits
+unchanged and distinguish observations from immutable-byte or execution authority.
+Reconcile the selected component/review binding without clearing rights, runtime
+or worker-limit blockers. Do not treat synthetic diagnostics as real production,
+enable measured walking or skip to platform/engine qualification. Convex props, physics-session integration,
 broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.
 Provisioning requires the recorded prerequisites. The real A1 completed/PBR pilot
@@ -733,7 +744,10 @@ qualify their redistribution rights or the drifted installed headers.
   43 sanitizer cases / 96,352 assertions pass. This closes the narrow owned-stage
   integration slice, not M3's measured geometry/walking or quality requirements.
 
-## Next executable step and protection rules
+## Historical M3 integration and protection evidence
+
+The dated records below retain their original scope and intermediate statuses.
+The active executable step is in **Current A0 work** above.
 
 [Source-bound inclined support](validation/2026-10-21-collision-ramp.md) now
 extends the [shared capsule session](validation/2026-10-21-capsule-session.md)
