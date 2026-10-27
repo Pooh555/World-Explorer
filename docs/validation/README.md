@@ -1,5 +1,7 @@
 # Validation index
 
+- [27 October: explicit native LOD export and preview](2026-10-27-lod-export.md) — all-level certificate/resource retention, bounded conversion, per-definition selection and ordinary native PBR display; synthetic scope, real AP8 qualification open.
+
 - [27 October: certified native LOD admission](2026-10-27-native-lod.md) — whole-surface affine fan replay, per-LOD provenance and immutable definition/instance identity; export/preview mapping and real AP8 qualification remain open.
 
 - [27 October: native structural graph adoption](2026-10-27-native-structure.md) — exact graph/geometry/definition/instance bindings, atomic history and structured export/native source pins; synthetic scope, physical structure and real AP qualification open.

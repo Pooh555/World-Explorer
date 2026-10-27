@@ -197,12 +197,21 @@ CompiledAsset compile_asset(const AdmittedAssetDefinition& admitted,
                             const NativeAssetSelection& source,
                             const AdmittedAssetInstances& instances,
                             Files& files,
-                            const std::stop_token& stop) {
+                            const std::stop_token& stop,
+                            std::optional<std::size_t> lod_level) {
     CompiledAsset result { document(), Json::object(), {} };
     auto& doc = result.m_document;
     auto& errors = result.m_errors;
     const auto& definition = admitted.definition();
-    const auto& mesh = selected(source.m_geometry).mesh();
+    const auto& geometry = lod_level.value_or(0uz) == 0uz
+                               ? selected(source.m_geometry)
+                               : source.m_lods.at(lod_level.value_or(0uz) - 1uz).candidate();
+    const auto& mesh = geometry.mesh();
+    const auto K_BUFFER = lod_level
+                              ? "geometry-lod" + std::to_string(lod_level.value_or(0uz)) + ".bin"
+                              : "geometry.bin";
+    const auto K_DOCUMENT =
+        lod_level ? "lod-" + std::to_string(lod_level.value_or(0uz)) + ".gltf" : "asset.gltf";
     const auto& pivot = definition.m_pivot.m_asset_from_geometry;
     transform_profile(pivot);
     require(mesh.m_uv.size() == mesh.m_positions.size() &&
@@ -332,7 +341,7 @@ CompiledAsset compile_asset(const AdmittedAssetDefinition& admitted,
         groups.push_back(
             { { "variant_id", std::to_string(binding.m_variant.m_value) }, { "source_faces", faces } });
     }
-    doc["buffers"].push_back({ { "uri", "geometry.bin" }, { "byteLength", binary.size() } });
+    doc["buffers"].push_back({ { "uri", K_BUFFER }, { "byteLength", binary.size() } });
     doc["meshes"].push_back({ { "primitives", primitives } });
     doc["nodes"].push_back({ { "mesh", 0 } });
     doc["scenes"].push_back({ { "nodes", { 0 } } });
@@ -342,15 +351,19 @@ CompiledAsset compile_asset(const AdmittedAssetDefinition& admitted,
     doc["extras"] = { { "profile", K_PROFILE },
                      { "synthetic_diagnostic", selected(source.m_geometry).synthetic_source() },
                      { "qualification", "UNQUALIFIED_EXPORT" } };
+    if (lod_level) {
+        doc["extras"]["profile"] = K_LOD_PROFILE;
+        doc["extras"]["lod_level"] = lod_level.value_or(0uz);
+    }
     result.m_mapping = { { "definition", reference(admitted.reference()) },
-                        { "geometry", reference(definition.m_geometry) },
-                        { "geometry_path", K_PREFIX + "geometry.bin" },
+                        { "geometry", reference(geometry.selection().m_product) },
+                        { "geometry_path", K_PREFIX + K_BUFFER },
                         { "geometry_sha256", sha256(binary) },
-                        { "asset_path", K_PREFIX + "asset.gltf" },
+                        { "asset_path", K_PREFIX + K_DOCUMENT },
                         { "groups", groups },
                         { "materials", materials } };
-    files.add(K_PREFIX + "geometry.bin", std::move(binary));
-    files.json(K_PREFIX + "asset.gltf", doc);
+    files.add(K_PREFIX + K_BUFFER, std::move(binary));
+    files.json(K_PREFIX + K_DOCUMENT, doc);
     return result;
 }
 

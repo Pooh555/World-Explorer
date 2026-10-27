@@ -89,6 +89,17 @@ Result<SceneSnapshot> compile_native_pbr_scene(const AdmittedNativeExport& packa
             { "source_kind", K_SYNTHETIC ? "synthetic_diagnostic" : "native_asset_draft" },
             { "profile", K_MANIFEST.at("profile").get<std::string>() },
             { "qualification", "UNQUALIFIED_NATIVE_PBR" } };
+        if (K_MANIFEST.at("profile").get<std::string>() == "WE_NATIVE_LOD_GLTF_V1") {
+            std::string levels;
+            for (const auto& asset : K_MANIFEST.at("assets")) {
+                if (!levels.empty()) {
+                    levels += ", ";
+                }
+                levels += "Asset " + asset.at("definition").at("asset_id").get<std::string>() +
+                          ": LOD " + std::to_string(integer(asset.at("level")));
+            }
+            scene->m_provenance.emplace("selected_lods", std::move(levels));
+        }
         for (const auto& source : K_MANIFEST.at("assets")) {
             check_stop(stop);
             auto chunk = std::make_shared<SceneChunk>();

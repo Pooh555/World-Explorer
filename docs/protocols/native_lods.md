@@ -66,8 +66,8 @@ replays idempotently. Reload requires independently re-admitted handles from the
 same receipt and compares committed canonical metadata; failed admission/reload
 preserves caller data. The original receipt owns root and geometry bytes.
 
-Native textured export explicitly refuses definitions with LODs until an additive
-companion manifest and resource mapping are implemented. The existing native PBR
-viewer continues to consume supported export profiles; this admission API does
-not silently discard LODs or start M5 streaming. Original no-LOD export bytes and
-structure graphs' LOD0 face indices retain their meaning.
+Legacy native export profiles refuse definitions with LODs. The separate explicit
+[LOD export/preview profile](native_lod_exports.md) now retains every admitted
+level/certificate and compiles the selected level for all copies. This admission
+API does not select levels automatically or start M5 streaming. Original no-LOD
+export bytes and structure graphs' LOD0 face indices retain their meaning.

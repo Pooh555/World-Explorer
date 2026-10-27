@@ -346,16 +346,26 @@ material/UV/normal/tangent preservation, complete per-LOD face provenance and
 source-bound definition/instance identity. Owned metadata reload/replay retains
 these private inputs. The [protocol](protocols/native_lods.md) limits this first
 profile to exact dyadic affine fans; general decimation and measured AP8 quality
-remain open. Native export explicitly refuses LOD definitions until their mapping
-is implemented; original no-LOD packages retain their meaning.
+remain open. Legacy export profiles retain their explicit LOD refusal; original
+no-LOD packages retain their meaning.
 
-Next executable step: carry admitted native LOD geometry/certificates through an
-additive native export companion mapping, shared individual/assembly resources
-and explicit native preview selection. Recheck plan §§11.4–11.5, native export/PBR
-contracts and the LOD proof before extending formats. Preserve old no-LOD bytes,
-base-bound structure face IDs, per-LOD provenance and independent float conversion
-bounds; verify owned reload and actual local native rendering. Do not start M5
-streaming or infer AP8 silhouette/performance qualification from synthetic results.
+The [native LOD export/preview slice](validation/2026-10-27-lod-export.md) now
+retains all admitted levels/certificates in an explicit schema-3 package, checks
+conversion bounds for unused levels and shares the selected individual/assembly
+resources across all copies. Ordinary schema-6 PBR compilation, native level
+labels and existing scene replacement paths consume that explicit choice.
+The [protocol](protocols/native_lod_exports.md) preserves legacy package bytes,
+LOD0-bound structure and complete portable provenance. This is synthetic local
+integration; general decimation, real producers and AP8 quality/performance remain
+unqualified. No M5 streaming or automatic distance selection is implemented.
+
+Next executable step: admit separately selected native collider geometry and cook
+policy against exact base/source/context, bind the collider to asset definitions,
+and verify immutable reload plus downstream source identity. Recheck plan §11.4,
+asset-definition/collision contracts and arbitrary-scale restrictions. Generated
+colliders must remain synthetic gameplay collision and cannot qualify Q5/N2 or
+enable measured walking. Keep export refusal until an explicit collider companion
+profile is admitted and locally exercised.
 Native collider adoption, broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.
 Provisioning requires the recorded prerequisites. The real A1 completed/PBR pilot

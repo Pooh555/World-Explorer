@@ -124,9 +124,17 @@ The [native LOD admission slice](validation/2026-10-27-native-lod.md) joins actu
 base/candidate meshes with a complete exact affine fan certificate, unchanged
 material/UV/interpolated attributes and per-LOD face provenance. Certificate
 identity reaches every definition/instance reference and owned metadata reload.
-The bounded [protocol](protocols/native_lods.md) retains explicit export refusal;
-LOD resource mapping/native selection, general decimation, real production and
+The bounded [protocol](protocols/native_lods.md) retains legacy export refusal;
+general decimation, real production and
 AP8 screen-space/runtime qualification remain open. A0/AP0 stay **IN_PROGRESS**.
+
+The [native LOD export/preview slice](validation/2026-10-27-lod-export.md) adds
+an opt-in schema-3 companion retaining all levels/certificates, independently
+bounded conversions, shared selected glTF/native resources and explicit per-asset
+preview levels. The [protocol](protocols/native_lod_exports.md) preserves legacy
+profiles, LOD0 structural identity and portable face provenance. Synthetic local
+integration does not qualify general decimation, real assets, Godot or AP8
+silhouette/runtime targets. A0/AP0 remain **IN_PROGRESS**.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

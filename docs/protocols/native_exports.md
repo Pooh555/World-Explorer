@@ -120,6 +120,7 @@ exports remain byte compatible. Native PBR loading preserves the structured
 source pins without adding physical-support or real AP qualification.
 
 [Certified native LODs](native_lods.md) can now enter asset definitions upstream.
-Both current export profiles explicitly refuse those definitions before resource
-compilation. An additive companion mapping and independently bounded per-LOD
-conversion are required before export or native preview may select them.
+Both original export profiles explicitly refuse those definitions before resource
+compilation. The opt-in [schema-3 LOD profile](native_lod_exports.md) now retains
+all levels/certificates and independently bounds every conversion while selecting
+one level per definition for individual/assembly export and native preview.

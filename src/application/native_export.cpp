@@ -52,9 +52,25 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
             "Native export definition/instance budget exceeded",
             ErrorCode::RESOURCE_EXHAUSTED);
     std::size_t materials {};
+    std::map<AssetId, std::size_t> lod_levels;
+    if (request.m_lods) {
+        const auto& selections = selected(request.m_lods);
+        require(selections.size() == instances.definitions().size(),
+                "Native LOD selection must cover every definition");
+        for (const auto& selection : selections) {
+            const auto K_DEFINITION =
+                std::ranges::find_if(instances.definitions(), [&](const auto& item) {
+                    return item.reference().m_asset == selection.m_asset;
+                });
+            require(K_DEFINITION != instances.definitions().end() &&
+                        selection.m_level <= K_DEFINITION->definition().m_lods.size() &&
+                        lod_levels.emplace(selection.m_asset, selection.m_level).second,
+                    "Native LOD selection is foreign, duplicated or outside admitted levels");
+        }
+    }
     for (const auto& definition : instances.definitions()) {
-        require(definition.definition().m_lods.empty(),
-                "Native LOD export companion mapping is not implemented",
+        require(request.m_lods || definition.definition().m_lods.empty(),
+                "Native LOD export requires explicit per-definition selection",
                 ErrorCode::UNSUPPORTED_OPERATION);
         require(definition.definition().m_materials.size() <= 4uz - materials,
                 "Native export material budget exceeded",
@@ -101,7 +117,7 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
         }
     }
     auto assembly = document();
-    auto catalog = Json::array(), mappings = Json::array();
+    auto catalog = Json::array(), mappings = Json::array(), lod_entries = Json::array();
     std::map<AssetId, std::size_t> meshes;
     const auto K_REGION = [&](const AssetRevisionRef& ref) {
         files.add("provenance/" + std::to_string(ref.m_product.m_value) + "-" +
@@ -114,14 +130,74 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
             return item.m_definition.m_asset == definition.reference().m_asset;
         });
         require(K_SOURCE != source.sources().end(), "Native export source asset missing");
-        auto compiled = compile_asset(definition, *K_SOURCE, instances, files, stop);
-        const auto K_ERRORS = errors_json(compiled.m_errors);
-        for (auto value = K_ERRORS.begin(); value != K_ERRORS.end(); ++value) {
-            require(value.value().get<double>() <= K_POLICY.at(value.key()).get<double>(),
-                    "Native export conversion exceeds independently selected error limit",
-                    ErrorCode::UNSUPPORTED_OPERATION);
+        const auto K_CHECK_ERRORS = [&](CompiledAsset& result) {
+            const auto K_ERRORS = errors_json(result.m_errors);
+            for (auto value = K_ERRORS.begin(); value != K_ERRORS.end(); ++value) {
+                require(value.value().get<double>() <= K_POLICY.at(value.key()).get<double>(),
+                        "Native export conversion exceeds independently selected error limit",
+                        ErrorCode::UNSUPPORTED_OPERATION);
+            }
+            result.m_mapping["errors"] = K_ERRORS;
+        };
+        CompiledAsset compiled {};
+        if (request.m_lods) {
+            auto levels = Json::array();
+            for (std::size_t level { 0uz }; level <= K_SOURCE->m_lods.size(); ++level) {
+                check_stop(stop);
+                auto result = compile_asset(definition, *K_SOURCE, instances, files, stop, level);
+                K_CHECK_ERRORS(result);
+                auto& mapping = result.m_mapping;
+                mapping["level"] = level;
+                const auto& geometry = level == 0uz ? selected(K_SOURCE->m_geometry)
+                                                    : K_SOURCE->m_lods[level - 1uz].candidate();
+                const auto K_PROVENANCE =
+                    std::ranges::find_if(K_SOURCE->m_provenance, [&](const auto& item) {
+                        return item.m_region.m_target == geometry.selection().m_product;
+                    });
+                require(K_PROVENANCE != K_SOURCE->m_provenance.end(),
+                        "Native LOD provenance missing");
+                mapping["provenance"] = reference(K_PROVENANCE->m_product);
+                if (level > 0uz) {
+                    const auto& lod = K_SOURCE->m_lods[level - 1uz];
+                    const auto K_PATH = "lods/" +
+                                        std::to_string(definition.reference().m_asset.m_value) +
+                                        "-" + std::to_string(level) + ".json";
+                    files.add(K_PATH,
+                              take(receipt.copy_blob(lod.selection().m_product.m_content_sha256,
+                                                     1024uz * 1024uz,
+                                                     stop)));
+                    mapping["certificate"] = {
+                        { "product", reference(lod.selection().m_product) },
+                        { "path", K_PATH },
+                        { "sha256", lod.selection().m_product.m_content_sha256 } };
+                    mapping["base_source_faces"] = lod.source_faces();
+                } else {
+                    mapping["certificate"] = nullptr;
+                    mapping["base_source_faces"] = Json::array();
+                    for (std::size_t face { 0uz }; face < geometry.mesh().m_triangles.size();
+                         ++face) {
+                        mapping["base_source_faces"].push_back(Json::array({ face }));
+                    }
+                }
+                levels.push_back(mapping);
+                if (level == lod_levels.at(definition.reference().m_asset)) {
+                    compiled = std::move(result);
+                }
+            }
+            lod_entries.push_back(
+                { { "definition", reference(definition.reference()) },
+                 { "selected_level", lod_levels.at(definition.reference().m_asset) },
+                 { "assembly_mesh_index", assembly["meshes"].size() },
+                 { "levels", levels } });
+            const auto K_ASSET_PATH =
+                "assets/" + std::to_string(definition.reference().m_asset.m_value) + "/asset.gltf";
+            files.json(K_ASSET_PATH, compiled.m_document);
+            compiled.m_mapping["asset_path"] = K_ASSET_PATH;
+            compiled.m_mapping["base_geometry"] = reference(definition.definition().m_geometry);
+        } else {
+            compiled = compile_asset(definition, *K_SOURCE, instances, files, stop);
+            K_CHECK_ERRORS(compiled);
         }
-        compiled.m_mapping["errors"] = K_ERRORS;
         compiled.m_mapping["mesh_index"] = assembly["meshes"].size();
         compiled.m_mapping["completion"] =
             K_SOURCE->m_completion ? reference(K_SOURCE->m_completion->selection().m_product)
@@ -176,6 +252,17 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
         assembly["extras"]["profile"] = "WE_NATIVE_STRUCTURED_GLTF_V1";
         assembly["extras"]["manual_ancestor"] = request.m_structure->manual_ancestor();
     }
+    if (request.m_lods) {
+        assembly["extras"]["profile"] = K_LOD_PROFILE;
+        files.json("lods.json",
+                   { { "schema_version", 1 },
+                    { "kind", "NATIVE_LOD_SELECTION" },
+                    { "source_receipt_sha256", receipt.receipt_sha256() },
+                    { "source_instances_sha256", instances.sha256() },
+                    { "structure_geometry_scope", "LOD0" },
+                    { "selection_scope", "EXPLICIT_PER_DEFINITION_ALL_INSTANCES" },
+                    { "assets", lod_entries } });
+    }
     files.json("environment.gltf", assembly);
     files.json("catalog.json", catalog);
     files.add("scene.json", bytes(instances.canonical_json()));
@@ -188,50 +275,63 @@ std::vector<ExportPackageFile> build(const NativeExportRequest& request,
     }
     const auto K_UNITS =
         Json { { "status", "ARBITRARY" }, { "nominal_metres_per_unit", 1 }, { "measured", false } };
-    Json manifest {
-        { "schema_version", request.m_structure ? 2 : 1 },
-        { "profile",
-         request.m_structure ? std::string_view("WE_NATIVE_STRUCTURED_GLTF_V1") : K_PROFILE },
-        { "qualification", "UNQUALIFIED_EXPORT" },
-        { "source_receipt_sha256", receipt.receipt_sha256() },
-        { "source_instances_sha256", instances.sha256() },
-        { "scene_id", std::to_string(instances.instances().m_scene.m_value) },
-        { "scene_revision", std::to_string(instances.instances().m_revision.m_value) },
-        { "world_epoch", std::to_string(expected.m_world_epoch.m_value) },
-        { "pose_revision", std::to_string(expected.m_pose_revision.m_value) },
-        { "assets", mappings },
-        { "nodes", node_map },
-        { "files", inventory },
-        { "units", K_UNITS },
-        { "walking_enabled", false },
-        { "manual_ancestor",
-         request.m_structure ? request.m_structure->manual_ancestor()
-                             : instances.instances().m_manual_ancestor },
-        { "synthetic_diagnostic", source.synthetic_source() },
-        { "error_limits", K_POLICY },
-        { "losses",
-         { "FLOAT32_GEOMETRY_UV",
-          "NORMAL_TANGENT_NORMALIZED",
-          "PIVOT_BAKED",
-          "SRGB8_COLOR_EMISSION",
-          "LINEAR8_ORM_NORMAL",
-          "NORMAL_MAP_DECODE_NORMALIZED",
-          "PRIMITIVES_GROUPED_WITH_SOURCE_FACE_MAP",
-          "NOMINAL_METRE_MAPPING" } },
-        { "uv_origin", "TOP_LEFT_UNCHANGED" },
-        { "normal_basis", "TANGENT_W_POSITIVE_BITANGENT_UNCHANGED" },
-        { "mip_policy", "NONE" },
-        { "occlusion_scope", "UNQUALIFIED_SOURCE_CHANNEL" },
-        { "movement_occlusion_revalidation", "REQUIRED" },
-        { "source_images_added", false },
-        { "fit_lights_exported", false },
-        { "material_assignment", "SOURCE_FACE_GROUPS_WITHOUT_INSTANCE_OVERRIDES" },
-        { "validator", "NOT_RUN" },
-        { "importer", "NOT_RUN" } };
+    Json manifest { { "schema_version",
+                    request.m_lods        ? 3
+                    : request.m_structure ? 2
+                                          : 1 },
+                   { "profile",
+                    request.m_lods        ? K_LOD_PROFILE
+                    : request.m_structure ? std::string_view("WE_NATIVE_STRUCTURED_GLTF_V1")
+                                          : K_PROFILE },
+                   { "qualification", "UNQUALIFIED_EXPORT" },
+                   { "source_receipt_sha256", receipt.receipt_sha256() },
+                   { "source_instances_sha256", instances.sha256() },
+                   { "scene_id", std::to_string(instances.instances().m_scene.m_value) },
+                   { "scene_revision", std::to_string(instances.instances().m_revision.m_value) },
+                   { "world_epoch", std::to_string(expected.m_world_epoch.m_value) },
+                   { "pose_revision", std::to_string(expected.m_pose_revision.m_value) },
+                   { "assets", mappings },
+                   { "nodes", node_map },
+                   { "files", inventory },
+                   { "units", K_UNITS },
+                   { "walking_enabled", false },
+                   { "manual_ancestor",
+                    request.m_structure ? request.m_structure->manual_ancestor()
+                                        : instances.instances().m_manual_ancestor },
+                   { "synthetic_diagnostic", source.synthetic_source() },
+                   { "error_limits", K_POLICY },
+                   { "losses",
+                    { "FLOAT32_GEOMETRY_UV",
+                     "NORMAL_TANGENT_NORMALIZED",
+                     "PIVOT_BAKED",
+                     "SRGB8_COLOR_EMISSION",
+                     "LINEAR8_ORM_NORMAL",
+                     "NORMAL_MAP_DECODE_NORMALIZED",
+                     "PRIMITIVES_GROUPED_WITH_SOURCE_FACE_MAP",
+                     "NOMINAL_METRE_MAPPING" } },
+                   { "uv_origin", "TOP_LEFT_UNCHANGED" },
+                   { "normal_basis", "TANGENT_W_POSITIVE_BITANGENT_UNCHANGED" },
+                   { "mip_policy", "NONE" },
+                   { "occlusion_scope", "UNQUALIFIED_SOURCE_CHANNEL" },
+                   { "movement_occlusion_revalidation", "REQUIRED" },
+                   { "source_images_added", false },
+                   { "fit_lights_exported", false },
+                   { "material_assignment", "SOURCE_FACE_GROUPS_WITHOUT_INSTANCE_OVERRIDES" },
+                   { "validator", "NOT_RUN" },
+                   { "importer", "NOT_RUN" } };
     if (request.m_structure) {
         manifest["structure"] = { { "path", "structure/bindings.json" },
                                  { "sha256", request.m_structure->sha256() },
                                  { "scope", "DECLARED_PARTIAL_PATCHES" } };
+    }
+    if (request.m_lods) {
+        const auto K_LODS =
+            std::ranges::find(files.m_files, std::string { "lods.json" }, &ExportPackageFile::m_path);
+        require(K_LODS != files.m_files.end(), "Native LOD companion missing");
+        manifest["lod_selection"] = { { "path", "lods.json" },
+                                     { "sha256", sha256(K_LODS->m_bytes) },
+                                     { "scope", "EXPLICIT_PER_DEFINITION_ALL_INSTANCES" },
+                                     { "structure_geometry_scope", "LOD0" } };
     }
     files.json("manifest.json", manifest);
     std::ranges::sort(files.m_files, {}, &ExportPackageFile::m_path);

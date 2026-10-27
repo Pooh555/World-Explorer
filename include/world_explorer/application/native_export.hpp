@@ -11,18 +11,26 @@ struct NativeExportPolicy {
     double m_linear_color { .005 }, m_numeric { .002 }, m_normal_map { .01 };
 };
 
+struct NativeExportLodSelection {
+    AssetId m_asset;
+    std::size_t m_level {};
+};
+
 struct NativeExportRequest {
     std::optional<AdmittedNativeAssets> m_assets;
     std::optional<AdmittedAssetReceipt> m_receipt;
     AssetDependencyContext m_expected;
     NativeExportPolicy m_policy;
     std::optional<AdmittedNativeStructure> m_structure {};
+    // Explicit opt-in: exactly one selected level per definition, shared by all
+    // its instances. All admitted levels/certificates remain in the package.
+    std::optional<std::vector<NativeExportLodSelection>> m_lods {};
 };
 
 // A separate native textured PBR profile: <=2 definitions, <=4 total materials,
 // <=64 visible instances, <=64 files /8 MiB. Core sRGB8/linear8 RGBA PNGs,
 // arbitrary units, no captured-unlit conversion, HDR emission, instance material
-// overrides, LOD or collider.
+// overrides or collider. LODs require the explicit additive selection profile.
 Result<std::vector<ExportPackageFile>> prepare_native_export(const NativeExportRequest& request,
                                                              const std::stop_token& stop = {});
 

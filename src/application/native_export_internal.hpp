@@ -11,6 +11,7 @@ namespace world_explorer::native_export_detail {
 using namespace json_record_detail;
 inline constexpr auto K_PACKAGE_BYTES = 8uz * 1024uz * 1024uz;
 inline constexpr std::string_view K_PROFILE { "WE_NATIVE_TEXTURED_GLTF_V1" };
+inline constexpr std::string_view K_LOD_PROFILE { "WE_NATIVE_LOD_GLTF_V1" };
 
 template <class T> T take(Result<T> value) {
     if (!value) {
@@ -86,7 +87,8 @@ CompiledAsset compile_asset(const AdmittedAssetDefinition& definition,
                             const NativeAssetSelection& source,
                             const AdmittedAssetInstances& instances,
                             Files& files,
-                            const std::stop_token& stop);
+                            const std::stop_token& stop,
+                            std::optional<std::size_t> lod_level = {});
 void append_resources(Json& assembly, Json asset, const std::string& prefix);
 
 }  // namespace world_explorer::native_export_detail

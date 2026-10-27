@@ -304,10 +304,15 @@ Result<std::size_t> validate_pbr_appearance(const SceneChunk& chunk, const Scene
         const auto K_DOC =
             parse(std::as_bytes(std::span(value.m_export_manifest)), 1024uz * 1024uz, {});
         const auto K_PROFILE = K_DOC.at("profile").get<std::string>();
-        const bool K_STRUCTURED = K_PROFILE == "WE_NATIVE_STRUCTURED_GLTF_V1";
+        const bool K_LOD = K_PROFILE == "WE_NATIVE_LOD_GLTF_V1";
+        const bool K_STRUCTURED =
+            K_PROFILE == "WE_NATIVE_STRUCTURED_GLTF_V1" || (K_LOD && K_DOC.contains("structure"));
         require(((K_PROFILE == "WE_NATIVE_TEXTURED_GLTF_V1" &&
-                  integer(K_DOC.at("schema_version")) == 1 && !K_DOC.contains("structure")) ||
-                 (K_STRUCTURED && integer(K_DOC.at("schema_version")) == 2)) &&
+                  integer(K_DOC.at("schema_version")) == 1 && !K_DOC.contains("structure") &&
+                  !K_DOC.contains("lod_selection")) ||
+                 (K_PROFILE == "WE_NATIVE_STRUCTURED_GLTF_V1" &&
+                  integer(K_DOC.at("schema_version")) == 2 && !K_DOC.contains("lod_selection")) ||
+                 (K_LOD && integer(K_DOC.at("schema_version")) == 3)) &&
                     K_DOC.at("qualification").get<std::string>() == "UNQUALIFIED_EXPORT" &&
                     K_DOC.at("synthetic_diagnostic").get<bool>() == value.m_synthetic &&
                     K_DOC.at("manual_ancestor").get<bool>() == value.m_manual_ancestor &&
@@ -361,6 +366,47 @@ Result<std::size_t> validate_pbr_appearance(const SceneChunk& chunk, const Scene
         K_PIN_FILE("scene.json", value.m_scene_document);
         const auto K_ASSET_DOC =
             parse(std::as_bytes(std::span(value.m_asset_document)), 1024uz * 1024uz, {});
+        if (K_LOD) {
+            const auto& lod = K_DOC.at("lod_selection");
+            keys(lod, { "path", "sha256", "scope", "structure_geometry_scope" });
+            digest_text(lod.at("sha256").get<std::string>());
+            const auto K_LEVEL = integer(K_ASSET->at("level"));
+            require(
+                lod.at("path").get<std::string>() == "lods.json" &&
+                    lod.at("scope").get<std::string>() == "EXPLICIT_PER_DEFINITION_ALL_INSTANCES" &&
+                    lod.at("structure_geometry_scope").get<std::string>() == "LOD0" &&
+                    K_LEVEL <= 8 && integer(K_ASSET_DOC.at("extras").at("lod_level")) == K_LEVEL &&
+                    K_ASSET_DOC.at("extras").at("profile").get<std::string>() == K_PROFILE &&
+                    K_ASSET->at("geometry_path").get<std::string>() ==
+                        "assets/" + std::to_string(value.m_definition.m_asset.m_value) +
+                            "/geometry-lod" + std::to_string(K_LEVEL) + ".bin" &&
+                    std::ranges::any_of(inventory,
+                                        [&](const auto& row) {
+                                            return row.at("path").template get<std::string>() ==
+                                                       "lods.json" &&
+                                                   row.at("sha256").template get<std::string>() ==
+                                                       lod.at("sha256").get<std::string>();
+                                        }),
+                "PBR LOD selection or companion pin differs");
+            const auto& certificate = K_ASSET->at("certificate");
+            if (K_LEVEL == 0) {
+                require(certificate.is_null(), "PBR LOD0 cannot claim a reduction certificate");
+            } else {
+                keys(certificate, { "product", "path", "sha256" });
+                digest_text(certificate.at("sha256").get<std::string>());
+                const auto K_PATH = "lods/" + std::to_string(value.m_definition.m_asset.m_value) +
+                                    "-" + std::to_string(K_LEVEL) + ".json";
+                require(certificate.at("path").get<std::string>() == K_PATH &&
+                            certificate.at("product").at("sha256") == certificate.at("sha256") &&
+                            std::ranges::any_of(
+                                inventory,
+                                [&](const auto& row) {
+                                    return row.at("path").template get<std::string>() == K_PATH &&
+                                           row.at("sha256") == certificate.at("sha256");
+                                }),
+                        "PBR LOD certificate pin differs");
+            }
+        }
         const auto K_SCENE_DOC =
             parse(std::as_bytes(std::span(value.m_scene_document)), 1024uz * 1024uz, {});
         require(sha256(std::as_bytes(std::span(value.m_scene_document))) ==

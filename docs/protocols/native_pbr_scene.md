@@ -75,3 +75,10 @@ The explicit [structured export envelope](native_structure.md) is also accepted:
 manifest schema 2 / `WE_NATIVE_STRUCTURED_GLTF_V1`. The same schema-6 runtime tail
 retains graph/binding pins and the actual profile label. Graph roots remain in the
 source package, and the viewer gains no room/provenance inspector from this path.
+
+The opt-in [native LOD export profile](native_lod_exports.md) now supplies explicit
+per-definition selected geometry through this same compiler and schema-6 layout.
+The Project panel shows each selected level; all copies share its resources.
+Companion/certificate source pins remain in the runtime documents, while complete
+unselected levels and proofs remain in the portable package. This does not add
+streaming, automatic selection or AP8/physical reconstruction authority.

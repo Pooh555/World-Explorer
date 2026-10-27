@@ -672,6 +672,10 @@ int viewer_main(int argc, char** argv) {
                                               : "Gaussian appearance")
                                        : "No scene open");
             if (current) {
+                const auto K_LODS = current->m_provenance.find("selected_lods");
+                if (K_LODS != current->m_provenance.end()) {
+                    ImGui::TextWrapped("%s", K_LODS->second.c_str());
+                }
                 bool has_baked = false;
                 bool has_pbr = false;
                 bool has_portable = false;
