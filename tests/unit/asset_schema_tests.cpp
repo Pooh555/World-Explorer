@@ -121,7 +121,7 @@ TEST_CASE("asset definitions reject invalid identities roles units bounds and pi
         value.m_manual_ancestor = true;
     }
     if (K_VARIANT == 19) {
-        value.m_schema_version = 2;
+        value.m_schema_version = 3;
     }
     const auto K_BEFORE = tree(fixture.m_region.m_directory.m_root);
     const auto K_REJECTED = fixture.admit(K_RECEIPT);

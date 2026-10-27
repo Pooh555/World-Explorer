@@ -54,9 +54,11 @@ that summary only if its domain, full source table, ancestry and complete spans
 exactly match **every** admitted channel's provenance. Span boundaries, classes,
 confidence, parents, support and ancestry must all match, even when aggregate
 counts alone would agree. No lossy merge is invented. Different channel partitions
-or evidence require a later explicit representation/converter and currently fail
-as unsupported. The returned private handle retains every original channel and
-sidecar, fit-light/exposure input and geometry correspondence; the root summary
+or evidence fail as unsupported in schema 1. Definition
+[schema 2](asset_channel_provenance.md) instead binds every original channel and
+its selected sidecar, preserving independent masks and evidence without a root
+summary. Native adoption matches those bindings to the admitted material products.
+The returned private handle retains every original channel and sidecar, fit-light/exposure input and geometry correspondence; the root summary
 does not replace them. Existing estimated/captured lighting restrictions apply.
 
 Manual ancestry propagates through existing receipt, definition and instance

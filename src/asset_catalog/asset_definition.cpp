@@ -77,7 +77,7 @@ admit_asset_definition(const AssetDefinition& value,
         if (!K_GRAPH) {
             return std::unexpected(K_GRAPH.error());
         }
-        require(value.m_schema_version == 1,
+        require(value.m_schema_version == 1 || value.m_schema_version == 2,
                 "Unsupported asset definition schema",
                 ErrorCode::UNSUPPORTED_OPERATION);
         require(value.m_context.m_world_epoch == expected.m_world_epoch &&
@@ -85,10 +85,11 @@ admit_asset_definition(const AssetDefinition& value,
                 "Stale asset definition context",
                 ErrorCode::RESYNC_REQUIRED);
         require(value.m_asset.m_value && value.m_revision, "Missing asset identity/revision");
+        const auto K_PROVENANCE_LIMIT = value.m_schema_version == 1 ? 26uz : 106uz;
         require(!value.m_sources.empty() && value.m_sources.size() <= 64uz &&
                     !value.m_materials.empty() && value.m_materials.size() <= 16uz &&
-                    value.m_lods.size() <= 8uz && value.m_provenance.size() <= 26uz &&
-                    selections.size() <= 26uz,
+                    value.m_lods.size() <= 8uz && value.m_provenance.size() <= K_PROVENANCE_LIMIT &&
+                    selections.size() <= K_PROVENANCE_LIMIT,
                 "Asset definition count budget exceeded",
                 ErrorCode::RESOURCE_EXHAUSTED);
         std::map<AssetProductId, std::reference_wrapper<const AssetDependencyNode>> nodes;
@@ -122,6 +123,10 @@ admit_asset_definition(const AssetDefinition& value,
             { value.m_geometry.m_product, AssetRegionKind::GEOMETRY_FACES } };
         std::vector<Json> materials;
         std::set<AssetMaterialVariantId> variants;
+        std::set<AssetProductId> material_roots;
+        std::map<AssetProductId, AssetLightingMode> target_lighting;
+        std::map<AssetProductId, MaterialChannelRole> target_roles;
+        std::map<AssetProductId, AssetRevisionRef> channel_provenance;
         static const std::map<AssetLightingMode, std::string> K_LIGHTING {
             { AssetLightingMode::CAPTURED_APPEARANCE, "CAPTURED_APPEARANCE" },
             { AssetLightingMode::ESTIMATED_PBR, "ESTIMATED_PBR" },
@@ -129,24 +134,102 @@ admit_asset_definition(const AssetDefinition& value,
         for (const auto& material : value.m_materials) {
             require(material.m_variant.m_value && variants.insert(material.m_variant).second,
                     "Invalid/duplicate material variant");
-            require(targets.emplace(material.m_product.m_product, AssetRegionKind::MATERIAL_TEXELS)
+            require(material_roots.insert(material.m_product.m_product).second,
+                    "Aliased asset output roles");
+            Json row { { "variant_id", material.m_variant.m_value },
+                      { "product", K_BIND(material.m_product) },
+                      { "lighting", label(material.m_lighting, K_LIGHTING) } };
+            if (value.m_schema_version == 1) {
+                require(material.m_channels.empty(), "Schema 1 cannot carry channel bindings");
+                require(
+                    targets.emplace(material.m_product.m_product, AssetRegionKind::MATERIAL_TEXELS)
                         .second,
                     "Aliased asset output roles");
-            materials.push_back({ { "variant_id", material.m_variant.m_value },
-                                 { "product", K_BIND(material.m_product) },
-                                 { "lighting", label(material.m_lighting, K_LIGHTING) } });
+                target_lighting.emplace(material.m_product.m_product, material.m_lighting);
+            } else {
+                const bool K_CAPTURED =
+                    material.m_lighting == AssetLightingMode::CAPTURED_APPEARANCE;
+                require(material.m_channels.size() == (K_CAPTURED ? 1uz : 6uz),
+                        "Schema 2 requires complete channel bindings");
+                static const std::map<MaterialChannelRole, std::string> K_ROLES {
+                    { MaterialChannelRole::CAPTURED_RGB, "CAPTURED_RGB" },
+                    { MaterialChannelRole::BASE_COLOR, "BASE_COLOR" },
+                    { MaterialChannelRole::METALLIC, "METALLIC" },
+                    { MaterialChannelRole::ROUGHNESS, "ROUGHNESS" },
+                    { MaterialChannelRole::NORMAL, "NORMAL" },
+                    { MaterialChannelRole::OCCLUSION, "OCCLUSION" },
+                    { MaterialChannelRole::EMISSION, "EMISSION" } };
+                std::set<MaterialChannelRole> roles;
+                std::set<AssetProductId> products;
+                std::vector<std::reference_wrapper<const AssetMaterialChannelBinding>> channels;
+                channels.reserve(material.m_channels.size());
+                for (const auto& channel : material.m_channels) {
+                    channels.emplace_back(channel);
+                }
+                std::ranges::sort(channels, {}, [](const auto& channel) {
+                    return channel.get().m_role;
+                });
+                auto encoded = Json::array();
+                const auto& dependencies =
+                    nodes.at(material.m_product.m_product).get().m_dependencies;
+                for (const auto& selected_channel : channels) {
+                    const auto& channel = selected_channel.get();
+                    const auto K_ROLE = label(channel.m_role, K_ROLES);
+                    require(
+                        roles.insert(channel.m_role).second &&
+                            products.insert(channel.m_product.m_product).second &&
+                            ((K_CAPTURED && channel.m_role == MaterialChannelRole::CAPTURED_RGB) ||
+                             (!K_CAPTURED && channel.m_role != MaterialChannelRole::CAPTURED_RGB)),
+                        "Invalid/aliased material channel roles");
+                    auto product = K_BIND(channel.m_product);
+                    auto provenance = K_BIND(channel.m_provenance);
+                    require(std::ranges::find(dependencies, channel.m_product) !=
+                                    dependencies.end() &&
+                                std::ranges::find(dependencies, channel.m_provenance) !=
+                                    dependencies.end(),
+                            "Material channel/provenance is not a root dependency",
+                            ErrorCode::RESYNC_REQUIRED);
+                    const auto K_TARGET = targets.find(channel.m_product.m_product);
+                    if (K_TARGET == targets.end()) {
+                        targets.emplace(channel.m_product.m_product,
+                                        AssetRegionKind::MATERIAL_TEXELS);
+                        target_lighting.emplace(channel.m_product.m_product, material.m_lighting);
+                        target_roles.emplace(channel.m_product.m_product, channel.m_role);
+                        channel_provenance.emplace(channel.m_product.m_product,
+                                                   channel.m_provenance);
+                    } else {
+                        require(K_TARGET->second == AssetRegionKind::MATERIAL_TEXELS &&
+                                    target_lighting.at(K_TARGET->first) == material.m_lighting &&
+                                    target_roles.at(K_TARGET->first) == channel.m_role &&
+                                    channel_provenance.at(K_TARGET->first) == channel.m_provenance,
+                                "Shared material channel bindings differ");
+                    }
+                    encoded.push_back(
+                        { { "role", K_ROLE }, { "product", product }, { "provenance", provenance } });
+                }
+                row["channels"] = std::move(encoded);
+            }
+            materials.push_back(std::move(row));
+        }
+        if (value.m_schema_version == 2) {
+            for (auto root : material_roots) {
+                require(!targets.contains(root), "Material roots alias payload roles");
+            }
         }
         const auto K_LODS = K_REFS(value.m_lods);
         for (const auto& lod : value.m_lods) {
-            require(targets.emplace(lod.m_product, AssetRegionKind::GEOMETRY_FACES).second,
+            require(!material_roots.contains(lod.m_product) &&
+                        targets.emplace(lod.m_product, AssetRegionKind::GEOMETRY_FACES).second,
                     "Aliased asset LOD");
         }
         Json collider = nullptr;
         if (value.m_collider.has_value()) {
             const auto& selected = value.m_collider.value();
-            require(targets.emplace(selected.m_product.m_product, AssetRegionKind::GEOMETRY_FACES)
+            require(
+                !material_roots.contains(selected.m_product.m_product) &&
+                    targets.emplace(selected.m_product.m_product, AssetRegionKind::GEOMETRY_FACES)
                         .second,
-                    "Aliased asset collider");
+                "Aliased asset collider");
             static const std::map<AssetColliderMode, std::string> K_MODES {
                 { AssetColliderMode::UNVERIFIED, "UNVERIFIED" },
                 { AssetColliderMode::SYNTHETIC_GAMEPLAY, "SYNTHETIC_GAMEPLAY" } };
@@ -230,21 +313,23 @@ admit_asset_definition(const AssetDefinition& value,
                         K_TARGET->second == selection.m_region.m_domain.m_kind &&
                         covered.insert(K_TARGET->first).second,
                     "Missing/aliased provenance target or wrong domain");
+            if (channel_provenance.contains(K_TARGET->first)) {
+                require(channel_provenance.at(K_TARGET->first) == ref,
+                        "Material channel provenance selection differs",
+                        ErrorCode::RESYNC_REQUIRED);
+            }
             const auto K_REGION = inspect_asset_region_provenance(
                 receipt, ref.m_product, selection.m_region, expected, stop);
             if (!K_REGION) {
                 return std::unexpected(K_REGION.error());
             }
             if (K_TARGET->second == AssetRegionKind::MATERIAL_TEXELS) {
-                const auto& material =
-                    *std::ranges::find_if(value.m_materials, [&](const auto& item) {
-                        return item.m_product.m_product == K_TARGET->first;
-                    });
+                const auto K_LIGHTING_MODE = target_lighting.at(K_TARGET->first);
                 const auto& counts = K_REGION->m_coverage;
-                if (material.m_lighting == AssetLightingMode::CAPTURED_APPEARANCE) {
+                if (K_LIGHTING_MODE == AssetLightingMode::CAPTURED_APPEARANCE) {
                     require(counts[2uz] == 0 && counts[3uz] == 0 && counts[4uz] == 0,
                             "Captured appearance contains inferred/generated/edited texels");
-                } else if (material.m_lighting == AssetLightingMode::ESTIMATED_PBR) {
+                } else if (K_LIGHTING_MODE == AssetLightingMode::ESTIMATED_PBR) {
                     require(counts[3uz] == 0 && counts[4uz] == 0,
                             "Estimated PBR contains generated/edited texels");
                 }
@@ -258,6 +343,9 @@ admit_asset_definition(const AssetDefinition& value,
         std::ranges::sort(owned.m_sources);
         std::ranges::sort(owned.m_provenance);
         std::ranges::sort(owned.m_materials, {}, &AssetMaterialBinding::m_variant);
+        for (auto& material : owned.m_materials) {
+            std::ranges::sort(material.m_channels, {}, &AssetMaterialChannelBinding::m_role);
+        }
         std::ranges::sort(coverage, {}, [](const auto& item) {
             return item.m_product.m_product;
         });
@@ -267,7 +355,7 @@ admit_asset_definition(const AssetDefinition& value,
             return integer(item.at("variant_id"));
         });
         const Json K_DOCUMENT {
-            { "schema_version", 1 },
+            { "schema_version", owned.m_schema_version },
             { "asset_id", owned.m_asset.m_value },
             { "revision", owned.m_revision },
             { "world_epoch", expected.m_world_epoch.m_value },

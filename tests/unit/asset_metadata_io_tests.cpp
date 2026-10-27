@@ -146,7 +146,7 @@ TEST_CASE(
         document["extra"] = 1;
         break;
     case 4:
-        document["schema_version"] = 2;
+        document["schema_version"] = 3;
         break;
     case 5:
         document["asset_id"] = 43;

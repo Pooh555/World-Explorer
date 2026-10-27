@@ -7,15 +7,6 @@
 
 namespace world_explorer {
 
-enum class MaterialChannelRole : std::uint8_t {
-    CAPTURED_RGB,
-    BASE_COLOR,
-    METALLIC,
-    ROUGHNESS,
-    NORMAL,
-    OCCLUSION,
-    EMISSION
-};
 enum class MaterialFitRole : std::uint8_t { LIGHT, EXPOSURE, WHITE_BALANCE };
 enum class MaterialFilter : std::uint8_t { NEAREST, LINEAR };
 enum class MaterialWrap : std::uint8_t { CLAMP_TO_EDGE, REPEAT };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "world_explorer/asset_catalog/material_channel.hpp"
 #include "world_explorer/asset_catalog/region_provenance.hpp"
 #include "world_explorer/core/math.hpp"
 
@@ -32,10 +33,17 @@ struct AssetDefinitionRef {
     auto operator<=>(const AssetDefinitionRef&) const = default;
 };
 
+struct AssetMaterialChannelBinding {
+    MaterialChannelRole m_role;
+    AssetRevisionRef m_product, m_provenance;
+};
+
 struct AssetMaterialBinding {
     AssetMaterialVariantId m_variant;
     AssetRevisionRef m_product;
     AssetLightingMode m_lighting;
+    // Schema 2 uses the original per-channel provenance, without a root summary.
+    std::vector<AssetMaterialChannelBinding> m_channels {};
 };
 
 struct AssetColliderBinding {

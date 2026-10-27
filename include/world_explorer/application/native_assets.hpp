@@ -45,7 +45,7 @@ class AdmittedNativeAssets {
 // <=16 definitions, <=16 materials/definition, <=64 instances, arbitrary units,
 // no LOD/collider or room/support/lineage adoption. Every face group is bound.
 // Schema-1 aggregate material provenance must exactly match every channel's
-// partition; heterogeneous channel partitions need a later explicit profile.
+// partition. Schema 2 binds each original channel and its own provenance sidecar.
 Result<AdmittedNativeAssets> inspect_native_assets(const NativeAssetsRequest& request,
                                                    const std::stop_token& stop = {});
 Result<RecordCommit> publish_native_assets(const AdmittedNativeAssets& assets,

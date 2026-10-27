@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-26 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-27 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
 gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts, typed metadata and owned history).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
@@ -315,23 +315,31 @@ The [native PBR scene slice](validation/2026-10-26-native-pbr-viewer.md) now com
 admitted native exports into immutable schema-6 bundles and shared Vulkan
 geometry/material/instance resources. Ordinary viewer loading, preview light
 controls and update retirement are exercised on labeled synthetic diagnostics;
-Independent pixel-reference checks cover color/ORM/tangent normals, two shared instances
+independent pixel-reference checks cover color/ORM/tangent normals, two shared instances
 and changed lights. Captured profiles remain supported. This is renderer/resource
 integration, without real material recovery, completed-room output, physical
 relighting or Godot qualification. The [protocol](protocols/native_pbr_scene.md)
 owns limits and compatibility.
 
-Next executable step: resolve heterogeneous per-channel material provenance in
-native asset adoption. Recheck plan §11.4 and the material/region/definition
-contracts, add an explicit additive representation for independently partitioned
-channels, and preserve every original channel mask/evidence class through typed
-adoption, owned metadata reload and downstream export/runtime bindings. Keep the
-current refusal until the new representation is admitted; do not collapse differing
-channels into one false root summary. Use bounded synthetic contract/recovery
-checks without claiming real AP completion. Broader structure/completion/LOD/collider
-adoption, producer execution and the real capture/recipe freeze remain A0 work;
-optional native GLB remains separate. Provisioning requires the recorded
-prerequisites. The real A1 completed/PBR pilot must use the same native resource
+The [channel-provenance slice](validation/2026-10-27-channel-provenance.md) adds
+asset-definition schema 2 with independently selected original channel/sidecar
+bindings. Heterogeneous classes, confidence and partitions survive native adoption,
+owned history/reload and exact portable sidecars; native PBR bundles retain source
+pins. Schema-1 refusals/bytes remain supported. This is synthetic contract/runtime
+integration, not producer, material recovery or real AP evidence. The
+[protocol](protocols/asset_channel_provenance.md) separates actual mask retention
+in export from hash-only runtime bindings.
+
+Next executable step: bind the admitted structure graph to native structural
+asset definitions and scene instances. Recheck plan §11.4, structure-graph and native
+asset contracts; explicitly bind selected patch/opening/room/support identities to
+actual adopted shell geometry and reject unsupported or stale references before
+publication. Preserve shared instance identity, observed/generated provenance,
+original placement and existing update/cancellation paths. Use bounded synthetic
+admission/reload checks before real structural producer integration. Broader
+LOD/collider adoption, producer execution and real capture/recipe freeze remain
+A0 work; optional native GLB remains separate. Provisioning requires the recorded
+prerequisites. The real A1 completed/PBR pilot must use the existing native resource
 path after its inputs and producers exist.
 Available selected local
 sample receipts have no A1 consent/measurement/background/light bindings; preserve

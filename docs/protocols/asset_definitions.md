@@ -1,4 +1,4 @@
-# Typed asset definitions and instance sets v1
+# Typed asset definitions v1/v2 and instance sets v1
 
 Native [`asset_definition.hpp`](../../include/world_explorer/asset_catalog/asset_definition.hpp)
 and [`asset_instances.hpp`](../../include/world_explorer/scene_store/asset_instances.hpp)
@@ -46,7 +46,7 @@ not authorize replacement of a committed revision.
 
 | Typed field | Contract |
 |---|---|
-| Schema/identity/context | Version 1, positive asset ID/revision, exact expected context |
+| Schema/identity/context | Definition version 1 or 2, instance version 1, positive asset ID/revision, exact expected context |
 | Kind | PROP or STRUCTURAL |
 | Sources | 1–64 unique exact product references |
 | Geometry/materials | One geometry product, 1–16 positive unique material variant IDs/products; lighting declared separately |
@@ -54,7 +54,7 @@ not authorize replacement of a committed revision.
 | Units | ARBITRARY with no conversion/measurement, or DECLARED_METRIC with finite positive metres per unit and a selected measurement reference |
 | Bounds | Finite ordered asset-frame bounds, not a single point; intentional thin surfaces can have zero extent on an axis |
 | Pivot | Finite rigid `asset_from_geometry`, wxyz rotation, unit scale, explicit policy and orientation ambiguity |
-| Provenance | Exactly one selected region sidecar for each geometry, material, LOD and collider product; at most 26 |
+| Provenance | V1: one selected sidecar per geometry/material/LOD/collider, at most 26. V2: original per-channel sidecars, at most 106; see [channel bindings](asset_channel_provenance.md) |
 | Rights/manual ancestry | Exact selected rights-product reference; manual flag equals ancestry of every bound product, including override/measurement references |
 
 Geometry, material, LOD and collider roles cannot alias one product ID. Automatic
@@ -122,6 +122,11 @@ Wrong schema/enums return UNSUPPORTED_OPERATION; invalid values/duplicates/manua
 flags INVALID_DATA; stale context/revision/hash/snapshot/unit bindings
 RESYNC_REQUIRED; missing/duplicate independent provenance selections
 INVALID_ARGUMENT; count/byte excess RESOURCE_EXHAUSTED; cancellation CANCELLED.
-Region inspection errors propagate. A strict byte decoder and immutable owned
-publication remain next work, followed by ordinary scene transaction integration;
-existing runtime scene formats and update paths are unchanged.
+Region inspection errors propagate. Strict byte decoding and immutable owned
+publication support these records;
+runtime adoption still requires the separate typed payload converters. Existing
+runtime scene/update formats are unchanged by metadata admission.
+
+[Schema-2 channel bindings](asset_channel_provenance.md) now admit independent
+material-channel masks without a root summary. V1 canonical encoding and its
+lighting restrictions remain unchanged; owned decoding/publication supports both.

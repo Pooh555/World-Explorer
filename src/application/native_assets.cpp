@@ -120,17 +120,42 @@ void materials(const NativeAssetSelection& asset,
                     K_BINDING->m_lighting == selected.m_lighting,
                 "Native asset material variant/product/lighting differs",
                 ErrorCode::RESYNC_REQUIRED);
-        const auto K_AGGREGATE = region(asset, selected.m_product, receipt, expected, stop);
-        for (const auto& [K_ROLE, K_CHANNEL] : material.channels()) {
-            const auto& original = K_CHANNEL.m_provenance.m_record;
-            const auto& summary = K_AGGREGATE.m_record;
-            require(summary.m_domain == original.m_domain &&
-                        summary.m_sources == original.m_sources &&
-                        summary.m_manual_ancestor == original.m_manual_ancestor &&
-                        summary.m_spans.size() == original.m_spans.size() &&
-                        std::ranges::equal(summary.m_spans, original.m_spans, same_span),
-                    "Native material summary differs from channel provenance",
-                    ErrorCode::UNSUPPORTED_OPERATION);
+        if (definition.m_schema_version == 2) {
+            require(K_BINDING->m_channels.size() == selected.m_channels.size(),
+                    "Native material channel table differs",
+                    ErrorCode::RESYNC_REQUIRED);
+            for (const auto& channel : K_BINDING->m_channels) {
+                const auto K_PIN = selected.m_channels.find(channel.m_role);
+                require(K_PIN != selected.m_channels.end() &&
+                            channel.m_product == K_PIN->second.m_product &&
+                            channel.m_provenance == K_PIN->second.m_provenance,
+                        "Native material channel identity differs",
+                        ErrorCode::RESYNC_REQUIRED);
+                const auto K_REGION = region(asset, channel.m_product, receipt, expected, stop);
+                const auto& original = material.channels().at(channel.m_role).m_provenance.m_record;
+                const auto& actual = K_REGION.m_record;
+                require(actual.m_target == original.m_target &&
+                            actual.m_domain == original.m_domain &&
+                            actual.m_sources == original.m_sources &&
+                            actual.m_manual_ancestor == original.m_manual_ancestor &&
+                            actual.m_spans.size() == original.m_spans.size() &&
+                            std::ranges::equal(actual.m_spans, original.m_spans, same_span),
+                        "Native material channel provenance differs",
+                        ErrorCode::RESYNC_REQUIRED);
+            }
+        } else {
+            const auto K_AGGREGATE = region(asset, selected.m_product, receipt, expected, stop);
+            for (const auto& [K_ROLE, K_CHANNEL] : material.channels()) {
+                const auto& original = K_CHANNEL.m_provenance.m_record;
+                const auto& summary = K_AGGREGATE.m_record;
+                require(summary.m_domain == original.m_domain &&
+                            summary.m_sources == original.m_sources &&
+                            summary.m_manual_ancestor == original.m_manual_ancestor &&
+                            summary.m_spans.size() == original.m_spans.size() &&
+                            std::ranges::equal(summary.m_spans, original.m_spans, same_span),
+                        "Native material summary differs from channel provenance",
+                        ErrorCode::UNSUPPORTED_OPERATION);
+            }
         }
     }
     const std::set<AssetMaterialVariantId> K_GROUPS(geometry.mesh().m_groups.begin(),
