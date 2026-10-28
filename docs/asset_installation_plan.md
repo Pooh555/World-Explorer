@@ -37,7 +37,15 @@ tiny variant do not establish an 8 GiB device or host-memory fit.
 
 ### Proposed Linux control variant — 28 October
 
-For the next artifact-lock investigation, select **Linux x86_64 / CPython 3.12 /
+**Do not provision this variant.** The completed metadata audit finds **22**
+advisory records on the Torch2.5.1 base release (some alias the same issue).
+[Upstream GHSA-53q9-r3pm-6pq6](https://github.com/pytorch/pytorch/security/advisories/GHSA-53q9-r3pm-6pq6)
+affects `torch.load(..., weights_only=True)` through 2.5.1, the loader used by the
+pinned SAM source. Its 2.6.0 fix addresses that issue, not every recorded advisory.
+Retain this exact candidate as evidence; select a patched compatible Torch/vision
+pair and re-lock its graph before further provisioning. No model was loaded.
+
+The retained blocked candidate is **Linux x86_64 / CPython 3.12 /
 torch 2.5.1+cu124 / torchvision 0.20.1+cu124**, matching the
 [publisher's 2.5.1 CUDA 12.4 pair](https://pytorch.org/get-started/previous-versions/#v2-5-1).
 This is a concrete candidate, not a complete dependency lock, installation action
@@ -65,8 +73,29 @@ wheel verification, full package extraction, installation or execution.
 The exact Torch record requires **12 NVIDIA packages**, Triton **3.1.0** and,
 for Python 3.12, SymPy **1.13.1** and setuptools, alongside other direct runtime
 requirements. Torchvision selects torch **2.5.1**, NumPy and Pillow. Optional
-extras are unselected. All transitive package artifacts, notices and installed/
-build costs remain unresolved; these two top-level files are not an environment.
+extras are unselected. The [35-artifact candidate](research/sam2_control_artifacts_20261028.json)
+now pins the Python dependency graph; the [transitive audit](validation/2026-10-28-sam2-artifact-lock.md)
+owns its metadata/notice observations. Source/build/native runtime closure,
+independent reviews and installed/build costs remain unresolved.
+
+The candidate selects exact Linux x86_64/cp312 or compatible universal wheels,
+plus source-only **iopath 0.1.10** and **antlr4-python3-runtime 4.9.3**. All **47**
+declared edges, including SAM's seven requirements, resolve; **262** inactive
+marker/extra requirements are excluded. Build candidates are setuptools **84.2.1**
+and wheel **0.48.0**; their execution/backend compatibility is untested. Selected
+manylinux tags extend to glibc **2.28**; raw Linux Torch wheels still require native
+ELF/runtime inspection, not an inferred ABI pass. The interpreter patch/build
+and CUDA compiler remain unselected.
+
+Initial local-version candidates filelock **3.32.3**, Hydra **1.3.2** and Pillow
+**11.3.0** have publisher-listed advisories. Retained snapshots preserve them;
+the proposal instead pins **4.2.4 /1.3.8 /13.0.0**, with none reported in their
+release snapshots. This is not a security review or permission to update existing
+environments. **56** archive notice records and **12** vendored setuptools
+metadata records are pinned. Triton/ANTLR archives lack separate notice records;
+supplemental exact-commit source licenses are pinned, with archive correspondence
+and all independent reviews still open. No broad permissive-license conclusion
+follows from the top-level package declarations.
 
 Propose `SAM2_BUILD_CUDA=1` and `SAM2_BUILD_ALLOW_ERRORS=0` for this explicit
 extension-enabled variant. The pinned [setup source](https://github.com/facebookresearch/sam2/blob/2b90b9f5ceec907a1c18123530e92e794ad901a4/setup.py)
@@ -84,9 +113,14 @@ fallback for this proposal. Freeze precision, postprocessing, frame/batch/pixel
 limits and the automatic proposal/association method separately. No adapter or
 resource enforcement is supplied by this document.
 
-These two wheel declarations plus the proposed checkpoint total
-**1,071,497,937 bytes**. This is only a known download subtotal. Whole-plan download,
-installed, build/staging and scratch/reservation costs stay **null/unknown**, with
+The earlier two-wheel/checkpoint subtotal was **1,071,497,937 bytes**. The new
+35-artifact Python candidate totals **3,041,954,835 bytes**, or
+**3,197,963,301 bytes** including that checkpoint. This is only a known download
+subtotal; SAM source, interpreter/compiler/tools and other asset stages are excluded.
+Six small artifacts have whole-payload hash verification from bounded reads;
+the large wheels and checkpoint do not. No package is installed or executed.
+Whole-plan download, installed, build/staging and scratch/reservation costs stay
+**null/unknown**, with
 no cache credit. Code/source inventory, the complete environment/build lock,
 terms/independent reviews and enforced/measured stage limits still block any
 installation/use proposal. Physical pilot preparation can proceed independently

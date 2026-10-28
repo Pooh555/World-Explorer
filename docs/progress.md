@@ -441,11 +441,28 @@ it is not a native capture/corpus or worker request. Preserve old sample_2 jobs:
 they still bind the prior hash. Historical protection receipts have one explicit
 user-authorized source replacement; verify the new hash using the intake receipt.
 
-Next executable step: resolve the proposed control variant's transitive artifact
-lock from `artifacts/validation/a0-readiness-20261028/wheel-metadata.json`, starting
-with its 12 NVIDIA packages, Triton3.1.0, SymPy1.13.1 and SAM's direct/build
-requirements. Pin exact Linux/cp312 URLs, hashes, sizes and notice/review gaps;
-also resolve the complete SAM source inventory/archive and interpreter/toolchain identities.
+The [SAM artifact-lock audit](validation/2026-10-28-sam2-artifact-lock.md) now
+freezes a [35-artifact Python candidate](research/sam2_control_artifacts_20261028.json):
+47 declared dependency edges close, with exact URLs/hashes/sizes, 56 archive
+notice records and 12 vendored metadata records. Three initial candidates with
+publisher-listed advisories are retained but replaced in the proposal. Known
+Python/checkpoint downloads total **3,197,963,301 bytes**; this is not a complete
+source/build/environment lock, independent review, installed-cost or fit pass.
+No existing environment, source video, old job or model is changed.
+
+The final Torch2.5.1 base-release check reports **22** advisory records, including
+an upstream checkpoint-loader issue affecting SAM's `weights_only=True` call.
+This candidate is **BLOCKED for provisioning**; the pinned graph is retained evidence,
+not an activation recommendation. No model is loaded.
+
+Next executable step: select a patched compatible Torch/torchvision pair from
+publisher artifact/advisory metadata, then re-lock its exact Linux/cp312/CUDA graph
+without overwriting this blocked candidate or changing existing environments.
+Do not assume 2.6.0 resolves all recorded advisories. Then complete the pinned SAM
+source inventory/archive and CPython3.12 interpreter/build/compiler/CUDA toolchain
+identities. Resolve source-only iopath/ANTLR build compatibility and
+bundled-component/notice correspondence without running an unapproved installer;
+retain the candidate's missing reviews and native runtime/rights gaps.
 Preserve all existing environments. Keep installed/build/staging/scratch costs
 null/blocking until independently bounded, and prepare the concrete acquisition
 proposal before any installation/model download. Do not introduce another
@@ -453,7 +470,8 @@ observation profile to avoid recipe freeze. On the capture side, materialize and
 hash the proposed source views, verify exact decoded indices/PTS, and connect
 role-aware selection to inference consumers before any sample_2 pose/fit run.
 First reconcile the native 4K view/mask/receipt budgets: the 12 candidate mask
-pairs exceed the v1 aggregate pixel cap; encoded image sizes are still unknown.
+pairs exceed the v1 aggregate pixel cap; encoded image sizes are still unknown,
+and capture selection retains at most 32 MiB of images in each role group.
 Keep holdouts out of pose/geometry/material/light optimization; do not feed the
 whole clip to the legacy request or reduce scope to pass its 120-frame cap.
 Estimates are authorized for an explicitly unqualified route; measured reference
