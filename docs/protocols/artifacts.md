@@ -51,6 +51,14 @@ capture or reducing quality. The normal pipeline checks backend availability,
 source identity and current storage. Scale remains arbitrary; geometry/walk is
 not provided by this recipe.
 
+When a video is replaced in place, existing source records, requests and cached
+stages still belong to the original full SHA-256. Preserve them; do not rewrite
+an old `source.json` to make a historical job appear current. Verify source hashes
+before queueing requests and use a fresh named attempt for a replacement.
+`new_video_job.py` creates the captured-appearance `local_gsplat_v1` recipe, not an
+A1 completed-asset pipeline. Freeze inference/holdout/reference roles before any
+asset solve; an intake partition proposal alone is not an executable request.
+
 Keep logs for an attempt inside its `logs/` folder. Verification for a scene can
 use `logs/validation/`; unrelated future checks may use a clearly named folder
 under `artifacts/checks/`. Do not accumulate root-level trial requests, loose
@@ -66,7 +74,7 @@ artifact locations are no longer available. New runs use the layout above.
 Use one queue for several videos when concurrent jobs exceed laptop resources:
 
 ```sh
-python3 tools/run_video_jobs.py --recover-stale-locks artifacts/sample_1/request.json artifacts/sample_2/request.json artifacts/sample_3/request.json
+python3 tools/run_video_jobs.py --recover-stale-locks artifacts/room_a/request.json artifacts/room_b/request.json
 ```
 
 The queue waits for each coordinator and successful scene validation before

@@ -1,5 +1,7 @@
 # Validation index
 
+- [28 October: replacement sample_2 A1 intake](2026-10-28-sample2-a1-intake.md) — new source pin, complete local decode, original timestamp scan and proposed disjoint temporal split; baseline-only estimates authorized, real-reference/asset qualification open.
+
 - [28 October: A0 readiness and capture preparation](2026-10-28-a0-readiness.md) — exact synthetic replay, current dependency blockers, concrete Linux Torch artifact/dependency proposal and requested real capture checklist; no installation, inference or gate promotion.
 
 - [28 October: Windows probe environment repair](2026-10-28-windows-probe-environment.md) — remove three exposed deprecated CRT calls with owned cross-platform values; local branch/output checks, native Windows rerun pending.

@@ -101,3 +101,16 @@ step will inspect source identity, roles, coverage and missing prerequisites,
 then freeze the bounded capture/evaluation selections. Completing this checklist
 neither supplies an approved worker recipe nor clears the
 [installation prerequisites](asset_installation_plan.md).
+
+## Authorized baseline-only development
+
+On 28 October the user supplied a replacement `sample_2.mp4`, declared it
+baseline-only and authorized estimated references. The
+[intake report](validation/2026-10-28-sample2-a1-intake.md) pins that source and a
+proposed temporal split. This permits experimental development with explicitly
+estimated/inferred/generated evidence; it does not convert those stand-ins into
+measured scale or real held-out-path/background/changed-light ground truth.
+The checklist above remains the preparation for full real A1 qualification.
+Do not request the same physical references again as a prerequisite to the
+already authorized estimated route. Model installation/recipe closure remains
+separate; no source solve or completed asset is implied by intake.

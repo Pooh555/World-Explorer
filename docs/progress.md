@@ -428,7 +428,18 @@ CPython3.12/torch2.5.1+cu124/torchvision0.20.1+cu124 pair now has publisher hash
 pins and bounded dependency-metadata inspection; full artifact verification,
 transitive/source/build/installed closure, independent reviews and whole-plan
 costs remain open. The user requested the [A1 capture checklist](a1_capture_checklist.md);
-no new pilot data has been selected or qualified.
+the replacement baseline below is now identified, with real qualification open.
+
+The [replacement sample_2 intake](validation/2026-10-28-sample2-a1-intake.md)
+records SHA `a5630370d7039c78cc822dbd17a967711be3632bd2cdb43519eab8c2fa876144`:
+4K /360.360 s, full decode and metadata inspection pass. The user declared the
+whole clip baseline-only and authorized estimated references. Continue experimental
+work without requesting those missing physical references again; keep scale
+arbitrary and estimates labeled, with real reference/AP/Q5/N2 gates open. A frozen
+source-level proposal reserves disjoint temporal holdouts and 48/12 candidate views;
+it is not a native capture/corpus or worker request. Preserve old sample_2 jobs:
+they still bind the prior hash. Historical protection receipts have one explicit
+user-authorized source replacement; verify the new hash using the intake receipt.
 
 Next executable step: resolve the proposed control variant's transitive artifact
 lock from `artifacts/validation/a0-readiness-20261028/wheel-metadata.json`, starting
@@ -438,9 +449,15 @@ also resolve the complete SAM source inventory/archive and interpreter/toolchain
 Preserve all existing environments. Keep installed/build/staging/scratch costs
 null/blocking until independently bounded, and prepare the concrete acquisition
 proposal before any installation/model download. Do not introduce another
-observation profile to avoid recipe freeze. The user can independently collect
-pilot data using the checklist; once a folder is identified, inspect original
-hashes/roles/measurement and reference gaps before any solve. The correct local checker is
+observation profile to avoid recipe freeze. On the capture side, materialize and
+hash the proposed source views, verify exact decoded indices/PTS, and connect
+role-aware selection to inference consumers before any sample_2 pose/fit run.
+First reconcile the native 4K view/mask/receipt budgets: the 12 candidate mask
+pairs exceed the v1 aggregate pixel cap; encoded image sizes are still unknown.
+Keep holdouts out of pose/geometry/material/light optimization; do not feed the
+whole clip to the legacy request or reduce scope to pass its 120-frame cap.
+Estimates are authorized for an explicitly unqualified route; measured reference
+and real relighting/completion qualification remain open. The correct local checker is
 `python3 tools/check_dependency_manifest.py --local-evidence`; it currently exits
 2 on stale runtime bytes, while default passes and strict closure exits 3. No
 runtime evidence was refreshed. Do not treat synthetic diagnostics as real production,
@@ -449,9 +466,9 @@ broader structural/prop relations, producer execution and
 real capture/recipe freeze remain A0 work; optional native GLB stays separate.
 Provisioning requires the recorded prerequisites. The real A1 completed/PBR pilot
 must use the existing native resource path after its inputs and producers exist.
-Available selected local
-sample receipts have no A1 consent/measurement/background/light bindings; preserve
-them and request the real pilot inputs when required. Broader worker/asset adoption
+The new baseline is available for estimated development, while selected native
+receipts still lack real A1 measurement/background/light bindings. Preserve both
+source generations and keep missing real evidence explicit. Broader worker/asset adoption
 and complete real capture/evaluation qualification remain A0 work. A declaration cannot certify a human
 act, consent, correct opaque descendants or automatic yield. Keep processing local
 and draft metadata separate from live scene transactions; validate actual payloads
@@ -513,7 +530,7 @@ or walking.
 | Video | Current saved result |
 |---|---|
 | sample_1 | 7k fit, **295,952 splats**; saved terminal/validation and native CLI bundle validation exit 0; Source view available |
-| sample_2 | Latest source SHA `10a6405980025eadfbe12e4c68d86bbab8d41af24e0fa48f2d12ca829f0e1de3`; **FAILED**, exit 2 / POSE_DISCONNECTED after **1,137.473 s**; 90 decoded frames, largest connected model **79 (81 required)**; no fit/scene, failed stages retained. [Second replacement](validation/2026-10-16-sample2-second-replacement.md) supersedes the deleted first replacement (75/88, 80 required, 1,254.710 s) |
+| sample_2 | [28 October replacement intake](validation/2026-10-28-sample2-a1-intake.md), current SHA `a5630370d7039c78cc822dbd17a967711be3632bd2cdb43519eab8c2fa876144`: baseline-only, estimated references authorized; no new solve/fit/scene. Prior source SHA `10a6405980025eadfbe12e4c68d86bbab8d41af24e0fa48f2d12ca829f0e1de3`: **FAILED**, exit 2 / POSE_DISCONNECTED after **1,137.473 s**; 90 decoded frames, largest connected model **79 (81 required)**; no fit/scene, failed stages retained. [Second replacement](validation/2026-10-16-sample2-second-replacement.md) supersedes the deleted first replacement (75/88, 80 required, 1,254.710 s) |
 | sample_3 | Source SHA `4448a1d9eb93f8b7fc787f9ea037d282128438a2512fad8eb8df8544f53906da`; **80 poses → 7k fit → 648,332 splats**, terminal/validation/native bundle checks exit 0. [Viewer/holdout checks](validation/2026-10-15-sample3-evidence.md): 126 frames/zero Vulkan errors, 16/16 scores reproduce; mean **20.8708 dB / 0.815687 SSIM / 0.253078 LPIPS**, Q3 blocked. [All 80 calibrated comparisons](validation/2026-10-15-all-camera-reference.md) pass, maximum one RGB8 level |
 
 On 2026-10-13 the user requested deletion of all old artifacts and three fresh
