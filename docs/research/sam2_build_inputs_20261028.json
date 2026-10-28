@@ -1,0 +1,257 @@
+{
+  "proposal_format_version": 1,
+  "kind": "UNQUALIFIED_BUILD_INPUT_ADDENDUM",
+  "date": "2026-10-28",
+  "scope": "Source-byte audit and interpreter/compiler artifact proposal only; not an installer, owned receipt, complete toolchain, rights clearance or resource-fit result",
+  "parent_candidate": {
+    "path": "docs/research/sam2_control_cu126_artifacts_20261028.json",
+    "sha256": "b550c33e6e7118f542a7f79014bc193fa14e005146246dcaace885e51591824d",
+    "unchanged": true
+  },
+  "source_archive": {
+    "source_commit": "2b90b9f5ceec907a1c18123530e92e794ad901a4",
+    "url": "https://codeload.github.com/facebookresearch/sam2/tar.gz/2b90b9f5ceec907a1c18123530e92e794ad901a4",
+    "filename": "sam2-2b90b9f5ceec907a1c18123530e92e794ad901a4.tar.gz",
+    "download_bytes": 55645345,
+    "sha256": "1f2fbfad3ffa38110368abac76c6ef9df9c282a66d5c2807bc94abf4d2fb30f8",
+    "expanded_tar_bytes": 65054720,
+    "source_blob_bytes": 64563748,
+    "regular_files": 565,
+    "symlinks": 4,
+    "all_blob_bytes_modes_and_link_targets_verified": true,
+    "members_materialized": false,
+    "executed": false,
+    "source_inventory_sha256": "10fe140c3f3b58041bb3ec7b01062a8f41306e1198ecf80c540ca1b127892557",
+    "independent_parser_oracle_sha256": "88ce291af6759ffeece54b85aa4a61cb9d359cb0a27fa2e7beb874866d080e88",
+    "trust_boundary": "HTTPS tree/commit metadata plus Git blob SHA-1 correspondence and local archive/file SHA-256; no independent signed-source or rights attestation"
+  },
+  "source_links": [
+    {
+      "member": "sam2/sam2_hiera_b+.yaml",
+      "kind": "SYMLINK_NOT_MATERIALIZED",
+      "target": "configs/sam2/sam2_hiera_b+.yaml",
+      "target_member": "sam2/configs/sam2/sam2_hiera_b+.yaml",
+      "bytes": 31,
+      "sha256": "212887bd5b1d90c07a3439a911593ec6ec8a586cce0b12799f1ebec38bbe401d",
+      "git_blob_sha1": "998d9c98c9ff4e8ddd55deff72aa0d9067977418"
+    },
+    {
+      "member": "sam2/sam2_hiera_l.yaml",
+      "kind": "SYMLINK_NOT_MATERIALIZED",
+      "target": "configs/sam2/sam2_hiera_l.yaml",
+      "target_member": "sam2/configs/sam2/sam2_hiera_l.yaml",
+      "bytes": 30,
+      "sha256": "0e313563f8f467c382c81192a0e2aff4624dda2b23218f1a78df30ebe4b4eb1a",
+      "git_blob_sha1": "c0e7e58e1951d5c55a3a3ebe6b803dd814cf9d86"
+    },
+    {
+      "member": "sam2/sam2_hiera_s.yaml",
+      "kind": "SYMLINK_NOT_MATERIALIZED",
+      "target": "configs/sam2/sam2_hiera_s.yaml",
+      "target_member": "sam2/configs/sam2/sam2_hiera_s.yaml",
+      "bytes": 30,
+      "sha256": "6fff1ab952d4ff7bc4bf8bb480f6283bcf12a763057f5bb697b25151a20f7608",
+      "git_blob_sha1": "41896a26beb2aa831d18b0bf3c349ed43deeef68"
+    },
+    {
+      "member": "sam2/sam2_hiera_t.yaml",
+      "kind": "SYMLINK_NOT_MATERIALIZED",
+      "target": "configs/sam2/sam2_hiera_t.yaml",
+      "target_member": "sam2/configs/sam2/sam2_hiera_t.yaml",
+      "bytes": 30,
+      "sha256": "4ba0a249a1da9a6cc4070d47894808f206f67249d0c6fda21c6280af692dd77e",
+      "git_blob_sha1": "71ff3abbb1e11f8b82100a0a1d63cb267eefe52a"
+    }
+  ],
+  "interpreter": {
+    "version": "3.12.16",
+    "implementation": "CPython",
+    "build": "python-build-standalone 20261026",
+    "filename": "cpython-3.12.16+20261026-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+    "download_bytes": 34505639,
+    "expected_sha256": "ce4f6d0a6cfdb3bed6e44c2f9affd85943c76a42e25ad3a259002f31d6fb8a20",
+    "release_id": 424411241,
+    "asset_id": 678575315,
+    "payload_verified": false,
+    "installed": false,
+    "executed": false,
+    "installed_bytes": null,
+    "source_correspondence_review": null,
+    "terms_review": null,
+    "reason": "PSF 3.12.16 security release; preserve existing 3.12.15 installation and select a separate future environment"
+  },
+  "python_metadata_graph_check": {
+    "python_patch": "3.12.16",
+    "artifacts": 41,
+    "selected_edges": 55,
+    "oracle_sha256": "75f7294b776b8eed3b00776ef3de03a1426639f53ddb495174e5974b9e0d1456",
+    "compatibility_executed": false
+  },
+  "proposed_cuda_components": [
+    {
+      "component": "cuda_nvcc",
+      "version": "12.6.85",
+      "url": "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvcc/linux-x86_64/cuda_nvcc-linux-x86_64-12.6.85-archive.tar.xz",
+      "filename": "cuda_nvcc-linux-x86_64-12.6.85-archive.tar.xz",
+      "download_bytes": 49996208,
+      "expected_sha256": "840deff234d9bef20d6856439c49881cb4f29423b214f9ecd2fa59b7ac323817",
+      "license_declaration": "CUDA Toolkit",
+      "declared_license_path": "cuda_nvcc/LICENSE.txt",
+      "payload_verified": false,
+      "installed": false,
+      "installed_bytes": null,
+      "terms_review": null
+    },
+    {
+      "component": "cuda_cudart",
+      "version": "12.6.77",
+      "url": "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cudart/linux-x86_64/cuda_cudart-linux-x86_64-12.6.77-archive.tar.xz",
+      "filename": "cuda_cudart-linux-x86_64-12.6.77-archive.tar.xz",
+      "download_bytes": 1126072,
+      "expected_sha256": "f74689258a60fd9c5bdfa7679458527a55e22442691ba678dcfaeffbf4391ef9",
+      "license_declaration": "CUDA Toolkit",
+      "declared_license_path": "cuda_cudart/LICENSE.txt",
+      "payload_verified": false,
+      "installed": false,
+      "installed_bytes": null,
+      "terms_review": null
+    },
+    {
+      "component": "cuda_cccl",
+      "version": "12.6.77",
+      "url": "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cccl/linux-x86_64/cuda_cccl-linux-x86_64-12.6.77-archive.tar.xz",
+      "filename": "cuda_cccl-linux-x86_64-12.6.77-archive.tar.xz",
+      "download_bytes": 934952,
+      "expected_sha256": "9c3145ef01f73e50c0f5fcf923f0899c847f487c529817daa8f8b1a3ecf20925",
+      "license_declaration": "CUDA Toolkit",
+      "declared_license_path": "cuda_cccl/LICENSE.txt",
+      "payload_verified": false,
+      "installed": false,
+      "installed_bytes": null,
+      "terms_review": null
+    }
+  ],
+  "host_compiler": {
+    "selected": null,
+    "sysroot": null,
+    "complete_runtime": false,
+    "support_policy": "https://docs.nvidia.com/cuda/archive/12.6.3/cuda-installation-guide-linux/index.html#host-compiler-support-policy",
+    "gcc_range_in_table": "6.x-13.2; vendor policy accepts newer minor versions within supported majors",
+    "clang_range_in_table": "7.x-18.0; vendor policy accepts newer minor versions within supported majors",
+    "current_gcc_supported": false,
+    "current_clang_supported": false,
+    "allow_unsupported_compiler": false,
+    "inspected_compatible_path_lookup": {
+      "gcc-13": null,
+      "g++-13": null,
+      "gcc-12": null,
+      "g++-12": null,
+      "clang-18": null,
+      "clang++-18": null
+    }
+  },
+  "observed_local_tools": [
+    {
+      "name": "gcc",
+      "path": "/usr/bin/gcc",
+      "sha256": "8aac907d6fbf40394b424b5fa4a2ad1aa291dac7d3a0315c5b415c1f5ace1287",
+      "bytes": 1733976,
+      "version_output": "16.2.1",
+      "selected_for_cuda_build": false
+    },
+    {
+      "name": "g++",
+      "path": "/usr/bin/g++",
+      "sha256": "f04191f6a7b2cd7d9a62e1745872b8a6088791e5af6955488c69c9b2c4668bc9",
+      "bytes": 1738072,
+      "version_output": "16.2.1",
+      "selected_for_cuda_build": false
+    },
+    {
+      "name": "clang",
+      "path": "/usr/bin/clang-23",
+      "sha256": "5cb1c0c669bf0d2655933374723967259e78704338c370101843575f524c91bb",
+      "bytes": 174288,
+      "version_output": "clang version 23.1.4\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/bin",
+      "selected_for_cuda_build": false
+    },
+    {
+      "name": "ninja",
+      "path": "/usr/bin/ninja",
+      "sha256": "386e7381e7664302b9add6890de5f09a37513bb8c1d034210ac757332898f5ab",
+      "bytes": 354496,
+      "version_output": "1.13.2",
+      "selected_for_cuda_build": false
+    },
+    {
+      "name": "cmake",
+      "path": "/usr/bin/cmake",
+      "sha256": "0cd9542a4bfd68434b7b6e1fc8933a100184a4fa2bd985731f1d71f825951f7f",
+      "bytes": 11918360,
+      "version_output": "cmake version 4.4.4\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).",
+      "selected_for_cuda_build": false
+    }
+  ],
+  "existing_python_observation": {
+    "path": "/home/Pooh555/programming/World-Explorer/.deps/python/cpython-3.12.15-linux-x86_64-gnu/bin/python3.12",
+    "version": "3.12.15",
+    "sha256": "0886fb76ceec8ff568d23079b5da6342bb41675e216e11525d4d6a9e65988d10",
+    "changed": false,
+    "selected_for_new_environment": false
+  },
+  "native_build_component_selection_complete": false,
+  "source_build_compatibility_tested": false,
+  "known_download_subtotal_bytes": 3893049064,
+  "subtotal_scope": "41 Python artifacts, checkpoint, verified SAM source, proposed CPython archive and three CUDA compiler/header archives; excludes host compiler/sysroot/other tools and asset stages",
+  "costs": {
+    "whole_plan_download_bytes": null,
+    "installed_bytes": null,
+    "build_staging_peak_bytes": null,
+    "scratch_reservation_bytes": null,
+    "cache_credit_bytes": 0
+  },
+  "provisioning_status": "BLOCKED",
+  "installation_authorized": false,
+  "execution_authorized": false,
+  "blockers": [
+    "Compatible isolated host compiler/libstdc++/sysroot and full native build/runtime/tool closure",
+    "Interpreter/compiler payload and installed-file/source correspondence; all independent terms/reviews",
+    "iopath/ANTLR/SAM builds against the selected interpreter/Torch/CUDA pair",
+    "Whole-plan installed/build/staging/scratch limits and enforced/measured stage resources",
+    "Actual capture/resource/recipe freeze, producer integration and host qualification"
+  ],
+  "evidence_root": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-source-20261028",
+  "primary_metadata_receipts": [
+    {
+      "path": "primary/cuda-redistrib.json",
+      "url": "https://developer.download.nvidia.com/compute/cuda/redist/redistrib_12.6.3.json",
+      "bytes": 49142,
+      "sha256": "9c598598457a6463eb92889080c16b2b9dc04150e501b8bfc1536d403ba70aaf"
+    },
+    {
+      "path": "primary/cuda-install.html",
+      "url": "https://docs.nvidia.com/cuda/archive/12.6.3/cuda-installation-guide-linux/index.html",
+      "bytes": 201966,
+      "sha256": "b59a3b7994dc285d2ea2340070f38cf0d535e911762dccd88003d958d22421ea"
+    },
+    {
+      "path": "primary/cuda-eula.html",
+      "url": "https://docs.nvidia.com/cuda/archive/12.6.3/eula/index.html",
+      "bytes": 83533,
+      "sha256": "676a5b14c2d308fb2ee868b12e20c266251a53a933a116a5b68a5413e9016af0"
+    },
+    {
+      "path": "primary/python-release.json",
+      "url": "https://api.github.com/repos/astral-sh/python-build-standalone/releases/tags/20261026",
+      "bytes": 1782422,
+      "sha256": "0d01c4b1a8445acdbc710172d5de390f8a0ed1221a49c0038648a093b2990f6f"
+    },
+    {
+      "path": "primary/cpython-release.html",
+      "url": "https://www.python.org/downloads/release/python-31216/",
+      "bytes": 8433,
+      "sha256": "b1d91d4e512c64214aafb70d6428cc45193abb43124b068001d43c37b6f2ae95"
+    }
+  ]
+}

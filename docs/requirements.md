@@ -214,6 +214,7 @@ The [SAM artifact-lock audit](validation/2026-10-28-sam2-artifact-lock.md) pins 
 This does not certify source/build/native runtime closure, rights, installed costs,
 resource fit or a real asset producer. No package/model is installed or executed;
 A0/AP0 remain **IN_PROGRESS**, provisioning **BLOCKED**, A1 **NOT_STARTED**.
+
 The Torch2.5.1 base release has reported advisories including the selected SAM
 checkpoint-loader path; replace/re-lock that pair before provisioning this variant.
 
@@ -223,6 +224,16 @@ including required CUDA extras. Selected release snapshots report no advisories;
 this is not security, build/runtime/rights, source-content or resource qualification.
 Existing source/jobs/environments and the old blocked candidate are preserved.
 A0/AP0 remain **IN_PROGRESS**, provisioning **BLOCKED**, A1 **NOT_STARTED**.
+
+The [source/build-input audit](validation/2026-10-28-sam2-source-inputs.md) verifies
+the complete pinned SAM source archive against 569 Git blobs and an independent
+parser. Exact interpreter/compiler archive candidates remain unacquired; supported
+host compiler/sysroot, native closure, staging/installed costs and actual builds
+are unresolved. This is source-byte verification, not a worker/AP or rights pass;
+A0/AP0 remain **IN_PROGRESS**, provisioning **BLOCKED**, A1 **NOT_STARTED**.
+The validation receipt writes encountered ENOSPC. Recovered checks retain source
+proof and preserved inputs; further payload staging also needs adequate durable
+storage. No product/resource threshold changes.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

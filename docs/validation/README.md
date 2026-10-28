@@ -1,5 +1,7 @@
 # Validation index
 
+- [28 October: SAM source and build inputs](2026-10-28-sam2-source-inputs.md) — complete source archive/blob/mode/link verification with independent parser; CPython3.12.16 and CUDA compiler/header metadata pins; incompatible current host compilers and remaining build/runtime/cost/review gaps, no installation or inference.
+
 - [28 October: replacement SAM control lock](2026-10-28-sam2-patched-lock.md) — Torch2.13/vision0.28 cu126, exact 41-artifact graph including required CUDA extras, bounded notices and source-tree/fragment audit; no installation/inference or build/runtime/rights/fit qualification.
 
 - [28 October: SAM control artifact lock](2026-10-28-sam2-artifact-lock.md) — exact 35-artifact Python candidate, dependency/marker and archive notice inspection; Torch loader advisory blocks this variant; source/build/runtime, reviews, costs and fit remain open; no installation or inference.

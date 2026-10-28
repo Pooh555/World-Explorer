@@ -66,16 +66,45 @@ remain unverified. No selected package is installed/imported or executed.
 
 The Python-artifact download subtotal is **3,594,832,382 bytes**, or
 **3,750,840,848 bytes** including the previously proposed single checkpoint.
-SAM source/interpreter/compiler/tools and other asset stages are excluded;
-whole-plan installed/build/staging/scratch/reservation costs stay null, with no
-cache credit. The source tree metadata lists **569 blobs /64,563,748 bytes**, four
-symlink blobs and no gitlinks. Five retained fragments match Git blob identities;
-this is not complete source-content verification. Archive HEAD supplies no
-compressed byte count, so source archive size/hash and safe staging/link handling
-remain unresolved. Select the exact CPython patch/build and CUDA12.6 build
-toolchain before making a complete acquisition proposal. The existing CUDA-build
-flags, local-checkpoint requirement and no-download/no-null-checkpoint policy
-below remain required. The 8 GiB development host is still contracts-only.
+The [source/build-input addendum](research/sam2_build_inputs_20261028.json) and
+[source audit](validation/2026-10-28-sam2-source-inputs.md) extend the known subtotal
+to **3,893,049,064 bytes**, including the verified SAM archive, a proposed CPython
+archive and three compiler/header archives. Host compiler/sysroot/other tools and
+other asset stages remain excluded; whole-plan installed/build/staging/scratch/
+reservation costs stay null, with no cache credit.
+
+The pinned SAM archive is **55,645,345 bytes**, SHA-256
+`1f2fbfad3ffa38110368abac76c6ef9df9c282a66d5c2807bc94abf4d2fb30f8`.
+Its bounded expanded tar is **65,054,720 bytes**. All **569** Git blobs agree in
+bytes/modes: **565** regular files and **four** relative links targeting verified
+regular files inside the source root. An independent GNU tar stream reproduces
+all regular-file hashes and link targets. No members are extracted to build/import
+paths or executed. This verifies this source archive, not a built/installed worker,
+independently signed source, rights or resource fit. Controlled build staging and
+source-to-installed correspondence still need implementation/verification.
+
+The addendum proposes **CPython3.12.16**, standalone build **20261026**, with an
+exact **34,505,639-byte** archive/advertised hash; existing 3.12.15 stays unchanged.
+The 41-artifact graph is rechecked against 3.12.16 metadata. Proposed NVIDIA
+redistribution components are **nvcc12.6.85 /cudart12.6.77 /CCCL12.6.77** with exact
+publisher URLs/hashes/sizes, totaling **52,057,232 bytes**. None of these binary
+archives is acquired, installed or executed; this is not complete build closure.
+
+[CUDA12.6's host compiler policy](https://docs.nvidia.com/cuda/archive/12.6.3/cuda-installation-guide-linux/index.html#host-compiler-support-policy)
+lists GCC6.x–13.2 and Clang7.x–18.0, allowing newer minor releases within supported
+majors. Local GCC16.2.1/Clang23.1.4 fall outside those ranges. The scoped PATH
+lookup finds no GCC12/13 or Clang18 commands; this is not an exhaustive machine
+search. Select a compatible isolated host compiler/libstdc++/sysroot and exact
+build tools; do not suppress version checks or change global compilers. Existing
+CUDA-build flags, local-checkpoint requirement and no-download/no-null-checkpoint
+policy below remain required. The 8 GiB development host is still contracts-only.
+
+The source audit later encountered **ENOSPC** during validation receipt writes.
+Only its reproducible expanded tar cache was removed; compressed source and all
+prior inputs/evidence remain intact. A later observation found about **0.9 GB**
+free, below the known download subtotal alone. Restore adequate durable capacity
+before payload acquisition/staging, in addition to completing the full reservation.
+Do not delete existing jobs or environments to manufacture an apparent fit.
 
 ### Proposed Linux control variant — 28 October
 

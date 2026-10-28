@@ -466,13 +466,30 @@ is inferred. The old blocked candidate and all 383 prior audit files are unchang
 SAM tree metadata lists 569 blobs/64,563,748 bytes; five source fragments match.
 Four symlink blobs need explicit staging handling; archive HEAD omits download size.
 
-Next executable step: resolve the pinned SAM source archive identity/size and
-safe staging against that tree, then select exact CPython3.12 patch/build,
-CUDA12.6 compiler and native build-tool/runtime identities around the replacement
-candidate. Required runtime extras do not supply a selected compiler. Do not
-overwrite either candidate or change existing environments. Resolve source-only
-iopath/ANTLR and SAM build compatibility and
-bundled-component/notice correspondence without running an unapproved installer;
+The [source/build-input audit](validation/2026-10-28-sam2-source-inputs.md) now
+verifies the **55,645,345-byte** SAM archive against all 569 blobs/modes, with an
+independent GNU tar oracle. Four internal links remain unmaterialized. The separate
+[build-input addendum](research/sam2_build_inputs_20261028.json) proposes exact
+CPython3.12.16/build20261026 and nvcc12.6.85/cudart12.6.77/CCCL12.6.77 archives;
+their payloads are unacquired. The 41-artifact metadata graph still closes for
+3.12.16. Known downloads total **3,893,049,064 bytes**, excluding host compiler/
+sysroot/other tools/stages. Existing GCC16.2.1/Clang23.1.4 are outside CUDA12.6's
+supported host-compiler majors; no GCC12/13 or Clang18 commands resolve on the
+inspected PATH. No environment, model, source job or old candidate is changed.
+
+Validation receipt writing then encountered **ENOSPC**. Only this turn's
+reproducible 65,054,720-byte expanded tar cache was removed; the compressed source,
+all 694 prior audit files and protected media/jobs/environments remain unchanged.
+Recovered checks pass. Free space later measured about **0.9 GB**, below the known
+download subtotal before installed/build/job costs. Further payload staging needs
+adequate durable capacity and a full reservation; preserve existing jobs/environments.
+
+Next executable step: select and pin a compatible isolated CUDA12.6 host compiler,
+libstdc++/sysroot and complete build-tool/runtime dependency closure using the
+addendum. Preserve system compilers and existing environments; do not use an
+unsupported-compiler override. Keep both parent candidates unchanged. Finish
+controlled staging/source-to-installed mappings, source-only iopath/ANTLR/SAM
+build compatibility and bundled-component/notice correspondence without running an unapproved installer;
 retain the candidate's missing reviews and native runtime/rights gaps.
 Preserve all existing environments. Keep installed/build/staging/scratch costs
 null/blocking until independently bounded, and prepare the concrete acquisition
