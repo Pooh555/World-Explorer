@@ -455,12 +455,23 @@ an upstream checkpoint-loader issue affecting SAM's `weights_only=True` call.
 This candidate is **BLOCKED for provisioning**; the pinned graph is retained evidence,
 not an activation recommendation. No model is loaded.
 
-Next executable step: select a patched compatible Torch/torchvision pair from
-publisher artifact/advisory metadata, then re-lock its exact Linux/cp312/CUDA graph
-without overwriting this blocked candidate or changing existing environments.
-Do not assume 2.6.0 resolves all recorded advisories. Then complete the pinned SAM
-source inventory/archive and CPython3.12 interpreter/build/compiler/CUDA toolchain
-identities. Resolve source-only iopath/ANTLR build compatibility and
+The [replacement audit](validation/2026-10-28-sam2-patched-lock.md) freezes a separate
+[41-artifact candidate](research/sam2_control_cu126_artifacts_20261028.json) for
+Torch2.13.0+cu126/torchvision0.28.0+cu126, with no advisories reported in selected
+release snapshots. All 55 edges and eleven required CUDA toolkit extras reconcile;
+158 archive notices and 12 vendored metadata records are retained. Python/model
+download subtotal is **3,750,840,848 bytes**, excluding source/toolchain/other stages.
+No package/model is installed or executed and no fit/rights/security qualification
+is inferred. The old blocked candidate and all 383 prior audit files are unchanged.
+SAM tree metadata lists 569 blobs/64,563,748 bytes; five source fragments match.
+Four symlink blobs need explicit staging handling; archive HEAD omits download size.
+
+Next executable step: resolve the pinned SAM source archive identity/size and
+safe staging against that tree, then select exact CPython3.12 patch/build,
+CUDA12.6 compiler and native build-tool/runtime identities around the replacement
+candidate. Required runtime extras do not supply a selected compiler. Do not
+overwrite either candidate or change existing environments. Resolve source-only
+iopath/ANTLR and SAM build compatibility and
 bundled-component/notice correspondence without running an unapproved installer;
 retain the candidate's missing reviews and native runtime/rights gaps.
 Preserve all existing environments. Keep installed/build/staging/scratch costs

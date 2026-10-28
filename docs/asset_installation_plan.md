@@ -35,6 +35,48 @@ Python 3.12 environment** and an exact resolved dependency lock; preserve the
 training, pose, dense, fusion and metric environments. Offload options and the
 tiny variant do not establish an 8 GiB device or host-memory fit.
 
+### Replacement Linux control variant — 28 October
+
+The [replacement audit](validation/2026-10-28-sam2-patched-lock.md) selects
+**Linux x86_64 /CPython3.12 /torch2.13.0+cu126 /torchvision0.28.0+cu126** from the
+[publisher's versioned pair listing](https://pytorch.org/get-started/previous-versions/#v2-13-0).
+The separate [41-artifact candidate](research/sam2_control_cu126_artifacts_20261028.json)
+retains the old blocked lock unchanged. Both base-release snapshots report no
+advisories; 2.13.0 lies outside the previously identified loader issue's affected
+range. This is a metadata selection, not a security review, executed SAM
+compatibility test, installation approval or host-fit result. Provisioning remains
+**BLOCKED** on the remaining source/build/runtime/rights/cost prerequisites.
+
+All **55** selected edges close, including explicit runtime/build roots. Torch now
+requires `cuda-toolkit==12.6.3` with **eleven transitive extras**: cublas, cudart,
+cufft, cufile, cupti, curand, cusolver, cusparse, nvjitlink, nvrtc and nvtx.
+These required runtime selections do not select an `nvcc` compiler. SAM/Torch
+optional extras remain unselected. CUDA bindings12.9.10 satisfy Torch's declared
+range alongside that CUDA12.6 runtime; do not infer a compiler version from the
+bindings version. SymPy1.14.0 satisfies Torch's raised minimum.
+
+The candidate pins exact URLs, hashes and sizes for all **41** Python artifacts;
+**19** unchanged selections reuse prior exact metadata/notice observations.
+Bounded inspections retain **158** notice records and **12** vendored setuptools
+metadata records. ANTLR and the CUDA toolkit metapackage have no separate archive
+notice record; ANTLR's prior supplemental source notice is retained. All independent
+reviews and complete source-to-binary/native runtime correspondence remain open.
+Eight small artifacts have whole-payload hash verification; large wheels/model
+remain unverified. No selected package is installed/imported or executed.
+
+The Python-artifact download subtotal is **3,594,832,382 bytes**, or
+**3,750,840,848 bytes** including the previously proposed single checkpoint.
+SAM source/interpreter/compiler/tools and other asset stages are excluded;
+whole-plan installed/build/staging/scratch/reservation costs stay null, with no
+cache credit. The source tree metadata lists **569 blobs /64,563,748 bytes**, four
+symlink blobs and no gitlinks. Five retained fragments match Git blob identities;
+this is not complete source-content verification. Archive HEAD supplies no
+compressed byte count, so source archive size/hash and safe staging/link handling
+remain unresolved. Select the exact CPython patch/build and CUDA12.6 build
+toolchain before making a complete acquisition proposal. The existing CUDA-build
+flags, local-checkpoint requirement and no-download/no-null-checkpoint policy
+below remain required. The 8 GiB development host is still contracts-only.
+
 ### Proposed Linux control variant — 28 October
 
 **Do not provision this variant.** The completed metadata audit finds **22**
@@ -42,8 +84,8 @@ advisory records on the Torch2.5.1 base release (some alias the same issue).
 [Upstream GHSA-53q9-r3pm-6pq6](https://github.com/pytorch/pytorch/security/advisories/GHSA-53q9-r3pm-6pq6)
 affects `torch.load(..., weights_only=True)` through 2.5.1, the loader used by the
 pinned SAM source. Its 2.6.0 fix addresses that issue, not every recorded advisory.
-Retain this exact candidate as evidence; select a patched compatible Torch/vision
-pair and re-lock its graph before further provisioning. No model was loaded.
+Retain this exact candidate as evidence. The replacement above has a separate
+lock; it does not retroactively qualify this variant. No model was loaded.
 
 The retained blocked candidate is **Linux x86_64 / CPython 3.12 /
 torch 2.5.1+cu124 / torchvision 0.20.1+cu124**, matching the
