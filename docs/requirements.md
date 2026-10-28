@@ -246,7 +246,11 @@ and cost qualification remain open. The
 564,064,383 image bytes exceed current role/receipt limits, and complete projected
 masks exceed the pixel limit. No native capture admission, new-source solve or
 asset production is inferred. A0/AP0 remain IN_PROGRESS; A1 NOT_STARTED.
-No thresholds change.
+The [frozen-view input slice](validation/2026-10-29-frozen-view-inputs.md) adds
+actual inference-only owned stage preparation, native role/inventory checks and
+an independently pinned batch-input connection. This pre-pose path leaves the
+owned asset capture/receipt/evaluation budget gaps open; no solver, fitting or
+A1 qualification is inferred. No thresholds change.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

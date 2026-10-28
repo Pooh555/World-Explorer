@@ -20,6 +20,7 @@ import tempfile
 import threading
 import time
 from fractions import Fraction
+from types import SimpleNamespace
 
 __all__ = [
     "CANCELLED",
@@ -325,6 +326,15 @@ def capabilities() -> dict:
     }
 
 
+def _frozen_view_helper():
+    spec = importlib.util.spec_from_file_location(
+        "we_frozen_views", ROOT / "frozen_views.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def validate_request(request: dict) -> dict:
     allowed = {
         "schema_version",
@@ -340,6 +350,7 @@ def validate_request(request: dict) -> dict:
         "appearance_python",
         "pose_recipe",
         "frame_selection",
+        "frozen_views",
     }
     if set(request) - allowed or request.get("schema_version") != 1:
         raise WorkerError("BAD_INPUT", "Unknown request fields or schema version")
@@ -398,6 +409,19 @@ def validate_request(request: dict) -> dict:
         raise WorkerError("BAD_INPUT", "Unknown frame selection profile")
     if selection != "timestamp_sampling_v1" and sample_fps < 2:
         raise WorkerError("BAD_INPUT", "Quality candidates require 2..4 sample_fps")
+    if "frozen_views" in request:
+        if stop_after != "decode" or selection != "timestamp_sampling_v1":
+            raise WorkerError(
+                "BAD_INPUT", "Frozen views require decode-only preparation"
+            )
+        try:
+            request = request | {
+                "frozen_views": _frozen_view_helper().validate_configuration(
+                    request["frozen_views"], source, job_dir
+                )
+            }
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            raise WorkerError("BAD_INPUT", str(error)) from error
     if source.stat().st_size > limits["max_source_bytes"]:
         raise WorkerError("RESOURCE_LIMIT", "Source exceeds configured byte limit")
     return request | {
@@ -674,6 +698,18 @@ class Job:
         }
 
     def decode(self, directory: Path, inspection: dict) -> dict:
+        if "frozen_views" in self.request:
+            try:
+                return _frozen_view_helper().decode(
+                    self,
+                    directory,
+                    inspection,
+                    SimpleNamespace(
+                        CANCELLED=CANCELLED, WorkerError=WorkerError, sha256=sha256
+                    ),
+                )
+            except (ValueError, OSError, KeyError, TypeError) as error:
+                raise WorkerError("BAD_INPUT", str(error), stage="decode") from error
         quality_profile = (
             self.request.get("frame_selection", "timestamp_sampling_v1")
             != "timestamp_sampling_v1"

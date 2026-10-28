@@ -38,6 +38,7 @@ struct DecodedFrameCatalog {
     std::string m_completion_sha256;
     std::vector<DecodedObservation> m_observations;
     std::optional<std::string> m_journal_sha256;
+    std::optional<std::string> m_frozen_selection_sha256;
 };
 
 // Inspects the same bounded, checked metadata as open; no decoder is launched.
@@ -45,7 +46,8 @@ struct DecodedFrameCatalog {
 Result<DecodedFrameCatalog> inspect_decoded_frame_source(DecodedSourceConfig config,
                                                          const std::stop_token& stop = {});
 // Replay a committed timestamp_sampling_v1, quality_keyframes_candidate_v1/v2/v3 or
-// native_rgb_journal_v1 decode stage. Candidate diagnostics are unqualified. This does not
+// native_rgb_journal_v1 or frozen_inference_views_v1 decode stage. Frozen roles are
+// checked; batch poses additionally require an independent selection pin. This does not
 // decode or reconstruct the source video again. One cancellable decoder runs per image; callers own
 // immutable RGB8 leases. Seeking emits a reset before the next frame.
 Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConfig config,

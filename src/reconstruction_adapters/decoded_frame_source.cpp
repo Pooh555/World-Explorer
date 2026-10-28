@@ -1,5 +1,6 @@
 #include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
 
+#include "../core/json_records.hpp"
 #include "observation_identity.hpp"
 #include "world_explorer/core/hash.hpp"
 #include "world_explorer/reconstruction_adapters/process.hpp"
@@ -446,6 +447,141 @@ std::pair<std::uint32_t, std::uint32_t> png_dimensions(const std::filesystem::pa
     return { K_NUMBER(16), K_NUMBER(20) };
 }
 
+std::string
+validate_frozen_views(const std::filesystem::path& root,
+                      const nlohmann::json& metadata,
+                      const std::map<std::string, std::pair<std::uint64_t, std::string>>& assets,
+                      const std::string& source,
+                      const std::stop_token& stop) {
+    using namespace json_record_detail;
+    const auto K_BYTES = bounded_file(contained(root, "selection.json"));
+    const auto K_HASH = sha256(std::as_bytes(std::span(K_BYTES)));
+    const auto K_ENTRY = assets.find("selection.json");
+    require(K_ENTRY != assets.end() && K_ENTRY->second.first == K_BYTES.size() &&
+                K_ENTRY->second.second == K_HASH &&
+                metadata.at("selection_manifest_sha256") == K_HASH &&
+                metadata.at("source_sha256") == source,
+            "Frozen selection identity differs from stage/source");
+    const auto K_PLAN =
+        json_record_detail::parse(std::as_bytes(std::span(K_BYTES)), 64uz * 1024uz, stop);
+    keys(K_PLAN,
+         { "schema_version",
+          "source_sha256",
+          "source_frame_count",
+          "width",
+          "height",
+          "time_base",
+          "role_blocks",
+          "frames" });
+    const auto K_COUNT = integer(K_PLAN.at("source_frame_count"));
+    const auto K_WIDTH = integer(K_PLAN.at("width"));
+    const auto K_HEIGHT = integer(K_PLAN.at("height"));
+    require(integer(K_PLAN.at("schema_version")) == 1 &&
+                digest(K_PLAN.at("source_sha256")) == source && K_COUNT > 0 && K_COUNT <= 36000 &&
+                K_COUNT == integer(metadata.at("source_frame_count")) && K_WIDTH > 0 &&
+                K_WIDTH <= 8192 && K_HEIGHT > 0 && K_HEIGHT <= 8192 &&
+                K_WIDTH * K_HEIGHT <= 4096uz * 4096uz,
+            "Frozen selection source/image domain differs");
+    const auto K_BASE = K_PLAN.at("time_base").get<std::string>();
+    const auto K_ROLE = [](const nlohmann::json& value) {
+        const auto K_TEXT = value.get<std::string>();
+        require(K_TEXT == "INFERENCE" || K_TEXT == "HELD_OUT" || K_TEXT == "EVALUATION_ONLY",
+                "Unknown frozen view role");
+        return K_TEXT;
+    };
+    const auto& blocks = K_PLAN.at("role_blocks");
+    array(blocks, 128uz);
+    require(!blocks.empty(), "Missing frozen temporal blocks");
+    std::uint64_t end {};
+    for (const auto& block : blocks) {
+        keys(block, { "first", "end", "role" });
+        require(integer(block.at("first")) == end && integer(block.at("end")) > end &&
+                    integer(block.at("end")) <= K_COUNT,
+                "Frozen temporal blocks do not partition the source");
+        end = integer(block.at("end"));
+        K_ROLE(block.at("role"));
+    }
+    require(end == K_COUNT, "Frozen temporal blocks omit source frames");
+    const auto& frames = K_PLAN.at("frames");
+    array(frames, 64uz);
+    require(frames.size() >= 4uz && metadata.at("frames").is_array(),
+            "Missing frozen selected views");
+    std::optional<std::uint64_t> previous_index;
+    std::optional<std::int64_t> previous_pts;
+    std::set<std::string> hashes, names,
+        expected_files { "selection.json", "result.json", "completion.json" };
+    std::size_t inference {};
+    bool excluded {};
+    for (const auto& frame : frames) {
+        check_stop(stop);
+        keys(frame, { "source_index", "pts", "role", "file", "sha256", "bytes" });
+        const auto K_INDEX = integer(frame.at("source_index"));
+        const auto K_PTS = integer(frame.at("pts"));
+        const auto K_NAME = frame.at("file").get<std::string>();
+        const auto K_DIGEST = digest(frame.at("sha256"));
+        const auto K_SIZE = integer(frame.at("bytes"));
+        require(
+            K_INDEX < K_COUNT && (!previous_index || K_INDEX > *previous_index) &&
+                K_PTS <= static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) &&
+                (!previous_pts || K_PTS > static_cast<std::uint64_t>(*previous_pts)) &&
+                K_NAME.size() >= 5uz && K_NAME.size() <= 124uz && K_NAME.ends_with(".png") &&
+                K_NAME.substr(0uz, K_NAME.size() - 4uz)
+                        .find_first_not_of(
+                            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-") ==
+                    std::string::npos &&
+                names.insert(K_NAME).second && hashes.insert(K_DIGEST).second && K_SIZE > 0 &&
+                K_SIZE <= 16uz * 1024uz * 1024uz,
+            "Invalid frozen view order/path/content/size");
+        nanoseconds(timestamp(static_cast<std::int64_t>(K_PTS), K_BASE));
+        previous_index = K_INDEX;
+        previous_pts = static_cast<std::int64_t>(K_PTS);
+        const auto K_FRAME_ROLE = K_ROLE(frame.at("role"));
+        const auto K_BLOCK = std::ranges::find_if(blocks, [&](const auto& block) {
+            return integer(block.at("first")) <= K_INDEX && K_INDEX < integer(block.at("end"));
+        });
+        require(K_BLOCK != blocks.end() && K_FRAME_ROLE == K_ROLE(K_BLOCK->at("role")),
+                "Frozen view crosses temporal role boundary");
+        if (K_FRAME_ROLE != "INFERENCE") {
+            excluded = true;
+            continue;
+        }
+        require(inference < metadata.at("frames").size(), "Frozen inference view omitted");
+        const auto& actual = metadata.at("frames").at(inference);
+        const auto K_FILE = "images/" +
+                            std::string(6uz - std::to_string(inference + 1uz).size(), '0') +
+                            std::to_string(inference + 1uz) + ".png";
+        const auto K_ASSET = assets.find(K_FILE);
+        require(integer(actual.at("source_index")) == K_INDEX &&
+                    integer(actual.at("pts")) == K_PTS && actual.at("time_base") == K_BASE &&
+                    actual.at("file") == K_FILE && actual.at("sha256") == K_DIGEST &&
+                    K_ASSET != assets.end() && K_ASSET->second == std::pair { K_SIZE, K_DIGEST } &&
+                    png_dimensions(contained(root, K_FILE)) ==
+                        std::pair { static_cast<std::uint32_t>(K_WIDTH),
+                                   static_cast<std::uint32_t>(K_HEIGHT) },
+                "Stage does not contain the exact frozen inference views");
+        expected_files.insert(K_FILE);
+        ++inference;
+    }
+    require(inference >= 3uz && excluded && inference == metadata.at("frames").size() &&
+                assets.size() == inference + 2uz,
+            "Frozen stage contains omitted/excluded/uncommitted assets");
+    std::size_t files {};
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+        check_stop(stop);
+        const auto K_NAME = entry.path().lexically_relative(root).generic_string();
+        require(!entry.is_symlink() &&
+                    ((entry.is_directory() && K_NAME == "images") ||
+                     (entry.is_regular_file() && expected_files.contains(K_NAME))),
+                "Unexpected file/alias in frozen inference stage");
+        if (entry.is_regular_file()) {
+            ++files;
+        }
+        require(files <= expected_files.size(), "Frozen stage file budget exceeded");
+    }
+    require(files == expected_files.size(), "Frozen stage file inventory is incomplete");
+    return K_HASH;
+}
+
 struct DecodedFrame {
     FrameId m_id;
     CalibrationId m_calibration;
@@ -461,7 +597,7 @@ struct DecodedSourceState {
     DecodedSourceConfig m_config;
     std::filesystem::path m_root;
     std::string m_completion_digest;
-    std::optional<std::string> m_journal_sha256;
+    std::optional<std::string> m_journal_sha256, m_frozen_selection_sha256;
     CaptureId m_capture;
     std::vector<DecodedFrame> m_frames;
     std::size_t m_position {};
@@ -487,15 +623,18 @@ struct DecodedSourceState {
 class DecodedFrameSource final : public FrameSource {
   public:
     explicit DecodedFrameSource(std::unique_ptr<DecodedSourceState> state)
-        : m_state(std::move(state)) { }
+        : m_state(std::move(state)) {}
 
     SourceCapabilities capabilities() const noexcept override;
     Result<SourceEvent> read_next(std::stop_token stop) override;
     Result<void> seek(SourceTimestamp target) override;
 
     DecodedFrameCatalog catalog() const {
-        DecodedFrameCatalog result {
-            m_state->m_capture, m_state->m_completion_digest, {}, m_state->m_journal_sha256 };
+        DecodedFrameCatalog result { m_state->m_capture,
+                                    m_state->m_completion_digest,
+                                    {},
+                                    m_state->m_journal_sha256,
+                                    m_state->m_frozen_selection_sha256 };
         for (const auto& frame : m_state->m_frames) {
             result.m_observations.push_back({ frame.m_id,
                                              frame.m_calibration,
@@ -564,11 +703,16 @@ Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConf
         const auto K_METADATA = parse(K_RESULT_BYTES);
         if ((K_METADATA.at("selection") != "timestamp_sampling_v1" &&
              K_METADATA.at("selection") != "native_rgb_journal_v1" &&
+             K_METADATA.at("selection") != "frozen_inference_views_v1" &&
              K_METADATA.at("selection") != "quality_keyframes_candidate_v1" &&
              K_METADATA.at("selection") != "quality_keyframes_candidate_v2" &&
              K_METADATA.at("selection") != "quality_keyframes_candidate_v3") ||
             K_METADATA.at("crop") != "none" || K_METADATA.at("resize") != "none") {
             return fail(ErrorCode::UNSUPPORTED_OPERATION, "Unsupported decode replay profile");
+        }
+        if (K_METADATA.at("selection") == "frozen_inference_views_v1") {
+            state->m_frozen_selection_sha256 = validate_frozen_views(
+                state->m_root, K_METADATA, assets, state->m_config.m_source_sha256, stop);
         }
         const auto K_SOURCE_COUNT = unsigned_value(K_METADATA.at("source_frame_count"));
         if (K_METADATA.at("selection") == "native_rgb_journal_v1" &&
@@ -681,6 +825,8 @@ Result<std::unique_ptr<FrameSource>> open_decoded_frame_source(DecodedSourceConf
             return std::unexpected(K_UNCHANGED.error());
         }
         return std::unique_ptr<FrameSource>(std::make_unique<DecodedFrameSource>(std::move(state)));
+    } catch (const json_record_detail::RecordFailure& failure) {
+        return fail(failure.m_code, failure.what());
     } catch (const std::exception& exception) {
         return fail(ErrorCode::INVALID_DATA,
                     std::string("Invalid decoded source: ") + exception.what());

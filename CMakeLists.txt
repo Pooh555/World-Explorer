@@ -411,6 +411,9 @@ install(DIRECTORY workers/ DESTINATION share/world-explorer/workers PATTERN "__p
 install(DIRECTORY "${WE_WIRE_DIRECTORY}/python/" DESTINATION share/world-explorer/workers/wire_bindings PATTERN "__pycache__" EXCLUDE)
 
 if(BUILD_TESTING)
+  add_executable(we_frozen_input_probe tests/fixtures/frozen_input_probe.cpp)
+  we_target(we_frozen_input_probe)
+  target_link_libraries(we_frozen_input_probe PRIVATE reconstruction_adapters)
   add_executable(we_asset_receipt_probe tests/fixtures/asset_receipt_probe.cpp)
   we_target(we_asset_receipt_probe)
   target_link_libraries(we_asset_receipt_probe PRIVATE asset_catalog)

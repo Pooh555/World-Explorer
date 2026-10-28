@@ -7,6 +7,12 @@ on its owned background thread; appearance projection/drawing pauses while UI,
 presentation and cancellation remain active. Resident scene assets are retained.
 The completed scene enters the usual renderer update path after bounded loading.
 
+The separate [frozen-view preparation](frozen_views.md) connects a hash-pinned
+inference-only selection to native replay and explicit `solve-poses` input
+admission. It is currently selected through the worker preparation request and
+CLI/application batch API; this reconstruction request/GUI has no option for it.
+Existing asset capture/receipt/evaluation resource limits remain enforced.
+
 This command explicitly solves fresh poses or continues a completed pose job.
 Schema 2 can inspect metadata automatically or adopt a checked retained
 inspection, then decode/solve in owned jobs or adopt completed poses. Successful

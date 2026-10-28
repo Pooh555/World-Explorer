@@ -28,6 +28,8 @@ struct BatchPoseConfig {
     bool m_resume_input {};
     // Verified events are observed synchronously during finish(), not retained.
     WorkerEventCallback m_observed {};
+    // Required for frozen inference stages; independently selected original role manifest.
+    std::string m_frozen_selection_sha256 {};
 };
 
 // Offline single-camera selected-frame profile. start requires capacity for the

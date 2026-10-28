@@ -1,5 +1,7 @@
 # Validation index
 
+- [29 October: frozen inference input producer/consumers](2026-10-29-frozen-view-inputs.md) — immutable inference-only PNG preparation, native role/inventory checks, independently pinned bounded pose-input connection; all 60 source views retained, no solver/fit or A1 qualification.
+
 - [29 October: native sample_2 view materialization](2026-10-29-sample2-native-views.md) — all 60 original-resolution candidates, exact indices/PTS and source/PNG pixel correspondence; role/receipt/mask resource refusal retained, no pose/fit or A1 qualification.
 
 - [29 October: SAM patched channel and recipe sources](2026-10-29-sam2-channel-source.md) — 19 exact channel records, eight feedstock source snapshots, 565 matching/57 unmatched recipe files; payload/runtime/review/cost gaps remain, no installation.

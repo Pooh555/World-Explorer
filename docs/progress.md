@@ -513,15 +513,25 @@ and images alone exceed the 64 MiB owned receipt budget. Each image fits its
 64 Mi pixels. Native capture/pose admission has not run; no scope is truncated,
 resized, fitted or promoted to A1.
 
-Next executable step: resolve native-resolution ownership for the **unchanged**
-60-view selection and complete evaluation-mask accounting, then connect the
-role-filtered views to existing decoded-frame/pose consumers before a new-source
-solve. Use the ignored `native-views.json` and `resource-preflight.json` under
-`artifacts/validation/a0-sample2-views-20261029`; do not overwrite prior jobs or
-bypass the existing v1 role/receipt/mask bounds. A bounded streaming producer path
-must preserve original indices/PTS and admit only the 48 inference views; all
-held-out blocks remain excluded from optimization. Do not introduce another
-observation profile to avoid recipe/capture freeze. In parallel, complete the
+The [frozen-view producer/consumer slice](validation/2026-10-29-frozen-view-inputs.md)
+now copies only the **48** hash-selected inference PNGs into an ordinary immutable
+worker stage, verifies its exact role/block/image bindings natively and requires
+an independent selection pin before batch-pose input admission. Original indices,
+PTS, 4K grid and all 60 caller views remain unchanged. This pre-pose disk path
+preserves the smaller owned asset capture/receipt/evaluation limits; those gates
+remain unresolved and no new-source solver or asset producer is run.
+
+Next executable step: resolve owned asset-capture image storage and complete
+12-view evaluation-mask accounting for the **unchanged** 60-view selection before
+a new-source pose/fit run. Use the checked preparation request/selection and
+native stage under `artifacts/validation/a0-frozen-views-20261029`; the
+[protocol](protocols/frozen_views.md) defines the independent pin and consumer
+boundaries. Preserve the 48/12 partition and all held-out temporal blocks; do not
+bypass v1 budgets, downscale/drop views or overwrite previous jobs. The input-only
+batch fixture intentionally leaves an unsealed journal; select a fresh output
+for an eventual solver. Ordinary reconstruction-request/GUI selection still needs
+integration. No new observation profile may substitute for recipe/capture freeze.
+In parallel, complete the
 compiler payload/source/advisory/terms and Torch/NVIDIA ABI reviews, bind remaining
 build tools and installed/build/staging/scratch ceilings, and prepare a concrete
 acquisition proposal before installation/model download. Preserve system compilers,

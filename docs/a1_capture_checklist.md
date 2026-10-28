@@ -123,3 +123,9 @@ These local view files are preparation evidence, not admitted capture inputs or
 an A1 reconstruction. Preserve the frozen roles and all selected views while
 resolving producer/ownership resources; do not reduce the checklist or gate scope
 to make the existing limits pass.
+
+The [frozen-view input check](validation/2026-10-29-frozen-view-inputs.md) now
+prepares an immutable inference-only stage and connects it to native replay/batch
+input admission with the original selection pin. All excluded views remain
+outside solver inputs. Owned asset-capture and full evaluation-mask resource
+handling still need resolution; no new-source pose or asset result is implied.

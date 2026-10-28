@@ -4,7 +4,7 @@
 It replays PNG images from committed `timestamp_sampling_v1`,
 `quality_keyframes_candidate_v1`, `quality_keyframes_candidate_v2`,
 `quality_keyframes_candidate_v3` and
-`native_rgb_journal_v1` decode stages;
+`native_rgb_journal_v1` and `frozen_inference_views_v1` decode stages;
 it does not rerun source-video decode or reconstruction. The optional
 [quality candidate profile](frame_selection.md) adds checked diagnostics and
 provenance; its thresholds and real-video selection remain unqualified.
@@ -12,6 +12,12 @@ An explicit source SHA-256 supplies the capture identity. The CLI hashes the
 selected local video. The legacy stage records only a 16-digit source prefix in
 external frame/calibration IDs; this adapter checks that prefix and the caller's
 declared full identity, rather than claiming the stage independently records it.
+
+The [frozen-view producer](frozen_views.md) copies an explicitly hash-selected
+pre-pose role selection into a stage containing only inference PNGs. Native
+admission validates complete role blocks and exact ordered inference bindings;
+batch poses require the independently selected role-manifest hash. This path
+does not widen owned asset capture/receipt/evaluation budgets.
 
 The stage basename/key/status/schema, completion inventory, metadata size/hash,
 selected image references, original timestamps, indices, dimensions and pixel

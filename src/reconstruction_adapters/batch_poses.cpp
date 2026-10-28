@@ -71,7 +71,7 @@ class ColmapBatchEstimator final : public BatchPoseEstimator {
                          DecodedFrameCatalog catalog,
                          nlohmann::json metadata)
         : m_config(std::move(config)), m_catalog(std::move(catalog)),
-          m_metadata(std::move(metadata)) { }
+          m_metadata(std::move(metadata)) {}
 
     EstimatorCapabilities capabilities() const noexcept override {
         return { false, false, m_catalog.m_observations.size(), EstimatorMode::BATCH_SOLVE };
@@ -516,6 +516,10 @@ Result<std::unique_ptr<BatchPoseEstimator>> make_batch_pose_estimator(BatchPoseC
             stop);
         if (!K_CATALOG) {
             return std::unexpected(K_CATALOG.error());
+        }
+        if (K_CATALOG->m_frozen_selection_sha256.value_or("") != config.m_frozen_selection_sha256) {
+            return fail(ErrorCode::INVALID_ARGUMENT,
+                        "Batch poses require the independently selected frozen role manifest hash");
         }
         if (K_CATALOG->m_observations.size() < 3) {
             return fail(ErrorCode::INVALID_DATA,

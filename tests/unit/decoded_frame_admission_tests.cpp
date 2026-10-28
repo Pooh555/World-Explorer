@@ -1,4 +1,5 @@
 #include "world_explorer/core/hash.hpp"
+#include "world_explorer/reconstruction_adapters/batch_poses.hpp"
 #include "world_explorer/reconstruction_adapters/decoded_frame_source.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -502,6 +503,76 @@ void reject_and_repair(ErrorCode code, Mutation mutate, const std::stop_token& s
     retained->reset();
     CHECK(*K_LEASE.m_pixels.m_bytes == K_PIXELS);
     CHECK(snapshot(fixture.m_root) == K_ORIGINAL);
+}
+
+nlohmann::json frozen_fixture(AdmissionFixture& fixture) {
+    // Four real tiny synthetic PNGs; only three inference payloads enter the stage.
+    const std::array<std::string, 4uz> K_IMAGES {
+        std::string { "\x89\x50\x4e\x47\x0d\x0a\x1a\x0a\x00\x00\x00\x0d\x49\x48\x44\x52\x00\x00\x00"
+                     "\x02\x00\x00\x00\x01\x08\x02\x00\x00\x00\x7b\x40\xe8\xdd\x00\x00\x00\x0b\x49"
+                     "\x44\x41\x54\x78\x9c\x63\x60\x00\x03\x00\x00\x07\x00\x01\xb2\x86\xac\xf4\x00"
+                     "\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82",
+                     68uz },
+        std::string { "\x89\x50\x4e\x47\x0d\x0a\x1a\x0a\x00\x00\x00\x0d\x49\x48\x44\x52\x00\x00\x00"
+                     "\x02\x00\x00\x00\x01\x08\x02\x00\x00\x00\x7b\x40\xe8\xdd\x00\x00\x00\x0b\x49"
+                     "\x44\x41\x54\x78\x9c\x63\x60\x04\x03\x00\x00\x1c\x00\x07\xbf\xd9\x61\x43\x00"
+                     "\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82",
+                     68uz },
+        std::string { "\x89\x50\x4e\x47\x0d\x0a\x1a\x0a\x00\x00\x00\x0d\x49\x48\x44\x52\x00\x00\x00"
+                     "\x02\x00\x00\x00\x01\x08\x02\x00\x00\x00\x7b\x40\xe8\xdd\x00\x00\x00\x0b\x49"
+                     "\x44\x41\x54\x78\x9c\x63\x60\x02\x03\x00\x00\x31\x00\x0d\x0c\x49\x68\xd4\x00"
+                     "\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82",
+                     68uz },
+        std::string { "\x89\x50\x4e\x47\x0d\x0a\x1a\x0a\x00\x00\x00\x0d\x49\x48\x44\x52\x00\x00\x00"
+                     "\x02\x00\x00\x00\x01\x08\x02\x00\x00\x00\x7b\x40\xe8\xdd\x00\x00\x00\x0b\x49"
+                     "\x44\x41\x54\x78\x9c\x63\x60\x06\x03\x00\x00\x46\x00\x13\x53\xb7\x0f\x71\x00"
+                     "\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82",
+                     68uz } };
+    std::filesystem::remove_all(fixture.m_stage / "images");
+    std::filesystem::create_directory(fixture.m_stage / "images");
+    auto plan = nlohmann::json { { "schema_version", 1 },
+                                { "source_sha256", fixture.m_source },
+                                { "source_frame_count", 4 },
+                                { "width", 2 },
+                                { "height", 1 },
+                                { "time_base", "1/30" },
+                                { "role_blocks",
+                                 { { { "first", 0 }, { "end", 3 }, { "role", "INFERENCE" } },
+                                  { { "first", 3 }, { "end", 4 }, { "role", "HELD_OUT" } } } },
+                                { "frames", nlohmann::json::array() } };
+    fixture.m_metadata = { { "selection", "frozen_inference_views_v1" },
+                          { "source_sha256", fixture.m_source },
+                          { "source_frame_count", 4 },
+                          { "crop", "none" },
+                          { "resize", "none" },
+                          { "frames", nlohmann::json::array() } };
+    for (std::size_t index { 0uz }; index < K_IMAGES.size(); ++index) {
+        const auto K_HASH = sha256(std::as_bytes(std::span(K_IMAGES[index])));
+        plan["frames"].push_back({ { "source_index", index },
+                                  { "pts", index },
+                                  { "role", index < 3uz ? "INFERENCE" : "HELD_OUT" },
+                                  { "file", "source-" + std::to_string(index) + ".png" },
+                                  { "sha256", K_HASH },
+                                  { "bytes", K_IMAGES[index].size() } });
+        if (index < 3uz) {
+            const auto K_FILE = "images/00000" + std::to_string(index + 1uz) + ".png";
+            write_bytes(fixture.m_stage / K_FILE, K_IMAGES[index]);
+            fixture.m_metadata["frames"].push_back(
+                { { "source_index", index },
+                 { "pts", index },
+                 { "time_base", "1/30" },
+                 { "capture_time_ns", index * 1000000000uz / 30uz },
+                 { "frame_id", fixture.m_source.substr(0uz, 16uz) + "-" + std::to_string(index) },
+                 { "calibration_id", fixture.m_source.substr(0uz, 16uz) + "-lens-0" },
+                 { "file", K_FILE },
+                 { "sha256", K_HASH } });
+        }
+    }
+    write_json(fixture.m_stage / "selection.json", plan);
+    fixture.m_metadata["selection_manifest_sha256"] =
+        sha256_file(fixture.m_stage / "selection.json", 65536uz).value();
+    fixture.publish();
+    return plan;
 }
 
 }  // namespace
@@ -1500,4 +1571,67 @@ TEST_CASE("decoded in-flight cancellation retains the next frame and old RGB lea
     source->reset();
     CHECK(*K_FIRST.m_pixels.m_bytes == K_PIXELS);
     CHECK(*K_SECOND.m_pixels.m_bytes == K_PIXELS);
+}
+
+TEST_CASE("Frozen source stages expose only independently pinned inference views",
+          "[capture][frozen]") {
+    AdmissionFixture fixture;
+    frozen_fixture(fixture);
+    const auto K_BEFORE = snapshot(fixture.m_root);
+    const auto K_CATALOG = inspect_decoded_frame_source(fixture.config());
+    REQUIRE(K_CATALOG);
+    REQUIRE(K_CATALOG->m_observations.size() == 3uz);
+    REQUIRE(K_CATALOG->m_frozen_selection_sha256);
+    const auto K_SELECTED_SHA = K_CATALOG->m_frozen_selection_sha256.value_or("");
+    BatchPoseConfig config { .m_decode_stage = fixture.m_stage,
+                            .m_job_directory = fixture.m_root / "batch",
+                            .m_worker_script = fixture.m_decoder,
+                            .m_source_sha256 = fixture.m_source };
+    REQUIRE_FALSE(make_batch_pose_estimator(config));
+    config.m_frozen_selection_sha256 = std::string(64uz, 'f');
+    REQUIRE_FALSE(make_batch_pose_estimator(config));
+    config.m_frozen_selection_sha256 = K_SELECTED_SHA;
+    const auto K_ESTIMATOR = make_batch_pose_estimator(config);
+    INFO((K_ESTIMATOR ? "ready" : K_ESTIMATOR.error().m_message));
+    REQUIRE(K_ESTIMATOR);
+    REQUIRE((*K_ESTIMATOR)->capabilities().m_observation_capacity == 3uz);
+    REQUIRE(snapshot(fixture.m_root) == K_BEFORE);
+}
+
+TEST_CASE("Frozen native role/selection/inventory failures preserve caller data",
+          "[capture][frozen]") {
+    const auto K_CASE = GENERATE(0, 1, 2, 3, 4, 5, 6, 7);
+    AdmissionFixture fixture;
+    auto plan = frozen_fixture(fixture);
+    if (K_CASE == 0) {
+        plan["frames"][0uz]["role"] = "HELD_OUT";
+    }
+    if (K_CASE == 1) {
+        plan["role_blocks"][1uz]["first"] = 2;
+    }
+    if (K_CASE == 2) {
+        plan["frames"][3uz]["sha256"] = plan["frames"][0uz]["sha256"];
+    }
+    if (K_CASE == 3) {
+        fixture.m_metadata["frames"].erase(0uz);
+    }
+    if (K_CASE == 4) {
+        write_bytes(fixture.m_stage / "images/withheld.png", "excluded synthetic payload");
+    }
+    if (K_CASE == 5) {
+        plan["source_sha256"] = std::string(64uz, 'c');
+    }
+    if (K_CASE == 6) {
+        plan["width"] = true;
+    }
+    if (K_CASE == 7) {
+        plan["frames"][0uz]["file"] = "../foreign.png";
+    }
+    write_json(fixture.m_stage / "selection.json", plan);
+    fixture.m_metadata["selection_manifest_sha256"] =
+        sha256_file(fixture.m_stage / "selection.json", 65536uz).value();
+    fixture.publish();
+    const auto K_BEFORE = snapshot(fixture.m_root);
+    REQUIRE_FALSE(inspect_decoded_frame_source(fixture.config()));
+    REQUIRE(snapshot(fixture.m_root) == K_BEFORE);
 }
