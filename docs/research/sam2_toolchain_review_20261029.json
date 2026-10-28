@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "kind": "UNQUALIFIED_HOST_TOOLCHAIN_REVIEW_OBSERVATION",
+  "date": "2026-10-29",
+  "parent": {
+    "path": "docs/research/sam2_host_toolchain_20261028.json",
+    "sha256": "5d626a87b3a20f42548f6ac0e244fd3b12a9630002faabd39a323a30a6327de7"
+  },
+  "channel": {
+    "format": "CEP16",
+    "specification": "https://conda.org/learn/ceps/cep-0016/",
+    "indexes": [
+      {
+        "url": "https://conda.anaconda.org/conda-forge/linux-64/repodata_shards.msgpack.zst",
+        "sha256": "71ebe3d2bd5c5c43c48e47cc23ae4a5c8b5d5df1c0e3ae6cb2fb6f6ce4d23ec6",
+        "bytes": 576399,
+        "decoded_bytes": 645004,
+        "decoded_sha256": "b4e7385b6c848687fcad240ded46c9ae4c382fe308f34340c8b9a49289d57769"
+      },
+      {
+        "url": "https://conda.anaconda.org/conda-forge/noarch/repodata_shards.msgpack.zst",
+        "sha256": "dcf7936122335685f1acdd36aa9661e98d91113c24b3a39c2f239e9f7ecdaf7f",
+        "bytes": 982746,
+        "decoded_bytes": 1148859,
+        "decoded_sha256": "804986be7c53d1675fcfe4be626c1c90f1b59434f8f7d80f194a27e0bb667487"
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "_openmp_mutex",
+        "basename": "linux-64/_openmp_mutex-4.5-20_gnu.conda",
+        "shard_sha256": "16b1e19a62e98cd9561f80b247395d310e1b69f9375a2ba95ba2e077571083b8",
+        "record_sha256": "646200d02fe39db5e51d575ae156ffd8db1d97889ecd81bbc99121f32ecf2d50",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "binutils_impl_linux-64",
+        "basename": "linux-64/binutils_impl_linux-64-2.46.1-default_hfdba357_103.conda",
+        "shard_sha256": "58743eae57ad1c3f6ddc20540f099a3e13f219f2b8a878c1114100a80ed54817",
+        "record_sha256": "3b0280d5cf9abc3e6887680b60d4cf779d0ca7918914774c93e2cfdd66be9a2e",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "binutils_linux-64",
+        "basename": "linux-64/binutils_linux-64-2.46.1-default_h4852527_103.conda",
+        "shard_sha256": "0fada2bd17b1ca204ca3506163f39f573a5e5bfa8a8270967d7c7bc6a1de0f73",
+        "record_sha256": "306d47d1e4318c1fbec6dbb7cc6bb05eb811546ed58d8074ed168a69216d2f31",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "gcc_impl_linux-64",
+        "basename": "linux-64/gcc_impl_linux-64-13.4.0-h649a46b_20.conda",
+        "shard_sha256": "4a7067aa0e2893605565a76a07e00f81043f6e9d959f9c2765721f9e0adb33f6",
+        "record_sha256": "3e553e5c00df9fde107a24f22d68d77ad0d26db6bb2f0aac41ffad4864b739e2",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "gcc_linux-64",
+        "basename": "linux-64/gcc_linux-64-13.4.0-h5174b15_28.conda",
+        "shard_sha256": "43e49ebcf464ff454e1a3626834208762e9de476e82b52de998ea0f96d3a617b",
+        "record_sha256": "d3dbb0926cdf9addf186b070fb45e7dcaa05ba4d908d0292b625a32f30f08b2f",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "gxx_impl_linux-64",
+        "basename": "linux-64/gxx_impl_linux-64-13.4.0-h5415f34_20.conda",
+        "shard_sha256": "83cfc615db2484476e79746e18707a83b0071b4b76ae7fa8b77a2017ce952add",
+        "record_sha256": "d8a4466d39c92efdbcf05def51f6d6bae228ba8d8f17dfc74d45f8c995e240c1",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "gxx_linux-64",
+        "basename": "linux-64/gxx_linux-64-13.4.0-hb11295d_28.conda",
+        "shard_sha256": "2e3d2899ed60de5ceee817407f0ec034a045746f60963875f55ba0065bd6f86d",
+        "record_sha256": "1854dd1eb03e89ee527bb246bb9cac875f5f79f6cf6d47a49628ec32201c8377",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "kernel-headers_linux-64",
+        "basename": "noarch/kernel-headers_linux-64-4.18.0-he073ed8_9.conda",
+        "shard_sha256": "62198dc820f661dbec109d3fad3798028d68cc1edc352e1fdd5f356c0fad2269",
+        "record_sha256": "ff6c9f831e7c6ed546e6c31726ee57650218d096151602ee01b2704436eab307",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "ld_impl_linux-64",
+        "basename": "linux-64/ld_impl_linux-64-2.46.1-default_hbd61a6d_103.conda",
+        "shard_sha256": "680ddfdb34c4d3d874e3d4d08b49305e3848ae53023fd3bfc2f4535c8aee9a8f",
+        "record_sha256": "69114dc75705edfde47df2e6af2ec0639fcc4dc2db179025d1ca67ff36d0be31",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "libgcc",
+        "basename": "linux-64/libgcc-13.4.0-he0feb66_20.conda",
+        "shard_sha256": "aa3b82754107df36503ed8dd681773f871a4defe371d1efd485c5e465aa2534b",
+        "record_sha256": "c062b6e3e850cc5690e481f819e1409d8756ddbd557510029a7d5bc2df1a2b73",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "libgcc-devel_linux-64",
+        "basename": "noarch/libgcc-devel_linux-64-13.4.0-hd1d28cc_120.conda",
+        "shard_sha256": "f7e65db89fcec83c8c7cfb653b0719f417a51102736d12968e3146bb0a603361",
+        "record_sha256": "6cefeb077c39c3071f44935d6118b9f7456aae5a0d2a20659bfa44f3c62ff686",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "libgomp",
+        "basename": "linux-64/libgomp-13.4.0-he0feb66_20.conda",
+        "shard_sha256": "6d5251cb3a3b60040c757ea8f6c45a38d25d7c9da4cfbf799da74c31f9d2c8c0",
+        "record_sha256": "fa5ab025fbcaf14352be611f74b786f1535f9e5a13f12ce54b34e0bf907edc96",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "libsanitizer",
+        "basename": "linux-64/libsanitizer-13.4.0-hf18ac3d_20.conda",
+        "shard_sha256": "9f5fb9296b2d0849d5573c310c47913af21f6204235089eeadacad766db322a1",
+        "record_sha256": "74d30c15fb07db0f55ba48d31674147c76ba2b87d38dde32c526bd6f29116bda",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "libstdcxx",
+        "basename": "linux-64/libstdcxx-13.4.0-h934c35e_20.conda",
+        "shard_sha256": "93027239bc4593812ce31207c92506f1c3856c8da0f3c957705406bb7e046718",
+        "record_sha256": "1070e2226c69e1e3707795855fb856fd517f752de25f1c49ef987d59f4e7f607",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "libstdcxx-devel_linux-64",
+        "basename": "noarch/libstdcxx-devel_linux-64-13.4.0-h6963c3b_120.conda",
+        "shard_sha256": "d192b915c7051665f5ebc0963f68cd8ec44446f33c1ff4f76005269238be0d17",
+        "record_sha256": "c1b34413ab15c7018066e13d8d9f1dc5280278782f10770276482bb054e63c61",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "libzlib",
+        "basename": "linux-64/libzlib-1.3.2-h25fd6f3_3.conda",
+        "shard_sha256": "28fecd32548f472ae942754cc4d2d47624bd9c1bd36efb7e1b439f65ad8c3b0b",
+        "record_sha256": "dc9b8cc48f344b6ea442b2dd2dff7d4954d60f0a9029c68d7d40551e06189d18",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "sysroot_linux-64",
+        "basename": "noarch/sysroot_linux-64-2.28-h4ee821c_9.conda",
+        "shard_sha256": "742c7c24a2da2ca5dcfe04db22522fb0641ce9345d16908ad5e853a538770dc4",
+        "record_sha256": "443dcfb70898ca459cee8ab2fbb4ac44e519d9a6992ff730085bc254b64e2f36",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "tzdata",
+        "basename": "noarch/tzdata-2026e-h5d301ff_0.conda",
+        "shard_sha256": "a34d946524bffa577cbdb9a345716873fb50bfc3f4abb993e11b241587c27b3e",
+        "record_sha256": "a69f20bdff9b7405ce2894a4398bfb3c1b1a13c91c5f46143874f89f04a260eb",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      },
+      {
+        "name": "zstd",
+        "basename": "linux-64/zstd-1.5.7-hb78ec9c_7.conda",
+        "shard_sha256": "2012144d5d117b48896295f3f6b6c0ed570d44ac68a4cad884ba3d554218c8db",
+        "record_sha256": "7d2b0fa1cb8c506e5665f055ef049367a1d3fea0ec67eaae1307b1397aa2fd6a",
+        "present": true,
+        "removed": false,
+        "identity_dependencies_constraints_agree": true
+      }
+    ],
+    "snapshot_network_bytes": 1781650,
+    "metadata_agrees": true,
+    "signature_or_runtime_authority": false
+  },
+  "embedded_records": {
+    "packages": 19,
+    "records": 818,
+    "range_network_bytes": 653195,
+    "prior_selected_record_hashes_unchanged": true,
+    "all_records_retained_under_ignored_evidence": true
+  },
+  "feedstocks": [
+    {
+      "remote": "https://github.com/conda-forge/ctng-compiler-activation-feedstock",
+      "commit": "e7296e88ed6812e8ecb214378a8055f4ec599e81",
+      "packages": [
+        "gxx_linux-64",
+        "gcc_linux-64"
+      ],
+      "url": "https://codeload.github.com/conda-forge/ctng-compiler-activation-feedstock/tar.gz/e7296e88ed6812e8ecb214378a8055f4ec599e81",
+      "sha256": "c6eea60c0fedaf591a5c07201004b4ab3c8e889e30b4d59ec499a99f50e313d5",
+      "bytes": 41982,
+      "decoded_tar_bytes": 358400,
+      "matching_recipe_files": 72,
+      "unmatched_recipe_files": 6
+    },
+    {
+      "remote": "https://github.com/conda-forge/linux-sysroot-feedstock",
+      "commit": "752a360643c18d746ccbf40337715fcac9dec945",
+      "packages": [
+        "sysroot_linux-64",
+        "kernel-headers_linux-64"
+      ],
+      "url": "https://codeload.github.com/conda-forge/linux-sysroot-feedstock/tar.gz/752a360643c18d746ccbf40337715fcac9dec945",
+      "sha256": "7d5112124f7c6e3f282de175c75d4544207c57201b1ad1b0aab573b9ebfb8279",
+      "bytes": 19324,
+      "decoded_tar_bytes": 92160,
+      "matching_recipe_files": 18,
+      "unmatched_recipe_files": 6
+    },
+    {
+      "remote": "https://github.com/conda-forge/ctng-compilers-feedstock",
+      "commit": "14a57afe05d9db64add1754ce28198e5e8d4d7b6",
+      "packages": [
+        "_openmp_mutex"
+      ],
+      "url": "https://codeload.github.com/conda-forge/ctng-compilers-feedstock/tar.gz/14a57afe05d9db64add1754ce28198e5e8d4d7b6",
+      "sha256": "bcd85851d3a5f4c112306b2d11324ba443832d23bac930d6486e5fa57f654924",
+      "bytes": 336867,
+      "decoded_tar_bytes": 1751040,
+      "matching_recipe_files": 45,
+      "unmatched_recipe_files": 3
+    },
+    {
+      "remote": "https://github.com/conda-forge/ctng-compilers-feedstock",
+      "commit": "09ad78041f74217e78e3302caa1db6d0aead31c9",
+      "packages": [
+        "gxx_impl_linux-64",
+        "libgomp",
+        "gcc_impl_linux-64",
+        "libstdcxx-devel_linux-64",
+        "libgcc",
+        "libgcc-devel_linux-64",
+        "libsanitizer",
+        "libstdcxx"
+      ],
+      "url": "https://codeload.github.com/conda-forge/ctng-compilers-feedstock/tar.gz/09ad78041f74217e78e3302caa1db6d0aead31c9",
+      "sha256": "3d8ab946554401c862aede212e47c570a9c892e80d88747026e4a307048ce44a",
+      "bytes": 336853,
+      "decoded_tar_bytes": 1648640,
+      "matching_recipe_files": 360,
+      "unmatched_recipe_files": 24
+    },
+    {
+      "remote": "https://github.com/conda-forge/binutils-feedstock",
+      "commit": "f17ee82692e18c4e73c66c68934e2dc3198fe1a4",
+      "packages": [
+        "binutils_linux-64",
+        "binutils_impl_linux-64",
+        "ld_impl_linux-64"
+      ],
+      "url": "https://codeload.github.com/conda-forge/binutils-feedstock/tar.gz/f17ee82692e18c4e73c66c68934e2dc3198fe1a4",
+      "sha256": "47ff21f46a3118c7a295ed1fd92eef78b966f37df089d1bafafca2dcb89a5a72",
+      "bytes": 25810,
+      "decoded_tar_bytes": 235520,
+      "matching_recipe_files": 57,
+      "unmatched_recipe_files": 9
+    },
+    {
+      "remote": "https://github.com/conda-forge/tzdata-feedstock",
+      "commit": "8d007e39a07717e568da93317cbe9c5e29f32563",
+      "packages": [
+        "tzdata"
+      ],
+      "url": "https://codeload.github.com/conda-forge/tzdata-feedstock/tar.gz/8d007e39a07717e568da93317cbe9c5e29f32563",
+      "sha256": "403e063ebb7a3b52bb5f3e5c38dbef75b9cd1f6ddec171daa31c8a9b280670d9",
+      "bytes": 11624,
+      "decoded_tar_bytes": 51200,
+      "matching_recipe_files": 2,
+      "unmatched_recipe_files": 3
+    },
+    {
+      "remote": "https://github.com/conda-forge/zstd-feedstock",
+      "commit": "24c0f94340c0875e1a3bb815611276850f7cd7ca",
+      "packages": [
+        "zstd"
+      ],
+      "url": "https://codeload.github.com/conda-forge/zstd-feedstock/tar.gz/24c0f94340c0875e1a3bb815611276850f7cd7ca",
+      "sha256": "003311e1ffe4582e3f9217728eeec7c6381e420744bf8547aaa80a43ea025169",
+      "bytes": 18125,
+      "decoded_tar_bytes": 102400,
+      "matching_recipe_files": 5,
+      "unmatched_recipe_files": 3
+    },
+    {
+      "remote": "https://github.com/conda-forge/zlib-feedstock",
+      "commit": "044fc2361e1c5f1a35c8f417f1434a585e627297",
+      "packages": [
+        "libzlib"
+      ],
+      "url": "https://codeload.github.com/conda-forge/zlib-feedstock/tar.gz/044fc2361e1c5f1a35c8f417f1434a585e627297",
+      "sha256": "ff504dfc1e14e35ea0cf3dd28ff3a62b68f842cd4b077dbb091f60d50a9e7ebf",
+      "bytes": 17426,
+      "decoded_tar_bytes": 92160,
+      "matching_recipe_files": 6,
+      "unmatched_recipe_files": 3
+    }
+  ],
+  "source_correspondence": {
+    "matching_recipe_files": 565,
+    "unmatched_recipe_files": 57,
+    "unmatched_basenames": [
+      "conda_build_config.yaml",
+      "meta.yaml",
+      "recipe-scripts-license.txt",
+      "rendered_recipe.yaml",
+      "variant_config.yaml"
+    ],
+    "unmatched_records_retained": true,
+    "upstream_compiler_source_archives_verified": false,
+    "embedded_recipes_reproducibly_built": false,
+    "payload_scripts_compared": false,
+    "source_origin": "HTTPS commit-addressed publisher archives, not signed build attestations"
+  },
+  "static_findings": [
+    {
+      "subject": "GCC implementation/runtime recipes",
+      "finding": "Rendered source selects GCC13.4.0 and zlib1.3.1; downstream active patch declarations do not establish incorporation of all GCC13.5 fixes or current advisory clearance.",
+      "source": "info/recipe/meta.yaml and exact ctng-compilers-feedstock commit09ad78041f74217e78e3302caa1db6d0aead31c9"
+    },
+    {
+      "subject": "glibc sysroot",
+      "finding": "Recipe selects AlmaLinux8.9 glibc2.28-236.el8_9.13 RPMs and kernel-headers4.18.0-513.24.1.el8_9; this is a compile sysroot, not approval to replace the running host glibc.",
+      "source": "info/recipe/meta.yaml at linux-sysroot-feedstock752a360643c18d746ccbf40337715fcac9dec945"
+    },
+    {
+      "subject": "activation and ABI",
+      "finding": "GCC/G++ activation templates modify C/C++ flags, link search/rpath, CMake tool paths and sysroot. Template/source correspondence does not validate rendered payload scripts or Torch/NVIDIA/libstdc++ runtime bindings.",
+      "source": "info/recipe/activate-gcc.sh, activate-g++.sh and implementation build.sh"
+    },
+    {
+      "subject": "terms and redistribution",
+      "finding": "Selected metadata declares GCC runtime exception, binutils GPL and glibc LGPL/GPL terms. Complete source/bundled-component notice correspondence and independently selected rights review remain open.",
+      "source": "retained info/about.json, info/licenses and recipe records"
+    }
+  ],
+  "known_download_subtotal_bytes": 4043559722,
+  "costs": {
+    "whole_plan_download_bytes": null,
+    "installed_bytes": null,
+    "build_staging_peak_bytes": null,
+    "scratch_reservation_bytes": null,
+    "cache_credit_bytes": 0
+  },
+  "provisioning_status": "BLOCKED",
+  "installation_authorized": false,
+  "execution_authorized": false,
+  "blockers": [
+    "Complete source/build/notice correspondence and independent advisory/rights reviews remain open",
+    "Full archive SHA/payload relocation and runtime ABI checks remain unverified",
+    "Remaining build tools and full installed/build/staging/scratch bounds remain unbound"
+  ],
+  "evidence_root": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-channel-20261029"
+}

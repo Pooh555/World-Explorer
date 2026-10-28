@@ -1,5 +1,9 @@
 # Validation index
 
+- [29 October: native sample_2 view materialization](2026-10-29-sample2-native-views.md) — all 60 original-resolution candidates, exact indices/PTS and source/PNG pixel correspondence; role/receipt/mask resource refusal retained, no pose/fit or A1 qualification.
+
+- [29 October: SAM patched channel and recipe sources](2026-10-29-sam2-channel-source.md) — 19 exact channel records, eight feedstock source snapshots, 565 matching/57 unmatched recipe files; payload/runtime/review/cost gaps remain, no installation.
+
 - [28–29 October: isolated SAM host-toolchain metadata](2026-10-28-sam2-host-toolchain.md) — restored capacity; 19 exact compiler/sysroot candidates, dependency and embedded metadata agreement, declared path/size/notice observations; no package activation, build, runtime or resource/rights qualification.
 
 - [28 October: SAM source and build inputs](2026-10-28-sam2-source-inputs.md) — complete source archive/blob/mode/link verification with independent parser; CPython3.12.16 and CUDA compiler/header metadata pins; incompatible current host compilers and remaining build/runtime/cost/review gaps, no installation or inference.

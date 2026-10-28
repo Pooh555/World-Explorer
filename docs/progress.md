@@ -495,24 +495,39 @@ bytes, taking the known subtotal to **4,043,559,722 bytes**. GNU13 upstream supp
 has ended, and registry GCC13.5 probes returned 404; patch/advisory review remains
 open. No compiler package payload member is read, installed, activated or executed.
 
-Next executable step: reconcile the host candidate with patched channel metadata
-and source/build/advisory/terms records; bind the remaining build tools and
-installed/build/staging/scratch ceilings for a concrete acquisition proposal.
-Audit prefix relocation and runtime/ABI bindings before activating the compiler.
-Preserve system compilers and existing environments; do not use an unsupported-
-compiler override. Keep all parent candidates unchanged. Finish
-controlled staging/source-to-installed mappings, source-only iopath/ANTLR/SAM
-build compatibility and bundled-component/notice correspondence without running an unapproved installer;
-retain the candidate's missing reviews and native runtime/rights gaps.
-Preserve all existing environments. Keep installed/build/staging/scratch costs
-null/blocking until independently bounded, and prepare the concrete acquisition
-proposal before any installation/model download. Do not introduce another
-observation profile to avoid recipe freeze. On the capture side, materialize and
-hash the proposed source views, verify exact decoded indices/PTS, and connect
-role-aware selection to inference consumers before any sample_2 pose/fit run.
-First reconcile the native 4K view/mask/receipt budgets: the 12 candidate mask
-pairs exceed the v1 aggregate pixel cap; encoded image sizes are still unknown,
-and capture selection retains at most 32 MiB of images in each role group.
+The [patched-channel/source audit](validation/2026-10-29-sam2-channel-source.md)
+now reconciles all **19** selections with hash-addressed channel shards. Eight
+commit-addressed feedstock archives match **565** embedded recipe files; **57**
+rendered/configuration/helper-license files remain unmatched and explicitly listed.
+The [additive observation](research/sam2_toolchain_review_20261029.json) preserves
+all parent candidates. Payload relocation/runtime ABI, full source/build/notice
+correspondence, independent advisory/rights reviews and remaining tools/cost bounds
+still block provisioning; no compiler package is installed or activated.
+
+The [native-view materialization](validation/2026-10-29-sample2-native-views.md)
+retains all **48 inference /12 held-out** selected views at **3840×2160**, original
+decoded indices/PTS and exact image hashes. Image bytes total **564,064,383**:
+**452,428,037 inference /111,636,346 held-out**. Both role groups exceed 32 MiB,
+and images alone exceed the 64 MiB owned receipt budget. Each image fits its
+16 MiB bound; **199,065,600** projected evaluation-mask pixels still exceed
+64 Mi pixels. Native capture/pose admission has not run; no scope is truncated,
+resized, fitted or promoted to A1.
+
+Next executable step: resolve native-resolution ownership for the **unchanged**
+60-view selection and complete evaluation-mask accounting, then connect the
+role-filtered views to existing decoded-frame/pose consumers before a new-source
+solve. Use the ignored `native-views.json` and `resource-preflight.json` under
+`artifacts/validation/a0-sample2-views-20261029`; do not overwrite prior jobs or
+bypass the existing v1 role/receipt/mask bounds. A bounded streaming producer path
+must preserve original indices/PTS and admit only the 48 inference views; all
+held-out blocks remain excluded from optimization. Do not introduce another
+observation profile to avoid recipe/capture freeze. In parallel, complete the
+compiler payload/source/advisory/terms and Torch/NVIDIA ABI reviews, bind remaining
+build tools and installed/build/staging/scratch ceilings, and prepare a concrete
+acquisition proposal before installation/model download. Preserve system compilers,
+all environments and all parent candidates; no unsupported-compiler override.
+Finish controlled staging/source-to-installed mappings and source-only
+iopath/ANTLR/SAM build compatibility before treating the candidate as executable.
 Keep holdouts out of pose/geometry/material/light optimization; do not feed the
 whole clip to the legacy request or reduce scope to pass its 120-frame cap.
 Estimates are authorized for an explicitly unqualified route; measured reference

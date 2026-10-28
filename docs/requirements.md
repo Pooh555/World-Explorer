@@ -236,7 +236,17 @@ proof and preserved inputs. The [host-toolchain audit](validation/2026-10-28-sam
 now observes restored capacity after the user's cleanup and pins 19 advertised
 compiler/sysroot artifacts, with embedded metadata agreement. Complete installed/
 runtime/source/advisory/rights and budget qualification remain open; capacity
-restoration is not a recipe fit or provisioning approval. No thresholds change.
+restoration is not a recipe fit or provisioning approval. The
+[patched-channel/source check](validation/2026-10-29-sam2-channel-source.md)
+reconciles all 19 exact selections and observes 565 matching/57 unmatched recipe
+files across eight feedstock commits; full source/payload/runtime/advisory/rights
+and cost qualification remain open. The
+[native-view check](validation/2026-10-29-sample2-native-views.md) preserves all
+48 inference/12 held-out 4K candidates and original timestamps. Their
+564,064,383 image bytes exceed current role/receipt limits, and complete projected
+masks exceed the pixel limit. No native capture admission, new-source solve or
+asset production is inferred. A0/AP0 remain IN_PROGRESS; A1 NOT_STARTED.
+No thresholds change.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

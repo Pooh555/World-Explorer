@@ -114,3 +114,12 @@ The checklist above remains the preparation for full real A1 qualification.
 Do not request the same physical references again as a prerequisite to the
 already authorized estimated route. Model installation/recipe closure remains
 separate; no source solve or completed asset is implied by intake.
+
+The [29 October native-view check](validation/2026-10-29-sample2-native-views.md)
+materializes all 48 inference and 12 held-out candidates without spatial resizing.
+Their 564,064,383 PNG bytes exceed the current aggregate capture/receipt bounds;
+the complete projected native evaluation masks also exceed their pixel budget.
+These local view files are preparation evidence, not admitted capture inputs or
+an A1 reconstruction. Preserve the frozen roles and all selected views while
+resolving producer/ownership resources; do not reduce the checklist or gate scope
+to make the existing limits pass.

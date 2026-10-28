@@ -134,6 +134,22 @@ provisioning is **BLOCKED**. No solver is installed and no global compiler or
 worker environment is changed. Resolve the outstanding reviews/correspondence,
 remaining tools and enforced budgets before preparing an activation proposal.
 
+### Patched channel and recipe-source observations — 29 October
+
+The [additive audit](validation/2026-10-29-sam2-channel-source.md) observes the
+same **19** selections in patched channel shards, with exact identity, size,
+dependency and constraint agreement. Eight commit-addressed feedstock archives
+match **565** embedded recipe files. **57** rendered/configuration/helper-license
+files remain unmatched; they are retained without asserting source equivalence.
+The [separate observation](research/sam2_toolchain_review_20261029.json) leaves
+all parent candidates unchanged. Activation templates modify compiler flags,
+link search/rpath and sysroot/CMake paths; source-template matches do not validate
+rendered payload scripts or actual Torch/NVIDIA/libstdc++ bindings. Upstream
+compiler source archives, reproducible build, complete notices and independent
+advisory/rights review remain open. No payload is installed or activated.
+All whole-plan costs remain null/blocking, and the known download subtotal is
+unchanged at **4,043,559,722 bytes**.
+
 ### Proposed Linux control variant — 28 October
 
 **Do not provision this variant.** The completed metadata audit finds **22**
