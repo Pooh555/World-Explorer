@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated 2026-10-28 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
+Updated 2026-10-29 (Asia/Hong_Kong). **M1: VERIFIED (Linux development exit);
 M2: VERIFIED (Linux/NVIDIA development exit); M3: VERIFIED (local software exit).** No full Q/P/N/E
 gate is certified. **A0/AP0: IN_PROGRESS (CPU contracts, typed metadata and owned history).** A1–A6/AP1–AP9:
 NOT_STARTED; M7–M8: DEFERRED_BY_USER.
@@ -480,14 +480,27 @@ inspected PATH. No environment, model, source job or old candidate is changed.
 Validation receipt writing then encountered **ENOSPC**. Only this turn's
 reproducible 65,054,720-byte expanded tar cache was removed; the compressed source,
 all 694 prior audit files and protected media/jobs/environments remain unchanged.
-Recovered checks pass. Free space later measured about **0.9 GB**, below the known
-download subtotal before installed/build/job costs. Further payload staging needs
-adequate durable capacity and a full reservation; preserve existing jobs/environments.
+Recovered checks pass. Free space then measured about **0.9 GB**. After the user's
+cleanup, the [host-toolchain audit](validation/2026-10-28-sam2-host-toolchain.md)
+observes **314,470,408,192 bytes** free and unchanged protected inputs. The immediate
+capacity blocker is cleared; no reservation or measured recipe fit is inferred.
 
-Next executable step: select and pin a compatible isolated CUDA12.6 host compiler,
-libstdc++/sysroot and complete build-tool/runtime dependency closure using the
-addendum. Preserve system compilers and existing environments; do not use an
-unsupported-compiler override. Keep both parent candidates unchanged. Finish
+The separate [host-toolchain candidate](research/sam2_host_toolchain_20261028.json)
+pins 19 advertised conda-forge GCC/G++13.4/sysroot2.28 packages with 35 dependency
+edges and 11 satisfied virtual requirements. Embedded dependencies/constraints
+agree with registry metadata. File tables declare 4,152 disjoint paths/
+950,786,485 logical bytes, including 102 links and 124 prefix relocations; these
+are uninstalled/unverified payload declarations. Package downloads add 150,510,658
+bytes, taking the known subtotal to **4,043,559,722 bytes**. GNU13 upstream support
+has ended, and registry GCC13.5 probes returned 404; patch/advisory review remains
+open. No compiler package payload member is read, installed, activated or executed.
+
+Next executable step: reconcile the host candidate with patched channel metadata
+and source/build/advisory/terms records; bind the remaining build tools and
+installed/build/staging/scratch ceilings for a concrete acquisition proposal.
+Audit prefix relocation and runtime/ABI bindings before activating the compiler.
+Preserve system compilers and existing environments; do not use an unsupported-
+compiler override. Keep all parent candidates unchanged. Finish
 controlled staging/source-to-installed mappings, source-only iopath/ANTLR/SAM
 build compatibility and bundled-component/notice correspondence without running an unapproved installer;
 retain the candidate's missing reviews and native runtime/rights gaps.

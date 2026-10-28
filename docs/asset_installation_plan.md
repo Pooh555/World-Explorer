@@ -1,4 +1,4 @@
-# Asset-worker installation proposal — updated 28 October 2026
+# Asset-worker installation proposal — updated 29 October 2026
 
 **PROPOSED; provisioning BLOCKED; A0/AP0 remain IN_PROGRESS.** This is the explicit
 installation plan for plan §§11.2/11.7's initial control pipeline. No installer
@@ -99,12 +99,40 @@ build tools; do not suppress version checks or change global compilers. Existing
 CUDA-build flags, local-checkpoint requirement and no-download/no-null-checkpoint
 policy below remain required. The 8 GiB development host is still contracts-only.
 
-The source audit later encountered **ENOSPC** during validation receipt writes.
-Only its reproducible expanded tar cache was removed; compressed source and all
-prior inputs/evidence remain intact. A later observation found about **0.9 GB**
-free, below the known download subtotal alone. Restore adequate durable capacity
-before payload acquisition/staging, in addition to completing the full reservation.
-Do not delete existing jobs or environments to manufacture an apparent fit.
+The source audit encountered **ENOSPC** during validation receipt writes; only its
+reproducible expanded tar cache was removed. The user subsequently freed space on
+the same volume. The [host-toolchain audit](validation/2026-10-28-sam2-host-toolchain.md)
+observes **314,470,408,192 bytes** available and unchanged protected inputs.
+The immediate capacity blocker is cleared; no recipe reservation/fit is claimed.
+Preserve existing jobs/environments and complete the full reservation before staging.
+
+### Proposed isolated host toolchain — 28–29 October
+
+The [separate candidate](research/sam2_host_toolchain_20261028.json) pins **19**
+conda-forge artifacts: GCC/G++ **13.4.0**, binutils **2.46.1**, matching GNU13.4
+runtime/development packages, glibc **2.28** sysroot/kernel headers **4.18.0** and
+support libraries. The registry reports GCC13.5 unavailable in these package
+routes; 13.4 lies within NVIDIA's supported-major/minor policy. [GNU13 upstream
+maintenance has ended](https://gcc.gnu.org/gcc-13/); downstream patch/advisory review
+is required before acquisition/activation, alongside all existing terms/reviews.
+This candidate is not a conda solver result, supported-OS or native ABI/build pass.
+
+All **35** advertised dependency edges and **11** selected virtual requirements
+reconcile against exact registry pins and local observations. No optional LLVM
+OpenMP variant is selected. Bounded ZIP/ZSTD/tar inspection reads only `info`
+members; all embedded dependency/constraint records agree. The tables declare
+**4,152** disjoint payload paths/**950,786,485** logical bytes, **102** links and
+**124** prefix relocations; **17** notice records are retained. Compiler payload
+members/full archives remain unread/unverified; activation scripts do not run.
+These declarations do not establish installed bytes, relocation correctness,
+complete notices, source correspondence, patched channel metadata or runtime closure.
+
+The toolchain download subtotal is **150,510,658 bytes**; the combined known
+subtotal is **4,043,559,722 bytes**, still excluding other tools/stages and complete
+installed/build/staging/scratch costs. All such whole-plan costs remain null;
+provisioning is **BLOCKED**. No solver is installed and no global compiler or
+worker environment is changed. Resolve the outstanding reviews/correspondence,
+remaining tools and enforced budgets before preparing an activation proposal.
 
 ### Proposed Linux control variant — 28 October
 

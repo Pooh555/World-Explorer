@@ -232,8 +232,11 @@ host compiler/sysroot, native closure, staging/installed costs and actual builds
 are unresolved. This is source-byte verification, not a worker/AP or rights pass;
 A0/AP0 remain **IN_PROGRESS**, provisioning **BLOCKED**, A1 **NOT_STARTED**.
 The validation receipt writes encountered ENOSPC. Recovered checks retain source
-proof and preserved inputs; further payload staging also needs adequate durable
-storage. No product/resource threshold changes.
+proof and preserved inputs. The [host-toolchain audit](validation/2026-10-28-sam2-host-toolchain.md)
+now observes restored capacity after the user's cleanup and pins 19 advertised
+compiler/sysroot artifacts, with embedded metadata agreement. Complete installed/
+runtime/source/advisory/rights and budget qualification remain open; capacity
+restoration is not a recipe fit or provisioning approval. No thresholds change.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

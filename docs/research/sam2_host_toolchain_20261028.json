@@ -1,0 +1,1112 @@
+{
+  "proposal_format_version": 1,
+  "kind": "UNQUALIFIED_HOST_TOOLCHAIN_CANDIDATE",
+  "date": "2026-10-28",
+  "scope": "Advertised conda-forge Linux package metadata only; not a conda solver lock, installed compiler/runtime, distribution approval or measured fit",
+  "parent_build_inputs": {
+    "path": "docs/research/sam2_build_inputs_20261028.json",
+    "sha256": "2161fe70d987bdb2b98ee6e25d9e4a538a33394d71f7c70fb039423fd484ab22",
+    "unchanged": true
+  },
+  "worker_host_compiler": {
+    "family": "GCC/G++",
+    "version": "13.4.0",
+    "candidate_only": true,
+    "cuda_runtime": "12.6",
+    "sysroot_glibc": "2.28",
+    "kernel_headers": "4.18.0",
+    "system_compilers_changed": false,
+    "support_basis": "CUDA12.6 permits newer minors within supported compiler majors; GNU13 is within that major range",
+    "cuda_policy": "https://docs.nvidia.com/cuda/archive/12.6.3/cuda-installation-guide-linux/index.html#host-compiler-support-policy",
+    "compiler_series_upstream_maintenance": "ENDED",
+    "compiler_series_source": "https://gcc.gnu.org/gcc-13/",
+    "gcc_13_5_registry_available": false,
+    "distribution_patch_or_advisory_review": null,
+    "compatibility_executed": false
+  },
+  "roots": [
+    "gxx_linux-64 13.4.0",
+    "sysroot_linux-64 2.28",
+    "_openmp_mutex 4.5 *_gnu"
+  ],
+  "artifacts": [
+    {
+      "name": "_openmp_mutex",
+      "version": "4.5",
+      "build": "20_gnu",
+      "basename": "linux-64/_openmp_mutex-4.5-20_gnu.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/_openmp_mutex/4.5/linux-64/_openmp_mutex-4.5-20_gnu.conda",
+      "expected_sha256": "1dd3fffd892081df9726d7eb7e0dea6198962ba775bd88842135a4ddb4deb3c9",
+      "download_bytes": 28948,
+      "depends": [
+        "__glibc >=2.17,<3.0.a0",
+        "libgomp >=7.5.0"
+      ],
+      "constrains": [
+        "openmp_impl <0.0a0"
+      ],
+      "license_declaration": "BSD-3-Clause",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/_openmp_mutex/4.5",
+      "metadata_sha256": "e7eb8dcf673e7f2e9d261771bbffb4690798f62ec27084650c867a88b8f17c4d",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/_openmp_mutex-4.5.json",
+      "candidate_choice_count": 2,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "c7b090ffa381ebebaa466033bbf2ba37b7639c9b520e5594090a80fae61ee644",
+        "paths_sha256": "e9f980c5d7fa6a8a7e39f8c3877d78e34dcac51ed053eb635b86868dc49099ef",
+        "declared_payload_file_bytes": 1475480,
+        "payload_paths": 1,
+        "softlink_paths": 1,
+        "prefix_relocation_paths": 0,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "binutils_impl_linux-64",
+      "version": "2.46.1",
+      "build": "default_hfdba357_103",
+      "basename": "linux-64/binutils_impl_linux-64-2.46.1-default_hfdba357_103.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/binutils_impl_linux-64/2.46.1/linux-64/binutils_impl_linux-64-2.46.1-default_hfdba357_103.conda",
+      "expected_sha256": "98f9ddc6dc5d56a824b7eaea5bab6ad4bb47642288fc70d6b1b4024ac39d5595",
+      "download_bytes": 3706604,
+      "depends": [
+        "ld_impl_linux-64 2.46.1 default_hbd61a6d_103",
+        "sysroot_linux-64",
+        "zstd >=1.5.7,<1.6.0a0"
+      ],
+      "constrains": [],
+      "license_declaration": "GPL-3.0-only",
+      "has_prefix": true,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/binutils_impl_linux-64/2.46.1",
+      "metadata_sha256": "70590724c0e643b0d46f7e6867771bbdcc63780726e62e4c8e5f3c6bf1ee3d72",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/binutils_impl_linux-64-2.46.1.json",
+      "candidate_choice_count": 1,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "8a2ddaa4e416c0d1b27b230598d9bf4f33582b5fcb2be1e64a3b88a8165be795",
+        "paths_sha256": "46dbcddb5c2c8ac334b3d1fb176834c806b061bc1377ec5ca94c6ee8cafd4244",
+        "declared_payload_file_bytes": 51363680,
+        "payload_paths": 198,
+        "softlink_paths": 15,
+        "prefix_relocation_paths": 116,
+        "notice_records": [
+          {
+            "member": "info/licenses/COPYING3.LIB",
+            "bytes": 7639,
+            "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c"
+          },
+          {
+            "member": "info/licenses/COPYING",
+            "bytes": 18002,
+            "sha256": "231f7edcc7352d7734a96eef0b8030f77982678c516876fcb81e25b32d68564c"
+          },
+          {
+            "member": "info/licenses/COPYING3",
+            "bytes": 35147,
+            "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+          },
+          {
+            "member": "info/licenses/COPYING.LIB",
+            "bytes": 25291,
+            "sha256": "56bdea73b6145ef6ac5259b3da390b981d840c24cb03b8e1cbc678de7ecfa18d"
+          }
+        ],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "binutils_linux-64",
+      "version": "2.46.1",
+      "build": "default_h4852527_103",
+      "basename": "linux-64/binutils_linux-64-2.46.1-default_h4852527_103.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/binutils_linux-64/2.46.1/linux-64/binutils_linux-64-2.46.1-default_h4852527_103.conda",
+      "expected_sha256": "606a42c754752fb905fe2012d52ff370d47b5b6adefd5f7befc4ec30ce758f23",
+      "download_bytes": 36335,
+      "depends": [
+        "binutils_impl_linux-64 2.46.1 default_hfdba357_103"
+      ],
+      "constrains": [],
+      "license_declaration": "GPL-3.0-only",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/binutils_linux-64/2.46.1",
+      "metadata_sha256": "d4f0ba38ece78cfee3db29fb9a79792f05976c1575d5571c6df58481cd003292",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/binutils_linux-64-2.46.1.json",
+      "candidate_choice_count": 4,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "16d4250bc436a4be413e623da91b067f5b9e5ca513c7683604d20d77b42d95e5",
+        "paths_sha256": "b2981ddba406431b6754cb19e05af7511134e2a239a58d1915687fca8bfdd737",
+        "declared_payload_file_bytes": 5462,
+        "payload_paths": 2,
+        "softlink_paths": 0,
+        "prefix_relocation_paths": 0,
+        "notice_records": [
+          {
+            "member": "info/licenses/COPYING3.LIB",
+            "bytes": 7639,
+            "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c"
+          },
+          {
+            "member": "info/licenses/COPYING",
+            "bytes": 18002,
+            "sha256": "231f7edcc7352d7734a96eef0b8030f77982678c516876fcb81e25b32d68564c"
+          },
+          {
+            "member": "info/licenses/COPYING.LIB",
+            "bytes": 25291,
+            "sha256": "56bdea73b6145ef6ac5259b3da390b981d840c24cb03b8e1cbc678de7ecfa18d"
+          },
+          {
+            "member": "info/licenses/COPYING3",
+            "bytes": 35147,
+            "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+          }
+        ],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "gcc_impl_linux-64",
+      "version": "13.4.0",
+      "build": "h649a46b_20",
+      "basename": "linux-64/gcc_impl_linux-64-13.4.0-h649a46b_20.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/gcc_impl_linux-64/13.4.0/linux-64/gcc_impl_linux-64-13.4.0-h649a46b_20.conda",
+      "expected_sha256": "7f9dbd59dcdf76e9a937b2f926f00627265b3b80c8a40f529f0f78846929d835",
+      "download_bytes": 70367721,
+      "depends": [
+        "binutils_impl_linux-64 >=2.46.1",
+        "libgcc >=13.4.0",
+        "libgcc-devel_linux-64 13.4.0 hd1d28cc_120",
+        "libgomp >=13.4.0",
+        "libsanitizer 13.4.0 hf18ac3d_20",
+        "libstdcxx >=13.4.0",
+        "libstdcxx-devel_linux-64 13.4.0 h6963c3b_120",
+        "sysroot_linux-64"
+      ],
+      "constrains": [],
+      "license_declaration": "GPL-3.0-only WITH GCC-exception-3.1",
+      "has_prefix": true,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/gcc_impl_linux-64/13.4.0",
+      "metadata_sha256": "9445f10642acb4102f992dea266642dd7a8fe8cef89519c9c1d4585f7f52c52c",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/gcc_impl_linux-64-13.4.0.json",
+      "candidate_choice_count": 1,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "cee969c529bc2194f6acc3c3786258f205122ec3aa26b29b606d665e12c4310c",
+        "paths_sha256": "086c6f0c5331b2c7494c912fd9f07a9389f4d2d32ddfc67310241632bab87277",
+        "declared_payload_file_bytes": 278114695,
+        "payload_paths": 705,
+        "softlink_paths": 30,
+        "prefix_relocation_paths": 4,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "gcc_linux-64",
+      "version": "13.4.0",
+      "build": "h5174b15_28",
+      "basename": "linux-64/gcc_linux-64-13.4.0-h5174b15_28.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/gcc_linux-64/13.4.0/linux-64/gcc_linux-64-13.4.0-h5174b15_28.conda",
+      "expected_sha256": "4a6e12079dcff41b45b02a8af124afda58822eae9efedd6925080866c87a7d5c",
+      "download_bytes": 29387,
+      "depends": [
+        "gcc_impl_linux-64 13.4.0.*",
+        "binutils_linux-64",
+        "sysroot_linux-64"
+      ],
+      "constrains": [],
+      "license_declaration": "BSD-3-Clause",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/gcc_linux-64/13.4.0",
+      "metadata_sha256": "84ce29b12693b245742471949931ca9bbd35529be716b63510aa65d1cd1469db",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/gcc_linux-64-13.4.0.json",
+      "candidate_choice_count": 1,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "e720cd10d70f5737ed2b21b10db5b1424a62612f6bc5c7ee2193b48f438332e2",
+        "paths_sha256": "cdf191f7206eac82fec7eb8ba392658649b07331e504bb910239c2206bf01af4",
+        "declared_payload_file_bytes": 17561,
+        "payload_paths": 6,
+        "softlink_paths": 0,
+        "prefix_relocation_paths": 0,
+        "notice_records": [
+          {
+            "member": "info/licenses/LICENSE",
+            "bytes": 1581,
+            "sha256": "e5ef2fd3fe8c32bac6f119d43def1a899c919057ab4a4c270e4643a23b491cae"
+          }
+        ],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "gxx_impl_linux-64",
+      "version": "13.4.0",
+      "build": "h5415f34_20",
+      "basename": "linux-64/gxx_impl_linux-64-13.4.0-h5415f34_20.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/gxx_impl_linux-64/13.4.0/linux-64/gxx_impl_linux-64-13.4.0-h5415f34_20.conda",
+      "expected_sha256": "688ef3ea82110a862b3b6be6175b087c698b54c542944fc8b7b92f2bffb82050",
+      "download_bytes": 14001935,
+      "depends": [
+        "gcc_impl_linux-64 13.4.0 h649a46b_20",
+        "libstdcxx-devel_linux-64 13.4.0 h6963c3b_120",
+        "sysroot_linux-64",
+        "tzdata"
+      ],
+      "constrains": [],
+      "license_declaration": "GPL-3.0-only WITH GCC-exception-3.1",
+      "has_prefix": true,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/gxx_impl_linux-64/13.4.0",
+      "metadata_sha256": "336ee19bf462621be771b8e8b3d87e575e202c65bea1fa8415f65dbeed92699f",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/gxx_impl_linux-64-13.4.0.json",
+      "candidate_choice_count": 15,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "62c0c63fa78d274f75b7235a9ffefe737a3b4d26fb6fde7c7c415ecd3864983e",
+        "paths_sha256": "3f370431ac302daf69bf2fd89741aeba85bfcf688f2773aed8d5c3d59230b2e3",
+        "declared_payload_file_bytes": 43598632,
+        "payload_paths": 8,
+        "softlink_paths": 0,
+        "prefix_relocation_paths": 1,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "gxx_linux-64",
+      "version": "13.4.0",
+      "build": "hb11295d_28",
+      "basename": "linux-64/gxx_linux-64-13.4.0-hb11295d_28.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/gxx_linux-64/13.4.0/linux-64/gxx_linux-64-13.4.0-hb11295d_28.conda",
+      "expected_sha256": "ad5bb39b993b36d4bbeed3590b89233bc416b430ba53b92a2b1a24e3ab1bff60",
+      "download_bytes": 27880,
+      "depends": [
+        "gxx_impl_linux-64 13.4.0.*",
+        "gcc_linux-64 ==13.4.0 h5174b15_28",
+        "binutils_linux-64",
+        "sysroot_linux-64"
+      ],
+      "constrains": [],
+      "license_declaration": "BSD-3-Clause",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/gxx_linux-64/13.4.0",
+      "metadata_sha256": "fb032d7dcddf76da40c02228a51a6d32baf8d9f8f68f483a898ef38beae737b0",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/gxx_linux-64-13.4.0.json",
+      "candidate_choice_count": 35,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "f5200ba4e96ec4b8bc65cbc0f35d36572e8c92c10cde1c63ccf717ac58f444a8",
+        "paths_sha256": "e95afdcea2b5214dab1809fee30bdf43fe9e545c1ebea66badcb8d87280940a8",
+        "declared_payload_file_bytes": 7764,
+        "payload_paths": 6,
+        "softlink_paths": 0,
+        "prefix_relocation_paths": 0,
+        "notice_records": [
+          {
+            "member": "info/licenses/LICENSE",
+            "bytes": 1581,
+            "sha256": "e5ef2fd3fe8c32bac6f119d43def1a899c919057ab4a4c270e4643a23b491cae"
+          }
+        ],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "kernel-headers_linux-64",
+      "version": "4.18.0",
+      "build": "he073ed8_9",
+      "basename": "noarch/kernel-headers_linux-64-4.18.0-he073ed8_9.conda",
+      "subdir": "noarch",
+      "url": "https://api.anaconda.org/download/conda-forge/kernel-headers_linux-64/4.18.0/noarch/kernel-headers_linux-64-4.18.0-he073ed8_9.conda",
+      "expected_sha256": "41557eeadf641de6aeae49486cef30d02a6912d8da98585d687894afd65b356a",
+      "download_bytes": 1278712,
+      "depends": [],
+      "constrains": [
+        "sysroot_linux-64 ==2.28"
+      ],
+      "license_declaration": "LGPL-2.0-or-later AND LGPL-2.0-or-later WITH exceptions AND GPL-2.0-or-later",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/kernel-headers_linux-64/4.18.0",
+      "metadata_sha256": "8880e221c2d5514cac9caa49febc1612b109cf22995c6812f241937e65411ba2",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/kernel-headers_linux-64-4.18.0.json",
+      "candidate_choice_count": 1,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "e82323f2c331e9a9cad7c726a31a1e1f9b20ff8ce74dc4c849ee9bc16dd2365f",
+        "paths_sha256": "f2fa227c582ef6420111694326cffe5e226618ec60283842971a3c5cd3a67e70",
+        "declared_payload_file_bytes": 5649037,
+        "payload_paths": 935,
+        "softlink_paths": 0,
+        "prefix_relocation_paths": 0,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "ld_impl_linux-64",
+      "version": "2.46.1",
+      "build": "default_hbd61a6d_103",
+      "basename": "linux-64/ld_impl_linux-64-2.46.1-default_hbd61a6d_103.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/ld_impl_linux-64/2.46.1/linux-64/ld_impl_linux-64-2.46.1-default_hbd61a6d_103.conda",
+      "expected_sha256": "901649b1edbe841fd4ee7e2d491a05184ed540eb01cdae506872f344babc1d28",
+      "download_bytes": 742109,
+      "depends": [
+        "__glibc >=2.17,<3.0.a0",
+        "zstd >=1.5.7,<1.6.0a0"
+      ],
+      "constrains": [
+        "binutils_impl_linux-64 2.46.1"
+      ],
+      "license_declaration": "GPL-3.0-only",
+      "has_prefix": true,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/ld_impl_linux-64/2.46.1",
+      "metadata_sha256": "10b3af84a9878a349990b7f5173e1973835506ef4dd36f93ba35579de5e0d9e5",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/ld_impl_linux-64-2.46.1.json",
+      "candidate_choice_count": 1,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "87906b3b62aa016ef590920d14e6117aa1d37f9f8420708ba656518ead8eb8ab",
+        "paths_sha256": "1f261162680f2309e6401e13a4f6e55d0d34459ecef1ea8790ecb6cd7818a0d5",
+        "declared_payload_file_bytes": 5933728,
+        "payload_paths": 2,
+        "softlink_paths": 1,
+        "prefix_relocation_paths": 1,
+        "notice_records": [
+          {
+            "member": "info/licenses/COPYING3.LIB",
+            "bytes": 7639,
+            "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c"
+          },
+          {
+            "member": "info/licenses/COPYING",
+            "bytes": 18002,
+            "sha256": "231f7edcc7352d7734a96eef0b8030f77982678c516876fcb81e25b32d68564c"
+          },
+          {
+            "member": "info/licenses/COPYING.LIB",
+            "bytes": 25291,
+            "sha256": "56bdea73b6145ef6ac5259b3da390b981d840c24cb03b8e1cbc678de7ecfa18d"
+          },
+          {
+            "member": "info/licenses/COPYING3",
+            "bytes": 35147,
+            "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+          }
+        ],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "libgcc",
+      "version": "13.4.0",
+      "build": "he0feb66_20",
+      "basename": "linux-64/libgcc-13.4.0-he0feb66_20.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/libgcc/13.4.0/linux-64/libgcc-13.4.0-he0feb66_20.conda",
+      "expected_sha256": "3aea71288652e300feae0b95131468079a6c59a417c2a947e1526e6a265e2414",
+      "download_bytes": 967088,
+      "depends": [
+        "__glibc >=2.17,<3.0.a0",
+        "_openmp_mutex >=4.5"
+      ],
+      "constrains": [
+        "libgcc-ng ==13.4.0=*_20",
+        "libgomp 13.4.0 he0feb66_20"
+      ],
+      "license_declaration": "GPL-3.0-only WITH GCC-exception-3.1",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/libgcc/13.4.0",
+      "metadata_sha256": "dd0bb12f6dd7f12d5723ee613160be1258f16a67224fa44099609238d648f864",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/libgcc-13.4.0.json",
+      "candidate_choice_count": 15,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "9357d2e0c63074f24337fa2f432910b4387f5226ce6cd5ad4f7205d4134dacd7",
+        "paths_sha256": "9e4ea792f625edb41771ee26e9a9279b8ba96609e46cf478e56467e00e35951c",
+        "declared_payload_file_bytes": 7587573,
+        "payload_paths": 14,
+        "softlink_paths": 6,
+        "prefix_relocation_paths": 0,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "libgcc-devel_linux-64",
+      "version": "13.4.0",
+      "build": "hd1d28cc_120",
+      "basename": "noarch/libgcc-devel_linux-64-13.4.0-hd1d28cc_120.conda",
+      "subdir": "noarch",
+      "url": "https://api.anaconda.org/download/conda-forge/libgcc-devel_linux-64/13.4.0/noarch/libgcc-devel_linux-64-13.4.0-hd1d28cc_120.conda",
+      "expected_sha256": "46f98e05c26957fffbc9224e70fc16218e5bc3d432288b6baf7e89619d517030",
+      "download_bytes": 2843917,
+      "depends": [
+        "__unix"
+      ],
+      "constrains": [],
+      "license_declaration": "GPL-3.0-only WITH GCC-exception-3.1",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/libgcc-devel_linux-64/13.4.0",
+      "metadata_sha256": "fe1872f8efface16d7d3e14cc310d3ba60ae5670bb4336f33964370b7961e31b",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/libgcc-devel_linux-64-13.4.0.json",
+      "candidate_choice_count": 1,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "6e49a0e497de396440bcc057e6deb8393b61c55e3ea566ebccb6bfe7317b993b",
+        "paths_sha256": "aeead1105feac335807401efcc804cb3211c9482c1acfb614c55f31f326e1591",
+        "declared_payload_file_bytes": 7261678,
+        "payload_paths": 15,
+        "softlink_paths": 0,
+        "prefix_relocation_paths": 0,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "libgomp",
+      "version": "13.4.0",
+      "build": "he0feb66_20",
+      "basename": "linux-64/libgomp-13.4.0-he0feb66_20.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/libgomp/13.4.0/linux-64/libgomp-13.4.0-he0feb66_20.conda",
+      "expected_sha256": "7788ffc6e80a373124884a61b5193dcec7f8be3b4efffe0233f1e3223ebb14ac",
+      "download_bytes": 567522,
+      "depends": [
+        "__glibc >=2.17,<3.0.a0"
+      ],
+      "constrains": [],
+      "license_declaration": "GPL-3.0-only WITH GCC-exception-3.1",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/libgomp/13.4.0",
+      "metadata_sha256": "4813ea6a2cdc9024fc986491db9b93381c280bca2b9ff64712a5de55c2ff47fe",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/libgomp-13.4.0.json",
+      "candidate_choice_count": 15,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "8e8e51f485f4a5f1ae185c43882a05c61cf96a18c58021d49718c66fefe6726a",
+        "paths_sha256": "a17063f3d933eb58f77bd52afbdd495323fdd5fef0d1facf728ca76adda7c4f8",
+        "declared_payload_file_bytes": 2954252,
+        "payload_paths": 3,
+        "softlink_paths": 1,
+        "prefix_relocation_paths": 0,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "libsanitizer",
+      "version": "13.4.0",
+      "build": "hf18ac3d_20",
+      "basename": "linux-64/libsanitizer-13.4.0-hf18ac3d_20.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/libsanitizer/13.4.0/linux-64/libsanitizer-13.4.0-hf18ac3d_20.conda",
+      "expected_sha256": "bd710792a12dd3e15e74a331efc385384230b6b60d50ecbd2646fbc0be254658",
+      "download_bytes": 6486765,
+      "depends": [
+        "__glibc >=2.17,<3.0.a0",
+        "libgcc >=13.4.0",
+        "libstdcxx >=13.4.0"
+      ],
+      "constrains": [],
+      "license_declaration": "GPL-3.0-only WITH GCC-exception-3.1",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/libsanitizer/13.4.0",
+      "metadata_sha256": "b6b4e894dd858f45bfafe87ec0c5255778ee59135ec9a3a9b6e7335a5e1c939a",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/libsanitizer-13.4.0.json",
+      "candidate_choice_count": 1,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "f8012957e777dcee3b100121fab0e50eb9bf309c3271ec138d4aa6e6a1b9a6e0",
+        "paths_sha256": "c4f1bff96fc7afb4c8d688ed2be7a082bef6041f2ce17b534da1da35991815b9",
+        "declared_payload_file_bytes": 84928032,
+        "payload_paths": 15,
+        "softlink_paths": 10,
+        "prefix_relocation_paths": 0,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "libstdcxx",
+      "version": "13.4.0",
+      "build": "h934c35e_20",
+      "basename": "linux-64/libstdcxx-13.4.0-h934c35e_20.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/libstdcxx/13.4.0/linux-64/libstdcxx-13.4.0-h934c35e_20.conda",
+      "expected_sha256": "b16c1504aeeaad7a583c010e300c061faa07cce65f5137583c81e4e611e60e24",
+      "download_bytes": 5679890,
+      "depends": [
+        "__glibc >=2.17,<3.0.a0",
+        "libgcc 13.4.0 he0feb66_20"
+      ],
+      "constrains": [
+        "libstdcxx-ng ==13.4.0=*_20"
+      ],
+      "license_declaration": "GPL-3.0-only WITH GCC-exception-3.1",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/libstdcxx/13.4.0",
+      "metadata_sha256": "4b19e9534a917cfae3107c2d55e8951fc66ff0f5960fbacd646827a1361e8209",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/libstdcxx-13.4.0.json",
+      "candidate_choice_count": 15,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "bfbee3b5b758949e3dd3b4d8b52ac21f3604255da457bd50c5a338da2208c04a",
+        "paths_sha256": "fbd6f9943a4d6ca38ac76a020370593c51e83084bb255784ea252284a262abbf",
+        "declared_payload_file_bytes": 61916148,
+        "payload_paths": 4,
+        "softlink_paths": 2,
+        "prefix_relocation_paths": 0,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "libstdcxx-devel_linux-64",
+      "version": "13.4.0",
+      "build": "h6963c3b_120",
+      "basename": "noarch/libstdcxx-devel_linux-64-13.4.0-h6963c3b_120.conda",
+      "subdir": "noarch",
+      "url": "https://api.anaconda.org/download/conda-forge/libstdcxx-devel_linux-64/13.4.0/noarch/libstdcxx-devel_linux-64-13.4.0-h6963c3b_120.conda",
+      "expected_sha256": "c322903ff3c6330ad9a9da72b2b86503595fc072a7d90405021491168c21701c",
+      "download_bytes": 18953032,
+      "depends": [
+        "__unix"
+      ],
+      "constrains": [],
+      "license_declaration": "GPL-3.0-only WITH GCC-exception-3.1",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/libstdcxx-devel_linux-64/13.4.0",
+      "metadata_sha256": "b335507efa3949c391f2da1d0a3b8b6b158fba2c8fcc2508b29fca5b905a0a77",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/libstdcxx-devel_linux-64-13.4.0.json",
+      "candidate_choice_count": 1,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "6d1f143af732b83dd49cfd8c38c367c1c828ca425fc93ea71c87b65048639546",
+        "paths_sha256": "cc31350f581f5aac90d8dcaf6994747cfd1126f7af9bd55919ac4c8da8750d02",
+        "declared_payload_file_bytes": 122513389,
+        "payload_paths": 821,
+        "softlink_paths": 2,
+        "prefix_relocation_paths": 0,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "libzlib",
+      "version": "1.3.2",
+      "build": "h25fd6f3_3",
+      "basename": "linux-64/libzlib-1.3.2-h25fd6f3_3.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/libzlib/1.3.2/linux-64/libzlib-1.3.2-h25fd6f3_3.conda",
+      "expected_sha256": "eb8a0db0aa570124f7d2a93d7c7f596e3390df5e047818d873baad32985fc736",
+      "download_bytes": 63713,
+      "depends": [
+        "__glibc >=2.17,<3.0.a0"
+      ],
+      "constrains": [
+        "zlib 1.3.2 *_3"
+      ],
+      "license_declaration": "Zlib",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/libzlib/1.3.2",
+      "metadata_sha256": "eb3dda6b0fb06a6839f77b1cf3393bf0b544e4faad920beda649b75b1123d522",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/libzlib-1.3.2.json",
+      "candidate_choice_count": 2,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "b8b077eb46ed1d6f292934165665bdf2f0e6fa46ed0b4bf661942efddc35b750",
+        "paths_sha256": "888b41073ffc3855ba0d4c427a250ddb52524a8283e1065095f04d9c671051cc",
+        "declared_payload_file_bytes": 234336,
+        "payload_paths": 2,
+        "softlink_paths": 1,
+        "prefix_relocation_paths": 0,
+        "notice_records": [
+          {
+            "member": "info/licenses/LICENSE",
+            "bytes": 1002,
+            "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+          }
+        ],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "sysroot_linux-64",
+      "version": "2.28",
+      "build": "h4ee821c_9",
+      "basename": "noarch/sysroot_linux-64-2.28-h4ee821c_9.conda",
+      "subdir": "noarch",
+      "url": "https://api.anaconda.org/download/conda-forge/sysroot_linux-64/2.28/noarch/sysroot_linux-64-2.28-h4ee821c_9.conda",
+      "expected_sha256": "c47299fe37aebb0fcf674b3be588e67e4afb86225be4b0d452c7eb75c086b851",
+      "download_bytes": 24008591,
+      "depends": [
+        "__glibc >=2.28",
+        "kernel-headers_linux-64 4.18.0 he073ed8_9",
+        "tzdata"
+      ],
+      "constrains": [],
+      "license_declaration": "LGPL-2.0-or-later AND LGPL-2.0-or-later WITH exceptions AND GPL-2.0-or-later",
+      "has_prefix": true,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/sysroot_linux-64/2.28",
+      "metadata_sha256": "799fcccc899251b17a64a709b55e70942279bfc7d7c361848b2a02fd73810210",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/sysroot_linux-64-2.28.json",
+      "candidate_choice_count": 2,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "54dcad7372e51979e8798200e9e5138701a127bc1720f9e9d7c9ffb63484e492",
+        "paths_sha256": "23d24a44ed5370659d0c87179a51a1415c125af473eae0a5b4b2e8fe6a7f3ec2",
+        "declared_payload_file_bytes": 275069867,
+        "payload_paths": 791,
+        "softlink_paths": 28,
+        "prefix_relocation_paths": 1,
+        "notice_records": [],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "tzdata",
+      "version": "2026e",
+      "build": "h5d301ff_0",
+      "basename": "noarch/tzdata-2026e-h5d301ff_0.conda",
+      "subdir": "noarch",
+      "url": "https://api.anaconda.org/download/conda-forge/tzdata/2026e/noarch/tzdata-2026e-h5d301ff_0.conda",
+      "expected_sha256": "2b7ca858879f183ce2dcc65b300f48a0133d5430550f35b23d80d405a0788dbf",
+      "download_bytes": 119208,
+      "depends": [],
+      "constrains": [],
+      "license_declaration": "LicenseRef-Public-Domain",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/tzdata/2026e",
+      "metadata_sha256": "dfc565cdd109fcad4a8071978bc29f65783c5dbc2038bea1ad530432473357db",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/tzdata-2026e.json",
+      "candidate_choice_count": 1,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "979c792ce377601fe35bd3f96c3921f30be5e05cc62aebc5b2f9cc6fb75d6b52",
+        "paths_sha256": "ab9d31399662d32edcf0b740c6990304ed7343672cd5fa96493fbca3ca03f60d",
+        "declared_payload_file_bytes": 509587,
+        "payload_paths": 606,
+        "softlink_paths": 0,
+        "prefix_relocation_paths": 0,
+        "notice_records": [
+          {
+            "member": "info/licenses/LICENSE",
+            "bytes": 252,
+            "sha256": "0613408568889f5739e5ae252b722a2659c02002839ad970a63dc5e9174b27cf"
+          }
+        ],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    },
+    {
+      "name": "zstd",
+      "version": "1.5.7",
+      "build": "hb78ec9c_7",
+      "basename": "linux-64/zstd-1.5.7-hb78ec9c_7.conda",
+      "subdir": "linux-64",
+      "url": "https://api.anaconda.org/download/conda-forge/zstd/1.5.7/linux-64/zstd-1.5.7-hb78ec9c_7.conda",
+      "expected_sha256": "47d682b9f6d6ec9eb1a6e6c3e75ea6273e899e78fb7fc59f81d39745009fbc60",
+      "download_bytes": 601301,
+      "depends": [
+        "__glibc >=2.17,<3.0.a0",
+        "libzlib >=1.3.2,<2.0a0"
+      ],
+      "constrains": [],
+      "license_declaration": "BSD-3-Clause",
+      "has_prefix": false,
+      "metadata_url": "https://api.anaconda.org/release/conda-forge/zstd/1.5.7",
+      "metadata_sha256": "3ce7b4f5b4f57b21338317eb943fd2a97506d20c06782c5fc344cb4762b17acd",
+      "metadata_path": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028/primary/zstd-1.5.7.json",
+      "candidate_choice_count": 7,
+      "payload_acquired": false,
+      "installed_bytes": null,
+      "independent_review": null,
+      "embedded_metadata": {
+        "registry_dependency_and_constraint_match": true,
+        "index_sha256": "766cda77672e7dd70bf515e2a7b5e356a14c75ef4af7e4daa7baef8f2acee1b8",
+        "paths_sha256": "eb58bd1947b2f7c587d400e9afcc61a3c6d2f4d897f60c7c7764ed3fbe8b8b1b",
+        "declared_payload_file_bytes": 1645584,
+        "payload_paths": 18,
+        "softlink_paths": 5,
+        "prefix_relocation_paths": 1,
+        "notice_records": [
+          {
+            "member": "info/licenses/LICENSE",
+            "bytes": 1549,
+            "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8"
+          }
+        ],
+        "whole_archive_sha256_verified": false,
+        "actual_installation_verified": false
+      }
+    }
+  ],
+  "selected_edges": [
+    {
+      "parent": "ROOT",
+      "requirement": "gxx_linux-64 13.4.0",
+      "selected": "gxx_linux-64"
+    },
+    {
+      "parent": "ROOT",
+      "requirement": "sysroot_linux-64 2.28",
+      "selected": "sysroot_linux-64"
+    },
+    {
+      "parent": "ROOT",
+      "requirement": "_openmp_mutex 4.5 *_gnu",
+      "selected": "_openmp_mutex"
+    },
+    {
+      "parent": "gxx_linux-64",
+      "requirement": "gxx_impl_linux-64 13.4.0.*",
+      "selected": "gxx_impl_linux-64"
+    },
+    {
+      "parent": "gxx_linux-64",
+      "requirement": "gcc_linux-64 ==13.4.0 h5174b15_28",
+      "selected": "gcc_linux-64"
+    },
+    {
+      "parent": "gxx_linux-64",
+      "requirement": "binutils_linux-64",
+      "selected": "binutils_linux-64"
+    },
+    {
+      "parent": "gxx_linux-64",
+      "requirement": "sysroot_linux-64",
+      "selected": "sysroot_linux-64"
+    },
+    {
+      "parent": "sysroot_linux-64",
+      "requirement": "kernel-headers_linux-64 4.18.0 he073ed8_9",
+      "selected": "kernel-headers_linux-64"
+    },
+    {
+      "parent": "sysroot_linux-64",
+      "requirement": "tzdata",
+      "selected": "tzdata"
+    },
+    {
+      "parent": "_openmp_mutex",
+      "requirement": "libgomp >=7.5.0",
+      "selected": "libgomp"
+    },
+    {
+      "parent": "gxx_impl_linux-64",
+      "requirement": "gcc_impl_linux-64 13.4.0 h649a46b_20",
+      "selected": "gcc_impl_linux-64"
+    },
+    {
+      "parent": "gxx_impl_linux-64",
+      "requirement": "libstdcxx-devel_linux-64 13.4.0 h6963c3b_120",
+      "selected": "libstdcxx-devel_linux-64"
+    },
+    {
+      "parent": "gxx_impl_linux-64",
+      "requirement": "sysroot_linux-64",
+      "selected": "sysroot_linux-64"
+    },
+    {
+      "parent": "gxx_impl_linux-64",
+      "requirement": "tzdata",
+      "selected": "tzdata"
+    },
+    {
+      "parent": "gcc_linux-64",
+      "requirement": "gcc_impl_linux-64 13.4.0.*",
+      "selected": "gcc_impl_linux-64"
+    },
+    {
+      "parent": "gcc_linux-64",
+      "requirement": "binutils_linux-64",
+      "selected": "binutils_linux-64"
+    },
+    {
+      "parent": "gcc_linux-64",
+      "requirement": "sysroot_linux-64",
+      "selected": "sysroot_linux-64"
+    },
+    {
+      "parent": "binutils_linux-64",
+      "requirement": "binutils_impl_linux-64 2.46.1 default_hfdba357_103",
+      "selected": "binutils_impl_linux-64"
+    },
+    {
+      "parent": "gcc_impl_linux-64",
+      "requirement": "binutils_impl_linux-64 >=2.46.1",
+      "selected": "binutils_impl_linux-64"
+    },
+    {
+      "parent": "gcc_impl_linux-64",
+      "requirement": "libgcc >=13.4.0",
+      "selected": "libgcc"
+    },
+    {
+      "parent": "gcc_impl_linux-64",
+      "requirement": "libgcc-devel_linux-64 13.4.0 hd1d28cc_120",
+      "selected": "libgcc-devel_linux-64"
+    },
+    {
+      "parent": "gcc_impl_linux-64",
+      "requirement": "libgomp >=13.4.0",
+      "selected": "libgomp"
+    },
+    {
+      "parent": "gcc_impl_linux-64",
+      "requirement": "libsanitizer 13.4.0 hf18ac3d_20",
+      "selected": "libsanitizer"
+    },
+    {
+      "parent": "gcc_impl_linux-64",
+      "requirement": "libstdcxx >=13.4.0",
+      "selected": "libstdcxx"
+    },
+    {
+      "parent": "gcc_impl_linux-64",
+      "requirement": "libstdcxx-devel_linux-64 13.4.0 h6963c3b_120",
+      "selected": "libstdcxx-devel_linux-64"
+    },
+    {
+      "parent": "gcc_impl_linux-64",
+      "requirement": "sysroot_linux-64",
+      "selected": "sysroot_linux-64"
+    },
+    {
+      "parent": "binutils_impl_linux-64",
+      "requirement": "ld_impl_linux-64 2.46.1 default_hbd61a6d_103",
+      "selected": "ld_impl_linux-64"
+    },
+    {
+      "parent": "binutils_impl_linux-64",
+      "requirement": "sysroot_linux-64",
+      "selected": "sysroot_linux-64"
+    },
+    {
+      "parent": "binutils_impl_linux-64",
+      "requirement": "zstd >=1.5.7,<1.6.0a0",
+      "selected": "zstd"
+    },
+    {
+      "parent": "libgcc",
+      "requirement": "_openmp_mutex >=4.5",
+      "selected": "_openmp_mutex"
+    },
+    {
+      "parent": "libsanitizer",
+      "requirement": "libgcc >=13.4.0",
+      "selected": "libgcc"
+    },
+    {
+      "parent": "libsanitizer",
+      "requirement": "libstdcxx >=13.4.0",
+      "selected": "libstdcxx"
+    },
+    {
+      "parent": "libstdcxx",
+      "requirement": "libgcc 13.4.0 he0feb66_20",
+      "selected": "libgcc"
+    },
+    {
+      "parent": "ld_impl_linux-64",
+      "requirement": "zstd >=1.5.7,<1.6.0a0",
+      "selected": "zstd"
+    },
+    {
+      "parent": "zstd",
+      "requirement": "libzlib >=1.3.2,<2.0a0",
+      "selected": "libzlib"
+    }
+  ],
+  "virtual_observations": {
+    "__glibc": "2.44",
+    "__linux": "7.2.11",
+    "__unix": "0"
+  },
+  "virtual_requirements": [
+    {
+      "parent": "sysroot_linux-64",
+      "requirement": "__glibc >=2.28",
+      "observed_version": "2.44"
+    },
+    {
+      "parent": "_openmp_mutex",
+      "requirement": "__glibc >=2.17,<3.0.a0",
+      "observed_version": "2.44"
+    },
+    {
+      "parent": "libgomp",
+      "requirement": "__glibc >=2.17,<3.0.a0",
+      "observed_version": "2.44"
+    },
+    {
+      "parent": "libstdcxx-devel_linux-64",
+      "requirement": "__unix",
+      "observed_version": "0"
+    },
+    {
+      "parent": "libgcc",
+      "requirement": "__glibc >=2.17,<3.0.a0",
+      "observed_version": "2.44"
+    },
+    {
+      "parent": "libgcc-devel_linux-64",
+      "requirement": "__unix",
+      "observed_version": "0"
+    },
+    {
+      "parent": "libsanitizer",
+      "requirement": "__glibc >=2.17,<3.0.a0",
+      "observed_version": "2.44"
+    },
+    {
+      "parent": "libstdcxx",
+      "requirement": "__glibc >=2.17,<3.0.a0",
+      "observed_version": "2.44"
+    },
+    {
+      "parent": "ld_impl_linux-64",
+      "requirement": "__glibc >=2.17,<3.0.a0",
+      "observed_version": "2.44"
+    },
+    {
+      "parent": "zstd",
+      "requirement": "__glibc >=2.17,<3.0.a0",
+      "observed_version": "2.44"
+    },
+    {
+      "parent": "libzlib",
+      "requirement": "__glibc >=2.17,<3.0.a0",
+      "observed_version": "2.44"
+    }
+  ],
+  "metadata_graph_closed": true,
+  "conda_solver_conformance_claimed": false,
+  "complete_channel_repodata_or_payload_correspondence_verified": false,
+  "package_download_subtotal_bytes": 150510658,
+  "known_download_subtotal_bytes": 4043559722,
+  "subtotal_scope": "Prior 41 Python artifacts/model/source/interpreter/three CUDA components plus these 19 compiler/sysroot packages; other build tools and asset stages excluded",
+  "storage_observation": {
+    "available_bytes": 314470408192,
+    "user_maintains_current_volume": true,
+    "capacity_reserved": false,
+    "measured_recipe_fit": false
+  },
+  "costs": {
+    "whole_plan_download_bytes": null,
+    "installed_bytes": null,
+    "build_staging_peak_bytes": null,
+    "scratch_reservation_bytes": null,
+    "cache_credit_bytes": 0
+  },
+  "provisioning_status": "BLOCKED",
+  "installation_authorized": false,
+  "execution_authorized": false,
+  "blockers": [
+    "Registry metadata versus patched channel repodata, embedded package metadata and exact source/build correspondence",
+    "Compiler-series/distribution security and component/embedded notices/terms/redistribution reviews",
+    "Prefix relocation, activation, selected glibc/sysroot/libstdc++/Torch/NVIDIA ABI and runtime closure",
+    "Remaining build tool payloads and source builds; installed/build/staging/scratch reservation and enforced resource limits",
+    "Actual capture/resource/recipe freeze, worker integration and host qualification"
+  ],
+  "evidence_root": "/home/Pooh555/programming/World-Explorer/artifacts/validation/a0-sam2-toolchain-20261028",
+  "metadata_evidence_sha256": "b86c0b4f311f0daa67807997460fafaabbcd1abdf2003cea9ca190c36537b16a",
+  "embedded_metadata_observation": {
+    "declared_payload_file_bytes": 950786485,
+    "payload_paths": 4152,
+    "softlinks": 102,
+    "prefix_relocation_paths": 124,
+    "notice_records": 17,
+    "successful_range_bytes": 653195,
+    "selected_path_collisions": 0,
+    "index_agrees_with_registry": true,
+    "channel_repodata_hotfixes_checked": false,
+    "compiler_binary_payload_member_read": false,
+    "whole_package_hashes_verified": false,
+    "scope": "ZIP/ZSTD/tar metadata observation, not authenticated complete payloads, source correspondence, relocated installed bytes, ABI or runtime fitness",
+    "evidence_sha256": "d0f256c38cf802b2b2ada96371d3d87b0bfabf3b64e57d69a42cbfbc7cbf36c6"
+  }
+}
