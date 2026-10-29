@@ -93,11 +93,70 @@ assertion assumed 48 inserted images; the read-only observer now reports the
 actual partial count, with no change to solver admission.
 
 The prepared recovery at `J/logs/resume-001` pins exact argv and all existing
-input, committed-stage and interrupted-stage bytes. It is intended for a transient
-user service with the existing laptop limits: two CPU cores in aggregate,
-6 GiB memory high /7 GiB max /1 GiB swap, owned process-group cancellation and
-queue flock. Actual service launch/properties and terminal outcome will be recorded
-when observed. No automatic pipeline capability is inferred from preparation.
+input, committed-stage and interrupted-stage bytes. The host transient user service launch exits **0**, invocation
+`520c3799353a4edabf8f1790c2fcdca1`; actual unit properties confirm active/running,
+CPUQuotaPerSecUSec2s, MemoryHigh6,442,450,944, MemoryMax7,516,192,768 and
+MemorySwapMax1,073,741,824 bytes. Queue flock and owned-group cancellation apply.
+Exact launch argv and properties are in `S/service-launch.json` and
+`S/service-properties.json`. Its request SHA-256 is
+`b1e5b88b9d1409a99d3d4868227602050558295807a1190d31c3a8dc2f31d058`.
+
+The service records native implementation commit `5e30d0833b2d17051dcc6ce38db52dfcbacd4705`
+and CLI SHA-256 `7d9bb03be13e7a318223b064fd886ffbef758bfb25d5e7b30e217f9b6dc391bd`.
+It observed no live owned host worker, archived/recovered only the known stale
+worker lock, and replayed the exact journal. The worker acknowledged START,
+reported **stage_cached** for committed decode key `a13f92e9…` and started unchanged
+pose key `664c2523…`. The original partial stage and stale first-attempt result
+remain untouched. Recovery `logs/resume-001/result.json` owns its actual
+terminal outcome; the explicit cancellation described below supersedes its initial
+running observation.
+This is operator-supervised experimental recovery, not AP9 automatic yield.
+
+A separate `check_solver_pixels.py` check through the existing isolated
+Pillow11.3.0 environment exits **0** in **28.372 s**: all **48/48** regenerated
+solver PNGs match independent original-source RGB hashes, indices, PTS and native
+3840×2160 grids. **0/48** encoded file hashes equal the intake PNGs, despite equal
+pixel samples. Solver PNGs total **452,425,157 bytes**. Exact pairings and proof
+are in `S/solver-pixel-correspondence.json` and `S/solver-pixels.log` / `.json`.
+Later pose-bound admission must verify actual encoded-image references and retain
+both variants' correspondence; pixel equality alone never changes a byte pin.
+
+The live service health observation reports active/running with 6,915,424,256 bytes
+current cgroup memory, 6,916,976,640 peak and 1,073,541,120 swap at that observation;
+limits remain enforced. `S/service-health.json` owns those instantaneous values.
+They are not a production resource-fit pass or terminal result. Final outcome
+must be read from the supervised phase's record before continuing downstream.
+
+## Observed memory throttling and bounded retry
+
+A later host cgroup read shows **598,378 memory-high events**, **zero** max/OOM/
+OOM-kill events, **6,916,022,272** current memory bytes and **1,073,733,632** swap
+bytes. The new pose database had no writes for ~19 minutes. This is observed
+reclaim/throttling, not proof of OOM or an accepted resource fit. Counters and
+file ages are retained in `S/cgroup-diagnostic.json` and command output.
+
+The operator stopped only this owned service. Native cancellation was acknowledged,
+the worker reported **stage_preserved /incomplete**, and exit **130** was recorded
+after **1,230.613 s**. The controller's low-level status is FAILED; the observed
+cause is deliberate operator cancellation after resource diagnosis, not a failed
+registration verdict. All protected files are byte-identical. No poses/map were
+published, no input was dropped and no quality threshold changed.
+
+One explicit concurrency retry is prepared at
+`artifacts/sample_2_a0_cpu1_20261029`. The CLI adds bounded `--cpu-threads 1..4`
+(default four), passing the existing native configuration directly; invalid,
+zero, excessive and duplicate options refuse before dispatch. This retry selects
+**one extraction/mapping thread**, retains one matching thread/pair and preserves
+all 48 original 4K inference views, source IDs/PTS, feature settings, sequential
+recipe and 90% registration threshold. It is a separately labeled resource variant,
+not the requested four-thread result or AP9 automatic yield. A fresh disjoint job
+copies exact owned PPM bytes; changed worker resource identity is not written over
+or relabeled as the old request/cache. The previous stages/logs remain protected.
+Both C++26/C++23 builds and batch admission checks pass after adding this control:
+**17 cases /23,904 assertions per profile**. The C++ gate passes both changed
+translation units with LLVM23.1.1. Raw commands/results have `cpu-control` tags in
+`S`. The original data and former stages remain protected. Actual launch/outcome
+is recorded when observed.
 
 ## Remaining work
 

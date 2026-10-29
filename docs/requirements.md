@@ -269,8 +269,10 @@ capture/corpus, runtime/rights, recipe or an asset producer; A0/AP0 stay IN_PROG
 The [frozen baseline pose attempt](validation/2026-10-29-sample2-frozen-poses.md)
 validates all 48 native journal/source RGB bindings but has no terminal solver
 receipt after interruption. Committed decode is retained; partial features have
-no accepted model. Explicit checked CLI resume is locally tested without changing
-registration or AP gates. Real pose/capture/corpus/recipe and A1 qualification
+no accepted model. Explicit checked CLI resume is locally tested; a supervised four-thread run
+was cancelled after observed memory throttling, with all protected bytes unchanged.
+One separately labeled one-thread retry retains all views/feature settings and
+unchanged registration/AP gates. Real pose/capture/corpus/recipe and A1 qualification
 remain open; A0/AP0 stay IN_PROGRESS.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |

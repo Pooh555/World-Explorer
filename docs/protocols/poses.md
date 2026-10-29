@@ -227,7 +227,12 @@ and emits JSON. The original job, capture, fits and scene remain preserved.
 `we_process solve-poses DECODE_STAGE VIDEO OWNED_JOB --pose-python EXECUTABLE
 --resume-input true` selects the existing checked `BatchPoseConfig::m_resume_input`
 path. Default invocation still requires a fresh job. Only the literal `true` is
-accepted, once; false/malformed/repeated options fail before dispatch. A frozen
+accepted, once; false/malformed/repeated options fail before dispatch. `--cpu-threads N` optionally selects 1–4 extraction/mapping threads (default four);
+non-integer, out-of-range and repeated values refuse before dispatch. The CPU
+matcher remains one pair/thread. A different count changes worker request/recipe
+identity and requires a fresh disjoint job, not replacement of immutable request
+bytes. This changes concurrency, not view/resolution/feature/registration scope.
+A frozen
 stage still requires its independently selected `--selection-sha256 HASH`.
 
 The caller must own the exact original source, frame selection, recipe and job.

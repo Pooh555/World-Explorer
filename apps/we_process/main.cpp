@@ -720,7 +720,8 @@ int main(int argc, char** argv) {
             if (arguments.size() < 6 || arguments.size() % 2 != 0) {
                 std::cerr << "Usage: we_process solve-poses DECODE_STAGE VIDEO NEW_JOB "
                              "--pose-python EXECUTABLE [--recipe sequential|exhaustive_guided] "
-                             "[--selection-sha256 HASH] [--resume-input true]\n";
+                             "[--selection-sha256 HASH] [--resume-input true] "
+                             "[--cpu-threads 1..4]\n";
                 return 2;
             }
             PoseSolveRequest request { arguments[2],
@@ -728,7 +729,7 @@ int main(int argc, char** argv) {
                                        .m_job_directory = arguments[3],
                                        .m_worker_script = configuration.m_script,
                                        .m_worker_python = configuration.m_python } };
-            bool pose_python {};
+            bool pose_python {}, cpu_threads {};
             for (std::size_t index { 4uz }; index < arguments.size(); index += 2uz) {
                 if (arguments[index] == "--pose-python" && !pose_python) {
                     request.m_batch.m_pose_python = arguments[index + 1];
@@ -739,6 +740,19 @@ int main(int argc, char** argv) {
                 } else if (arguments[index] == "--resume-input" && arguments[index + 1] == "true" &&
                            !request.m_batch.m_resume_input) {
                     request.m_batch.m_resume_input = true;
+                } else if (arguments[index] == "--cpu-threads" && !cpu_threads) {
+                    const std::string_view K_TEXT { arguments[index + 1] };
+                    std::size_t selected_threads { 0uz };
+                    const auto K_PARSED = std::from_chars(
+                        K_TEXT.data(), K_TEXT.data() + K_TEXT.size(), selected_threads);
+                    if (K_PARSED.ec != std::errc {} ||
+                        K_PARSED.ptr != K_TEXT.data() + K_TEXT.size() || !selected_threads ||
+                        selected_threads > 4uz) {
+                        std::cerr << "Invalid batch pose CPU thread count\n";
+                        return 2;
+                    }
+                    request.m_batch.m_cpu_threads = selected_threads;
+                    cpu_threads = true;
                 } else if (arguments[index] == "--recipe" &&
                            arguments[index + 1] == "exhaustive_guided") {
                     request.m_batch.m_recipe = PoseRecipe::EXHAUSTIVE_GUIDED;

@@ -542,19 +542,25 @@ remain valid; partial feature data contains four images and no matches/model.
 The new explicit CLI `--resume-input true` exposes the already checked native
 input-replay path. C++26/C++23 builds and 17 batch admission cases per profile pass.
 
-Next executable step: launch the prepared recovery controller
-`artifacts/validation/a0-pose-resume-20261029/resume_controller.py service` through
-its transient user service, after final preservation/docs checks. The controller
-holds the queue flock, verifies no host worker, archives/removes only this owned
-stale lock and replays exact journal bytes. Recovery intent and live/terminal
-records belong in `artifacts/sample_2_a0_20261029/logs/resume-001`; retain the old
-partial stage and logs. Use all 48 inference views and original indices/PTS/4K;
-keep all 12 selected holdouts and temporal holdout blocks excluded. Do not signal
-old sandbox-local PID values on the host. After accepted poses, independently
-localize evaluation cameras and assemble pose-bound receipts with actual image
-correspondence. No dropped views, metric scale, measured walking, asset production
-or qualification is inferred. Ordinary reconstruction-request/GUI selection and
-real recipe/capture freeze remain open.
+The four-thread supervised recovery was deliberately **CANCELLED** (native exit
+130, 1,230.613 s) after ~19 minutes without database writes, 598,378 memory-high
+throttling events and swap at the 1 GiB ceiling. It was not OOM-killed and has no
+accepted pose model. The controller confirms every protected input, committed
+decode and previous partial-stage byte unchanged; cancellation retained its new
+partial stage. The old sandbox attempt still has no terminal receipt.
+
+Next executable step: finish the bounded CPU-thread CLI verification, then launch
+the one explicitly labeled concurrency retry at
+`artifacts/sample_2_a0_cpu1_20261029` through its prepared `cpu1_controller.py`
+under `artifacts/validation/a0-pose-resume-20261029`. Its native inputs are exact
+copies; use `--cpu-threads 1`, unchanged 4K/48 inference views, feature settings,
+sequential recipe and 90% registration threshold. Keep all 12 selected holdouts
+and temporal blocks excluded. Use a fresh disjoint worker request/cache identity;
+never relabel the four-thread cache. All 48 regenerated solver PNGs match source
+RGB/PTS/grid but have different encoded hashes; retain that explicit variant map
+when building pose-bound receipts. Do not signal old sandbox PIDs. No metric scale,
+walking, completed asset or AP qualification is inferred; real capture/recipe
+freeze and ordinary reconstruction-request/GUI selection remain open.
 In parallel, complete the
 compiler payload/source/advisory/terms and Torch/NVIDIA ABI reviews, bind remaining
 build tools and installed/build/staging/scratch ceilings, and prepare a concrete

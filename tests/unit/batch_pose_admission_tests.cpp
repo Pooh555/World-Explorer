@@ -1033,7 +1033,7 @@ TEST_CASE("batch RGB admission rejects dangling output links and linked input di
 
 TEST_CASE("batch CLI resume is explicit and preserves a locked owned journal without launching",
           "[batch_admission][resume][batch-cli]") {
-    const auto K_CASE = GENERATE(0, 1, 2, 3);
+    const auto K_CASE = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8);
     pose_fixture fixture;
     const auto K_JOB = fixture.root / "owned batch";
     std::filesystem::create_directories(K_JOB / "input");
@@ -1053,6 +1053,13 @@ TEST_CASE("batch CLI resume is explicit and preserves a locked owned journal wit
     if (K_CASE == 3) {
         arguments.insert(arguments.end(), { "--resume-input", "true" });
     }
+    if (K_CASE >= 4) {
+        const auto K_THREADS = K_CASE == 5 ? "0" : K_CASE == 6 ? "5" : K_CASE == 7 ? "2x" : "1";
+        arguments.insert(arguments.end(), { "--cpu-threads", K_THREADS });
+    }
+    if (K_CASE == 8) {
+        arguments.insert(arguments.end(), { "--cpu-threads", "2" });
+    }
     std::string output;
     const auto K_EXIT = run_process(arguments, {}, [&](const std::string& line) {
         output += line;
@@ -1062,8 +1069,10 @@ TEST_CASE("batch CLI resume is explicit and preserves a locked owned journal wit
     CHECK(*K_EXIT == 2);
     if (K_CASE == 0) {
         CHECK(output.find("Batch output exists") != output.npos);
-    } else if (K_CASE == 1) {
+    } else if (K_CASE == 1 || K_CASE == 4) {
         CHECK(output.find("Batch worker lock exists") != output.npos);
+    } else if (K_CASE >= 5 && K_CASE <= 7) {
+        CHECK(output.find("Invalid batch pose CPU thread count") != output.npos);
     } else {
         CHECK(output.find("Invalid batch pose option") != output.npos);
     }
