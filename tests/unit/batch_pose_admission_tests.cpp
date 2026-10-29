@@ -1,4 +1,5 @@
 #include "pose_fixture.hpp"
+#include "world_explorer/application/commands.hpp"
 #include "world_explorer/reconstruction_adapters/batch_poses.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -1028,4 +1029,44 @@ TEST_CASE("batch RGB admission rejects dangling output links and linked input di
     CHECK(K_ACCEPTED->m_value == 1);
     CHECK_FALSE(frame.m_frame.m_pixels.m_bytes);
     CHECK(K_SAVED.m_frame.m_pixels.m_bytes->size() == 6);
+}
+
+TEST_CASE("batch CLI resume is explicit and preserves a locked owned journal without launching",
+          "[batch_admission][resume][batch-cli]") {
+    const auto K_CASE = GENERATE(0, 1, 2, 3);
+    pose_fixture fixture;
+    const auto K_JOB = fixture.root / "owned batch";
+    std::filesystem::create_directories(K_JOB / "input");
+    write_bytes(K_JOB / "input/1.ppm", "synthetic retained caller bytes");
+    write_bytes(K_JOB / "job.lock", "12345");
+    const auto K_BEFORE = snapshot(K_JOB);
+    std::vector<std::string> arguments { WE_TEST_PROCESS,
+                                        "solve-poses",
+                                        path_utf8(fixture.decoded),
+                                        path_utf8(fixture.root / "source.mp4"),
+                                        path_utf8(K_JOB),
+                                        "--pose-python",
+                                        WE_TEST_PYTHON };
+    if (K_CASE) {
+        arguments.insert(arguments.end(), { "--resume-input", K_CASE == 2 ? "false" : "true" });
+    }
+    if (K_CASE == 3) {
+        arguments.insert(arguments.end(), { "--resume-input", "true" });
+    }
+    std::string output;
+    const auto K_EXIT = run_process(arguments, {}, [&](const std::string& line) {
+        output += line;
+    });
+    INFO(output);
+    REQUIRE(K_EXIT);
+    CHECK(*K_EXIT == 2);
+    if (K_CASE == 0) {
+        CHECK(output.find("Batch output exists") != output.npos);
+    } else if (K_CASE == 1) {
+        CHECK(output.find("Batch worker lock exists") != output.npos);
+    } else {
+        CHECK(output.find("Invalid batch pose option") != output.npos);
+    }
+    CHECK(snapshot(K_JOB) == K_BEFORE);
+    CHECK(!std::filesystem::exists(std::filesystem::path(path_utf8(K_JOB) + ".map")));
 }

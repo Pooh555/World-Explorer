@@ -534,19 +534,27 @@ requests, corpus identities/blockers and quality thresholds remain unchanged.
 Synthetic replay and deliberately incomplete actual-byte requests cannot supply
 real pose/capture/recipe qualification. A0/AP0 remain IN_PROGRESS.
 
-Next executable step: run the prepared fresh role-pinned baseline pose job with
-`.venv-worker/bin/python` (pycolmap4.2.1).
-Use the unchanged selection and inference-only native stage under
-`artifacts/validation/a0-frozen-views-20261029`; preserve all 48/12 views and
-held-out temporal blocks. The owned real byte receipt remains under
-`artifacts/validation/a0-capture-storage-20261029`. The separate prepared intent is
-`artifacts/sample_2_a0_20261029/request.json`; preparation has not launched a solver.
-Execute it with `python3 artifacts/validation/a0-corpus-v2-20261029/pose_attempt.py run`
-and retain any failed stage. No whole-video legacy request
-or reuse of the input-only journal is allowed. Actual native capture admission
-still requires new-source calibration/poses and independently localized evaluation
-cameras; eligibility masks need real correspondence. Ordinary reconstruction-
-request/GUI selection remains open. No new profile substitutes for recipe/capture freeze.
+The [fresh experimental inference-only pose attempt](validation/2026-10-29-sample2-frozen-poses.md)
+was interrupted without a terminal receipt. Its old RUNNING record is stale:
+the execution session is gone, queue lock is free and host-side inspection found
+no owned worker. All 48 journal frames/source RGB hashes and committed decode
+remain valid; partial feature data contains four images and no matches/model.
+The new explicit CLI `--resume-input true` exposes the already checked native
+input-replay path. C++26/C++23 builds and 17 batch admission cases per profile pass.
+
+Next executable step: launch the prepared recovery controller
+`artifacts/validation/a0-pose-resume-20261029/resume_controller.py service` through
+its transient user service, after final preservation/docs checks. The controller
+holds the queue flock, verifies no host worker, archives/removes only this owned
+stale lock and replays exact journal bytes. Recovery intent and live/terminal
+records belong in `artifacts/sample_2_a0_20261029/logs/resume-001`; retain the old
+partial stage and logs. Use all 48 inference views and original indices/PTS/4K;
+keep all 12 selected holdouts and temporal holdout blocks excluded. Do not signal
+old sandbox-local PID values on the host. After accepted poses, independently
+localize evaluation cameras and assemble pose-bound receipts with actual image
+correspondence. No dropped views, metric scale, measured walking, asset production
+or qualification is inferred. Ordinary reconstruction-request/GUI selection and
+real recipe/capture freeze remain open.
 In parallel, complete the
 compiler payload/source/advisory/terms and Torch/NVIDIA ABI reviews, bind remaining
 build tools and installed/build/staging/scratch ceilings, and prepare a concrete

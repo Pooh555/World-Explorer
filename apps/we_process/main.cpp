@@ -720,7 +720,7 @@ int main(int argc, char** argv) {
             if (arguments.size() < 6 || arguments.size() % 2 != 0) {
                 std::cerr << "Usage: we_process solve-poses DECODE_STAGE VIDEO NEW_JOB "
                              "--pose-python EXECUTABLE [--recipe sequential|exhaustive_guided] "
-                             "[--selection-sha256 HASH]\n";
+                             "[--selection-sha256 HASH] [--resume-input true]\n";
                 return 2;
             }
             PoseSolveRequest request { arguments[2],
@@ -736,6 +736,9 @@ int main(int argc, char** argv) {
                 } else if (arguments[index] == "--selection-sha256" &&
                            request.m_batch.m_frozen_selection_sha256.empty()) {
                     request.m_batch.m_frozen_selection_sha256 = arguments[index + 1];
+                } else if (arguments[index] == "--resume-input" && arguments[index + 1] == "true" &&
+                           !request.m_batch.m_resume_input) {
+                    request.m_batch.m_resume_input = true;
                 } else if (arguments[index] == "--recipe" &&
                            arguments[index + 1] == "exhaustive_guided") {
                     request.m_batch.m_recipe = PoseRecipe::EXHAUSTIVE_GUIDED;

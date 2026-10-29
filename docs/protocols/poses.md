@@ -221,3 +221,27 @@ verify the retained source/stages and publish through the shared event-to-map
 path, without a solver, decoder or optimizer. Save the returned SHA-256;
 `we_process inspect-poses OUTPUT.weposes SHA256` reloads the immutable snapshot
 and emits JSON. The original job, capture, fits and scene remain preserved.
+
+### Explicit CLI input resume
+
+`we_process solve-poses DECODE_STAGE VIDEO OWNED_JOB --pose-python EXECUTABLE
+--resume-input true` selects the existing checked `BatchPoseConfig::m_resume_input`
+path. Default invocation still requires a fresh job. Only the literal `true` is
+accepted, once; false/malformed/repeated options fail before dispatch. A frozen
+stage still requires its independently selected `--selection-sha256 HASH`.
+
+The caller must own the exact original source, frame selection, recipe and job.
+A current worker lock blocks replay; the CLI never removes it or guesses whether
+its PID is live. After separately verifying that the worker is gone, recover only
+that owned stale lock. Existing PPMs are rehashed against newly decoded frame
+leases; original journal/request bytes must match exactly. Foreign, changed,
+linked or partial input assets refuse without replacement. Complete worker stages
+are reused only through existing inventory/hash validation; uncommitted stage
+outputs are retained without being treated as completed work. The sibling map
+must still be fresh; already published maps use normal inspection/replay.
+
+The [resume validation](../validation/2026-10-29-sample2-frozen-poses.md) separates
+an interrupted attempt without a terminal receipt from its supervised recovery.
+Long local jobs can use the existing transient user-service limits described in
+[artifact supervision](artifacts.md#supervised-laptop-jobs). This adds no automatic
+lock deletion, lowered registration threshold, metric scale or AP authority.

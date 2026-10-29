@@ -1,5 +1,7 @@
 # Validation index
 
+- [29 October: frozen sample_2 baseline pose attempt](2026-10-29-sample2-frozen-poses.md) — actual role-pinned CPU solve attempt with all 48 native inference views; held-outs excluded, original RGB journal correspondence checked, terminal status recorded in the report.
+
 - [29 October: corpus request v2 and receipt reservation](2026-10-29-corpus-v2.md) — explicit independent native versions, inventory-first aggregate admission, strict v1 compatibility and shared API/CLI replay; no real capture/corpus/recipe qualification.
 
 - [29 October: explicit capture storage and mask accounting](2026-10-29-capture-storage.md) — bounded v2 receipt/capture profiles, shared immutable image ownership and full native-grid evaluation accounting; real 60-image byte validation and synthetic contract evidence stay separate.

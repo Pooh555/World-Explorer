@@ -12,7 +12,8 @@ struct PoseSolveRequest {
 };
 
 // Selected-frame native admission -> isolated CPU batch solve -> checked map.
-// Source digest is computed here; output must be fresh. Publishes canonical
+// Source digest is computed here; matching owned batch inputs may explicitly
+// resume. The sibling map output must be fresh. Publishes canonical
 // poses and an initial durable map at sibling NEW_JOB.map. No appearance fitting.
 Result<MapSnapshot> solve_selected_pose_map(PoseSolveRequest request,
                                             const std::stop_token& stop,
