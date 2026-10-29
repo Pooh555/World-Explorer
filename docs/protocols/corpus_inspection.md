@@ -91,10 +91,11 @@ Per-capture tables retain native caps: 32 sources/64 frames/128 annotation pins
 64 items/4,096 cells, paths 64 blocks/64 total frames/64 path entries, 3 reference
 selections (64-pair parsing budget, native admission ≤32 each), envelopes 32
 sources/64 views and protocols 32 masks/8 lights.
-Each original receipt retains its existing 64 MiB limit; all retained receipt blob
-snapshots total at most 256 MiB, counting repeated selections. At most one newly
-read receipt (64 MiB) plus transient copies of one ≤16 MiB blob (≤32 MiB) can
-precede that rejection.
+Request v1 retains 64 MiB per original receipt and 256 MiB across all receipt
+blob snapshots, counting repeated selections. The loader now supplies the
+remaining allowance to native receipt admission, which checks the complete exact
+inventory before any payload read. The next receipt cannot transiently exceed
+that allowance. Counting uses admitted payload sizes without copying blobs.
 Native typed handles have their own additional bounded allocations.
 
 Measurement bundles use at most 64 chunks, 32 MiB scene payload, 262,144 vertices,
@@ -109,3 +110,39 @@ rules. A missing corpus pin or empty capture/recipe table refuses before resolvi
 input paths, naming independent corpus/seal, capture/commit and recipe prerequisites.
 Existing reconstruction bundles are not accepted as substitutes. Physical capture,
 rights, metric execution, runtime/resource closure and all AP gates stay open.
+
+
+## Explicit request v2
+
+The same shared API and CLI accept schema 2 with exact root keys
+`schema_version`, `receipt_budget_bytes`, `corpus`, `captures`, `recipes`.
+`receipt_budget_bytes` is required and strictly integral, from **1 byte to 1 GiB**;
+it covers all capture **and** recipe receipt payload allocations, counting every
+repeated selection. Version 1 keeps its original fields/256 MiB ceiling and
+rejects the new field. No request changes a per-receipt or typed profile ceiling.
+
+Each v2 receipt selection (including recipe receipts) adds required
+`schema_version=1|2` to `directory,sha256`; it independently chooses SMALL_V1 or
+CAPTURE_V2 and must match the actual pinned receipt. Each capture `selection` and
+each nonnull `protocol` likewise adds a required `schema_version=1|2` matching
+its pinned native bytes. Request 2 may select native v1 inputs; it never infers
+an upgrade from request version, receipt size or inspected corpus bytes.
+The native v2 [capture](capture_selections.md#explicit-native-image-profile-v2) /
+[evaluation](evaluation_protocol.md#explicit-full-native-grid-accounting-v2)
+prerequisites and unchanged image/grid/role/metric limits still apply. All other
+keys, tables, commits, pins, null semantics and canonical corpus bytes are unchanged.
+
+`AssetReceiptSelection::m_payload_budget` is a caller allowance independent of
+manifest identity. Native admission takes its minimum with the selected hard
+profile ceiling before reading blobs. `payload_bytes()` reports the exact admitted
+deduplicated inventory sum. Sequential request admission passes the remaining
+allowance, then charges that actual sum only on success; failed reads expose no
+partial handle. There is no whole-process RSS or aggregate typed-allocation limit:
+request/manifest JSON, decoded poses and other bounded native handles have their
+own overhead. Shared image ownership avoids retaining second copies of receipt
+images. No schema converts to an execution/rights/measurement/AP token.
+
+The [validation](../validation/2026-10-29-corpus-v2.md) checks exact budgets, repeated
+receipt charging, refusal before absent payload directories, strict version pins,
+full synthetic 12-view/24-mask replay and actual 60-image receipt preflight. Real
+pose/capture/corpus/recipe qualification remains open.

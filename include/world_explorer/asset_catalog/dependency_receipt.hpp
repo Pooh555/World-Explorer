@@ -18,6 +18,9 @@ struct AssetReceiptSelection {
     std::filesystem::path m_directory;
     std::string m_receipt_sha256;
     AssetReceiptProfile m_profile { AssetReceiptProfile::SMALL_V1 };
+    // Caller allocation allowance, checked against the complete inventory before
+    // payload reads. Cannot enlarge the selected profile's hard ceiling.
+    std::size_t m_payload_budget { 768uz * 1024uz * 1024uz };
 };
 
 // Owns exactly one immutable blob, with no receipt, graph or other blob access.
@@ -51,6 +54,7 @@ class AdmittedAssetReceipt {
     OperationId operation() const;
     const std::filesystem::path& source_directory() const;
     std::size_t file_count() const;
+    std::size_t payload_bytes() const;
     AssetReceiptProfile profile() const;
     Result<AdmittedAssetBlob> share_blob(const std::string& sha256,
                                          std::size_t max_bytes,

@@ -9,7 +9,6 @@
 #include <array>
 #include <limits>
 #include <map>
-#include <set>
 #include <utility>
 
 namespace world_explorer {
@@ -21,6 +20,8 @@ constexpr auto K_RECEIPT_BYTES = 256uz * 1024uz * 1024uz;
 
 struct InspectionBudget {
     std::size_t m_receipt_bytes {}, m_frames {};
+    std::size_t m_receipt_limit { K_RECEIPT_BYTES };
+    std::uint32_t m_request_version { 1 };
 };
 
 template <class T> T take(Result<T> result) {
@@ -58,6 +59,14 @@ std::uint32_t integer32(const Json& value) {
     const auto K_VALUE = integer(value);
     require(K_VALUE <= std::numeric_limits<std::uint32_t>::max(), "Selection integer overflow");
     return static_cast<std::uint32_t>(K_VALUE);
+}
+
+std::uint32_t schema_version(const Json& value) {
+    const auto K_VERSION = integer32(value);
+    require(K_VERSION == 1 || K_VERSION == 2,
+            "Unsupported inspection selection schema",
+            ErrorCode::UNSUPPORTED_OPERATION);
+    return K_VERSION;
 }
 
 AssetRevisionRef reference(const Json& value) {
@@ -107,20 +116,33 @@ CaptureSourceSelection source(const Json& value) {
             reference(value.at("rights")) };
 }
 
-CaptureSelection capture(const Json& value, std::size_t& frames) {
-    keys(value, { "product", "selection_id", "revision", "sources", "frames", "measurement" });
-    CaptureSelection selected { reference(value.at("product")),
-                               { integer(value.at("selection_id")) },
-                               integer(value.at("revision")),
-                               {},
-                               {},
-                               optional_ref(value.at("measurement")) };
+CaptureSelection capture(const Json& value, InspectionBudget& budget) {
+    if (budget.m_request_version == 1) {
+        keys(value, { "product", "selection_id", "revision", "sources", "frames", "measurement" });
+    } else {
+        keys(value,
+             { "schema_version",
+              "product",
+              "selection_id",
+              "revision",
+              "sources",
+              "frames",
+              "measurement" });
+    }
+    CaptureSelection selected {
+        reference(value.at("product")),
+        { integer(value.at("selection_id")) },
+        integer(value.at("revision")),
+        {},
+        {},
+        optional_ref(value.at("measurement")),
+        budget.m_request_version == 1 ? 1 : schema_version(value.at("schema_version")) };
     array(value.at("sources"), 32uz);
     array(value.at("frames"), 64uz);
-    require(value.at("frames").size() <= 256uz - frames,
+    require(value.at("frames").size() <= 256uz - budget.m_frames,
             "Inspection frame budget exceeded",
             ErrorCode::RESOURCE_EXHAUSTED);
-    frames += value.at("frames").size();
+    budget.m_frames += value.at("frames").size();
     for (const auto& row : value.at("sources")) {
         selected.m_sources.push_back(source(row));
     }
@@ -287,24 +309,39 @@ CaptureEnvelopeSelection envelope(const Json& value) {
     return selected;
 }
 
-EvaluationProtocolSelection protocol(const Json& value) {
-    keys(value,
-         { "product",
-          "artifacts",
-          "masks",
-          "lights",
-          "geometry_samples",
-          "geometry_seed",
-          "uv_resolution",
-          "reviewers_min" });
-    EvaluationProtocolSelection selected { reference(value.at("product")),
-                                          {},
-                                          {},
-                                          {},
-                                          integer(value.at("geometry_samples")),
-                                          integer(value.at("geometry_seed")),
-                                          integer32(value.at("uv_resolution")),
-                                          integer32(value.at("reviewers_min")) };
+EvaluationProtocolSelection protocol(const Json& value, std::uint32_t request_version) {
+    if (request_version == 1) {
+        keys(value,
+             { "product",
+              "artifacts",
+              "masks",
+              "lights",
+              "geometry_samples",
+              "geometry_seed",
+              "uv_resolution",
+              "reviewers_min" });
+    } else {
+        keys(value,
+             { "schema_version",
+              "product",
+              "artifacts",
+              "masks",
+              "lights",
+              "geometry_samples",
+              "geometry_seed",
+              "uv_resolution",
+              "reviewers_min" });
+    }
+    EvaluationProtocolSelection selected {
+        reference(value.at("product")),
+        {},
+        {},
+        {},
+        integer(value.at("geometry_samples")),
+        integer(value.at("geometry_seed")),
+        integer32(value.at("uv_resolution")),
+        integer32(value.at("reviewers_min")),
+        request_version == 1 ? 1 : schema_version(value.at("schema_version")) };
     constexpr std::array K_ARTIFACTS {
         "GEOMETRY_SAMPLER", "UV_SAMPLER", "RENDERER", "TONE_MAPPER", "METRICS", "REVIEW_RUBRIC" };
     keys(value.at("artifacts"),
@@ -335,28 +372,27 @@ EvaluationProtocolSelection protocol(const Json& value) {
 AdmittedAssetReceipt receipt(const Json& value,
                              const AssetDependencyContext& expected,
                              const std::filesystem::path& base,
-                             std::size_t& used,
+                             InspectionBudget& budget,
                              const std::stop_token& stop) {
-    keys(value, { "directory", "sha256" });
-    auto result = take(read_asset_receipt(
-        { path(value.at("directory"), base), digest(value.at("sha256")) }, expected, stop));
-    // Count every retained snapshot, including repeated receipts, before keeping
-    // the next one. One newly read receipt adds at most the existing 64 MiB cap.
-    std::set<std::string> hashes;
-    for (const auto& node : result.graph().m_products) {
-        hashes.insert(node.m_product.m_content_sha256);
-        hashes.insert(node.m_recipe_sha256);
-        if (node.m_manual_action_sha256) {
-            hashes.insert(*node.m_manual_action_sha256);
-        }
+    if (budget.m_request_version == 1) {
+        keys(value, { "directory", "sha256" });
+    } else {
+        keys(value, { "schema_version", "directory", "sha256" });
     }
-    for (const auto& hash : hashes) {
-        const auto K_BYTES = take(result.copy_blob(hash, 16uz * 1024uz * 1024uz, stop));
-        require(K_BYTES.size() <= K_RECEIPT_BYTES - used,
-                "Inspection retained receipt budget exceeded",
-                ErrorCode::RESOURCE_EXHAUSTED);
-        used += K_BYTES.size();
-    }
+    const auto K_VERSION =
+        budget.m_request_version == 1 ? 1 : schema_version(value.at("schema_version"));
+    require(budget.m_receipt_bytes < budget.m_receipt_limit,
+            "Inspection retained receipt budget exhausted",
+            ErrorCode::RESOURCE_EXHAUSTED);
+    // The native reader checks the complete inventory against this remaining
+    // allowance before reading a single payload. Repeated snapshots count again.
+    auto result = take(read_asset_receipt({ path(value.at("directory"), base),
+                                           digest(value.at("sha256")),
+                                           static_cast<AssetReceiptProfile>(K_VERSION),
+                                           budget.m_receipt_limit - budget.m_receipt_bytes },
+                                          expected,
+                                          stop));
+    budget.m_receipt_bytes += result.payload_bytes();
     return result;
 }
 
@@ -411,14 +447,13 @@ AssetCorpusCaptureInput capture_input(const Json& value,
           "envelope",
           "protocol" });
     const auto K_CONTEXT = context(value.at("context"));
-    const auto K_SELECTED = capture(value.at("selection"), budget.m_frames);
+    const auto K_SELECTED = capture(value.at("selection"), budget);
     const auto K_COMMIT = commit(value.at("commit"));
     const auto K_REGISTRY = path(value.at("registry"), base);
     const auto K_LABEL = text(value.at("label"), 64uz);
     array(value.at("annotations"), 128uz);
     array(value.at("references"), 3uz);
-    const auto K_BYTES =
-        receipt(value.at("receipt"), K_CONTEXT, base, budget.m_receipt_bytes, stop);
+    const auto K_BYTES = receipt(value.at("receipt"), K_CONTEXT, base, budget, stop);
     const auto K_SNAPSHOT = take(read_immutable_records(K_REGISTRY, stop));
     require(K_SNAPSHOT.m_commit.m_generation == K_COMMIT.m_generation &&
                 K_SNAPSHOT.m_commit.m_manifest_sha256 == K_COMMIT.m_manifest_sha256,
@@ -457,8 +492,12 @@ AssetCorpusCaptureInput capture_input(const Json& value,
             envelope(value.at("envelope")), K_CAPTURE, K_BYTES, K_CONTEXT, stop));
     }
     if (!value.at("protocol").is_null()) {
-        result.m_protocol = take(inspect_evaluation_protocol(
-            protocol(value.at("protocol")), K_CAPTURE, K_BYTES, K_CONTEXT, stop));
+        result.m_protocol = take(
+            inspect_evaluation_protocol(protocol(value.at("protocol"), budget.m_request_version),
+                                        K_CAPTURE,
+                                        K_BYTES,
+                                        K_CONTEXT,
+                                        stop));
     }
     return result;
 }
@@ -476,10 +515,20 @@ Result<AdmittedAssetCorpus> inspect_asset_corpus_request(const std::filesystem::
                 "Corpus inspection request hash differs",
                 ErrorCode::RESYNC_REQUIRED);
         const auto K_DOC = parse(K_BYTES, K_REQUEST_BYTES, stop);
-        keys(K_DOC, { "schema_version", "corpus", "captures", "recipes" });
-        require(integer(K_DOC.at("schema_version")) == 1,
-                "Unsupported corpus inspection request",
-                ErrorCode::UNSUPPORTED_OPERATION);
+        const auto K_VERSION = schema_version(K_DOC.at("schema_version"));
+        InspectionBudget budget;
+        budget.m_request_version = K_VERSION;
+        if (K_VERSION == 1) {
+            keys(K_DOC, { "schema_version", "corpus", "captures", "recipes" });
+        } else {
+            keys(K_DOC,
+                 { "schema_version", "receipt_budget_bytes", "corpus", "captures", "recipes" });
+            const auto K_LIMIT = integer(K_DOC.at("receipt_budget_bytes"));
+            require(K_LIMIT > 0 && K_LIMIT <= 1024uz * 1024uz * 1024uz,
+                    "Inspection receipt budget must be within 1 byte..1 GiB",
+                    ErrorCode::RESOURCE_EXHAUSTED);
+            budget.m_receipt_limit = static_cast<std::size_t>(K_LIMIT);
+        }
         array(K_DOC.at("captures"), 16uz);
         array(K_DOC.at("recipes"), 16uz);
         require(!K_DOC.at("corpus").is_null() && !K_DOC.at("captures").empty() &&
@@ -495,7 +544,6 @@ Result<AdmittedAssetCorpus> inspect_asset_corpus_request(const std::filesystem::
             text(pin.at("corpus"), 64uz), integer(pin.at("revision")), digest(pin.at("sha256")) };
         const auto K_COMMIT = commit(selected.at("commit"));
         const auto K_BASE = std::filesystem::absolute(request).parent_path();
-        InspectionBudget budget;
         std::vector<AssetCorpusCaptureInput> captures;
         std::vector<AssetCorpusRecipeInput> recipes;
         std::map<std::string, RecordCommit> capture_commits;
@@ -509,12 +557,9 @@ Result<AdmittedAssetCorpus> inspect_asset_corpus_request(const std::filesystem::
         for (const auto& row : K_DOC.at("recipes")) {
             check_stop(stop);
             keys(row, { "label", "receipt", "context" });
-            recipes.push_back({ text(row.at("label"), 64uz),
-                               receipt(row.at("receipt"),
-                                       context(row.at("context")),
-                                       K_BASE,
-                                       budget.m_receipt_bytes,
-                                       stop) });
+            recipes.push_back(
+                { text(row.at("label"), 64uz),
+                 receipt(row.at("receipt"), context(row.at("context")), K_BASE, budget, stop) });
         }
         auto corpus = take(read_asset_corpus(
             path(selected.at("directory"), K_BASE), K_COMMIT, K_REF, captures, recipes, stop));

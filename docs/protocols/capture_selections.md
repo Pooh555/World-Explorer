@@ -142,7 +142,8 @@ assets remain coordinator internals; inference still owns only decoded selected
 camera values. Source removal cannot invalidate owned image bytes.
 
 Publication preserves exact selected schema/bytes and existing semantic revision
-conflicts/recovery. Existing corpus-inspection JSON independently selects v1;
-v2 support there and real pose/capture admission remain pending. The
+conflicts/recovery. [Corpus request v2](corpus_inspection.md#explicit-request-v2) now independently
+selects native versions; request v1 retains its original selection fields.
+Real pose/capture admission remains pending. The
 [validation](../validation/2026-10-29-capture-storage.md) distinguishes actual
 60-image storage from synthetic capture and role-budget checks.

@@ -555,49 +555,8 @@ TEST_CASE("evaluation v2 accounts for both complete tracks on twelve native 4K s
         {},
         {},
         [K_WIDTH, K_HEIGHT](SelectionFixture& views) {
-            views.m_selection.m_schema_version = 2;
-            auto& region = views.m_object.m_region;
-            region.m_receipt_profile = AssetReceiptProfile::CAPTURE_V2;
-            for (auto& map : { views.m_object.m_map, views.m_inference_map }) {
-                map->m_calibrations.at({ 8 }).m_width = static_cast<std::uint32_t>(K_WIDTH);
-                map->m_calibrations.at({ 8 }).m_height = static_cast<std::uint32_t>(K_HEIGHT);
-            }
-            auto& node = *std::ranges::find(
-                region.m_graph.m_products, AssetProductId { 9101 }, [](const auto& entry) {
-                    return entry.m_product.m_product;
-                });
-            const auto& raw = region.m_data.at(node.m_product.m_content_sha256);
-            auto asset = checked(decode_pose_asset(std::as_bytes(std::span(raw)), hash(raw)));
-            auto map = std::make_shared<MapState>(*asset.m_snapshot);
-            map->m_calibrations.at({ 8 }).m_width = static_cast<std::uint32_t>(K_WIDTH);
-            map->m_calibrations.at({ 8 }).m_height = static_cast<std::uint32_t>(K_HEIGHT);
-            asset.m_snapshot = map;
-            const auto K_ENCODED = checked(encode_pose_asset(asset));
-            const std::string K_TEXT(reinterpret_cast<const char*>(K_ENCODED.data()),
-                                     K_ENCODED.size());
-            region.m_data[hash(K_TEXT)] = K_TEXT;
-            node.m_product.m_content_sha256 = hash(K_TEXT);
-            for (auto& frame : views.m_selection.m_frames) {
-                if (frame.m_view.m_pose_asset.m_product == node.m_product.m_product) {
-                    frame.m_view.m_pose_asset = node.m_product;
-                }
-            }
-            for (std::size_t index { 0uz }; index < 7uz; ++index) {
-                auto image = region.node(20000uz + index,
-                                         "synthetic additional 4K grid " + std::to_string(index));
-                region.m_graph.m_products.push_back(image);
-                auto selected = views.m_selection.m_frames[1uz];
-                selected.m_view.m_frame = { 200uz + index };
-                selected.m_view.m_image = image.m_product;
-                auto observation = views.m_object.m_map->m_observations.at({ 10 });
-                observation.m_id = selected.m_view.m_frame;
-                observation.m_image_sha256 = image.m_product.m_content_sha256;
-                auto pose = views.m_object.m_map->m_poses.at({ 10 });
-                pose.m_frame = observation.m_id;
-                views.m_object.m_map->m_observations.emplace(observation.m_id, observation);
-                views.m_object.m_map->m_poses.emplace(pose.m_frame, pose);
-                views.m_selection.m_frames.push_back(selected);
-            }
+            configure_v2_native_views(
+                views, static_cast<std::uint32_t>(K_WIDTH), static_cast<std::uint32_t>(K_HEIGHT));
         },
         2);
     const auto K_RESULT = fixture.inspect();

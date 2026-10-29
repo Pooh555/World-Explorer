@@ -637,3 +637,30 @@ TEST_CASE("receipt profiles reject aggregate declarations before any oversized p
     REQUIRE(!K_RESULT);
     CHECK(K_RESULT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
 }
+
+TEST_CASE("receipt caller allowance rejects the whole inventory before any payload access",
+          "[asset-receipt][receipt-budget]") {
+    const auto K_PROFILE = GENERATE(AssetReceiptProfile::SMALL_V1, AssetReceiptProfile::CAPTURE_V2);
+    ReceiptFixture fixture;
+    fixture.m_document["schema_version"] = static_cast<std::uint32_t>(K_PROFILE);
+    fixture.save();
+    auto selected = fixture.selection();
+    selected.m_profile = K_PROFILE;
+    const auto K_RECEIPT = read_asset_receipt(selected, fixture.m_context);
+    REQUIRE(K_RECEIPT);
+    std::size_t total {};
+    for (const auto& file : fixture.m_document["files"]) {
+        total += file.at("bytes").get<std::size_t>();
+    }
+    CHECK(K_RECEIPT->payload_bytes() == total);
+    selected.m_payload_budget = total;
+    CHECK(read_asset_receipt(selected, fixture.m_context));
+    std::filesystem::rename(fixture.m_root / "source/blobs", fixture.m_root / "source/withheld");
+    for (const auto K_LIMIT : { 0uz, total - 1uz }) {
+        selected.m_payload_budget = K_LIMIT;
+        const auto K_RESULT = read_asset_receipt(selected, fixture.m_context);
+        REQUIRE(!K_RESULT);
+        CHECK(K_RESULT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+    }
+    CHECK(K_RECEIPT->payload_bytes() == total);
+}

@@ -182,7 +182,7 @@ struct InspectionFixture {
     AdmittedAssetCorpus m_corpus;
 
     explicit InspectionFixture(AssetCorpusCaptureInput input)
-        : m_recipe_receipt(m_recipe.save()), m_input(std::move(input)), m_corpus(stage()) { }
+        : m_recipe_receipt(m_recipe.save()), m_input(std::move(input)), m_corpus(stage()) {}
 
     AdmittedAssetCorpus stage() {
         const auto& bytes = m_input.m_receipt;
@@ -293,6 +293,20 @@ struct InspectionFixture {
                                     { "receipt", inspection_receipt(m_recipe_receipt) },
                                     { "context", { { "world_epoch", 3 }, { "pose_revision", 5 } } } } }) } };
         return K_CORPUS;
+    }
+
+    void select_v2(std::size_t receipt_budget) {
+        m_request["schema_version"] = 2;
+        m_request["receipt_budget_bytes"] = receipt_budget;
+        auto& row = m_request["captures"][0uz];
+        row["receipt"]["schema_version"] = static_cast<std::uint32_t>(m_input.m_receipt.profile());
+        row["selection"]["schema_version"] =
+            m_input.m_selection.record().m_selection.m_schema_version;
+        if (m_input.m_protocol) {
+            row["protocol"]["schema_version"] = m_input.m_protocol->selection().m_schema_version;
+        }
+        m_request["recipes"][0uz]["receipt"]["schema_version"] =
+            static_cast<std::uint32_t>(m_recipe_receipt.profile());
     }
 
     std::filesystem::path request() const {

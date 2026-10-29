@@ -527,19 +527,26 @@ It addresses full-selection storage and RLE pixel accounting without changing v1
 limits or AP thresholds. Real byte storage and synthetic pose/mask evidence are
 separate; no real pose/capture/corpus, producer or A1 qualification is inferred.
 
-Next executable step: integrate the independently selected v2 receipt/capture/
-evaluation profiles into `src/application/corpus_inspection.cpp`, retaining strict
-v1 request compatibility and reserving aggregate receipt bytes before payload
-loading. Ordinary reconstruction-request/GUI selection remains open. Use the checked
-60-view selection and inference-only native stage under
-`artifacts/validation/a0-frozen-views-20261029` and the owned byte receipt under
-`artifacts/validation/a0-capture-storage-20261029`. Preserve all 48/12 views and
-held-out temporal blocks. Then prepare a fresh role-pinned baseline pose job with
-the existing qualified environment; never feed the whole clip to legacy selection.
-Actual native capture admission still requires new-source calibration/poses and
-independently localized evaluation cameras; declared eligibility masks still need
-real correspondence. Existing input-only journals and previous jobs must remain
-unchanged. No new profile substitutes for recipe/capture freeze.
+The [corpus request slice](validation/2026-10-29-corpus-v2.md) adds independently
+selected v2 native profiles to the shared inspection command, with complete
+inventory checks against remaining caller allowance before payload reads. V1
+requests, corpus identities/blockers and quality thresholds remain unchanged.
+Synthetic replay and deliberately incomplete actual-byte requests cannot supply
+real pose/capture/recipe qualification. A0/AP0 remain IN_PROGRESS.
+
+Next executable step: run the prepared fresh role-pinned baseline pose job with
+`.venv-worker/bin/python` (pycolmap4.2.1).
+Use the unchanged selection and inference-only native stage under
+`artifacts/validation/a0-frozen-views-20261029`; preserve all 48/12 views and
+held-out temporal blocks. The owned real byte receipt remains under
+`artifacts/validation/a0-capture-storage-20261029`. The separate prepared intent is
+`artifacts/sample_2_a0_20261029/request.json`; preparation has not launched a solver.
+Execute it with `python3 artifacts/validation/a0-corpus-v2-20261029/pose_attempt.py run`
+and retain any failed stage. No whole-video legacy request
+or reuse of the input-only journal is allowed. Actual native capture admission
+still requires new-source calibration/poses and independently localized evaluation
+cameras; eligibility masks need real correspondence. Ordinary reconstruction-
+request/GUI selection remains open. No new profile substitutes for recipe/capture freeze.
 In parallel, complete the
 compiler payload/source/advisory/terms and Torch/NVIDIA ABI reviews, bind remaining
 build tools and installed/build/staging/scratch ceilings, and prepare a concrete

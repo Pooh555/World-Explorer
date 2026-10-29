@@ -112,6 +112,16 @@ must account for simultaneously retained receipts, pose decoding and copies.
 Publication uses the same immutable manifest-last/retry/recovery rules and exact
 schema-2 bytes. Its returned selection retains the explicit profile; owner bytes
 remain schema 1 because their fields and operation identity are unchanged. Default
-v1 requests and existing corpus-inspection JSON remain v1. The
+v1 requests remain v1. [Corpus request v2](corpus_inspection.md#explicit-request-v2)
+now selects native versions independently. The
 [storage validation](../validation/2026-10-29-capture-storage.md) exercises the real
 60-image payload separately from synthetic pose/capture/evaluation evidence.
+
+
+The independent caller may lower `AssetReceiptSelection::m_payload_budget`;
+admission checks the entire inventory against the minimum of that allowance and
+the selected profile ceiling before payload reads. Zero allowance cannot admit a
+nonempty receipt. The default allowance leaves both original profiles unchanged;
+it never participates in receipt/owner bytes or operation identity. The admitted
+`payload_bytes()` is the exact deduplicated inventory sum. Publication preserves
+original bytes/profile; a reopening caller must supply its current allowance.

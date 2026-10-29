@@ -358,3 +358,145 @@ TEST_CASE("native corpus inspection CLI reports synthetic blockers refuses incom
     CHECK(checked(run_process({ WE_TEST_PROCESS, "inspect-corpus" }, {}, K_LOG)) == 2);
     CHECK(output.find("Usage:") != output.npos);
 }
+
+TEST_CASE("corpus v2 independently selects mixed profiles and reserves exact receipt totals",
+          "[corpus-inspection][corpus-v2]") {
+    CorpusFixture source;
+    InspectionFixture fixture(source.captures()[0uz]);
+    const auto K_TOTAL =
+        fixture.m_input.m_receipt.payload_bytes() + fixture.m_recipe_receipt.payload_bytes();
+    fixture.select_v2(K_TOTAL);
+    matches(fixture);
+    const auto K_RECIPE = fixture.m_recipe_receipt.source_directory();
+    std::filesystem::rename(K_RECIPE / "blobs", K_RECIPE / "withheld");
+    fixture.m_request["receipt_budget_bytes"] = K_TOTAL - 1uz;
+    const auto K_BEFORE = inspection_tree(K_RECIPE);
+    const auto K_RESULT = fixture.inspect();
+    REQUIRE(!K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+    CHECK(inspection_tree(K_RECIPE) == K_BEFORE);
+    std::filesystem::rename(K_RECIPE / "withheld", K_RECIPE / "blobs");
+    fixture.m_request["receipt_budget_bytes"] = K_TOTAL;
+    matches(fixture);
+    auto repeated = fixture.m_request["recipes"][0uz];
+    repeated["label"] = "second_import";
+    fixture.m_request["recipes"].push_back(repeated);
+    const auto K_REPEAT = fixture.inspect();
+    REQUIRE(!K_REPEAT);
+    CHECK(K_REPEAT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+}
+
+TEST_CASE("corpus v2 replays all twelve native grid evaluation views through API and CLI",
+          "[corpus-inspection][corpus-v2][corpus-cli]") {
+    evaluation_protocol_test::ProtocolFixture source(
+        {},
+        {},
+        {},
+        {},
+        [](SelectionFixture& views) {
+            evaluation_protocol_test::configure_v2_native_views(views, 3840, 2160);
+        },
+        2);
+    AssetCorpusCaptureInput input { "corner", source.m_capture, source.m_receipt, {} };
+    input.m_protocol = checked(source.inspect());
+    REQUIRE(input.m_protocol->masks().size() == 24uz);
+    InspectionFixture fixture(input);
+    fixture.select_v2(fixture.m_input.m_receipt.payload_bytes() +
+                      fixture.m_recipe_receipt.payload_bytes());
+    matches(fixture);
+    const auto K_SHA = fixture.save();
+    const auto K_BEFORE = inspection_tree(fixture.m_output.m_root);
+    std::string output;
+    const auto K_EXIT =
+        run_process({ WE_TEST_PROCESS, "inspect-corpus", fixture.request().string(), K_SHA },
+                    {},
+                    [&](const std::string& line) {
+                        output += line;
+                    });
+    INFO(output);
+    REQUIRE(K_EXIT);
+    CHECK(*K_EXIT == 0);
+    CHECK(output.find("Track: SYNTHETIC") != output.npos);
+    for (const auto& blocker : fixture.m_corpus.blockers()) {
+        CHECK(output.find(blocker.m_scope + ": " + blocker.m_code) != output.npos);
+    }
+    CHECK(inspection_tree(fixture.m_output.m_root) == K_BEFORE);
+}
+
+TEST_CASE(
+    "corpus v2 rejects missing foreign and malformed independently selected versions and limits",
+    "[corpus-inspection][corpus-v2]") {
+    const auto K_CASE = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+    evaluation_protocol_test::ProtocolFixture source(
+        {},
+        {},
+        {},
+        {},
+        [](SelectionFixture& views) {
+            evaluation_protocol_test::configure_v2_native_views(views, 3840, 2160);
+        },
+        2);
+    AssetCorpusCaptureInput input { "corner", source.m_capture, source.m_receipt, {} };
+    input.m_protocol = checked(source.inspect());
+    InspectionFixture fixture(input);
+    fixture.select_v2(1024uz * 1024uz);
+    auto& row = fixture.m_request["captures"][0uz];
+    switch (K_CASE) {
+    case 0:
+        fixture.m_request.erase("receipt_budget_bytes");
+        break;
+    case 1:
+        fixture.m_request["receipt_budget_bytes"] = 0;
+        break;
+    case 2:
+        fixture.m_request["receipt_budget_bytes"] = 1024uz * 1024uz * 1024uz + 1uz;
+        break;
+    case 3:
+        fixture.m_request["receipt_budget_bytes"] = true;
+        break;
+    case 4:
+        row["receipt"].erase("schema_version");
+        break;
+    case 5:
+        row["receipt"]["schema_version"] = 1;
+        break;
+    case 6:
+        row["receipt"]["schema_version"] = 3;
+        break;
+    case 7:
+        row["selection"].erase("schema_version");
+        break;
+    case 8:
+        row["selection"]["schema_version"] = 1;
+        break;
+    case 9:
+        row["selection"]["schema_version"] = 2.0;
+        break;
+    case 10:
+        row["protocol"].erase("schema_version");
+        break;
+    case 11:
+        row["protocol"]["schema_version"] = 1;
+        break;
+    case 12:
+        row["protocol"]["schema_version"] = std::numeric_limits<std::uint64_t>::max();
+        break;
+    case 13:
+        fixture.m_request["recipes"][0uz]["receipt"].erase("schema_version");
+        break;
+    case 14:
+        fixture.m_request["schema_version"] = 1;
+        break;
+    case 15:
+        fixture.m_request["receipt_budget_bytes"] = -1;
+        break;
+    case 16:
+        fixture.m_request["receipt_budget_bytes"] = 1.0;
+        break;
+    default:
+        throw std::logic_error("Invalid generated test case");
+    }
+    const auto K_BEFORE = inspection_tree(fixture.m_output.m_root / "capture");
+    CHECK(!fixture.inspect());
+    CHECK(inspection_tree(fixture.m_output.m_root / "capture") == K_BEFORE);
+}

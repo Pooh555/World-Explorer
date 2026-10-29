@@ -1,5 +1,7 @@
 # Validation index
 
+- [29 October: corpus request v2 and receipt reservation](2026-10-29-corpus-v2.md) — explicit independent native versions, inventory-first aggregate admission, strict v1 compatibility and shared API/CLI replay; no real capture/corpus/recipe qualification.
+
 - [29 October: explicit capture storage and mask accounting](2026-10-29-capture-storage.md) — bounded v2 receipt/capture profiles, shared immutable image ownership and full native-grid evaluation accounting; real 60-image byte validation and synthetic contract evidence stay separate.
 
 - [29 October: frozen inference input producer/consumers](2026-10-29-frozen-view-inputs.md) — immutable inference-only PNG preparation, native role/inventory checks, independently pinned bounded pose-input connection; all 60 source views retained, no solver/fit or A1 qualification.

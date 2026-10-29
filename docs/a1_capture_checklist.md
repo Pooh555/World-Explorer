@@ -117,8 +117,10 @@ separate; no source solve or completed asset is implied by intake.
 
 The [29 October native-view check](validation/2026-10-29-sample2-native-views.md)
 materializes all 48 inference and 12 held-out candidates without spatial resizing.
-Their 564,064,383 PNG bytes exceed the current aggregate capture/receipt bounds;
-the complete projected native evaluation masks also exceed their pixel budget.
+Their 564,064,383 PNG bytes and complete projected evaluation masks exceed v1
+aggregate bounds. [Explicit v2 storage/accounting](validation/2026-10-29-capture-storage.md)
+retains the full selection under separate limits; it does not establish real
+pose/capture or evaluation-mask correspondence.
 These local view files are preparation evidence, not admitted capture inputs or
 an A1 reconstruction. Preserve the frozen roles and all selected views while
 resolving producer/ownership resources; do not reduce the checklist or gate scope
@@ -128,4 +130,6 @@ The [frozen-view input check](validation/2026-10-29-frozen-view-inputs.md) now
 prepares an immutable inference-only stage and connects it to native replay/batch
 input admission with the original selection pin. All excluded views remain
 outside solver inputs. Owned asset-capture and full evaluation-mask resource
-handling still need resolution; no new-source pose or asset result is implied.
+handling is available through explicit [request v2](protocols/corpus_inspection.md#explicit-request-v2).
+Real pose/capture/corpus/recipe qualification remains open; [progress](progress.md)
+records the current baseline attempt and next action. No asset result is implied.

@@ -116,5 +116,6 @@ The [validation](../validation/2026-10-29-capture-storage.md) admits synthetic
 12-view 3840×2160 partitions (24 masks, 199,065,600 pixels), checks aggregate
 refusal and owned publication/reopen. These are synthetic declared surfaces,
 not real eligibility/provenance masks. Native sample_2 storage observation alone
-supplies neither pose/calibration nor measured mask correspondence. Existing
-corpus-inspection JSON remains v1; no real corpus/recipe or AP gate is qualified.
+supplies neither pose/calibration nor measured mask correspondence. [Corpus request v2](corpus_inspection.md#explicit-request-v2) selects native
+versions explicitly, while request v1 remains unchanged. No real corpus/recipe
+or AP gate is qualified.

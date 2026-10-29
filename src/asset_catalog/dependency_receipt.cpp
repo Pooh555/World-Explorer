@@ -6,6 +6,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <map>
 #include <new>
 #include <set>
@@ -185,6 +186,7 @@ struct Blob {
 
 struct AdmittedAssetReceipt::Implementation {
     AssetReceiptProfile m_profile { AssetReceiptProfile::SMALL_V1 };
+    std::size_t m_payload_bytes {};
     AssetDependencyGraph m_graph;
     OperationId m_operation;
     std::filesystem::path m_source;
@@ -233,6 +235,10 @@ OperationId AdmittedAssetReceipt::operation() const {
 
 std::size_t AdmittedAssetReceipt::file_count() const {
     return m_state->m_blobs.size();
+}
+
+std::size_t AdmittedAssetReceipt::payload_bytes() const {
+    return m_state->m_payload_bytes;
 }
 
 AssetReceiptProfile AdmittedAssetReceipt::profile() const {
@@ -290,9 +296,10 @@ Result<AdmittedAssetReceipt> read_asset_receipt(const AssetReceiptSelection& sel
                     selection.m_profile == AssetReceiptProfile::CAPTURE_V2,
                 ErrorCode::INVALID_ARGUMENT,
                 "Unknown asset receipt storage profile");
-        const auto K_TOTAL = selection.m_profile == AssetReceiptProfile::SMALL_V1
-                                 ? K_TOTAL_LIMIT
-                                 : 768uz * 1024uz * 1024uz;
+        const auto K_PROFILE_TOTAL = selection.m_profile == AssetReceiptProfile::SMALL_V1
+                                         ? K_TOTAL_LIMIT
+                                         : 768uz * 1024uz * 1024uz;
+        const auto K_TOTAL = std::min(K_PROFILE_TOTAL, selection.m_payload_budget);
         regular_directory(selection.m_directory);
         auto state = std::make_shared<AdmittedAssetReceipt::Implementation>();
         state->m_profile = selection.m_profile;
@@ -351,6 +358,7 @@ Result<AdmittedAssetReceipt> read_asset_receipt(const AssetReceiptSelection& sel
                     "Invalid or duplicate asset receipt file");
             total += static_cast<std::size_t>(K_BYTES);
         }
+        state->m_payload_bytes = total;
         regular_directory(state->m_source / "blobs");
         for (const auto& [K_SHA, K_BYTES] : inventory) {
             check_stop(stop);
