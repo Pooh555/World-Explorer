@@ -1,13 +1,17 @@
 #include "world_explorer/asset_catalog/dependency_receipt.hpp"
 #include "world_explorer/asset_catalog/manual_actions.hpp"
+#include "world_explorer/core/hash.hpp"
 #include "world_explorer/core/immutable_records.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <cstdlib>
+#include <exception>
 #include <iostream>
 #include <span>
 #include <string_view>
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) try {
     using namespace world_explorer;
     if (argc != 5) {
         return 64;
@@ -33,7 +37,10 @@ int main(int argc, char** argv) {
         return K_RESULT ? 0 : 2;
     }
     const AssetDependencyContext K_CONTEXT { { 3 }, { 5 } };
-    const auto K_RECEIPT = read_asset_receipt({ argv[1], argv[2] }, K_CONTEXT);
+    const auto K_V2 = std::string_view(argv[4]) == "capture-v2";
+    const auto K_RECEIPT = read_asset_receipt(
+        { argv[1], argv[2], K_V2 ? AssetReceiptProfile::CAPTURE_V2 : AssetReceiptProfile::SMALL_V1 },
+        K_CONTEXT);
     if (!K_RECEIPT) {
         std::cerr << K_RECEIPT.error().m_message << '\n';
         return 2;
@@ -64,6 +71,33 @@ int main(int argc, char** argv) {
         std::cerr << K_RESULT.error().m_message << '\n';
         return 2;
     }
-    std::cout << K_RECEIPT->receipt_sha256() << '\n';
+    if (K_V2) {
+        auto products = nlohmann::json::array();
+        std::size_t total {};
+        for (const auto& node : K_RECEIPT->graph().m_products) {
+            const auto K_BLOB =
+                K_RECEIPT->share_blob(node.m_product.m_content_sha256, 16uz * 1024uz * 1024uz);
+            if (!K_BLOB || sha256(*K_BLOB) != node.m_product.m_content_sha256) {
+                return 2;
+            }
+            total += K_BLOB->size();
+            products.push_back({ { "product_id", node.m_product.m_product.m_value },
+                                { "sha256", sha256(*K_BLOB) },
+                                { "bytes", K_BLOB->size() } });
+        }
+        std::cout << nlohmann::json { { "receipt_sha256", K_RECEIPT->receipt_sha256() },
+                                     { "profile", 2 },
+                                     { "product_bytes", total },
+                                     { "products", products } }
+                         .dump()
+                  << '\n';
+    } else {
+        std::cout << K_RECEIPT->receipt_sha256() << '\n';
+    }
     return 0;
+} catch (const std::exception& error) {
+    std::cerr << error.what() << '\n';
+    return 2;
+} catch (...) {
+    return 2;
 }

@@ -43,20 +43,23 @@ struct ProtocolFixture {
                              const MaskMutation& mask = {},
                              const GraphMutation& graph = {},
                              const ByteMutation& bytes = {},
-                             const PathsFixture::CaptureMutation& native = {})
-        : m_base({}, {}, {}, native), m_receipt(stage(change, mask, graph, bytes)),
-          m_capture(checked(m_base.m_views.inspect(m_receipt, false))) { }
+                             const PathsFixture::CaptureMutation& native = {},
+                             std::uint32_t schema_version = 1)
+        : m_base({}, {}, {}, native), m_receipt(stage(change, mask, graph, bytes, schema_version)),
+          m_capture(checked(m_base.m_views.inspect(m_receipt, false))) {}
 
     AdmittedAssetReceipt stage(const Mutation& change,
                                const MaskMutation& mask,
                                const GraphMutation& graph,
-                               const ByteMutation& bytes) {
+                               const ByteMutation& bytes,
+                               std::uint32_t schema_version) {
+        m_selected.m_schema_version = schema_version;
         auto& region = m_base.m_views.m_object.m_region;
         const std::string K_RECIPE {
             "synthetic evaluation protocol/mask/config import; never inference" };
         region.m_data[hash(K_RECIPE)] = K_RECIPE;
         const auto K_HEADER = [&] {
-            return Json { { "schema_version", 1 },
+            return Json { { "schema_version", schema_version },
                          { "world_epoch", 3 },
                          { "pose_revision", 5 },
                          { "recipe_sha256", hash(K_RECIPE) },

@@ -26,7 +26,7 @@ struct ReceiptFailure : std::runtime_error {
     ErrorCode m_code;
 
     ReceiptFailure(ErrorCode code, const std::string& message)
-        : std::runtime_error(message), m_code(code) { }
+        : std::runtime_error(message), m_code(code) {}
 };
 
 void require(bool condition, ErrorCode code, const std::string& message) {
@@ -178,12 +178,13 @@ bool overlaps(const std::filesystem::path& first, const std::filesystem::path& s
 
 struct Blob {
     std::string m_sha256;
-    std::vector<std::byte> m_bytes;
+    std::shared_ptr<const std::vector<std::byte>> m_bytes;
 };
 
 }  // namespace
 
 struct AdmittedAssetReceipt::Implementation {
+    AssetReceiptProfile m_profile { AssetReceiptProfile::SMALL_V1 };
     AssetDependencyGraph m_graph;
     OperationId m_operation;
     std::filesystem::path m_source;
@@ -192,8 +193,27 @@ struct AdmittedAssetReceipt::Implementation {
     std::map<std::string, Blob> m_blobs;
 };
 
+AdmittedAssetBlob::AdmittedAssetBlob(std::shared_ptr<const std::vector<std::byte>> bytes)
+    : m_bytes(std::move(bytes)) {}
+
+std::span<const std::byte> AdmittedAssetBlob::bytes() const {
+    return *m_bytes;
+}
+
+const std::byte* AdmittedAssetBlob::data() const {
+    return m_bytes->data();
+}
+
+std::size_t AdmittedAssetBlob::size() const {
+    return m_bytes->size();
+}
+
+bool AdmittedAssetBlob::empty() const {
+    return m_bytes->empty();
+}
+
 AdmittedAssetReceipt::AdmittedAssetReceipt(std::shared_ptr<const Implementation> state)
-    : m_state(std::move(state)) { }
+    : m_state(std::move(state)) {}
 
 const AssetDependencyGraph& AdmittedAssetReceipt::graph() const {
     return m_state->m_graph;
@@ -215,9 +235,13 @@ std::size_t AdmittedAssetReceipt::file_count() const {
     return m_state->m_blobs.size();
 }
 
-Result<std::vector<std::byte>> AdmittedAssetReceipt::copy_blob(const std::string& digest,
-                                                               std::size_t max_bytes,
-                                                               const std::stop_token& stop) const {
+AssetReceiptProfile AdmittedAssetReceipt::profile() const {
+    return m_state->m_profile;
+}
+
+Result<AdmittedAssetBlob> AdmittedAssetReceipt::share_blob(const std::string& digest,
+                                                           std::size_t max_bytes,
+                                                           const std::stop_token& stop) const {
     try {
         check_stop(stop);
         require(digest_valid(digest) && max_bytes > 0uz && max_bytes <= K_FILE_LIMIT,
@@ -226,12 +250,26 @@ Result<std::vector<std::byte>> AdmittedAssetReceipt::copy_blob(const std::string
         const auto K_FOUND = m_state->m_blobs.find(digest);
         require(
             K_FOUND != m_state->m_blobs.end(), ErrorCode::NOT_FOUND, "Unknown admitted asset blob");
-        require(K_FOUND->second.m_bytes.size() <= max_bytes,
+        require(K_FOUND->second.m_bytes->size() <= max_bytes,
                 ErrorCode::RESOURCE_EXHAUSTED,
                 "Admitted asset blob exceeds copy budget");
-        return K_FOUND->second.m_bytes;
+        return AdmittedAssetBlob(K_FOUND->second.m_bytes);
     } catch (const ReceiptFailure& error) {
         return fail(error.m_code, error.what());
+    } catch (const std::bad_alloc&) {
+        return fail(ErrorCode::RESOURCE_EXHAUSTED, "Admitted asset blob copy allocation failed");
+    }
+}
+
+Result<std::vector<std::byte>> AdmittedAssetReceipt::copy_blob(const std::string& digest,
+                                                               std::size_t max_bytes,
+                                                               const std::stop_token& stop) const {
+    const auto K_BLOB = share_blob(digest, max_bytes, stop);
+    if (!K_BLOB) {
+        return std::unexpected(K_BLOB.error());
+    }
+    try {
+        return std::vector<std::byte>(K_BLOB->begin(), K_BLOB->end());
     } catch (const std::bad_alloc&) {
         return fail(ErrorCode::RESOURCE_EXHAUSTED, "Admitted asset blob copy allocation failed");
     }
@@ -248,8 +286,16 @@ Result<AdmittedAssetReceipt> read_asset_receipt(const AssetReceiptSelection& sel
         require(expected.m_pose_revision.m_value != 0,
                 ErrorCode::INVALID_ARGUMENT,
                 "Expected asset pose is unselected");
+        require(selection.m_profile == AssetReceiptProfile::SMALL_V1 ||
+                    selection.m_profile == AssetReceiptProfile::CAPTURE_V2,
+                ErrorCode::INVALID_ARGUMENT,
+                "Unknown asset receipt storage profile");
+        const auto K_TOTAL = selection.m_profile == AssetReceiptProfile::SMALL_V1
+                                 ? K_TOTAL_LIMIT
+                                 : 768uz * 1024uz * 1024uz;
         regular_directory(selection.m_directory);
         auto state = std::make_shared<AdmittedAssetReceipt::Implementation>();
+        state->m_profile = selection.m_profile;
         state->m_source = std::filesystem::canonical(selection.m_directory);
         state->m_document =
             take(asset_files::read_bytes(state->m_source / "receipt.json", K_MANIFEST_LIMIT, stop));
@@ -259,7 +305,8 @@ Result<AdmittedAssetReceipt> read_asset_receipt(const AssetReceiptSelection& sel
                 "Asset receipt selection hash mismatch");
         const auto K_VALUE = parse(state->m_document);
         keys(K_VALUE, { "schema_version", "operation_id", "graph_sha256", "graph", "files" });
-        require(integer(K_VALUE.at("schema_version")) == 1,
+        require(integer(K_VALUE.at("schema_version")) ==
+                    static_cast<std::uint64_t>(selection.m_profile),
                 ErrorCode::UNSUPPORTED_OPERATION,
                 "Unsupported asset receipt schema");
         state->m_operation = { integer(K_VALUE.at("operation_id")) };
@@ -294,7 +341,7 @@ Result<AdmittedAssetReceipt> read_asset_receipt(const AssetReceiptSelection& sel
             keys(file, { "file", "sha256", "bytes" });
             const auto K_SHA = digest(file.at("sha256"));
             const auto K_BYTES = integer(file.at("bytes"));
-            require(K_BYTES <= K_FILE_LIMIT && K_BYTES <= K_TOTAL_LIMIT - total,
+            require(K_BYTES <= K_FILE_LIMIT && K_BYTES <= K_TOTAL - total,
                     ErrorCode::RESOURCE_EXHAUSTED,
                     "Asset receipt byte budget exceeded");
             require(required.contains(K_SHA) &&
@@ -312,7 +359,9 @@ Result<AdmittedAssetReceipt> read_asset_receipt(const AssetReceiptSelection& sel
             require(bytes.size() == K_BYTES && sha256(bytes) == K_SHA,
                     ErrorCode::INVALID_DATA,
                     "Asset receipt blob size/hash mismatch");
-            state->m_blobs.emplace(K_SHA, Blob { K_SHA, std::move(bytes) });
+            state->m_blobs.emplace(
+                K_SHA,
+                Blob { K_SHA, std::make_shared<const std::vector<std::byte>>(std::move(bytes)) });
         }
         // Detect a changed selection while the independently hashed blobs loaded.
         const auto K_AGAIN =
@@ -352,7 +401,7 @@ publish_asset_receipt(const AdmittedAssetReceipt& receipt,
                 ErrorCode::INVALID_ARGUMENT,
                 "Asset receipt output overlaps source");
         regular_directory(K_ROOT.parent_path());
-        AssetReceiptSelection result { K_ROOT, receipt.m_state->m_sha256 };
+        AssetReceiptSelection result { K_ROOT, receipt.m_state->m_sha256, receipt.profile() };
         const Json K_OWNER { { "schema_version", 1 },
                             { "role", "asset_dependency_receipt" },
                             { "operation_id", receipt.operation().m_value },
@@ -403,8 +452,8 @@ publish_asset_receipt(const AdmittedAssetReceipt& receipt,
                             ErrorCode::INVALID_DATA,
                             "Foreign asset receipt blob");
                     const auto K_BYTES = take(asset_files::read_bytes(
-                        entry.path(), K_FOUND->second.m_bytes.size(), stop));
-                    require(K_BYTES == K_FOUND->second.m_bytes,
+                        entry.path(), K_FOUND->second.m_bytes->size(), stop));
+                    require(K_BYTES == *K_FOUND->second.m_bytes,
                             ErrorCode::INVALID_DATA,
                             "Corrupt asset receipt blob; never overwrite");
                 }
@@ -441,11 +490,11 @@ publish_asset_receipt(const AdmittedAssetReceipt& receipt,
             check_stop(stop);
             const auto K_PATH = K_ROOT / "blobs" / (K_SHA + ".bin");
             if (!entry_exists(K_PATH)) {
-                take(asset_files::publish_asset(K_PATH, K_BLOB.m_bytes, stop));
+                take(asset_files::publish_asset(K_PATH, *K_BLOB.m_bytes, stop));
             } else {
                 const auto K_BYTES =
-                    take(asset_files::read_bytes(K_PATH, K_BLOB.m_bytes.size(), stop));
-                require(K_BYTES == K_BLOB.m_bytes,
+                    take(asset_files::read_bytes(K_PATH, K_BLOB.m_bytes->size(), stop));
+                require(K_BYTES == *K_BLOB.m_bytes,
                         ErrorCode::INVALID_DATA,
                         "Changed asset receipt blob");
             }

@@ -560,3 +560,80 @@ TEST_CASE("asset receipt cancellation context changes and writer exclusion stop 
         REQUIRE(publish_asset_receipt(*K_ADMITTED, K_OUTPUT, fixture.m_context));
     }
 }
+
+TEST_CASE("capture receipt profile requires an independent version pin and bounds declarations",
+          "[asset-receipt][capture-v2]") {
+    ReceiptFixture fixture;
+    fixture.m_document["schema_version"] = 2;
+    fixture.save();
+    auto selected = fixture.selection();
+    CHECK(!read_asset_receipt(selected, fixture.m_context));
+    selected.m_profile = AssetReceiptProfile::CAPTURE_V2;
+    const auto K_RECEIPT = read_asset_receipt(selected, fixture.m_context);
+    REQUIRE(K_RECEIPT);
+    CHECK(K_RECEIPT->profile() == AssetReceiptProfile::CAPTURE_V2);
+    const auto K_HASH = fixture.m_graph.m_products[0uz].m_product.m_content_sha256;
+    const auto K_SHARED = K_RECEIPT->share_blob(K_HASH, 1024uz);
+    REQUIRE(K_SHARED);
+    CHECK(K_SHARED->data() == K_RECEIPT->share_blob(K_HASH, 1024uz)->data());
+    CHECK(sha256(*K_SHARED) == K_HASH);
+    CHECK(!K_RECEIPT->share_blob(K_HASH, 1uz));
+    CHECK(!K_RECEIPT->share_blob(hash_text("unknown"), 1024uz));
+    std::stop_source stop;
+    stop.request_stop();
+    CHECK(!K_RECEIPT->share_blob(K_HASH, 1024uz, stop.get_token()));
+    const auto K_OUTPUT =
+        publish_asset_receipt(*K_RECEIPT, fixture.m_root / "v2", fixture.m_context);
+    REQUIRE(K_OUTPUT);
+    CHECK(K_OUTPUT->m_profile == AssetReceiptProfile::CAPTURE_V2);
+    CHECK(read_asset_receipt(*K_OUTPUT, fixture.m_context));
+    CHECK(publish_asset_receipt(*K_RECEIPT, fixture.m_root / "v2", fixture.m_context));
+    fixture.m_document["files"][0uz]["bytes"] = 16uz * 1024uz * 1024uz + 1uz;
+    fixture.save();
+    selected.m_receipt_sha256 = fixture.selection().m_receipt_sha256;
+    const auto K_BAD = read_asset_receipt(selected, fixture.m_context);
+    REQUIRE(!K_BAD);
+    CHECK(K_BAD.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+}
+
+TEST_CASE("shared receipt blob owns only its immutable bytes after source and receipt destruction",
+          "[asset-receipt][capture-v2]") {
+    const auto K_BLOB = [] {
+        ReceiptFixture fixture;
+        const auto K_RECEIPT = read_asset_receipt(fixture.selection(), fixture.m_context);
+        REQUIRE(K_RECEIPT);
+        const auto K_SHARED = K_RECEIPT->share_blob(
+            fixture.m_graph.m_products[0uz].m_product.m_content_sha256, 1024uz);
+        REQUIRE(K_SHARED);
+        write(fixture.m_root / "source/blobs" /
+                  (fixture.m_graph.m_products[0uz].m_product.m_content_sha256 + ".bin"),
+              "changed");
+        return *K_SHARED;
+    }();
+    CHECK(sha256(K_BLOB) == hash_text("synthetic source bytes"));
+}
+
+TEST_CASE("receipt profiles reject aggregate declarations before any oversized payload read",
+          "[asset-receipt][capture-v2]") {
+    const auto K_PROFILE = GENERATE(AssetReceiptProfile::SMALL_V1, AssetReceiptProfile::CAPTURE_V2);
+    ReceiptFixture fixture;
+    for (std::size_t index { 0uz }; index < 49uz; ++index) {
+        const auto K_HASH = fixture.add("synthetic aggregate declaration " + std::to_string(index));
+        fixture.m_graph.m_products.push_back({ { { 100uz + index }, 1, K_HASH },
+                                              {},
+                                              fixture.m_graph.m_products[0uz].m_recipe_sha256,
+                                              {},
+                                              false });
+    }
+    fixture.document();
+    fixture.m_document["schema_version"] = static_cast<std::uint32_t>(K_PROFILE);
+    for (auto& file : fixture.m_document["files"]) {
+        file["bytes"] = 16uz * 1024uz * 1024uz;
+    }
+    fixture.save();
+    auto selected = fixture.selection();
+    selected.m_profile = K_PROFILE;
+    const auto K_RESULT = read_asset_receipt(selected, fixture.m_context);
+    REQUIRE(!K_RESULT);
+    CHECK(K_RESULT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+}

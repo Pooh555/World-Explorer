@@ -122,3 +122,27 @@ original receipt/annotation inputs. It is not an execution token or a trusted
 sealed-corpus/measurement/rights journal. The [validation](../validation/2026-10-24-capture-selections.md)
 retains synthetic isolation checks and a refusal of an incomplete selection over
 real retained pose-fit inputs.
+
+## Explicit native-image profile v2
+
+`CaptureSelection::m_schema_version` defaults to 1. Independent selection of 2
+requires matching manifest schema 2 and an explicitly admitted CAPTURE_V2 receipt.
+All identity, source/pose, dependency/role firewall, annotation, pose and count
+checks remain identical. Image ceilings are **16 MiB/image**, **512 MiB inference**
+and **128 MiB evaluation**, counting every selected frame even if bytes repeat.
+Version 1 keeps its 32 MiB/group ceilings. These storage limits change no AP or
+corpus scope/threshold; complete annotation pixels retain their existing bounds.
+
+`CaptureFrameInputs::m_image` is now an `AdmittedAssetBlob` for both versions. It
+provides `bytes()` and a const contiguous range, size and data access; copying a
+frame retains only that image's immutable allocation. Receipt admission owns each
+blob once, and capture/inference/evaluation handles share selected image storage
+without copying the entire receipt or retaining other roles' images. Full pose
+assets remain coordinator internals; inference still owns only decoded selected
+camera values. Source removal cannot invalidate owned image bytes.
+
+Publication preserves exact selected schema/bytes and existing semantic revision
+conflicts/recovery. Existing corpus-inspection JSON independently selects v1;
+v2 support there and real pose/capture admission remain pending. The
+[validation](../validation/2026-10-29-capture-storage.md) distinguishes actual
+60-image storage from synthetic capture and role-budget checks.

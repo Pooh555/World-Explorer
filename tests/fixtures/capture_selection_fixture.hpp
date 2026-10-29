@@ -130,7 +130,7 @@ struct SelectionFixture {
                 }
             }
         }
-        m_record = { { "schema_version", 1 },
+        m_record = { { "schema_version", m_selection.m_schema_version },
                     { "selection_id", 81 },
                     { "revision", m_selection.m_revision },
                     { "world_epoch", 3 },

@@ -99,3 +99,22 @@ worker execution or scene/map transaction is added.
 this exact handle for present protocol refs. Sampling realization, implementation,
 rendering, correspondence, lighting novelty, review and freeze timing remain open;
 protocol admission cannot supply a score, an execution token or an AP pass.
+
+## Explicit full native-grid accounting v2
+
+`EvaluationProtocolSelection::m_schema_version` defaults to 1. Selecting 2 requires
+root **and every mask** schema 2, admitted receipt CAPTURE_V2 and capture schema 2.
+All exact fields, both complete tracks, native grid/view binding, eligibility,
+dependency isolation, sampling/metrics/lights/review requirements and byte/run
+limits remain unchanged. Aggregate pixels are bounded at **256 Mi pixels** for
+schema 2; schema 1 retains **64 Mi pixels**. Per-mask pixels remain **16 Mi** and
+the view limit remains 16. This is RLE declaration accounting with no per-pixel
+allocation or sampler/metric implementation. It preserves every view, track and
+excluded pixel; no AP threshold or evaluation denominator changes.
+
+The [validation](../validation/2026-10-29-capture-storage.md) admits synthetic
+12-view 3840×2160 partitions (24 masks, 199,065,600 pixels), checks aggregate
+refusal and owned publication/reopen. These are synthetic declared surfaces,
+not real eligibility/provenance masks. Native sample_2 storage observation alone
+supplies neither pose/calibration nor measured mask correspondence. Existing
+corpus-inspection JSON remains v1; no real corpus/recipe or AP gate is qualified.

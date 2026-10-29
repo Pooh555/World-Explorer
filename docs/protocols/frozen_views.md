@@ -79,7 +79,10 @@ A source hash binds caller-selected image declarations to the named video; this
 producer does not independently re-decode it to prove pixel/PTS correspondence.
 The [real validation](../validation/2026-10-29-frozen-view-inputs.md) instead uses
 the independently checked source/PNG correspondence from the preceding intake.
-The current 4K set still exceeds owned asset-capture/receipt and full evaluation
-mask budgets. Preparation and pose-input verification do not clear those gates,
+The current 4K set exceeds v1 owned asset-capture/receipt and full evaluation
+mask budgets. [Explicit v2 storage](asset_receipts.md#explicit-capture-storage-profile-v2)
+and [mask accounting](evaluation_protocol.md#explicit-full-native-grid-accounting-v2)
+now exist; this preparation path does not select or admit those profiles.
+Preparation and pose-input verification do not clear capture/corpus/recipe gates,
 invent metric scale, enable walking or qualify A1. Filesystem checks assume
 cooperating local writers, without hostile-mutation or power-loss guarantees.

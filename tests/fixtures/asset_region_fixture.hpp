@@ -33,6 +33,7 @@ struct RegionFixture {
     AssetDependencyGraph m_graph { 1, { { 3 }, { 5 } }, {} };
     AssetRegionSelection m_selection;
     Json m_record;
+    AssetReceiptProfile m_receipt_profile { AssetReceiptProfile::SMALL_V1 };
     std::map<std::string, std::string> m_data;
 
     AssetDependencyNode node(std::uint64_t id, const std::string& bytes) {
@@ -150,7 +151,7 @@ struct RegionFixture {
             files.push_back(
                 { { "file", "blobs/" + sha + ".bin" }, { "sha256", sha }, { "bytes", bytes.size() } });
         }
-        const Json K_DOCUMENT { { "schema_version", 1 },
+        const Json K_DOCUMENT { { "schema_version", static_cast<std::uint32_t>(m_receipt_profile) },
                                { "operation_id", 1 },
                                { "graph_sha256", K_GRAPH->m_graph_sha256 },
                                { "graph",
@@ -161,8 +162,8 @@ struct RegionFixture {
                                { "files", files } };
         const auto K_RAW = K_DOCUMENT.dump();
         write(m_directory.m_root / "receipt.json", K_RAW);
-        const auto K_RECEIPT =
-            read_asset_receipt({ m_directory.m_root, hash(K_RAW) }, m_graph.m_context);
+        const auto K_RECEIPT = read_asset_receipt(
+            { m_directory.m_root, hash(K_RAW), m_receipt_profile }, m_graph.m_context);
         REQUIRE(K_RECEIPT);
         return *K_RECEIPT;
     }

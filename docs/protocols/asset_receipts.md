@@ -87,3 +87,31 @@ staging. Unexpected leftover staging entries are preserved/refused; inspect them
 or choose a fresh output directory. Locks coordinate cooperating writers; path
 checks do not promise protection against hostile concurrent directory mutation.
 Only the recorded local Linux profiles are verified.
+
+## Explicit capture storage profile v2
+
+`AssetReceiptSelection::m_profile` defaults to SMALL_V1. CAPTURE_V2 independently
+selects **receipt schema 2**, with the same exact fields, graph, inventory/path,
+per-file, count and parser limits, and a **768 MiB aggregate** payload ceiling.
+The selected profile must equal the encoded version; neither a manifest nor a
+large declaration upgrades a v1 request. Declaration totals are checked before
+payload reads. This is an additive storage profile for native capture images;
+checkpoint files above 16 MiB still require the separate external MODEL path.
+It changes no quality, coverage, corpus or worker-budget threshold.
+
+Each blob now has privately shared immutable ownership. `share_blob(hash, cap)`
+returns an `AdmittedAssetBlob` owning exactly that blob, with a const contiguous
+byte range; it retains no receipt, graph, other blobs, paths or evaluation table.
+`copy_blob` still returns an independent mutable copy under its existing cap.
+Both enforce digest, presence, cancellation and requested/per-file bounds. A blob
+survives receipt/source destruction and subsequent source edits. Admission still
+reads/hashes one complete file at a time and retains the whole admitted payload
+in memory; this is **not disk-backed or a process-tree memory limit**. Callers
+must account for simultaneously retained receipts, pose decoding and copies.
+
+Publication uses the same immutable manifest-last/retry/recovery rules and exact
+schema-2 bytes. Its returned selection retains the explicit profile; owner bytes
+remain schema 1 because their fields and operation identity are unchanged. Default
+v1 requests and existing corpus-inspection JSON remain v1. The
+[storage validation](../validation/2026-10-29-capture-storage.md) exercises the real
+60-image payload separately from synthetic pose/capture/evaluation evidence.

@@ -47,8 +47,9 @@ const AssetDependencyNode& bind(const AssetRevisionRef& ref, const AdmittedAsset
 void header(const Json& value,
             const AssetDependencyNode& node,
             const AdmittedCaptureSelection& capture,
-            const AssetDependencyContext& expected) {
-    require(integer(value.at("schema_version")) == 1,
+            const AssetDependencyContext& expected,
+            std::uint32_t schema_version) {
+    require(integer(value.at("schema_version")) == schema_version,
             "Unsupported evaluation-protocol schema",
             ErrorCode::UNSUPPORTED_OPERATION);
     require(integer(value.at("world_epoch")) == expected.m_world_epoch.m_value &&
@@ -107,7 +108,7 @@ struct AdmittedEvaluationProtocol::Implementation {
 };
 
 AdmittedEvaluationProtocol::AdmittedEvaluationProtocol(std::shared_ptr<const Implementation> state)
-    : m_state(std::move(state)) { }
+    : m_state(std::move(state)) {}
 
 const EvaluationProtocolSelection& AdmittedEvaluationProtocol::selection() const {
     return m_state->m_selection;
@@ -145,6 +146,14 @@ inspect_evaluation_protocol(const EvaluationProtocolSelection& selected,
                             const std::stop_token& stop) {
     try {
         check_stop(stop);
+        require(selected.m_schema_version == 1 || selected.m_schema_version == 2,
+                "Unsupported evaluation-protocol schema",
+                ErrorCode::UNSUPPORTED_OPERATION);
+        require(selected.m_schema_version != 2 ||
+                    (receipt.profile() == AssetReceiptProfile::CAPTURE_V2 &&
+                     capture.record().m_selection.m_schema_version == 2),
+                "Evaluation v2 requires selected receipt/capture v2 profiles",
+                ErrorCode::INVALID_ARGUMENT);
         const auto K_GRAPH = validate_asset_dependencies(receipt.graph(), expected, stop);
         if (!K_GRAPH) {
             return std::unexpected(K_GRAPH.error());
@@ -200,7 +209,7 @@ inspect_evaluation_protocol(const EvaluationProtocolSelection& selected,
               "artifacts",
               "masks",
               "lights" });
-        header(K_DOC, node, capture, expected);
+        header(K_DOC, node, capture, expected, selected.m_schema_version);
         fixed_metrics(K_DOC.at("metrics"));
         const auto& sampling = K_DOC.at("sampling");
         keys(
@@ -358,7 +367,7 @@ inspect_evaluation_protocol(const EvaluationProtocolSelection& selected,
                       "width",
                       "height",
                       "runs" });
-                header(K_MASK, mask_node, capture, expected);
+                header(K_MASK, mask_node, capture, expected, selected.m_schema_version);
                 require(view(K_MASK.at("view")) == pin.m_view &&
                             named<EvaluationTrack>(K_MASK.at("track"), K_TRACKS) == track &&
                             integer(K_MASK.at("width")) == frame.m_inputs.m_calibration.m_width &&
@@ -368,8 +377,10 @@ inspect_evaluation_protocol(const EvaluationProtocolSelection& selected,
                 const auto K_PIXELS =
                     static_cast<std::uint64_t>(frame.m_inputs.m_calibration.m_width) *
                     frame.m_inputs.m_calibration.m_height;
+                const auto K_PIXEL_LIMIT = selected.m_schema_version == 1 ? 64uz * 1024uz * 1024uz
+                                                                          : 256uz * 1024uz * 1024uz;
                 require(K_PIXELS && K_PIXELS <= 16uz * 1024uz * 1024uz &&
-                            total_pixels <= 64uz * 1024uz * 1024uz - K_PIXELS,
+                            total_pixels <= K_PIXEL_LIMIT - K_PIXELS,
                         "Evaluation mask pixel budget exceeded",
                         ErrorCode::RESOURCE_EXHAUSTED);
                 total_pixels += K_PIXELS;

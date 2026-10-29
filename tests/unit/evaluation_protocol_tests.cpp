@@ -543,3 +543,95 @@ TEST_CASE(
         return blocker.m_code == "EVALUATION_PROTOCOL_MISSING";
     }));
 }
+
+TEST_CASE("evaluation v2 accounts for both complete tracks on twelve native 4K synthetic views",
+          "[evaluation-protocol][capture-v2]") {
+    const auto K_EXCESS = GENERATE(false, true);
+    const auto K_WIDTH = K_EXCESS ? 4096 : 3840;
+    const auto K_HEIGHT = K_EXCESS ? 4096 : 2160;
+    ProtocolFixture fixture(
+        {},
+        {},
+        {},
+        {},
+        [K_WIDTH, K_HEIGHT](SelectionFixture& views) {
+            views.m_selection.m_schema_version = 2;
+            auto& region = views.m_object.m_region;
+            region.m_receipt_profile = AssetReceiptProfile::CAPTURE_V2;
+            for (auto& map : { views.m_object.m_map, views.m_inference_map }) {
+                map->m_calibrations.at({ 8 }).m_width = static_cast<std::uint32_t>(K_WIDTH);
+                map->m_calibrations.at({ 8 }).m_height = static_cast<std::uint32_t>(K_HEIGHT);
+            }
+            auto& node = *std::ranges::find(
+                region.m_graph.m_products, AssetProductId { 9101 }, [](const auto& entry) {
+                    return entry.m_product.m_product;
+                });
+            const auto& raw = region.m_data.at(node.m_product.m_content_sha256);
+            auto asset = checked(decode_pose_asset(std::as_bytes(std::span(raw)), hash(raw)));
+            auto map = std::make_shared<MapState>(*asset.m_snapshot);
+            map->m_calibrations.at({ 8 }).m_width = static_cast<std::uint32_t>(K_WIDTH);
+            map->m_calibrations.at({ 8 }).m_height = static_cast<std::uint32_t>(K_HEIGHT);
+            asset.m_snapshot = map;
+            const auto K_ENCODED = checked(encode_pose_asset(asset));
+            const std::string K_TEXT(reinterpret_cast<const char*>(K_ENCODED.data()),
+                                     K_ENCODED.size());
+            region.m_data[hash(K_TEXT)] = K_TEXT;
+            node.m_product.m_content_sha256 = hash(K_TEXT);
+            for (auto& frame : views.m_selection.m_frames) {
+                if (frame.m_view.m_pose_asset.m_product == node.m_product.m_product) {
+                    frame.m_view.m_pose_asset = node.m_product;
+                }
+            }
+            for (std::size_t index { 0uz }; index < 7uz; ++index) {
+                auto image = region.node(20000uz + index,
+                                         "synthetic additional 4K grid " + std::to_string(index));
+                region.m_graph.m_products.push_back(image);
+                auto selected = views.m_selection.m_frames[1uz];
+                selected.m_view.m_frame = { 200uz + index };
+                selected.m_view.m_image = image.m_product;
+                auto observation = views.m_object.m_map->m_observations.at({ 10 });
+                observation.m_id = selected.m_view.m_frame;
+                observation.m_image_sha256 = image.m_product.m_content_sha256;
+                auto pose = views.m_object.m_map->m_poses.at({ 10 });
+                pose.m_frame = observation.m_id;
+                views.m_object.m_map->m_observations.emplace(observation.m_id, observation);
+                views.m_object.m_map->m_poses.emplace(pose.m_frame, pose);
+                views.m_selection.m_frames.push_back(selected);
+            }
+        },
+        2);
+    const auto K_RESULT = fixture.inspect();
+    if (K_EXCESS) {
+        REQUIRE(!K_RESULT);
+        CHECK(K_RESULT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+        return;
+    }
+    REQUIRE(K_RESULT);
+    CHECK(fixture.m_capture.evaluation().size() == 12uz);
+    REQUIRE(K_RESULT->masks().size() == 24uz);
+    std::uint64_t total {};
+    for (const auto& mask : K_RESULT->masks()) {
+        CHECK(mask.m_pixels == 3840uz * 2160uz);
+        total += mask.m_pixels;
+    }
+    CHECK(total == 199065600);
+    CHECK(K_RESULT->selection().m_schema_version == 2);
+    auto unselected = fixture.m_selected;
+    unselected.m_schema_version = 1;
+    CHECK(!inspect_evaluation_protocol(
+        unselected, fixture.m_capture, fixture.m_receipt, fixture.m_receipt.graph().m_context));
+    CHECK(!fixture.m_capture.validate_inference_dependency(
+        fixture.m_receipt, fixture.m_selected.m_product, fixture.m_receipt.graph().m_context));
+    const auto K_COMMIT = checked(publish_evaluation_protocol(*K_RESULT,
+                                                              fixture.m_receipt,
+                                                              fixture.directory(),
+                                                              { 999 },
+                                                              0,
+                                                              fixture.m_receipt.graph().m_context));
+    CHECK(read_evaluation_protocol(fixture.directory(),
+                                   K_COMMIT,
+                                   fixture.m_selected,
+                                   fixture.m_capture,
+                                   fixture.m_receipt,
+                                   fixture.m_receipt.graph().m_context));
+}

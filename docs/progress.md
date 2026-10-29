@@ -521,16 +521,25 @@ PTS, 4K grid and all 60 caller views remain unchanged. This pre-pose disk path
 preserves the smaller owned asset capture/receipt/evaluation limits; those gates
 remain unresolved and no new-source solver or asset producer is run.
 
-Next executable step: resolve owned asset-capture image storage and complete
-12-view evaluation-mask accounting for the **unchanged** 60-view selection before
-a new-source pose/fit run. Use the checked preparation request/selection and
-native stage under `artifacts/validation/a0-frozen-views-20261029`; the
-[protocol](protocols/frozen_views.md) defines the independent pin and consumer
-boundaries. Preserve the 48/12 partition and all held-out temporal blocks; do not
-bypass v1 budgets, downscale/drop views or overwrite previous jobs. The input-only
-batch fixture intentionally leaves an unsealed journal; select a fresh output
-for an eventual solver. Ordinary reconstruction-request/GUI selection still needs
-integration. No new observation profile may substitute for recipe/capture freeze.
+The [capture storage slice](validation/2026-10-29-capture-storage.md) adds explicit
+receipt/capture/evaluation v2 profiles and privately shared immutable image bytes.
+It addresses full-selection storage and RLE pixel accounting without changing v1
+limits or AP thresholds. Real byte storage and synthetic pose/mask evidence are
+separate; no real pose/capture/corpus, producer or A1 qualification is inferred.
+
+Next executable step: integrate the independently selected v2 receipt/capture/
+evaluation profiles into `src/application/corpus_inspection.cpp`, retaining strict
+v1 request compatibility and reserving aggregate receipt bytes before payload
+loading. Ordinary reconstruction-request/GUI selection remains open. Use the checked
+60-view selection and inference-only native stage under
+`artifacts/validation/a0-frozen-views-20261029` and the owned byte receipt under
+`artifacts/validation/a0-capture-storage-20261029`. Preserve all 48/12 views and
+held-out temporal blocks. Then prepare a fresh role-pinned baseline pose job with
+the existing qualified environment; never feed the whole clip to legacy selection.
+Actual native capture admission still requires new-source calibration/poses and
+independently localized evaluation cameras; declared eligibility masks still need
+real correspondence. Existing input-only journals and previous jobs must remain
+unchanged. No new profile substitutes for recipe/capture freeze.
 In parallel, complete the
 compiler payload/source/advisory/terms and Torch/NVIDIA ABI reviews, bind remaining
 build tools and installed/build/staging/scratch ceilings, and prepare a concrete

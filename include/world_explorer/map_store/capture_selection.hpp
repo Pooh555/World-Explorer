@@ -28,6 +28,7 @@ struct CaptureSelection {
     std::vector<CaptureSourceSelection> m_sources;
     std::vector<CaptureFrameSelection> m_frames;
     std::optional<AssetRevisionRef> m_measurement;
+    std::uint32_t m_schema_version { 1 };
 };
 
 struct CaptureSelectionRecord {
@@ -40,7 +41,7 @@ struct CaptureFrameInputs {
     ObjectViewSelection m_view;
     AssetDependencyContext m_context;
     ObservationRecord m_observation;
-    std::vector<std::byte> m_image;
+    AdmittedAssetBlob m_image;
     CalibrationRecord m_calibration;
     PoseEstimate m_pose;
     SimilarityTransform m_world_from_camera;

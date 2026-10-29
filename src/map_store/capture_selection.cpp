@@ -101,14 +101,14 @@ struct AdmittedCaptureSelection::Implementation {
 
 InferenceCaptureInputs::InferenceCaptureInputs(
     std::shared_ptr<const std::vector<CaptureFrameInputs>> frames)
-    : m_frames(std::move(frames)) { }
+    : m_frames(std::move(frames)) {}
 
 const std::vector<CaptureFrameInputs>& InferenceCaptureInputs::frames() const {
     return *m_frames;
 }
 
 AdmittedCaptureSelection::AdmittedCaptureSelection(std::shared_ptr<const Implementation> state)
-    : m_state(std::move(state)) { }
+    : m_state(std::move(state)) {}
 
 const CaptureSelectionRecord& AdmittedCaptureSelection::record() const {
     return m_state->m_record;
@@ -243,6 +243,13 @@ inspect_capture_selection(const AdmittedAssetReceipt& receipt,
         }
         require(selection.m_selection.m_value && selection.m_revision,
                 "Missing capture-selection identity",
+                ErrorCode::INVALID_ARGUMENT);
+        require(selection.m_schema_version == 1 || selection.m_schema_version == 2,
+                "Unsupported capture selection schema",
+                ErrorCode::UNSUPPORTED_OPERATION);
+        require(selection.m_schema_version != 2 ||
+                    receipt.profile() == AssetReceiptProfile::CAPTURE_V2,
+                "Capture v2 requires the independently selected receipt v2 profile",
                 ErrorCode::INVALID_ARGUMENT);
         require(!selection.m_frames.empty() && selection.m_frames.size() <= 64uz &&
                     !selection.m_sources.empty() && selection.m_sources.size() <= 32uz &&
@@ -427,7 +434,7 @@ inspect_capture_selection(const AdmittedAssetReceipt& receipt,
               "frames",
               "measurement",
               "manual_ancestor" });
-        require(integer(K_DOC.at("schema_version")) == 1,
+        require(integer(K_DOC.at("schema_version")) == selection.m_schema_version,
                 "Unsupported capture selection schema",
                 ErrorCode::UNSUPPORTED_OPERATION);
         require(integer(K_DOC.at("selection_id")) == selection.m_selection.m_value &&
@@ -549,12 +556,17 @@ inspect_capture_selection(const AdmittedAssetReceipt& receipt,
             }
             auto& used_bytes =
                 K_FRAME.m_role == CaptureFrameRole::INFERENCE ? inference_bytes : evaluation_bytes;
-            require(used_bytes < 32uz * K_MIB,
+            const auto K_IMAGE_LIMIT =
+                selection.m_schema_version == 1
+                    ? 32uz * K_MIB
+                    : (K_FRAME.m_role == CaptureFrameRole::INFERENCE ? 512uz * K_MIB
+                                                                     : 128uz * K_MIB);
+            require(used_bytes < K_IMAGE_LIMIT,
                     "Capture image byte budget exhausted",
                     ErrorCode::RESOURCE_EXHAUSTED);
-            auto image = receipt.copy_blob(selected_view.m_image.m_content_sha256,
-                                           std::min(16uz * K_MIB, 32uz * K_MIB - used_bytes),
-                                           stop);
+            auto image = receipt.share_blob(selected_view.m_image.m_content_sha256,
+                                            std::min(16uz * K_MIB, K_IMAGE_LIMIT - used_bytes),
+                                            stop);
             if (!image) {
                 return std::unexpected(image.error());
             }
@@ -595,7 +607,8 @@ inspect_capture_selection(const AdmittedAssetReceipt& receipt,
                                 selection.m_revision,
                                 {},
                                 {},
-                                selection.m_measurement };
+                                selection.m_measurement,
+                                selection.m_schema_version };
         for (const auto& [K_ID, K_SOURCE] : sources) {
             owned.m_sources.push_back(K_SOURCE);
         }

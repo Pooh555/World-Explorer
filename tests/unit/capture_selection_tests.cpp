@@ -464,3 +464,48 @@ TEST_CASE("manual evaluation annotations do not become inference manual ancestry
     CHECK(K_RESULT->evaluation()[0uz].m_annotations[0uz].record().m_manual_ancestor);
     CHECK(!K_RESULT->inference().frames()[0uz].m_manual_ancestor);
 }
+
+TEST_CASE("capture v2 shares bounded role images without widening v1 or leaking receipt ownership",
+          "[capture-selection][capture-v2]") {
+    const auto K_EXCESS = GENERATE(false, true);
+    SelectionFixture fixture;
+    fixture.m_selection.m_schema_version = 2;
+    auto& region = fixture.m_object.m_region;
+    region.m_receipt_profile = AssetReceiptProfile::CAPTURE_V2;
+    const std::string K_IMAGE(16uz * 1024uz * 1024uz, 'x');
+    auto& node = region.m_graph.m_products[fixture.m_image_index];
+    region.m_data[hash(K_IMAGE)] = K_IMAGE;
+    node.m_product.m_content_sha256 = hash(K_IMAGE);
+    fixture.m_selection.m_frames[0uz].m_view.m_image = node.m_product;
+    fixture.m_inference_map->m_observations.at({ 110 }).m_image_sha256 = hash(K_IMAGE);
+    for (std::size_t index { 1uz }; index < (K_EXCESS ? 33uz : 32uz); ++index) {
+        auto selected = fixture.m_selection.m_frames[0uz];
+        selected.m_view.m_frame = { 110uz + index };
+        auto observed = fixture.m_inference_map->m_observations.at({ 110 });
+        observed.m_id = selected.m_view.m_frame;
+        auto pose = fixture.m_inference_map->m_poses.at({ 110 });
+        pose.m_frame = observed.m_id;
+        fixture.m_inference_map->m_observations.emplace(observed.m_id, observed);
+        fixture.m_inference_map->m_poses.emplace(pose.m_frame, pose);
+        fixture.m_selection.m_frames.push_back(selected);
+    }
+    const auto K_RECEIPT = fixture.freeze(false);
+    const auto K_RESULT = fixture.inspect(K_RECEIPT, false);
+    if (K_EXCESS) {
+        REQUIRE(!K_RESULT);
+        CHECK(K_RESULT.error().m_code == ErrorCode::RESOURCE_EXHAUSTED);
+    } else {
+        REQUIRE(K_RESULT);
+        const auto K_INPUTS = K_RESULT->inference();
+        CHECK(K_INPUTS.frames().size() == 32uz);
+        const auto K_BLOB = K_RECEIPT.share_blob(hash(K_IMAGE), 16uz * 1024uz * 1024uz);
+        REQUIRE(K_BLOB);
+        for (const auto& frame : K_INPUTS.frames()) {
+            CHECK(frame.m_image.data() == K_BLOB->data());
+        }
+        CHECK(K_RESULT->record().m_selection.m_schema_version == 2);
+        auto unselected = fixture.m_selection;
+        unselected.m_schema_version = 1;
+        CHECK(!inspect_capture_selection(K_RECEIPT, unselected, {}, region.m_graph.m_context));
+    }
+}

@@ -46,6 +46,7 @@ struct EvaluationProtocolSelection {
     std::vector<EvaluationLightPin> m_lights;
     std::uint64_t m_geometry_samples {}, m_geometry_seed {};
     std::uint32_t m_uv_resolution {}, m_reviewers_min {};
+    std::uint32_t m_schema_version { 1 };
 };
 
 struct EvaluationMaskSummary {

@@ -1,5 +1,7 @@
 # Validation index
 
+- [29 October: explicit capture storage and mask accounting](2026-10-29-capture-storage.md) — bounded v2 receipt/capture profiles, shared immutable image ownership and full native-grid evaluation accounting; real 60-image byte validation and synthetic contract evidence stay separate.
+
 - [29 October: frozen inference input producer/consumers](2026-10-29-frozen-view-inputs.md) — immutable inference-only PNG preparation, native role/inventory checks, independently pinned bounded pose-input connection; all 60 source views retained, no solver/fit or A1 qualification.
 
 - [29 October: native sample_2 view materialization](2026-10-29-sample2-native-views.md) — all 60 original-resolution candidates, exact indices/PTS and source/PNG pixel correspondence; role/receipt/mask resource refusal retained, no pose/fit or A1 qualification.
