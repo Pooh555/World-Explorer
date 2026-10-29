@@ -142,7 +142,7 @@ cause is deliberate operator cancellation after resource diagnosis, not a failed
 registration verdict. All protected files are byte-identical. No poses/map were
 published, no input was dropped and no quality threshold changed.
 
-One explicit concurrency retry is prepared at
+One explicit concurrency retry ran at
 `artifacts/sample_2_a0_cpu1_20261029`. The CLI adds bounded `--cpu-threads 1..4`
 (default four), passing the existing native configuration directly; invalid,
 zero, excessive and duplicate options refuse before dispatch. This retry selects
@@ -163,9 +163,8 @@ The one-thread service launch exits **0**, invocation
 `1c0d0af37ffd8966757760575b0c028d3bba83f43dcfdfafeda7a2781036be93`.
 The controller records implementation `c4f0eca86b0beee3afb5b7cdf6312533e1b6a5a3`;
 actual `poses/batch-request.json` contains `cpu_threads=1`, the worker accepted
-START, and fresh decode key `f7a00bee…` began. This is observed start/admission,
-not a terminal pose result. Exact launch data is in `S/cpu1-service-launch.json`;
-new `logs/result.json` owns live/terminal state. No further automatic resource
+START, and fresh decode key `f7a00bee…` began. Exact launch data is in
+`S/cpu1-service-launch.json`; new `logs/result.json` owns its terminal state. No further automatic resource
 retry is implied.
 
 The one-thread decoder completed in **112.007 s**, then started pose key
@@ -178,9 +177,99 @@ A host health check observes active/running, **2,988,662,784** current memory by
 Its database had grown to **56,983,552 bytes** plus WAL and was written within
 seconds of observation, resolving the earlier observed stall. These instantaneous
 values and actual configured limits are pinned in `S/cpu1-service-health.json`;
-they do not certify whole-job fit or a completed reconstruction. The existing
-service continues independently of chat, and its terminal result must be inspected
-before accepting any pose/map or continuing downstream.
+they do not certify whole-job fit or a completed reconstruction.
+
+The one-thread run subsequently finished with native **exit 2** after **633.306 s**:
+`POSE_DISCONNECTED`, because no single model covers the other candidates' registered
+frames. All protected files remain byte-identical. The retained failed stage
+`poses/stages/.poses-w4ll81pj` contains two models with **19 and 17 registered
+views**; admission requires at least **44/48** in one valid selected model. No
+poses/map were published. The memory stall was resolved, while registration failed.
+
+## Retained-model continuation
+
+The read-only command below exits **0**; its full report is in
+`S/cpu1-recovery-analysis`:
+
+```sh
+.venv-worker/bin/python -I -B tools/inspect_pose_recovery.py \
+  --request artifacts/sample_2_a0_cpu1_20261029/poses/batch-request.json \
+  --failed-stage artifacts/sample_2_a0_cpu1_20261029/poses/stages/.poses-w4ll81pj \
+  --output artifacts/validation/a0-pose-resume-20261029/cpu1-recovery-analysis
+```
+
+It records **225** stored pairs, **169** positive-inlier pairs and connected
+positive-inlier graph across all 48 views. At the existing 30-inlier pair count,
+the graph has a 46-view component and two singletons. These pair counts are not
+2D–3D/PnP support, parallax proof or accepted registration. Model selection remains
+`unique_strict_superset_v1`, with no valid selected model.
+
+One operator-assisted continuation copies the complete saved database and larger
+19-view model into disjoint `artifacts/sample_2_a0_recovery1_20261029/poses`.
+`S/recovery_controller.py prepare` pins **124** source files; its first preparation
+failed before any worker because the source-root constant mistakenly named the
+new destination. Only empty newly created directories were removed, the constant
+was corrected, and `S/prepare-mapping-recovery-corrected.json` records exit **0**.
+No source data changed. The existing `tools/recover_video_poses.py --initial-model`
+helper uses the saved matches and original 48 decoded images with one mapping
+thread/random seed 42; it retains the existing mapper/admission thresholds.
+This is assisted recovery, excluded from automatic yield, with no feature/match
+rerun and no holdout use.
+
+The host service launch exits **0**, invocation
+`bea2d4818d7a48d69be205bb3127823a`, unit
+`world-explorer-sample2-a0-recovery1-20261029.service`; request SHA-256
+`680280a07068f9aa19d5be21c0e7c4eb1f6c5591544f418cd8b51610507aa04e`.
+Exact argv and limits are in `S/recovery-service-launch.json`: CPUQuota200%,
+MemoryHigh6 GiB /MemoryMax7 GiB /swap1 GiB, stop90 s, runtime7,600 s.
+The terminal `logs/result.json` records **FAILED /exit 1** after **200.466 s**,
+with all **124** protected CPU1 files unchanged. Mapping returned the same **19/17**
+models (`S/recovery-mapped-counts.log`); the normal pose stage then refused them
+with the same disconnected-model error. Decode key `930c128a…` completed in
+**160.567 s**, and failed pose stage `.poses-ztokvc74` is retained. No pose pointer
+or map is published. No further unchanged seed continuation is warranted.
+
+## Changed matching recipe
+
+`python3 S/check_pair_coverage.py` exits **0** against a private copy of the retained
+database. `S/pair-coverage-summary.json` records **903/1,128** possible unordered
+pairs absent from the sequential database, including **280/323** pairs between
+the two retained model memberships. Missing pairs are candidates, not proof of
+overlap or registerable geometry. This observed coverage gap motivates one explicit
+`exhaustive_guided` recipe variant, rather than repeating the unchanged mapping.
+
+`S/guided_controller.py prepare` exits **0** and reserves fresh disjoint
+`artifacts/sample_2_a0_guided_20261029`, copies the exact inference PPM/journal,
+and protects **266 files** across both completed failed attempts. The native
+`solve-poses` request selects existing `--recipe exhaustive_guided --resume-input true --cpu-threads 1`.
+All 48 original 4K views, IDs/PTS, features and 90%/unique-superset admission remain
+fixed. The matcher selects guided exhaustive matching; previous request/cache
+identities are never relabeled. This operator-selected recipe variant is assisted,
+with no AP9 automatic-yield credit. It does not use any holdout or evaluation data.
+The service launch exits **0**, invocation
+`e5313c48a37c40738ab15fe31590f85a`, unit
+`world-explorer-sample2-a0-guided-20261029.service`; request SHA-256
+`e9bbad5bdcf55ce070e5cd4304079e11197288f96896342ba3da45c4ce2599b3`.
+`S/guided-service-launch.json` pins exact argv and the same CPU/memory/time caps.
+The worker acknowledged START, and actual `poses/batch-request.json` selects
+`pose_recipe=exhaustive_guided`, `cpu_threads=1`. Decode key `4b7fa3ad…` started.
+`S/guided-service-health.json` confirms active/running, CPUQuotaPerSecUSec2s and
+the requested memory limits, with 1,933,578,240 current /2,190,479,360 peak memory
+bytes and zero swap at that observation. These are live observations, not a
+terminal result or production-fit pass. The new `logs/result.json` owns
+live/terminal state; previous job outputs remain protected. Native success must
+also publish and reopen the fresh sibling
+`poses.map` before downstream capture admission.
+
+The required tracked-Python Black check passes again using the retained pinned
+26.5.1 formatter; `S/black-recovery.json` owns exact argv/exit. The preservation
+check exits **0** and confirms 378 protected media/results, 327 old-job files,
+62 environment metadata files and 1,944 prior audit files unchanged, together
+with AGENTS/runbook/specification identities; `S/preservation-recovery.json`
+records the command and `S/preservation.json` the hash-baseline/source identity.
+No production source changes follow the tested concurrency-control commit.
+Documentation and whitespace checks pass; exact documentation command/exit is
+retained in `S/docs-guided-handoff.json` (and the final documentation receipt).
 
 ## Remaining work
 

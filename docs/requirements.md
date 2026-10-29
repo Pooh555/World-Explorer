@@ -271,9 +271,13 @@ validates all 48 native journal/source RGB bindings but has no terminal solver
 receipt after interruption. Committed decode is retained; partial features have
 no accepted model. Explicit checked CLI resume is locally tested; a supervised four-thread run
 was cancelled after observed memory throttling, with all protected bytes unchanged.
-One separately labeled one-thread retry retains all views/feature settings and
-unchanged registration/AP gates. Real pose/capture/corpus/recipe and A1 qualification
-remain open; A0/AP0 stay IN_PROGRESS.
+The separately labeled one-thread retry resolved that stall but exited 2 with
+POSE_DISCONNECTED: models register 19/17 views versus 44/48 required; protected
+bytes are unchanged. One assisted continuation of the larger model also failed,
+retaining the same 19/17-view fragments and every protected byte. A fresh exhaustive-guided variant
+now tests the observed missing pairings with unchanged inputs/thresholds; assisted
+recipe selection receives no automatic-yield credit. Real pose/capture/corpus/recipe
+and A1 qualification remain open; A0/AP0 stay IN_PROGRESS.
 
 | Requirement | Implementation / checks | Status | Evidence / dependency |
 |---|---|---|---|

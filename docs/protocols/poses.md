@@ -144,8 +144,16 @@ For a retained failed solve, `tools/recover_video_poses.py --request BATCH_REQUE
 committed decode and its recorded solver input, copies the native RGB journal
 into a disjoint job, and uses the normal journal validation/export/undistortion
 and transactional completion. Retained sparse inventories enter the recipe hash
-and are checked before and after use. The original job remains unchanged; recovery
-does not repeat feature extraction/matching/mapping or forge a completed result.
+and are checked before and after use. The original job remains unchanged; this
+default recovery does not repeat feature extraction/matching/mapping or forge a
+completed result. Optional `--initial-model RETAINED_MODEL` or
+`--seed-images FIRST SECOND` instead copies the full saved database into the new
+job and runs mapping there with the original thread budget and existing geometric
+thresholds. Initial models must belong to the failed stage; explicit seed pairs
+must meet the installed mapper's verified-inlier minimum. These operator-selected
+continuations are assisted attempts, retain the usual model-selection/90%
+admission, and do not count as automatic yield. They do not add missing matches;
+a changed matching recipe requires its own fresh declared job.
 
 Before completion, drain emits INITIALIZING once. After successful checked import,
 it emits submap creation, identity alignment, final registered poses in capture

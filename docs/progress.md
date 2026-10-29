@@ -549,26 +549,42 @@ accepted pose model. The controller confirms every protected input, committed
 decode and previous partial-stage byte unchanged; cancellation retained its new
 partial stage. The old sandbox attempt still has no terminal receipt.
 
-The one explicit lower-concurrency retry is **RUNNING** at
-`artifacts/sample_2_a0_cpu1_20261029`, user unit
-`world-explorer-sample2-a0-cpu1-20261029.service`. Its actual worker request selects
-one CPU thread; source `c4f0eca` and native CLI resume copy/verify the same 48 PPMs.
-The changed resource recipe correctly starts fresh decode key `f7a00b…`, without
-relabeling or overwriting the four-thread request/cache. All views, 4K grids,
-indices/PTS, feature settings, sequential recipe and 90% admission remain fixed. Decode completed in 112.007 s;
-pose key `852822…` is running. Observed memory is ~3 GiB with zero high/OOM events
-and current database writes, resolving the prior resource stall so far.
+The one-thread retry at `artifacts/sample_2_a0_cpu1_20261029` completed with native
+**exit 2 /POSE_DISCONNECTED** after **633.306 s**, with all protected files
+unchanged. It resolved the observed memory stall, but its two retained models
+register only **19 and 17 views**, below the unchanged **44/48** requirement.
+No poses/map were published. All 48 4K inference views, original IDs/PTS, features
+and frozen 12-view holdout exclusion remain fixed. Regenerated solver PNGs retain
+source RGB/PTS/grid but have different encoded hashes from intake PNGs; later
+pose-bound receipts need explicit byte-variant correspondence.
 
-Next executable step: inspect this existing unit and its terminal record at
-`artifacts/sample_2_a0_cpu1_20261029/logs/result.json` before any further retry or
-capture admission. The prior stopped attempt is retained under
-`artifacts/sample_2_a0_20261029/logs/resume-001`; its protected-file check passed.
-Keep all 12 selected holdouts and temporal blocks excluded. Both regenerated PNG
-variants retain source RGB/PTS/grid but have different encoded hashes from intake
-PNGs; preserve explicit byte-variant correspondence when building pose-bound
-receipts. No metric scale, walking, completed asset, automatic AP9 yield or AP
-qualification is inferred. Real capture/recipe freeze and ordinary reconstruction-
-request/GUI selection remain open.
+The operator-assisted retained-model continuation at
+`artifacts/sample_2_a0_recovery1_20261029` also **FAILED** (helper exit 1,
+200.466 s): the copied database and larger seed model returned the same 19/17
+view fragments. Normal admission refused them; all 124 protected CPU1 files are
+unchanged. Its committed decode and failed pose stage remain retained. No more
+unchanged seed continuations are warranted.
+
+A separate **RUNNING** recipe variant at `artifacts/sample_2_a0_guided_20261029`
+selects existing `exhaustive_guided` matching with one CPU thread. Read-only
+analysis found 903/1,128 possible pairs absent from the sequential database, including
+280/323 cross-fragment pairs. This is a concrete pairing change, with unchanged
+48 views, feature settings and geometric/admission thresholds. Its request pins
+266 previous-job files and fresh native input replay; prior requests/caches remain
+unchanged. Recipe selection is assisted and earns no AP9 automatic-yield credit.
+User unit: `world-explorer-sample2-a0-guided-20261029.service`.
+
+Next executable step: inspect this existing unit and terminal record
+`artifacts/sample_2_a0_guided_20261029/logs/result.json` before any further retry
+or capture admission. A successful native solve must publish and reopen the new
+sibling `poses.map`; verify actual pose/image bytes before building capture
+receipts. On failure, run the read-only recovery diagnostic on its retained stage;
+do not accept fragments, change the frozen partition or lower the 44-view
+threshold. The prior stopped attempt remains under
+`artifacts/sample_2_a0_20261029/logs/resume-001`. No metric scale, walking,
+completed asset, automatic AP9 yield or AP qualification is inferred. Real
+capture/recipe freeze and ordinary reconstruction-request/GUI selection remain
+open.
 In parallel, complete the
 compiler payload/source/advisory/terms and Torch/NVIDIA ABI reviews, bind remaining
 build tools and installed/build/staging/scratch ceilings, and prepare a concrete
@@ -652,7 +668,7 @@ or walking.
 | Video | Current saved result |
 |---|---|
 | sample_1 | 7k fit, **295,952 splats**; saved terminal/validation and native CLI bundle validation exit 0; Source view available |
-| sample_2 | [28 October replacement intake](validation/2026-10-28-sample2-a1-intake.md), current SHA `a5630370d7039c78cc822dbd17a967711be3632bd2cdb43519eab8c2fa876144`: baseline-only, estimated references authorized; no new solve/fit/scene. Prior source SHA `10a6405980025eadfbe12e4c68d86bbab8d41af24e0fa48f2d12ca829f0e1de3`: **FAILED**, exit 2 / POSE_DISCONNECTED after **1,137.473 s**; 90 decoded frames, largest connected model **79 (81 required)**; no fit/scene, failed stages retained. [Second replacement](validation/2026-10-16-sample2-second-replacement.md) supersedes the deleted first replacement (75/88, 80 required, 1,254.710 s) |
+| sample_2 | [28 October replacement intake](validation/2026-10-28-sample2-a1-intake.md), current SHA `a5630370d7039c78cc822dbd17a967711be3632bd2cdb43519eab8c2fa876144`: baseline-only, estimated references authorized; [48-view sequential/assisted pose attempts rejected; exhaustive-guided variant running](validation/2026-10-29-sample2-frozen-poses.md), no accepted poses/fit/scene. Prior source SHA `10a6405980025eadfbe12e4c68d86bbab8d41af24e0fa48f2d12ca829f0e1de3`: **FAILED**, exit 2 / POSE_DISCONNECTED after **1,137.473 s**; 90 decoded frames, largest connected model **79 (81 required)**; no fit/scene, failed stages retained. [Second replacement](validation/2026-10-16-sample2-second-replacement.md) supersedes the deleted first replacement (75/88, 80 required, 1,254.710 s) |
 | sample_3 | Source SHA `4448a1d9eb93f8b7fc787f9ea037d282128438a2512fad8eb8df8544f53906da`; **80 poses → 7k fit → 648,332 splats**, terminal/validation/native bundle checks exit 0. [Viewer/holdout checks](validation/2026-10-15-sample3-evidence.md): 126 frames/zero Vulkan errors, 16/16 scores reproduce; mean **20.8708 dB / 0.815687 SSIM / 0.253078 LPIPS**, Q3 blocked. [All 80 calibrated comparisons](validation/2026-10-15-all-camera-reference.md) pass, maximum one RGB8 level |
 
 On 2026-10-13 the user requested deletion of all old artifacts and three fresh
