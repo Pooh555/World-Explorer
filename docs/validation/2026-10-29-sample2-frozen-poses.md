@@ -155,8 +155,32 @@ or relabeled as the old request/cache. The previous stages/logs remain protected
 Both C++26/C++23 builds and batch admission checks pass after adding this control:
 **17 cases /23,904 assertions per profile**. The C++ gate passes both changed
 translation units with LLVM23.1.1. Raw commands/results have `cpu-control` tags in
-`S`. The original data and former stages remain protected. Actual launch/outcome
-is recorded when observed.
+`S`. The original data and former stages remain protected.
+
+The one-thread service launch exits **0**, invocation
+`475c2e3f6a5741b59c1d224336a1494c`, unit
+`world-explorer-sample2-a0-cpu1-20261029.service`. Its request SHA-256 is
+`1c0d0af37ffd8966757760575b0c028d3bba83f43dcfdfafeda7a2781036be93`.
+The controller records implementation `c4f0eca86b0beee3afb5b7cdf6312533e1b6a5a3`;
+actual `poses/batch-request.json` contains `cpu_threads=1`, the worker accepted
+START, and fresh decode key `f7a00bee…` began. This is observed start/admission,
+not a terminal pose result. Exact launch data is in `S/cpu1-service-launch.json`;
+new `logs/result.json` owns live/terminal state. No further automatic resource
+retry is implied.
+
+The one-thread decoder completed in **112.007 s**, then started pose key
+`852822ba…`. All **48** regenerated PNG byte hashes, source IDs, PTS and capture
+times equal the previous verified solver decode; `S/cpu1-decoded-equivalence.json`
+retains the full table. The original intake PNGs remain separate byte variants.
+
+A host health check observes active/running, **2,988,662,784** current memory bytes,
+**3,264,036,864** peak, **34,799,616** swap bytes and **zero** high/max/OOM events.
+Its database had grown to **56,983,552 bytes** plus WAL and was written within
+seconds of observation, resolving the earlier observed stall. These instantaneous
+values and actual configured limits are pinned in `S/cpu1-service-health.json`;
+they do not certify whole-job fit or a completed reconstruction. The existing
+service continues independently of chat, and its terminal result must be inspected
+before accepting any pose/map or continuing downstream.
 
 ## Remaining work
 

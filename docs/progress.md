@@ -549,18 +549,26 @@ accepted pose model. The controller confirms every protected input, committed
 decode and previous partial-stage byte unchanged; cancellation retained its new
 partial stage. The old sandbox attempt still has no terminal receipt.
 
-Next executable step: finish the bounded CPU-thread CLI verification, then launch
-the one explicitly labeled concurrency retry at
-`artifacts/sample_2_a0_cpu1_20261029` through its prepared `cpu1_controller.py`
-under `artifacts/validation/a0-pose-resume-20261029`. Its native inputs are exact
-copies; use `--cpu-threads 1`, unchanged 4K/48 inference views, feature settings,
-sequential recipe and 90% registration threshold. Keep all 12 selected holdouts
-and temporal blocks excluded. Use a fresh disjoint worker request/cache identity;
-never relabel the four-thread cache. All 48 regenerated solver PNGs match source
-RGB/PTS/grid but have different encoded hashes; retain that explicit variant map
-when building pose-bound receipts. Do not signal old sandbox PIDs. No metric scale,
-walking, completed asset or AP qualification is inferred; real capture/recipe
-freeze and ordinary reconstruction-request/GUI selection remain open.
+The one explicit lower-concurrency retry is **RUNNING** at
+`artifacts/sample_2_a0_cpu1_20261029`, user unit
+`world-explorer-sample2-a0-cpu1-20261029.service`. Its actual worker request selects
+one CPU thread; source `c4f0eca` and native CLI resume copy/verify the same 48 PPMs.
+The changed resource recipe correctly starts fresh decode key `f7a00b…`, without
+relabeling or overwriting the four-thread request/cache. All views, 4K grids,
+indices/PTS, feature settings, sequential recipe and 90% admission remain fixed. Decode completed in 112.007 s;
+pose key `852822…` is running. Observed memory is ~3 GiB with zero high/OOM events
+and current database writes, resolving the prior resource stall so far.
+
+Next executable step: inspect this existing unit and its terminal record at
+`artifacts/sample_2_a0_cpu1_20261029/logs/result.json` before any further retry or
+capture admission. The prior stopped attempt is retained under
+`artifacts/sample_2_a0_20261029/logs/resume-001`; its protected-file check passed.
+Keep all 12 selected holdouts and temporal blocks excluded. Both regenerated PNG
+variants retain source RGB/PTS/grid but have different encoded hashes from intake
+PNGs; preserve explicit byte-variant correspondence when building pose-bound
+receipts. No metric scale, walking, completed asset, automatic AP9 yield or AP
+qualification is inferred. Real capture/recipe freeze and ordinary reconstruction-
+request/GUI selection remain open.
 In parallel, complete the
 compiler payload/source/advisory/terms and Torch/NVIDIA ABI reviews, bind remaining
 build tools and installed/build/staging/scratch ceilings, and prepare a concrete
